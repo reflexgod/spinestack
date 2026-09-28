@@ -5,3 +5,8 @@ backend/data/
 __pycache__/
 *.pyc
 .DS_Store
+.idea/
+*.iml
+/src/
+/out/
+CLAUDE_CODE_PROMPT.md
