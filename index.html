@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Type a film or a book, get its real spine, save your shelf as an Instagram story.">
+<script>
+  /* Address of your Spinestack backend, e.g. "https://api.yourdomain.com".
+     Leave empty when the backend serves this page itself (localhost:8000).
+     With no backend, search is off but uploads still work. */
+  window.SPINESTACK_API = "";
+</script>
+</head>
+<body>
+<title>Spinestack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
+<style>
+:root{--paper:#FFFFFF;--ink:#000000;--grey:#6B6B6B;--hair:#D9D9D9;--mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--paper)}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 12px/1.55 var(--mono)}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 24px}
+.top a{text-decoration:none;font-size:13px;text-transform:uppercase}
+.top .r{justify-self:end}
+.mark{font-weight:800;font-size:22px!important;letter-spacing:.34em;margin-right:-.34em;line-height:1}
+
+.col{max-width:600px;margin:0 auto;padding:0 16px}
+.wide{max-width:940px;margin:0 auto;padding:0 16px}
+section{padding-block:56px 0}
+h1,h2{font-weight:700;text-transform:uppercase;margin:0 0 14px;letter-spacing:0}
+h1{font-size:24px;line-height:1.3;text-align:center}
+h2{font-size:16px;display:flex;gap:10px;align-items:baseline}
+h2 small{font-size:12px;font-weight:400}
+p{margin:0 0 12px}
+.say{font-size:16px;font-weight:700;margin:18px 0 26px}
+.grey{color:var(--grey)}
+.center{text-align:center}
+
+/* the dashed underline from the reference: chunky dashes under uppercase text */
+.dash{display:inline-block;background:none;border:0;padding:0 0 9px;font:500 16px var(--mono);text-transform:uppercase;color:var(--ink);cursor:pointer;text-decoration:none;
+  background-image:repeating-linear-gradient(90deg,var(--ink) 0 11px,transparent 11px 14px);background-size:100% 4px;background-repeat:no-repeat;background-position:left bottom}
+.dash.sm{font-size:12px;padding-bottom:6px;background-size:100% 3px;background-image:repeating-linear-gradient(90deg,var(--ink) 0 8px,transparent 8px 11px)}
+
+form.search{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px}
+input[type=text],select{font:400 13px var(--mono);color:var(--ink);background:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 12px;width:100%;min-width:0}
+input[type=text]::placeholder{color:#8A8A8A}
+.opts{display:flex;gap:18px;margin-top:12px;align-items:center}
+.opts label{cursor:pointer;text-transform:uppercase;display:flex;gap:6px;align-items:center}
+.opts input{accent-color:var(--ink);margin:0}
+.btn{font:500 13px var(--mono);text-transform:uppercase;background:var(--ink);color:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 22px;cursor:pointer}
+.btn:hover{background:#222}
+.btn.full{width:100%}
+.status{min-height:18px;margin-top:14px}
+.status.err{font-weight:700}
+
+table{border-collapse:collapse;width:100%}
+.tbl{overflow-x:auto;margin-top:6px}
+th,td{text-align:left;padding:9px 8px 9px 0;border-bottom:1px solid var(--ink);white-space:nowrap;vertical-align:top}
+th{font-weight:400;color:var(--grey);text-transform:uppercase;font-size:11px}
+td.t{white-space:normal;font-weight:700;text-transform:uppercase}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:#F2F2F2}
+td.no{color:var(--grey);font-variant-numeric:tabular-nums}
+
+.found{display:flex;gap:18px;overflow-x:auto;padding:8px 0 4px;align-items:flex-end}
+.pick{flex:none;display:grid;gap:6px;justify-items:center;background:none;border:0;padding:0;cursor:pointer;font:inherit;color:inherit}
+.pick img{height:320px;width:auto;display:block}
+.pick span{font-size:11px}
+.pick:hover span{text-decoration:underline}
+.gen{height:320px;width:88px;border:1px dashed var(--ink);display:grid;place-items:center;text-align:center;font-size:11px;text-transform:uppercase;line-height:1.4}
+.found{margin-bottom:8px}
+.src{font-size:10.5px;color:var(--grey);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.drop{display:block;border:1px dashed var(--ink);border-radius:8px;padding:22px 18px;cursor:pointer;text-align:center}
+.drop.over{background:#F2F2F2}
+.drop input{position:absolute;width:1px;height:1px;opacity:0}
+
+.shelfgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:40px;align-items:start;margin-top:8px}
+ol.books{list-style:none;margin:0;padding:0;border-top:1px solid var(--ink)}
+.book{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:12px;padding:12px 0;border-bottom:1px solid var(--ink)}
+.thumb{width:42px;height:62px;object-fit:cover;background:#EEE}
+.fields{display:grid;gap:7px;min-width:0}
+.row2{display:grid;grid-template-columns:1.3fr 1fr;gap:7px}
+.row3{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+.fields input[type=text]{padding:7px 9px;font-size:12px;border-radius:6px}
+.fields input.t{font-weight:700}
+.row3 select{width:auto;padding:5px 7px;font-size:11.5px;border-radius:6px}
+.sw{display:inline-flex;align-items:center;gap:5px;font-size:11px;text-transform:uppercase}
+input[type=color]{width:22px;height:22px;padding:0;border:1px solid var(--ink);border-radius:4px;background:none;cursor:pointer}
+input[type=color]::-webkit-color-swatch-wrapper{padding:1px}
+input[type=color]::-webkit-color-swatch{border:0;border-radius:2px}
+.acts{display:flex;flex-direction:column;gap:4px}
+.ib{width:26px;height:26px;border:1px solid var(--ink);border-radius:6px;background:var(--paper);color:var(--ink);cursor:pointer;font:500 12px var(--mono);padding:0}
+.ib:hover{background:var(--ink);color:var(--paper)}
+.ib:disabled{opacity:.25;cursor:default;background:var(--paper);color:var(--ink)}
+.note{font-size:11px;color:var(--grey)}
+.note:empty{display:none}
+.note.warn{color:var(--ink);font-weight:700}
+.empty{padding:20px 0;color:var(--grey)}
+
+.story{display:grid;gap:16px}
+.phone{border:1px solid var(--ink);border-radius:26px;padding:6px;width:100%;max-width:270px;margin:0 auto}
+#story{display:block;width:100%;aspect-ratio:9/16;border-radius:20px;background:#fff}
+.ctl{display:grid;gap:6px}
+.lbl{font-size:11px;color:var(--grey);text-transform:uppercase}
+.seg{display:flex;gap:14px;flex-wrap:wrap}
+.seg button{font:400 12px var(--mono);text-transform:uppercase;background:none;border:0;padding:0 0 4px;color:var(--grey);cursor:pointer;border-bottom:2px solid transparent}
+.seg button[aria-pressed="true"]{color:var(--ink);font-weight:700;border-bottom-color:var(--ink)}
+.check{display:flex;gap:8px;align-items:center;cursor:pointer;text-transform:uppercase;font-size:11.5px}
+.check input{accent-color:var(--ink);margin:0}
+
+.home{padding-block:64px 72px;text-align:center}
+
+footer{background:var(--ink);color:var(--paper);padding:36px 24px 22px}
+.fgrid{display:grid;grid-template-columns:1.1fr 1.3fr 1fr;gap:36px;max-width:1200px;margin:0 auto}
+footer h3{font-size:16px;font-weight:700;text-transform:uppercase;margin:0 0 10px}
+footer p,footer li{font-size:13px;letter-spacing:.02em}
+footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
+.fbtn{display:inline-block;background:var(--paper);color:var(--ink);border-radius:8px;padding:12px 28px;text-transform:uppercase;text-decoration:none;font-size:14px;margin-top:4px}
+.fbase{max-width:1200px;margin:34px auto 0;border-top:1px solid #8A8A8A;padding-top:12px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:11.5px}
+
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);background:var(--ink);color:var(--paper);border-radius:8px;padding:10px 16px;font-size:12px;max-width:calc(100% - 32px);z-index:20}
+.modal{position:fixed;inset:0;background:rgba(255,255,255,.92);display:grid;place-items:center;padding:16px;z-index:30}
+.modal-card{background:var(--paper);border:1px solid var(--ink);border-radius:10px;padding:18px;max-width:380px;width:100%;display:grid;gap:12px;max-height:calc(100% - 32px);overflow:auto}
+.modal-card img{width:100%;max-width:230px;margin:0 auto;display:block}
+
+@media (max-width:820px){
+  .shelfgrid{grid-template-columns:minmax(0,1fr);gap:28px}
+  .story{order:-1}
+  .fgrid{grid-template-columns:1fr;gap:26px}
+}
+@media (max-width:520px){
+  .top{padding:12px 16px}
+  .mark{font-size:17px!important;letter-spacing:.22em;margin-right:-.22em}
+  .top a{font-size:11.5px}
+  form.search{grid-template-columns:1fr}
+  .row2{grid-template-columns:1fr}
+  section{padding-block:40px 0}
+}
+</style>
+
+<header class="top" id="top">
+  <a href="#how">Info</a>
+  <a class="mark" href="#top" aria-label="Spinestack, back to top">SPINESTACK</a>
+  <a class="r" href="#shelf">Shelf (<span id="navCount">0</span>)</a>
+</header>
+
+<main>
+  <section id="search" class="col">
+    <h1>Find a spine</h1>
+    <p>Type a film or a book. Spinestack looks through DVD and book scans online, cuts the spine out of each one, and puts it on your shelf. When the shelf looks right, save it as a story.</p>
+    <p class="say">The real spine, not a mockup.</p>
+    <form class="search" id="sform" autocomplete="off">
+      <input type="text" id="q" placeholder="Gummo, The Waves, Kids..." aria-label="Film or book name" maxlength="120">
+      <button class="btn" type="submit">Search</button>
+    </form>
+    <div class="opts" role="radiogroup" aria-label="Search in">
+      <label><input type="radio" name="qk" value="all" checked>All</label>
+      <label><input type="radio" name="qk" value="movie">Films</label>
+      <label><input type="radio" name="qk" value="book">Books</label>
+    </div>
+    <select id="qkind" hidden aria-hidden="true"><option value="all">all</option><option value="movie">movie</option><option value="book">book</option></select>
+    <p class="grey" id="modeNote" style="margin-top:14px">Search needs the Spinestack server, so it's off in this preview. Uploading a scan below still works.</p>
+    <p class="grey" id="recent" hidden style="margin-top:14px">Recently found: <span></span></p>
+    <div class="status" id="sstatus" role="status"></div>
+    <div id="matches" hidden>
+      <div class="tbl"><table>
+        <thead><tr><th>No.</th><th>Title</th><th>Year</th><th>Type</th><th>By</th></tr></thead>
+        <tbody id="mrows"></tbody>
+      </table></div>
+    </div>
+    <div id="spines" hidden style="margin-top:26px">
+      <h2><span id="spinesTitle">Spines</span></h2>
+      <div class="found" id="found"></div>
+    </div>
+  </section>
+
+  <section id="upload" class="col">
+    <h2>Upload</h2>
+    <p>Found a scan yourself? Drop it here. A full DVD or book wrap, with back, spine and front in one image, gives you the real spine. A plain cover or poster gets a spine made from its colours.</p>
+    <label class="drop" id="drop" for="file">
+      <span class="dash sm">Choose image</span>
+      <span class="grey" style="display:block;margin-top:10px">or drag it here, or copy an image and press Ctrl+V</span>
+      <input type="file" id="file" accept="image/*" multiple>
+    </label>
+  </section>
+
+  <section id="shelf" class="wide">
+    <h2>Shelf <small id="count"></small> <button class="dash sm" id="clear" type="button" style="margin-left:auto">Clear</button></h2>
+    <p class="grey" id="sampleNote">This is a sample shelf. It clears when you add your first title.</p>
+    <div class="shelfgrid">
+      <ol class="books" id="books"></ol>
+      <div class="story" id="export">
+        <div class="phone"><canvas id="story" width="1080" height="1920" aria-label="Story preview"></canvas></div>
+        <div class="ctl"><label class="lbl" for="caption">Caption</label><input type="text" id="caption" value="my next reads." maxlength="60"></div>
+        <div class="ctl"><span class="lbl">Background</span>
+          <div class="seg" id="theme" role="group" aria-label="Background"><button type="button" data-v="paper">Paper</button><button type="button" data-v="ink">Ink</button><button type="button" data-v="blush">Blush</button><button type="button" data-v="shelf">Shelf</button></div></div>
+        <div class="ctl"><span class="lbl">Layout</span>
+          <div class="seg" id="layout" role="group" aria-label="Layout"><button type="button" data-v="row">Spines</button><button type="button" data-v="stack">Stacked</button><button type="button" data-v="covers">Covers</button></div></div>
+        <label class="check" id="variedWrap"><input type="checkbox" id="varied" checked> Mixed heights</label>
+        <button class="btn full" id="exportBtn" type="button">Save story</button>
+        <p class="note" id="exportNote"></p>
+      </div>
+    </div>
+  </section>
+
+  <div class="home"><a class="dash" href="#top">Back to top</a></div>
+</main>
+
+<footer>
+  <div class="fgrid">
+    <div id="how">
+      <h3>How it works</h3>
+      <ol>
+        <li>You type a name. Films come from TMDB, books from Open Library.</li>
+        <li>We look for full DVD and book scans of that title.</li>
+        <li>The strip between back and front is the spine. We cut it out.</li>
+        <li>No clean scan? You get a spine made from the poster or cover.</li>
+      </ol>
+    </div>
+    <div id="sources">
+      <h3>Sources</h3>
+      <p>Film data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB. Book data from Open Library. Scans belong to their studios and publishers, and every spine links back to where it was found.</p>
+    </div>
+    <div>
+      <h3>Shelf</h3>
+      <p>Build it, then post it.</p>
+      <a class="fbtn" href="#shelf">Open shelf</a>
+    </div>
+  </div>
+  <div class="fbase"><span>© 2026 SPINESTACK. All rights reserved.</span><span>Not affiliated with any studio or publisher.</span></div>
+</footer>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="mtitle">
+    <b id="mtitle">SAVE YOUR STORY</b>
+    <img id="mimg" alt="Your story image">
+    <p>Press and hold the image on a phone, or right-click it on a computer, and choose Save image. Then add it to your Instagram story.</p>
+    <button class="btn" id="mclose" type="button">Done</button>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const story = $('#story'), sctx = story.getContext('2d');
+const W = 1080, H = 1920;
+const FONTS = {
+  oswald:{label:'Condensed', t:fs=>`600 ${fs}px Oswald, "Arial Narrow", sans-serif`, a:fs=>`400 ${fs}px Oswald, "Arial Narrow", sans-serif`, upper:true},
+  serif:{label:'Serif', t:fs=>`600 ${fs}px "Cormorant Garamond", Georgia, serif`, a:fs=>`italic 500 ${fs}px "Cormorant Garamond", Georgia, serif`},
+  black:{label:'Heavy', t:fs=>`${fs}px "Archivo Black", "Arial Black", sans-serif`, a:fs=>`500 ${fs}px "IBM Plex Sans", sans-serif`},
+  hand:{label:'Handwritten', t:fs=>`${fs}px "Gochi Hand", "Comic Sans MS", cursive`, a:fs=>`${fs}px "Gochi Hand", "Comic Sans MS", cursive`},
+  mono:{label:'Typewriter', t:fs=>`500 ${fs}px "IBM Plex Mono", monospace`, a:fs=>`400 ${fs}px "IBM Plex Mono", monospace`},
+};
+const STYLES = {real:'Real spine', dvd:'DVD case', art:'Artwork + colour', solid:'Solid colour', classic:'Classic band', strip:'Cover strip'};
+const THEMES = {
+  paper:{bg:'#FFFFFF', ink:'#0F1419', mark:'rgba(15,20,25,.38)'},
+  ink:{bg:'#0E0F12', ink:'#F1F2F4', mark:'rgba(241,242,244,.38)'},
+  blush:{bg:'#F3DCE0', ink:'#3A1F26', mark:'rgba(58,31,38,.4)'},
+  shelf:{bg:'#E6E1DA', ink:'#2A241F', mark:'rgba(42,36,31,.4)'},
+};
+let books = [], isSample = true, uid = 0, server = false;
+const settings = {caption:'my next reads.', theme:'paper', layout:'row', varied:true};
+
+/* ---------- colour ---------- */
+const hex = (r,g,b) => '#' + [r,g,b].map(v => Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('');
+const rgb = h => { h = h.replace('#',''); return [0,2,4].map(i => parseInt(h.slice(i,i+2),16)); };
+const lum = h => { const c = rgb(h).map(v => { v/=255; return v <= .03928 ? v/12.92 : Math.pow((v+.055)/1.055, 2.4); }); return .2126*c[0]+.7152*c[1]+.0722*c[2]; };
+const contrast = (a,b) => { const x = lum(a), y = lum(b); return (Math.max(x,y)+.05)/(Math.min(x,y)+.05); };
+const alpha = (h,a) => { const [r,g,b] = rgb(h); return `rgba(${r},${g},${b},${a})`; };
+const sat = ([r,g,b]) => { const mx = Math.max(r,g,b), mn = Math.min(r,g,b); return mx === 0 ? 0 : (mx-mn)/mx; };
+const dist = (a,b) => Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]);
+function extractPalette(img){
+  const c = document.createElement('canvas'); c.width = 48; c.height = 72;
+  const x = c.getContext('2d', {willReadFrequently:true}), iw = img.width, ih = img.height;
+  x.drawImage(img, iw*.06, ih*.06, iw*.88, ih*.66, 0, 0, 48, 72);
+  const d = x.getImageData(0,0,48,72).data, buckets = new Map();
+  for (let i = 0; i < d.length; i += 4){
+    const k = (d[i]>>4)<<8 | (d[i+1]>>4)<<4 | (d[i+2]>>4), e = buckets.get(k) || {n:0,r:0,g:0,b:0};
+    e.n++; e.r += d[i]; e.g += d[i+1]; e.b += d[i+2]; buckets.set(k, e);
+  }
+  const list = [...buckets.values()].map(e => ({n:e.n, c:[e.r/e.n, e.g/e.n, e.b/e.n]})).sort((a,b) => b.n - a.n);
+  if (!list.length) return {bg:'#333333', fg:'#FFFFFF', accent:'#CCCCCC'};
+  const score = e => e.n * (.35 + sat(e.c)*1.8), dom = list.slice(0,10).sort((a,b) => score(b)-score(a))[0].c, bg = hex(...dom);
+  const others = list.slice(0,14).filter(e => dist(e.c, dom) > 70);
+  const ac = others.slice().sort((a,b) => sat(b.c)*Math.sqrt(b.n) - sat(a.c)*Math.sqrt(a.n))[0];
+  const accent = ac ? hex(...ac.c) : (lum(bg) > .5 ? '#1A1A1A' : '#F2F2F2');
+  let fg = null, best = 0;
+  for (const e of others){ const h = hex(...e.c), ct = contrast(h, bg); if (ct > best){ best = ct; fg = h; } }
+  if (best < 4.5) fg = contrast('#FFFFFF', bg) >= contrast('#111111', bg) ? '#FFFFFF' : '#111111';
+  return {bg, fg, accent};
+}
+
+/* ---------- wrap scans: find the spine between back and front ---------- */
+function findSpine(img){
+  const cw = 600, ch = Math.max(40, Math.round(600*img.height/img.width));
+  const c = document.createElement('canvas'); c.width = cw; c.height = ch;
+  const x = c.getContext('2d', {willReadFrequently:true}); x.drawImage(img, 0, 0, cw, ch);
+  const d = x.getImageData(0,0,cw,ch).data, y0 = Math.floor(ch*.1), y1 = Math.floor(ch*.9), cols = [];
+  for (let cx = 0; cx < cw; cx++){ let r=0,g=0,b=0,n=0; for (let cy = y0; cy < y1; cy += 2){ const i = (cy*cw+cx)*4; r+=d[i]; g+=d[i+1]; b+=d[i+2]; n++; } cols.push([r/n,g/n,b/n]); }
+  const diff = cols.map((c,i) => i ? dist(c, cols[i-1]) : 0);
+  let best = null;
+  for (let L = Math.floor(cw*.38); L <= Math.floor(cw*.53); L++)
+    for (let R = L + Math.floor(cw*.02); R <= Math.min(cw-1, L + Math.floor(cw*.12)); R++){ const s = diff[L] + diff[R]; if (!best || s > best.s) best = {L, R, s}; }
+  if (!best || best.s < 40) return null;
+  const k = img.width / cw; return {x:best.L*k, w:(best.R-best.L)*k, frontX:best.R*k};
+}
+function crop(img, sx, sy, sw, sh){ const c = document.createElement('canvas'); c.width = Math.max(1,Math.round(sw)); c.height = Math.max(1,Math.round(sh)); c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height); return c; }
+const API = String(window.SPINESTACK_API || '').replace(/\/+$/, '');
+const loadImg = src => new Promise((res, rej) => { const im = new Image(); if (!/^(data|blob):/.test(src)) im.crossOrigin = 'anonymous'; im.onload = () => res(im); im.onerror = rej; im.src = src; });
+
+/* ---------- sample shelf (drawn covers, no real artwork) ---------- */
+function drawCover(fn){ const c = document.createElement('canvas'); c.width = 400; c.height = 600; fn(c.getContext('2d')); return c; }
+function samples(){
+  const waves = drawCover(x => { x.fillStyle = '#161616'; x.fillRect(0,0,400,600); x.strokeStyle = '#EDE7D6'; x.lineWidth = 3; for (let r = 0; r < 9; r++){ x.beginPath(); for (let i = 0; i <= 400; i += 8) x.lineTo(i, 300+r*22+Math.sin(i/30+r)*10); x.stroke(); } });
+  const venus = drawCover(x => { const g = x.createLinearGradient(0,0,0,600); g.addColorStop(0,'#F4C3CF'); g.addColorStop(.7,'#EFA5B8'); g.addColorStop(1,'#E8588A'); x.fillStyle = g; x.fillRect(0,0,400,600); x.fillStyle = 'rgba(160,110,120,.35)'; x.beginPath(); x.ellipse(120,380,110,190,.3,0,7); x.fill(); x.fillStyle = '#1F2E26'; x.beginPath(); x.moveTo(170,0); x.quadraticCurveTo(230,120,190,220); x.lineTo(215,225); x.quadraticCurveTo(250,110,210,0); x.fill(); });
+  const moon = drawCover(x => { x.fillStyle = '#1C1B21'; x.fillRect(0,0,400,600); x.fillStyle = '#E8D23C'; x.beginPath(); x.arc(270,190,70,0,7); x.fill(); x.fillStyle = '#1C1B21'; x.beginPath(); x.arc(295,175,62,0,7); x.fill(); });
+  const kuasa = drawCover(x => { x.fillStyle = '#EFE7D6'; x.fillRect(0,0,400,600); x.fillStyle = '#A3542E'; for (let i = 0; i < 12; i++){ x.beginPath(); x.moveTo(i*36,600); x.lineTo(i*36+18,540); x.lineTo(i*36+36,600); x.fill(); } });
+  return [
+    {title:'The Waves', author:'Virginia Woolf', img:waves, bg:'#161616', fg:'#F1EEE6', accent:'#EDE7D6', style:'classic', font:'oswald'},
+    {title:'delta of venus', author:'anaïs nin', img:venus, bg:'#F2B6C5', fg:'#1F2E26', accent:'#E8588A', style:'strip', font:'black'},
+    {title:'Journey by Moonlight', author:'Antal Szerb', img:moon, bg:'#1C1B21', fg:'#E8D23C', accent:'#E8D23C', style:'solid', font:'oswald'},
+    {title:'Kuasa Rahim', author:'Barbara Watson Andaya', img:kuasa, bg:'#EFE7D6', fg:'#3B2E25', accent:'#A3542E', style:'solid', font:'serif'},
+  ].map((b,i) => newBook(Object.assign(b, {wf:[.96,1.08,.9,1.15][i], hf:[1.02,.98,1,.95][i]})));
+}
+function newBook(b){
+  const i = uid++;
+  return Object.assign({id:'b'+i, cat:'D'+String(10000+Math.floor(Math.random()*89999)), wf:.86+Math.random()*.32, hf:.9+Math.random()*.14, jit:Math.random()*2-1, kind:'book', author:'', studio:'', status:'',
+    thumb: b.img && b.img.toDataURL ? b.img.toDataURL('image/jpeg', .8) : b.thumb}, b);
+}
+
+/* ---------- spine renderer ---------- */
+function rr(x,X,Y,w,h,r){ x.beginPath(); if (x.roundRect) x.roundRect(X,Y,w,h,r); else x.rect(X,Y,w,h); }
+function fitFont(x, text, maker, maxSize, budget){ x.font = maker(100); const m = x.measureText(text).width || 1; return Math.max(8, Math.min(maxSize, 100*budget/m)); }
+function coverCrop(x, img, dx, dy, dw, dh){ const iw = img.width, ih = img.height, s = Math.max(dw/iw, dh/ih), sw = dw/s, sh = dh/s; x.drawImage(img, (iw-sw)/2, (ih-sh)/2, sw, sh, dx, dy, dw, dh); }
+function shade(x,w,h){ const g = x.createLinearGradient(0,0,w,0); g.addColorStop(0,'rgba(0,0,0,.2)'); g.addColorStop(.1,'rgba(0,0,0,0)'); g.addColorStop(.45,'rgba(255,255,255,.07)'); g.addColorStop(.9,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.18)'); x.fillStyle = g; x.fillRect(0,0,w,h); }
+const isReal = b => b.style === 'real' && b.spineImg;
+const isCase = b => b.style === 'dvd';
+function makeSpine(b, w, h){
+  w = Math.max(14, Math.round(w)); h = Math.round(h);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d'), r = Math.min(8, w*.07), F = FONTS[b.font] || FONTS.oswald;
+  x.save(); rr(x,0,0,w,h,r); x.clip();
+  if (isReal(b)){ x.drawImage(b.spineImg, 0, 0, w, h); shade(x,w,h); x.restore(); return c; }
+  if (b.style === 'strip' && b.img){ const iw = b.img.width, ih = b.img.height; let sw = ih*w/h; if (sw > iw) sw = iw; x.drawImage(b.img, (iw-sw)/2, 0, sw, ih, 0, 0, w, h); x.fillStyle = alpha(b.bg,.22); x.fillRect(0,0,w,h); }
+  else { x.fillStyle = b.bg; x.fillRect(0,0,w,h); }
+
+  if (b.style === 'dvd'){
+    x.fillStyle = b.accent; x.fillRect(0,0,Math.max(2,w*.035),h);
+    const cx = w/2, sp = w*.1; let yb = h - w*.28;
+    x.fillStyle = b.fg; x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+    const studio = (b.studio || '').trim();
+    if (studio){
+      const words = studio.split(/\s+/), half = Math.ceil(words.length/2), lines = words.length > 1 ? [words.slice(0,half).join(' '), words.slice(half).join(' ')] : [studio];
+      let fs = w*.16; x.font = `600 ${fs}px "IBM Plex Sans", sans-serif`;
+      const mw = Math.max(...lines.map(l => x.measureText(l).width)); if (mw > w - sp*2) fs *= (w - sp*2)/mw;
+      x.font = `600 ${fs}px "IBM Plex Sans", sans-serif`;
+      for (let i = lines.length-1; i >= 0; i--){ x.fillText(lines[i], cx, yb); yb -= fs*1.12; }
+      yb -= w*.18;
+    }
+    x.font = `italic ${w*.3}px "Archivo Black", "Arial Black", sans-serif`; x.fillText('DVD', cx, yb);
+    x.font = `500 ${w*.1}px "IBM Plex Sans", sans-serif`; x.fillText('VIDEO', cx, yb + w*.12);
+    yb -= w*.42; x.globalAlpha = .75; x.font = `400 ${w*.13}px "IBM Plex Mono", monospace`; x.fillText(b.cat, cx, yb); x.globalAlpha = 1;
+    yb -= w*.25; const s = w*.74;
+    if (b.img){ const iw = b.img.width, ih = b.img.height, ry = ih*.1, rh = ih*.55, k = Math.max(s/iw, s/rh), sw = s/k, sh = s/k; x.drawImage(b.img, (iw-sw)/2, ry+(rh-sh)/2, sw, sh, cx-s/2, yb-s, s, s); }
+    const tEnd = yb - s - w*.5, tStart = w*.5, title = F.upper ? b.title.toUpperCase() : b.title;
+    if (title.trim()){ const fs = fitFont(x, title, F.t, w*.46, tEnd - tStart); x.save(); x.translate(w/2 + w*.02, 0); x.rotate(Math.PI/2); x.textBaseline = 'middle'; x.textAlign = 'left'; x.fillStyle = b.fg; x.font = F.t(fs); x.fillText(title, tStart, 0); x.restore(); }
+    shade(x,w,h); x.restore(); return c;
+  }
+
+  const pad = w*.55; let start = pad, end = h - pad;
+  if (b.style === 'art' && b.img){ const ah = Math.min(h*.22, w*1.5), iw = b.img.width, ih = b.img.height, ry = ih*.05, rh = ih*.6, k = Math.max(w/iw, ah/rh), sw = w/k, sh = ah/k; x.drawImage(b.img, (iw-sw)/2, ry+(rh-sh)*.35, sw, sh, 0, 0, w, ah); start = ah + pad*.8; }
+  if (b.style === 'classic'){ const top = h*.74, bh = Math.max(w*1.1, h*.1); x.fillStyle = b.accent; x.fillRect(0,top,w,bh); const s = Math.min(w*.6, bh*.72);
+    if (b.img){ x.save(); rr(x,(w-s)/2, top+(bh-s)/2, s, s, s*.12); x.clip(); coverCrop(x, b.img, (w-s)/2, top+(bh-s)/2, s, s); x.restore(); } end = top - pad*.7; }
+  else if (b.style === 'solid'){ const cy = h - pad - w*.2, rad = w*.17; x.strokeStyle = b.accent; x.lineWidth = Math.max(1.5, w*.025); x.beginPath(); x.arc(w/2, cy, rad, 0, 7); x.stroke(); x.beginPath(); x.arc(w/2, cy, rad*.45, 0, 7); x.fillStyle = b.accent; x.fill(); end = cy - rad - pad*.8; }
+  const region = end - start, title = F.upper ? b.title.toUpperCase() : b.title, author = F.upper ? b.author.toUpperCase() : b.author, hasA = author.trim().length > 0;
+  const tS = title.trim() ? fitFont(x, title, F.t, w*.36, region*(hasA ? .6 : .95)) : 0;
+  const aS = hasA ? fitFont(x, author, F.a, Math.min(w*.26, tS ? tS*.72 : w*.26), region*(title.trim() ? .34 : .95)) : 0;
+  x.save(); x.translate(w/2, 0); x.rotate(Math.PI/2); x.textBaseline = 'middle'; x.fillStyle = b.fg;
+  if (b.style === 'strip'){ x.shadowColor = alpha(b.bg,.55); x.shadowBlur = w*.08; }
+  if (tS){ x.font = F.t(tS); x.textAlign = 'left'; x.fillText(title, start, 0); }
+  if (aS){ x.font = F.a(aS); x.textAlign = 'right'; x.globalAlpha = .88; x.fillText(author, end, 0); }
+  x.restore(); shade(x,w,h); x.restore(); return c;
+}
+
+/* ---------- story ---------- */
+function wrapText(x, text, maxW){ const words = text.split(/\s+/), lines = []; let line = ''; for (const wd of words){ const t = line ? line+' '+wd : wd; if (x.measureText(t).width > maxW && line){ lines.push(line); line = wd; } else line = t; } if (line) lines.push(line); return lines.slice(0,3); }
+function sizes(H0, U){
+  // width and height of each spine before fitting to the 900px row
+  return books.map(b => {
+    if (isReal(b)) return {w: H0 * b.spineImg.width / b.spineImg.height, h: H0};
+    if (isCase(b)) return {w: Math.min(U*.58, H0/11), h: H0};
+    return {w: U*b.wf, h: H0*(settings.varied ? b.hf : 1)};
+  });
+}
+function renderStory(){
+  const x = sctx, T = THEMES[settings.theme];
+  x.clearRect(0,0,W,H); x.fillStyle = T.bg; x.fillRect(0,0,W,H);
+  x.fillStyle = T.ink; x.font = '500 52px "Geist Mono", ui-monospace, monospace'; x.textBaseline = 'alphabetic'; x.textAlign = 'left';
+  let y = 290; if (settings.caption.trim()) for (const ln of wrapText(x, settings.caption, 900)){ x.fillText(ln, 90, y); y += 68; }
+  const base = 1700;
+  if (settings.theme === 'shelf' && settings.layout !== 'covers'){
+    const g = x.createLinearGradient(0,base,0,base+54); g.addColorStop(0,'#8A6040'); g.addColorStop(1,'#5B3C25'); x.fillStyle = g; x.fillRect(40,base,W-80,54);
+    x.strokeStyle = 'rgba(40,24,12,.25)'; x.lineWidth = 2; for (let i = 0; i < 5; i++){ x.beginPath(); x.moveTo(40,base+10+i*9); x.bezierCurveTo(300,base+4+i*10,700,base+16+i*8,W-40,base+8+i*9); x.stroke(); }
+    const sh = x.createLinearGradient(0,base+54,0,base+110); sh.addColorStop(0,'rgba(0,0,0,.18)'); sh.addColorStop(1,'rgba(0,0,0,0)'); x.fillStyle = sh; x.fillRect(40,base+54,W-80,56);
+  }
+  const shadow = settings.theme === 'ink' ? 'rgba(0,0,0,.5)' : 'rgba(0,0,0,.15)';
+  if (books.length && settings.layout === 'covers'){
+    const n = books.length, cols = n === 1 ? 1 : n <= 4 ? 2 : n <= 9 ? 3 : 4, rows = Math.ceil(n/cols), gap = 30, top = Math.max(y+30, 400), bottom = 1780;
+    const cellW = Math.min(n === 1 ? 760 : 900, (900 - gap*(cols-1))/cols), cellH = (bottom - top - gap*(rows-1))/rows;
+    const sz = books.map(b => { const k = Math.min(cellW/b.img.width, cellH/b.img.height); return [b.img.width*k, b.img.height*k]; });
+    const rowH = []; for (let r = 0; r < rows; r++) rowH.push(Math.max(...sz.slice(r*cols, r*cols+cols).map(z => z[1])));
+    let cy = top + ((bottom-top) - (rowH.reduce((a,v) => a+v, 0) + gap*(rows-1)))/2;
+    for (let r = 0; r < rows; r++){
+      const items = books.slice(r*cols, r*cols+cols), s2 = sz.slice(r*cols, r*cols+cols); let cx = (W - (s2.reduce((a,z) => a+z[0], 0) + gap*(items.length-1)))/2;
+      items.forEach((b,i) => { const [w,h] = s2[i], dy = cy + rowH[r] - h; x.save(); x.shadowColor = shadow; x.shadowBlur = 30; x.shadowOffsetY = 12; x.fillStyle = '#000'; rr(x,cx,dy,w,h,10); x.fill(); x.restore(); x.save(); rr(x,cx,dy,w,h,10); x.clip(); x.drawImage(b.img,cx,dy,w,h); x.restore(); cx += w + gap; });
+      cy += rowH[r] + gap;
+    }
+  } else if (books.length && settings.layout === 'row'){
+    const gap = books.length > 7 ? 10 : 18, s = sizes(1160, books.length <= 2 ? 220 : 165);
+    const sumW = s.reduce((a,z) => a+z.w, 0), room = 900 - gap*(books.length-1);
+    if (sumW > room){ const k = room/sumW; s.forEach((z,i) => { z.w *= k; if (isReal(books[i]) || isCase(books[i])) z.h *= Math.max(k, .75); }); }
+    let cx = (W - (s.reduce((a,z) => a+z.w, 0) + gap*(books.length-1)))/2;
+    books.forEach((b,i) => { const sp = makeSpine(b, s[i].w, s[i].h); x.save(); x.shadowColor = shadow; x.shadowBlur = 22; x.shadowOffsetY = 8; x.drawImage(sp, Math.round(cx), Math.round(base - sp.height)); x.restore(); cx += s[i].w + gap; });
+  } else if (books.length){
+    const s = sizes(800, 125), sumT = s.reduce((a,z) => a+z.w, 0), k = Math.min(1, 1220/sumT); let cy = base;
+    books.forEach((b,i) => { const t = s[i].w*k, L = s[i].h, sp = makeSpine(b, t, L); cy -= sp.width; const cx = (W-L)/2 + b.jit*38;
+      x.save(); x.shadowColor = shadow; x.shadowBlur = 16; x.shadowOffsetY = 5; x.translate(Math.round(cx), Math.round(cy + sp.width)); x.rotate(-Math.PI/2); x.drawImage(sp,0,0); x.restore(); });
+  }
+  x.fillStyle = T.mark; x.font = '400 24px "Geist Mono", monospace'; x.textAlign = 'center'; x.fillText('made with spinestack', W/2, 1868);
+}
+let raf = 0; const redraw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(renderStory); };
+
+/* ---------- shelf list ---------- */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function renderList(){
+  $('#count').textContent = books.length ? `(${books.length})` : '';
+  $('#sampleNote').hidden = !isSample || !books.length;
+  $('#navCount').textContent = books.length;
+  $('#clear').hidden = !books.length;
+  const ol = $('#books');
+  if (!books.length){ ol.innerHTML = '<li class="empty">Nothing here yet. Search a title above.</li>'; redraw(); return; }
+  ol.innerHTML = books.map((b,i) => `
+  <li class="book" data-id="${b.id}">
+    <img class="thumb" src="${b.thumb}" alt="">
+    <div class="fields">
+      <div class="row2">
+        <input type="text" class="t" id="${b.id}-title" data-f="title" value="${esc(b.title)}" placeholder="Title" aria-label="Title">
+        <input type="text" id="${b.id}-author" data-f="author" value="${esc(b.author)}" placeholder="${b.kind === 'movie' ? 'Director' : 'Author'}" aria-label="Author or director">
+      </div>
+      <div class="row3">
+        <select id="${b.id}-kind" data-f="kind" aria-label="Book or film"><option value="book"${b.kind!=='movie'?' selected':''}>Book</option><option value="movie"${b.kind==='movie'?' selected':''}>Film</option></select>
+        <select id="${b.id}-style" data-f="style" aria-label="Spine style">${Object.entries(STYLES).filter(([k]) => k !== 'real' || b.spineImg).map(([k,v]) => `<option value="${k}"${b.style===k?' selected':''}>${v}</option>`).join('')}</select>
+        <select id="${b.id}-font" data-f="font" aria-label="Lettering">${Object.entries(FONTS).map(([k,v]) => `<option value="${k}"${b.font===k?' selected':''}>${v.label}</option>`).join('')}</select>
+        <label class="sw"><input type="color" id="${b.id}-bg" data-f="bg" value="${b.bg.toLowerCase()}">Spine</label>
+        <label class="sw"><input type="color" id="${b.id}-fg" data-f="fg" value="${b.fg.toLowerCase()}">Text</label>
+      </div>
+      <div class="note" id="${b.id}-note"></div>
+    </div>
+    <div class="acts">
+      <button class="ib" type="button" data-a="up" aria-label="Move left"${i===0?' disabled':''}>↑</button>
+      <button class="ib" type="button" data-a="down" aria-label="Move right"${i===books.length-1?' disabled':''}>↓</button>
+      <button class="ib" type="button" data-a="del" aria-label="Remove ${esc(b.title || 'item')}">✕</button>
+    </div>
+  </li>`).join('');
+  books.forEach(setNote); redraw();
+}
+function setNote(b){
+  const el = document.getElementById(b.id + '-note'); if (!el) return; el.classList.remove('warn');
+  if (b.status === 'reading'){ el.innerHTML = 'Reading the cover…'; return; }
+  if (!b.title.trim() && !isReal(b)){ el.textContent = 'Type the title to print it on the spine.'; el.classList.add('warn'); return; }
+  el.textContent = isReal(b) ? (b.source ? 'Real spine · from ' + b.source : 'Real spine, cut from your scan') : '';
+}
+$('#books').addEventListener('input', e => {
+  const li = e.target.closest('.book'), f = e.target.dataset.f; if (!li || !f) return;
+  const b = books.find(b => b.id === li.dataset.id); b[f] = e.target.value; b.touched = true;
+  if (f === 'kind' && !isReal(b)){
+    if (b.kind === 'movie'){ b.style = 'dvd'; b.bg = '#111111'; b.fg = '#F4F4F2'; } else { b.style = 'art'; Object.assign(b, extractPalette(b.img)); }
+    renderList(); return;
+  }
+  setNote(b); redraw();
+});
+$('#books').addEventListener('click', e => {
+  const btn = e.target.closest('[data-a]'); if (!btn) return;
+  const i = books.findIndex(b => b.id === btn.closest('.book').dataset.id), a = btn.dataset.a;
+  if (a === 'del') books.splice(i,1);
+  if (a === 'up' && i > 0) [books[i-1], books[i]] = [books[i], books[i-1]];
+  if (a === 'down' && i < books.length-1) [books[i+1], books[i]] = [books[i], books[i+1]];
+  renderList();
+});
+$('#clear').addEventListener('click', () => { books = []; isSample = false; renderList(); });
+function shelve(b){
+  if (isSample){ books = []; isSample = false; }
+  if (books.length >= 12){ toast('A shelf holds up to 12 spines. Remove one first.'); return false; }
+  books.push(b); renderList(); return true;
+}
+
+/* ---------- search (needs the Spinestack server) ---------- */
+const sstatus = (msg, err) => { const s = $('#sstatus'); s.classList.toggle('err', !!err); s.innerHTML = msg; };
+let matches = [];
+$('#sform').addEventListener('submit', async e => {
+  e.preventDefault();
+  const q = $('#q').value.trim(); if (!q) return;
+  if (!server){ sstatus('Search runs on the Spinestack server, which this preview doesn’t have. Drop a scan below instead.', true); return; }
+  $('#spines').hidden = true; sstatus('Looking up “' + esc(q) + '”…');
+  try {
+    const r = await fetch(API + '/api/identify?q=' + encodeURIComponent(q)).then(r => r.json());
+    const want = $('#qkind').value;
+    matches = r.results.filter(m => want === 'all' || m.kind === want);
+    if (!matches.length){ sstatus('Nothing matched “' + esc(q) + '”. Check the spelling, or drop a scan below.', true); $('#matches').hidden = true; return; }
+    sstatus(matches.length + ' match' + (matches.length > 1 ? 'es' : '') + '.');
+    $('#mrows').innerHTML = matches.map((m,i) => `<tr tabindex="0" data-i="${i}"><td class="no">${String(i+1).padStart(3,'0')}</td><td class="t">${esc(m.title)}</td><td>${esc(m.year || '—')}</td><td><span class="kind ${m.kind}">${m.kind === 'movie' ? 'Film' : 'Book'}</span></td><td>${esc(m.creator || '—')}</td></tr>`).join('');
+    $('#matches').hidden = false;
+  } catch { sstatus('The search server didn’t answer. Try again in a moment.', true); }
+});
+const pickMatch = tr => tr && findSpines(matches[+tr.dataset.i]);
+$('#mrows').addEventListener('click', e => pickMatch(e.target.closest('tr')));
+$('#mrows').addEventListener('keydown', e => { if (e.key === 'Enter') pickMatch(e.target.closest('tr')); });
+
+async function findSpines(m){
+  $('#spines').hidden = false; $('#spinesTitle').textContent = m.title + (m.year ? ' (' + m.year + ')' : '');
+  $('#found').innerHTML = ''; sstatus('Searching scans of “' + esc(m.title) + '”. Takes 10 to 20 seconds.');
+  let res = {spines:[]};
+  try { res = await fetch(`${API}/api/spines?title=${encodeURIComponent(m.title)}&kind=${m.kind}&year=${encodeURIComponent(m.year||'')}&creator=${encodeURIComponent(m.creator||'')}`).then(r => r.json()); }
+  catch { sstatus('The search server didn’t answer. Try again in a moment.', true); }
+  const tiles = res.spines.map((s,i) => `<button class="pick" type="button" data-i="${i}"><img src="${API + s.spine}" alt="Spine ${i+1} of ${esc(m.title)}" loading="lazy"><span>${String(i+1).padStart(2,'0')}</span><a class="src" href="${esc(s.source)}" target="_blank" rel="noopener">${esc(hostOf(s.source))}</a></button>`);
+  if (m.cover) tiles.push(`<button class="pick" type="button" data-gen="1"><div class="gen">Make one<br>from the<br>${m.kind === 'movie' ? 'poster' : 'cover'}</div><span>Generated</span></button>`);
+  $('#found').innerHTML = tiles.join('') || '<p class="dim">No scans and no cover found for this title. Drop a scan below.</p>';
+  sstatus(res.spines.length ? `${res.spines.length} real spine${res.spines.length > 1 ? 's' : ''} found.` : 'No clean spine in the scans found online. You can make one from the ' + (m.kind === 'movie' ? 'poster.' : 'cover.'), !res.spines.length);
+  $('#found').onclick = async e => {
+    if (e.target.closest('a')) return;
+    const p = e.target.closest('.pick'); if (!p) return;
+    try {
+      if (p.dataset.gen){
+        const img = await loadImg(API + '/api/image?url=' + encodeURIComponent(m.cover)), pal = extractPalette(img);
+        const b = newBook({title:m.title, author:m.creator||'', kind:m.kind, img, thumb:img.src, bg:m.kind === 'movie' ? '#111111' : pal.bg, fg:m.kind === 'movie' ? '#F4F4F2' : pal.fg, accent:pal.accent, style:m.kind === 'movie' ? 'dvd' : 'art', font:'oswald'});
+        if (shelve(b)) toast('Added a generated spine for ' + m.title + '.');
+      } else {
+        const s = res.spines[+p.dataset.i];
+        const [spineImg, img] = await Promise.all([loadImg(API + s.spine), loadImg(API + s.front)]), pal = extractPalette(img);
+        const b = newBook({title:m.title, author:m.creator||'', kind:m.kind, img, spineImg, thumb:s.front, source:hostOf(s.source), bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real', font:'oswald'});
+        if (shelve(b)) toast(m.title + ' is on your shelf.');
+      }
+      document.getElementById('shelf').scrollIntoView({behavior:'smooth', block:'start'});
+    } catch { toast('Couldn’t load that image. Try another one.'); }
+  };
+}
+const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./,''); } catch { return 'source'; } };
+
+/* ---------- uploads ---------- */
+function titleFromName(name){ let t = (name||'').replace(/\.[a-z0-9]+$/i,'').replace(/[_\-+]+/g,' ').replace(/\s+/g,' ').trim(); if (/^(image|img|download|images|screenshot|photo|unnamed|pasted)\b/i.test(t) || /^[\d\s]+$/.test(t) || t.length > 60) t = ''; return t; }
+function addFiles(files){
+  const imgs = [...files].filter(f => f.type.startsWith('image/'));
+  if (!imgs.length){ toast('That wasn’t an image. Copy the image itself, or save it and drop the file.'); return; }
+  imgs.slice(0, 12).forEach(f => {
+    const fr = new FileReader();
+    fr.onload = async () => {
+      let im; try { im = await loadImg(fr.result); } catch { toast('Couldn’t read ' + f.name + '.'); return; }
+      let b;
+      const cut = im.width/im.height > 1.15 ? findSpine(im) : null;
+      if (cut){
+        const spineImg = crop(im, cut.x, 0, cut.w, im.height), front = crop(im, cut.frontX, 0, im.width - cut.frontX, im.height), pal = extractPalette(front);
+        b = newBook({title:titleFromName(f.name), kind:im.width/im.height < 1.7 ? 'movie' : 'book', img:front, spineImg, bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real', font:'oswald', file:f});
+      } else {
+        const pal = extractPalette(im);
+        b = newBook({title:titleFromName(f.name), img:im, thumb:fr.result, bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'art', font:'oswald', file:f});
+      }
+      if (shelve(b)){ identify(b); const el = document.getElementById(b.id + '-title'); if (el && !b.title) el.focus(); }
+    };
+    fr.readAsDataURL(f);
+  });
+}
+$('#file').addEventListener('change', e => { addFiles(e.target.files); e.target.value = ''; });
+const drop = $('#drop');
+['dragenter','dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => { if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files); else toast('Images dragged from another site can’t be read. Right-click it, Copy image, then paste here.'); });
+document.addEventListener('paste', e => { const files = [...(e.clipboardData?.files || [])].filter(f => f.type.startsWith('image/')); if (files.length){ e.preventDefault(); addFiles(files); } });
+
+/* Title recognition for uploads: only where Claude can look at images (the Claude preview). */
+const samplerP = (window.claude && window.claude.use) ? window.claude.use('sample').catch(() => null) : Promise.resolve(null);
+let canSee = null;
+async function identify(b){
+  const s = await samplerP; if (!s) return;
+  if (canSee === null){ const l = await s.limits().catch(() => null); canSee = !!(l && l.images); }
+  if (!canSee || !b.file) return;
+  b.status = 'reading'; setNote(b);
+  try {
+    const r = await s.json('The attached image is a book cover, a film poster, or a full DVD/book wrap scan. Identify the work. Reply with only a JSON object: {"title": string, "creator": string, "kind": "book" or "movie", "studio": string}. "creator" is the author for a book and the director for a film; "studio" is the film distributor (empty for books). Use the usual published capitalisation. Use empty strings if unsure.', {images: b.file});
+    if (books.includes(b) && r && typeof r === 'object'){
+      const set = (f, v) => { if (typeof v === 'string' && v.trim() && !(b.touched && b[f])){ b[f] = v.trim().slice(0,80); const el = document.getElementById(b.id + '-' + f); if (el) el.value = b[f]; } };
+      set('title', r.title); set('author', r.creator); if (typeof r.studio === 'string') b.studio = r.studio.trim().slice(0,40);
+      if (r.kind === 'movie' && b.kind !== 'movie'){ b.kind = 'movie'; if (!isReal(b) && !b.touched){ b.style = 'dvd'; b.bg = '#111111'; b.fg = '#F4F4F2'; } b.status = ''; renderList(); return; }
+    }
+  } catch (err){ if (err && (err.code === 'not_granted' || err.code === 'images_unavailable')) canSee = false; }
+  b.status = ''; setNote(b); redraw();
+}
+
+/* ---------- controls ---------- */
+function bindSeg(id, key, after){
+  const seg = $(id), sync = () => seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === settings[key])));
+  seg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; settings[key] = b.dataset.v; sync(); after && after(); redraw(); }); sync();
+}
+bindSeg('#theme', 'theme');
+bindSeg('#layout', 'layout', () => { $('#variedWrap').hidden = settings.layout === 'covers'; });
+$('#caption').addEventListener('input', e => { settings.caption = e.target.value; redraw(); });
+$('#varied').addEventListener('change', e => { settings.varied = e.target.checked; redraw(); });
+
+/* ---------- export: Claude download, phone share sheet, or plain download ---------- */
+let downloads = null;
+if (window.claude && window.claude.use) window.claude.use('downloads').then(d => { downloads = d; }).catch(() => {});
+let toastT = 0; function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 4200); }
+let lastUrl = null;
+function fallback(blob){ if (lastUrl) URL.revokeObjectURL(lastUrl); lastUrl = URL.createObjectURL(blob); $('#mimg').src = lastUrl; $('#modal').hidden = false; $('#mclose').focus(); }
+$('#mclose').addEventListener('click', () => $('#modal').hidden = true);
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal') $('#modal').hidden = true; });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#modal').hidden = true; });
+$('#exportBtn').addEventListener('click', () => {
+  if (!books.length){ toast('Add something to your shelf first.'); return; }
+  renderStory();
+  let blobOk = true;
+  try { story.toBlob(() => {}); } catch { blobOk = false; }
+  if (!blobOk){ toast('One image can’t be exported. Remove it and try again.'); return; }
+  story.toBlob(async blob => {
+    if (!blob){ toast('Couldn’t create the image. Try again.'); return; }
+    if (downloads){
+      try { await downloads.save({filename:'spinestack-story.png', data:blob}); toast('Saved. Open Instagram, add a story, pick this image.'); return; }
+      catch (err){ if (err && err.code === 'declined'){ toast('Save cancelled.'); return; } if (err && err.code === 'rate_limited'){ toast('A save prompt is already open.'); return; } fallback(blob); return; }
+    }
+    const file = new File([blob], 'spinestack-story.png', {type:'image/png'});
+    const plain = server || !window.claude;
+    if (plain && navigator.canShare && navigator.canShare({files:[file]}) && matchMedia('(pointer:coarse)').matches){
+      try { await navigator.share({files:[file]}); return; } catch (err){ if (err && err.name === 'AbortError') return; }
+    }
+    if (plain){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'spinestack-story.png'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('Downloaded spinestack-story.png.'); return; }
+    fallback(blob);
+  }, 'image/png');
+});
+
+document.querySelectorAll('input[name=qk]').forEach(r => r.addEventListener('change', () => { $('#qkind').value = r.value; }));
+
+/* ---------- boot ---------- */
+function fillRecent(items){
+  const el = $('#recent'); if (!items.length){ el.hidden = true; return; }
+  el.hidden = false; el.querySelector('span').textContent = items.slice(0, 8).join(', ');
+}
+async function boot(){
+  books = samples(); renderList();
+  try {
+    const ctl = new AbortController(); setTimeout(() => ctl.abort(), 2500);
+    if (location.protocol === 'file:') throw 0;
+    const h = await fetch(API + '/api/health', {signal:ctl.signal}).then(r => r.ok ? r.json() : null);
+    server = !!(h && h.ok);
+  } catch { server = false; }
+  $('#modeNote').hidden = server;
+  $('#exportNote').textContent = 'On a phone this opens the share sheet. Pick Instagram, then Story.';
+  if (server){
+    try { const r = await fetch(API + '/api/recent').then(r => r.json()); fillRecent(r.recent.map(x => x.title)); } catch {}
+  }
+}
+boot();
+const faces = ['600 40px Oswald','400 40px Oswald','600 40px "Cormorant Garamond"','italic 500 40px "Cormorant Garamond"','40px "Archivo Black"','40px "Gochi Hand"','500 40px "IBM Plex Mono"','400 40px "IBM Plex Mono"','600 40px "IBM Plex Sans"','500 40px "Geist Mono"','400 40px "Geist Mono"'];
+if (document.fonts){ Promise.all(faces.map(f => document.fonts.load(f).catch(() => {}))).then(redraw); document.fonts.ready.then(redraw); }
+})();
+</script>
+
+</body>
+</html>
