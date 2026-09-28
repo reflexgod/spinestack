@@ -1,0 +1,28 @@
+# Run from this folder:  docker compose up -d --build
+services:
+  searxng:
+    image: searxng/searxng:latest
+    volumes:
+      - ./searxng:/etc/searxng
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8888/
+    # Not published to the internet on purpose: only the API talks to it.
+    expose:
+      - "8080"
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ..
+      dockerfile: backend/api/Dockerfile
+    environment:
+      - SEARXNG_URL=http://searxng:8080
+      - TMDB_API_KEY=${TMDB_API_KEY:-}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-}
+    volumes:
+      - ./data:/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      - searxng
+    restart: unless-stopped
