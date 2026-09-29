@@ -4,6 +4,7 @@ Type a film or a book, get its real spine, put it on a shelf, save the shelf as 
 
 ```
 index.html            the website (GitHub Pages serves this)
+admin.html            approve or delete archive uploads (needs the admin token)
 worker/               Cloudflare Worker: name lookup, scan search, image proxy (what the live site uses)
 backend/              older self-hosted search server (not used right now)
   api/                FastAPI app
@@ -31,8 +32,12 @@ The TMDB and Brave keys live only in the Worker, as secrets.
 | Endpoint | What it returns |
 |---|---|
 | `/identify?q=&want=all\|movie\|book` | `{results:[{kind,title,year,creator,cover}]}` |
-| `/scans?title=&year=&kind=movie\|book&creator=` | up to 10 wrap-shaped scans whose page names the title: `{results:[{img,source,title,width,height}]}` |
+| `/scans?title=&year=&kind=movie\|book&creator=&round=0-3` | one Brave search per round: up to 10 wrap-shaped (or single-spine) scans whose page names the title, plus approved archive spines first in round 0: `{results:[...], round, more}` |
 | `/img?url=` | the image, with CORS. http(s) and `image/*` only, 8 MB max, private addresses blocked, 3 redirects max |
+| `POST /archive?kind=&title=&year=&author=` | a PNG of one spine (300 KB max, at least 3 times taller than wide), re-encoded and kept as *pending* |
+| `/archive/img?id=` | an approved archive spine |
+| `POST /report?id=` | one report per visitor; the third sends an approved spine back to pending |
+| `/admin/list`, `POST /admin/approve`, `POST /admin/delete` | for `admin.html`, with `Authorization: Bearer <ADMIN_TOKEN>` |
 
 CORS is open only to `https://reflexgod.github.io` and `http://localhost:8080`. `/identify` and `/scans`
 are cached in Workers KV for 30 days (so each title costs one Brave search), images are cached 30 days,
@@ -47,8 +52,22 @@ In `worker/`:
 3. `npx wrangler kv namespace create SPINE_CACHE`, then put the id it prints into `wrangler.toml`.
 4. `npx wrangler secret put TMDB_TOKEN` and paste the TMDB "API Read Access Token" (themoviedb.org → Settings → API).
 5. `npx wrangler secret put BRAVE_API_KEY` and paste the Brave Search API key (api-dashboard.search.brave.com).
+   `npx wrangler secret put ADMIN_TOKEN` and paste a long random string of your own. It's the password for `admin.html`; keep it only in a password manager.
 6. `npx wrangler deploy`. It prints the Worker address, e.g. `https://spinestack.NAME.workers.dev`.
 7. In `index.html`, set `window.SPINESTACK_WORKER` to that address and keep `window.SPINESTACK_TMDB` empty.
+
+### Archive
+
+People can share spines they cut from their own scans: after an upload gives a clean real spine
+(score 70 or more), its row on the shelf offers "Add to the archive". Nothing is public until you approve it:
+
+1. Open `https://reflexgod.github.io/spinestack/admin.html`, type the admin token (it stays in that tab only, in sessionStorage).
+2. Pending spines are listed with Approve and Delete. Approved ones show up first in search, labelled "From the archive".
+3. Anyone can Report an archive spine; three reports from different visitors send it back to Pending.
+
+Limits: 10 uploads a day per visitor and 50 a day in all. The PNGs are in Workers KV; the status, reports and
+daily counts are in a small SQLite Durable Object (`Archive` in `src/index.js`), because KV reads can be up to a
+minute stale. Both fit the Workers Free plan and need no card.
 
 ### Update
 
@@ -57,10 +76,13 @@ filters results, bump the `sc…:` cache key prefix in `src/index.js` so old cac
 
 ### How a real spine is found
 
-1. The Worker asks Brave for `"<title>" <year> dvd cover` and `<title> dvd cover scan` (books: `"<title>" <author> book cover spine`, `<title> <author> full cover wrap`).
-2. It keeps images shaped like a wrap (1.3–1.8 wide for films, 1.2–2.4 for books) whose title or address contains the whole title; one-word titles also need the year or director.
+1. The page asks the Worker for one round at a time, at most 4 per title, and stops once two good spines turn up, to save Brave searches.
+   Films: `"<title>" <year> dvd cover`, `"<title>" <year> dvd cover english`, `"<title>" <year> region 1 dvd`, `"<title>" criterion dvd`.
+   Books: `"<title>" <author> book cover spine`, `"<title>" <author> book spine`, `"<title>" spine`, `<title> <author> full cover wrap`.
+2. It keeps images shaped like a wrap (1.3–1.9 wide for films, 1.2–2.4 for books) or like a single spine (4 times taller than wide), whose title or address contains the whole title; one-word titles also need the year or director.
 3. The page loads each scan through `/img`, and `findSpine()` looks for the strip between back and front: two clear edges near the middle, about 5 % wide for a DVD, lettering on it, an even colour down it. Photos of open cases and books on a table are turned down.
-4. Each cut gets a score from 0 to 100. A film's best cut goes on the shelf by itself at 60 or more; books always let you pick. Cuts under 45 aren't shown.
+4. Each cut gets a score from 0 to 100. A film's best cut goes on the shelf by itself only at 75 or more (in tests right spines scored 76–97 and wrong ones up to 69) **and** when it looks like the English edition; books always let you pick, unless the spine comes from the archive. Cuts under 45 aren't shown, and each page gives one option at most.
+   Editions: the Worker marks a scan as another edition when its page title, address or file name has another language or region (Polish, Deutsch, español, français, 日本, region 2, `.pl`/`.de`/… pages, `nl`/`ger`/… in file names) and marks VHS tapes. With **Edition: English** (the default) English DVDs and Blu-rays come first; VHS comes last either way. **Any** drops the language rule.
 5. With no good scan, the page falls back to a spine made from the poster or cover.
 
 ## 2. Run the backend (optional, not used right now)

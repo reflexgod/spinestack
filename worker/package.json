@@ -8,5 +8,11 @@
   },
   "devDependencies": {
     "wrangler": "^4"
+  },
+  "dependencies": {
+    "upng-js": "^2.1.0"
+  },
+  "allowScripts": {
+    "workerd@1.20260926.1": true
   }
 }

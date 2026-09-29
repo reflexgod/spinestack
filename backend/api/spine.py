@@ -39,7 +39,7 @@ def find_spine(img: Image.Image, kind: str = "movie") -> SpineCut | None:
     """Return the spine strip, or None if the image doesn't look like a wrap."""
     w, h = img.size
     aspect = w / h
-    lo, hi = (1.3, 1.8) if kind == "movie" else (1.2, 2.4)
+    lo, hi = (1.3, 1.9) if kind == "movie" else (1.2, 2.4)
     if not lo <= aspect <= hi:
         return None
 
@@ -72,8 +72,9 @@ def find_spine(img: Image.Image, kind: str = "movie") -> SpineCut | None:
                 continue
             e = 0.6 * lo_e + 0.4 * hi_e
             wf, off = (right - left) / cw, abs((left + right) / 2 / cw - 0.5)
-            if film:                                                 # a DVD wrap is 129 mm | 14 mm | 129 mm
-                fit = (1 if 0.03 <= wf <= 0.07 else 0.75) * float(np.exp(-0.5 * (off / 0.035) ** 2))
+            if film:                                                 # DVD: 129 | 14 | 129 mm; Blu-ray runs wider, spine thinner
+                full = 0.03 <= wf <= 0.07 or (aspect >= 1.65 and 0.025 <= wf <= 0.06)
+                fit = (1 if full else 0.75) * float(np.exp(-0.5 * (off / 0.035) ** 2))
             else:
                 fit = float(np.exp(-0.5 * (off / 0.1) ** 2))
             cands.append((e * fit, left, right, e, fit))

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Spinestack archive</title>
+<script>
+  /* Same Worker as index.html. The admin token is never stored here: you type it each time,
+     and it stays in this tab's sessionStorage only. */
+  window.SPINESTACK_WORKER = "https://spinestack.spinestack-worker.workers.dev";
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&display=swap">
+<style>
+:root{--paper:#FFFFFF;--ink:#000000;--grey:#6B6B6B;--mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--paper)}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 12px/1.55 var(--mono)}
+:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.top{padding:14px 24px;display:flex;justify-content:space-between;align-items:center}
+.top a{text-decoration:none;color:inherit;text-transform:uppercase;font-size:13px}
+.mark{font-weight:800;font-size:22px!important;letter-spacing:.34em}
+.col{max-width:760px;margin:0 auto;padding:40px 16px 72px}
+h1{font-size:24px;font-weight:700;text-transform:uppercase;margin:0 0 14px}
+p{margin:0 0 12px}
+.grey{color:var(--grey)}
+form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;margin:18px 0}
+input{font:400 13px var(--mono);color:var(--ink);background:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 12px;width:100%;min-width:0}
+.btn{font:500 13px var(--mono);text-transform:uppercase;background:var(--ink);color:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 22px;cursor:pointer}
+.btn:disabled{opacity:.4;cursor:default}
+.dash{display:inline-block;background:none;border:0;padding:0 0 6px;font:500 12px var(--mono);text-transform:uppercase;color:var(--ink);cursor:pointer;
+  background-image:repeating-linear-gradient(90deg,var(--ink) 0 8px,transparent 8px 11px);background-size:100% 3px;background-repeat:no-repeat;background-position:left bottom}
+.seg{display:flex;gap:14px;margin:26px 0 6px}
+.seg button{font:400 12px var(--mono);text-transform:uppercase;background:none;border:0;padding:0 0 4px;color:var(--grey);cursor:pointer;border-bottom:2px solid transparent}
+.seg button[aria-pressed="true"]{color:var(--ink);font-weight:700;border-bottom-color:var(--ink)}
+ol{list-style:none;margin:0;padding:0;border-top:1px solid var(--ink)}
+li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;padding:16px 0;border-bottom:1px solid var(--ink)}
+li img{height:220px;width:auto;display:block;background:#F2F2F2}
+.t{font-weight:700;text-transform:uppercase}
+.acts{display:flex;gap:18px;margin-top:10px;flex-wrap:wrap}
+.status{min-height:18px;margin-top:10px}
+.status.err{font-weight:700}
+@media (max-width:520px){ .top{padding:12px 16px} .mark{font-size:17px!important;letter-spacing:.22em} form{grid-template-columns:1fr} li img{height:160px} }
+</style>
+</head>
+<body>
+<header class="top"><a class="mark" href="./">SPINESTACK</a><a href="./">Site</a></header>
+<main class="col">
+  <h1>Archive</h1>
+  <p class="grey">Spines people cut from their own scans. Nothing shows up in search until it's approved here.</p>
+  <form id="login" autocomplete="off">
+    <input type="password" id="token" placeholder="Admin token" aria-label="Admin token" autocomplete="off">
+    <button class="btn" type="submit">Open</button>
+  </form>
+  <div id="panel" hidden>
+    <div class="seg" role="group" aria-label="Show"><button type="button" data-v="pending" aria-pressed="true">Pending</button><button type="button" data-v="approved" aria-pressed="false">Approved</button>
+      <button class="dash" type="button" id="logout" style="margin-left:auto">Forget token</button></div>
+    <div class="status" id="status" role="status"></div>
+    <ol id="list"></ol>
+  </div>
+</main>
+<script>
+(() => {
+const $ = s => document.querySelector(s), W = String(window.SPINESTACK_WORKER || '').replace(/\/+$/, '');
+const KEY = 'spinestack-admin';
+let token = '', view = 'pending', urls = [];
+try { token = sessionStorage.getItem(KEY) || ''; } catch {}
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const status = (msg, err) => { const s = $('#status'); s.textContent = msg; s.classList.toggle('err', !!err); };
+const call = async (path, method = 'GET') => {
+  const used = token, r = await fetch(W + path, {method, headers:{Authorization:'Bearer ' + used}}), j = r.headers.get('Content-Type')?.includes('json') ? await r.json() : null;
+  // only forget the token this request used: a slow answer to an old, wrong token mustn't wipe a new one
+  if (r.status === 401){ if (token === used) forget(); throw new Error('That token is not right.'); }
+  if (!r.ok) throw new Error((j && j.error) || 'The Worker answered ' + r.status + '.');
+  return j;
+};
+async function load(){
+  status('Loading…'); urls.forEach(URL.revokeObjectURL); urls = [];
+  let items;
+  try { items = (await call('/admin/list?status=' + view)).items; } catch (e){ status(e.message, true); return; }
+  $('#login').hidden = true; $('#panel').hidden = false;
+  document.querySelectorAll('.seg [data-v]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === view)));
+  status(items.length ? items.length + (view === 'pending' ? ' waiting.' : ' approved.') : (view === 'pending' ? 'Nothing waiting.' : 'Nothing approved yet.'));
+  $('#list').innerHTML = items.map(m => `<li data-id="${esc(m.id)}"><img alt="Spine of ${esc(m.title)}">
+    <div><div class="t">${esc(m.title)}</div>
+      <div>${m.kind === 'movie' ? 'Film' : 'Book'}${m.year ? ' · ' + esc(m.year) : ''}${m.author ? ' · ' + esc(m.author) : ''}</div>
+      <div class="grey">${new Date(m.created).toLocaleString()} · ${m.w}×${m.h}px · ${Math.round(m.bytes/1024)} KB${m.reports ? ' · reported ' + m.reports + '×' : ''}</div>
+      <div class="acts">${view === 'pending' ? '<button class="dash" type="button" data-a="approve">Approve</button>' : ''}<button class="dash" type="button" data-a="delete">Delete</button></div></div></li>`).join('');
+  // images need the token too while pending, so fetch them rather than linking them
+  const used = token;
+  for (const li of document.querySelectorAll('#list li')){
+    try { const r = await fetch(`${W}/archive/img?id=${li.dataset.id}`, {headers:{Authorization:'Bearer ' + used}}); if (r.ok){ const u = URL.createObjectURL(await r.blob()); urls.push(u); li.querySelector('img').src = u; } } catch {}
+  }
+}
+function forget(){ token = ''; try { sessionStorage.removeItem(KEY); } catch {} $('#login').hidden = false; $('#panel').hidden = true; $('#list').innerHTML = ''; }
+$('#login').addEventListener('submit', e => {
+  e.preventDefault(); token = $('#token').value.trim(); $('#token').value = ''; if (!token) return;
+  try { sessionStorage.setItem(KEY, token); } catch {}
+  load();
+});
+$('#logout').addEventListener('click', () => { forget(); status(''); });
+document.querySelector('.seg').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b){ view = b.dataset.v; load(); } });
+$('#list').addEventListener('click', async e => {
+  const b = e.target.closest('[data-a]'); if (!b) return;
+  const li = b.closest('li'), id = li.dataset.id, a = b.dataset.a;
+  if (a === 'delete' && b.dataset.sure !== '1'){ b.dataset.sure = '1'; b.textContent = 'Delete for good?'; return; }   // no browser dialogs
+  li.querySelectorAll('button').forEach(x => x.disabled = true);
+  try { await call(`/admin/${a}?id=${encodeURIComponent(id)}`, 'POST'); li.remove(); status(a === 'approve' ? 'Approved. It shows up in search now.' : 'Deleted.'); }
+  catch (err){ status(err.message, true); li.querySelectorAll('button').forEach(x => x.disabled = false); }
+});
+if (token) load();
+})();
+</script>
+</body>
+</html>

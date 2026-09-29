@@ -5,6 +5,7 @@ compatibility_date = "2026-09-01"
 # Secrets (set with `npx wrangler secret put <NAME>`, never written here):
 #   TMDB_TOKEN     TMDB v4 "API Read Access Token" (or v3 key)
 #   BRAVE_API_KEY  Brave Search API subscription token
+#   ADMIN_TOKEN    for admin.html (approve or delete archive uploads)
 
 # Caches /identify and /scans results for 30 days.
 # Create with `npx wrangler kv namespace create SPINE_CACHE` and paste the id below.
@@ -29,3 +30,13 @@ namespace_id = "1002"
   [ratelimits.simple]
   limit = 150
   period = 60
+
+# The archive's moderation state (status, reports, lists, daily upload counts). SQLite-backed,
+# which the Workers Free plan allows. The spine PNGs themselves are in SPINE_CACHE (KV).
+[[durable_objects.bindings]]
+name = "ARCHIVE"
+class_name = "Archive"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Archive"]

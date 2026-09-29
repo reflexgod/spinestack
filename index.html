@@ -56,7 +56,8 @@ p{margin:0 0 12px}
 form.search{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px}
 input[type=text],select{font:400 13px var(--mono);color:var(--ink);background:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 12px;width:100%;min-width:0}
 input[type=text]::placeholder{color:#8A8A8A}
-.opts{display:flex;gap:18px;margin-top:12px;align-items:center}
+.opts{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:12px;align-items:center}
+.opts .ed{margin-left:auto;display:flex;gap:18px;align-items:center}
 .opts label{cursor:pointer;text-transform:uppercase;display:flex;gap:6px;align-items:center}
 .opts input{accent-color:var(--ink);margin:0}
 .btn{font:500 13px var(--mono);text-transform:uppercase;background:var(--ink);color:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 22px;cursor:pointer}
@@ -76,12 +77,12 @@ tbody tr:hover td{background:#F2F2F2}
 td.no{color:var(--grey);font-variant-numeric:tabular-nums}
 
 .found{display:flex;gap:18px;overflow-x:auto;padding:8px 0 4px;align-items:flex-end}
-.pick{flex:none;display:grid;gap:6px;justify-items:center;background:none;border:0;padding:0;cursor:pointer;font:inherit;color:inherit}
+.pick{flex:none;display:grid;gap:6px;justify-items:center;align-content:end;min-width:64px}
 .pick img,.pick canvas{height:240px;width:auto;display:block}
 .pick img.cov{aspect-ratio:auto 2/3;background:#F2F2F2}
-.pick span{font-size:11px;text-transform:uppercase;padding-bottom:3px;border-bottom:2px solid transparent}
-.pick:hover span{text-decoration:underline}
-.pick[aria-pressed="true"] span{font-weight:700;border-bottom-color:var(--ink);text-decoration:none}
+.pick .lbl{font-size:10.5px}
+.pick .on{font-size:12px;font-weight:700;text-transform:uppercase;padding-bottom:6px}
+.picked{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline}
 .found{margin-bottom:8px}
 
 /* the shelf as it stands, drawn with the same spines as the story */
@@ -178,6 +179,9 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
       <label><input type="radio" name="qk" value="all" checked>All</label>
       <label><input type="radio" name="qk" value="movie">Films</label>
       <label><input type="radio" name="qk" value="book">Books</label>
+      <span class="ed" role="radiogroup" aria-label="Edition"><span class="grey">Edition</span>
+        <label><input type="radio" name="ed" value="english" checked>English</label>
+        <label><input type="radio" name="ed" value="any">Any</label></span>
     </div>
     <select id="qkind" hidden aria-hidden="true"><option value="all">all</option><option value="movie">movie</option><option value="book">book</option></select>
     <div class="strip" id="strip" role="group" aria-label="Your shelf"></div>
@@ -192,7 +196,7 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
       </table></div>
     </div>
     <div id="spines" hidden style="margin-top:26px">
-      <h2><span id="spinesTitle">Spines</span></h2>
+      <h2 class="picked"><span id="spinesTitle">Spines</span> <small id="spinesBy"></small> <button class="dash sm" id="changeMatch" type="button">Change</button></h2>
       <p id="dupAsk" hidden><span id="dupText"></span> <button class="dash sm" id="dupAdd" type="button">Add again</button> <button class="dash sm" id="dupCancel" type="button">Cancel</button></p>
       <div class="found" id="found"></div>
       <p><button class="dash sm" id="pickDel" type="button" hidden>Remove from shelf</button></p>
@@ -322,8 +326,8 @@ function extractPalette(img){
    score is 0-100: how sure we are this is a clean spine (clear edges, where a DVD spine sits,
    an even colour down its height, lettering on it). The same logic lives in backend/api/spine.py. */
 function findSpine(img, kind){
-  kind = kind || (img.width/img.height >= 1.3 && img.width/img.height <= 1.8 ? 'movie' : 'book');
-  const aspect = img.width/img.height, [lo, hi] = kind === 'movie' ? [1.3, 1.8] : [1.2, 2.4];
+  kind = kind || (img.width/img.height >= 1.3 && img.width/img.height <= 1.9 ? 'movie' : 'book');
+  const aspect = img.width/img.height, [lo, hi] = kind === 'movie' ? [1.3, 1.9] : [1.2, 2.4];
   if (aspect < lo || aspect > hi) return null;
   const cw = 600, ch = Math.max(40, Math.round(cw/aspect));
   const c = document.createElement('canvas'); c.width = cw; c.height = ch;
@@ -348,7 +352,7 @@ function findSpine(img, kind){
       const lo = Math.min(edge[L], edge[R]), hi = Math.max(edge[L], edge[R]);
       if (lo < 10 || hi < 25) continue;                           // one edge can be soft (spine and front alike), not both
       const e = .6*lo + .4*hi, wf = (R-L)/cw, off = Math.abs((L+R)/2/cw - .5);
-      const fit = film ? (wf >= .03 && wf <= .07 ? 1 : .75)*Math.exp(-.5*(off/.035)**2)   // a DVD wrap is 129 mm | 14 mm | 129 mm
+      const fit = film ? ((wf >= .03 && wf <= .07) || (aspect >= 1.65 && wf >= .025 && wf <= .06) ? 1 : .75)*Math.exp(-.5*(off/.035)**2)   // DVD: 129 | 14 | 129 mm; Blu-ray runs wider, spine thinner
                        : Math.exp(-.5*(off/.1)**2);
       cands.push({L, R, e, fit, s:e*fit});
     }
@@ -387,6 +391,38 @@ function findSpine(img, kind){
   while (bot > ch*.85 && flat(bot)) bot--;
   const k = img.width/cw, ky = img.height/ch;
   return {x:L*k, w:(R-L+1)*k, frontX:(br+1)*k, y:top*ky, h:(bot-top+1)*ky, score};
+}
+/* A photo or scan of a single spine (at least 4 times taller than wide). Trims plain background
+   around it. score 0-100: a clean background around it (or none at all) and lettering on it. */
+function findSoloSpine(img){
+  const ch = 600, cw = Math.max(6, Math.round(ch*img.width/img.height));
+  const c = document.createElement('canvas'); c.width = cw; c.height = ch;
+  const x = c.getContext('2d', {willReadFrequently:true}); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, cw, ch);
+  const d = x.getImageData(0, 0, cw, ch).data, px = (X, Y) => { const i = (Y*cw+X)*4; return [d[i], d[i+1], d[i+2]]; };
+  // background: the colour of the outer ring of pixels
+  const ring = [];
+  for (let X = 0; X < cw; X++){ ring.push(px(X, 0), px(X, ch-1)); }
+  for (let Y = 0; Y < ch; Y++){ ring.push(px(0, Y), px(cw-1, Y)); }
+  const bg = [0,1,2].map(k => ring.map(p => p[k]).sort((a,b) => a-b)[ring.length >> 1]);
+  const plain = ring.filter(p => dist(p, bg) < 30).length/ring.length;   // 1: a clean background all round
+  const isBg = p => plain > .6 && dist(p, bg) < 30;
+  const colBg = X => { let n = 0; for (let Y = 0; Y < ch; Y += 2) n += isBg(px(X, Y)); return n/Math.ceil(ch/2) > .9; };
+  const rowBg = Y => { let n = 0; for (let X = 0; X < cw; X++) n += isBg(px(X, Y)); return n/cw > .9; };
+  let L = 0, R = cw-1, T = 0, B = ch-1;
+  while (L < R && colBg(L)) L++;
+  while (R > L && colBg(R)) R--;
+  while (T < B && rowBg(T)) T++;
+  while (B > T && rowBg(B)) B--;
+  const w = R-L+1, h = B-T+1;
+  if (w < 4 || h < ch*.5 || h/w < 4 || h/w > 40) return null;
+  // lettering: rows change as they cross the spine
+  let text = 0, prev = null;
+  for (let Y = T; Y <= B; Y++){ let s = 0; for (let X = L; X <= R; X++){ const p = px(X, Y); s += p[0]+p[1]+p[2]; } s /= 3*w; if (prev !== null) text += Math.abs(s - prev); prev = s; }
+  text /= Math.max(1, h-1);
+  const score = Math.round(100*(plain > .6 ? 1 : .6)*(.4 + .6*Math.min(1, text/6)));
+  if (score < 20) return null;
+  const k = img.width/cw, ky = img.height/ch;
+  return {x:L*k, y:T*ky, w:w*k, h:h*ky, score};
 }
 function crop(img, sx, sy, sw, sh){ const c = document.createElement('canvas'); c.width = Math.max(1,Math.round(sw)); c.height = Math.max(1,Math.round(sh)); c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height); return c; }
 
@@ -612,6 +648,30 @@ function setNote(b){
   if (b.status === 'reading'){ el.innerHTML = 'Reading the cover…'; return; }
   if (!b.title.trim() && !isReal(b)){ el.textContent = 'Type the title to print it on the spine.'; el.classList.add('warn'); return; }
   el.textContent = isReal(b) ? (b.source ? 'Real spine · from ' + b.source : 'Real spine, cut from your scan') : '';
+  // a clean cut from the user's own scan can go to the archive, where it's checked before anyone sees it
+  if (isReal(b) && b.file && WORKER && b.cutScore >= ARCHIVE_SCORE){
+    if (b.archived) el.textContent += '. Sent to the archive for a check.';
+    else if (!b.title.trim()) el.textContent += '. Type the title to add it to the archive.';
+    else el.insertAdjacentHTML('beforeend', ' <button class="dash sm" type="button" data-a="archive">Add to the archive</button>');
+  }
+}
+const ARCHIVE_SCORE = 70;
+async function archiveSpine(b){
+  // a PNG of the spine, made smaller until it fits the archive's 300 KB
+  let blob, k = Math.min(1, 1600/b.spineImg.height);
+  for (let tries = 0; tries < 6; tries++, k *= .8){
+    const c = document.createElement('canvas'); c.width = Math.max(8, Math.round(b.spineImg.width*k)); c.height = Math.round(b.spineImg.height*k);
+    c.getContext('2d').drawImage(b.spineImg, 0, 0, c.width, c.height);
+    blob = await new Promise(r => c.toBlob(r, 'image/png'));
+    if (blob && blob.size <= 300*1024) break;
+  }
+  if (!blob || blob.size > 300*1024){ toast('That spine is too large to send.'); return; }
+  const q = new URLSearchParams({kind:b.kind, title:b.title.trim(), author:(b.author || '').trim()});
+  try {
+    const r = await fetch(`${WORKER}/archive?${q}`, {method:'POST', headers:{'Content-Type':'image/png'}, body:blob}), j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || 'The archive didn’t answer. Try again later.');
+    b.archived = true; setNote(b); toast('Sent. It shows up in search once it’s checked.');
+  } catch (err){ toast(err.message || 'The archive didn’t answer. Try again later.'); }
 }
 $('#books').addEventListener('input', e => {
   const li = e.target.closest('.book'), f = e.target.dataset.f; if (!li || !f) return;
@@ -626,6 +686,7 @@ $('#books').addEventListener('input', e => {
 $('#books').addEventListener('click', e => {
   const btn = e.target.closest('[data-a]'); if (!btn) return;
   const i = books.findIndex(b => b.id === btn.closest('.book').dataset.id), a = btn.dataset.a;
+  if (a === 'archive'){ btn.disabled = true; archiveSpine(books[i]); return; }
   if (a === 'del') books.splice(i,1);
   if (a === 'up' && i > 0) [books[i-1], books[i]] = [books[i], books[i-1]];
   if (a === 'down' && i < books.length-1) [books[i+1], books[i]] = [books[i], books[i+1]];
@@ -697,14 +758,19 @@ const canvasSafe = img => { try { const c = document.createElement('canvas'); c.
 /* Picking a match looks for real spines in DVD and book scans (the Worker finds them, the browser cuts them).
    A clearly good one goes on the shelf by itself; otherwise the user picks. With no scans, a spine made
    from the poster or cover goes on instead. The tiles then switch that shelf item between the choices. */
-const AUTO_SCORE = 60, SHOW_SCORE = 45;   // below 45 the cuts were mostly photos of open cases
+const AUTO_SCORE = 75, SHOW_SCORE = 45;   // tested: right spines scored 76-97, wrong ones up to 69; below 45 mostly photos of open cases
+const englishOnly = () => ($('input[name=ed]:checked') || {}).value !== 'any';
+// the Worker flags each scan: en = no sign of another language or region, vhs = a tape
+const isEnglish = c => c.en !== false && !c.vhs;
+// best first: with English on, English DVD/Blu-ray above other editions; VHS below everything else either way
+const rankCut = (c, english) => (english && !isEnglish(c) ? -1000 : 0) + (c.vhs ? -500 : 0) + c.score;
 let current = null;
 const keyOf = m => [m.kind, m.title.toLowerCase(), m.year || ''].join('|');
 function bookFor(cur, choice){
   const m = cur.m, film = m.kind === 'movie', base = {title:m.title, author:m.creator || '', kind:m.kind, font:'oswald', key:cur.key, choice};
   if (choice.startsWith('real:')){
-    const r = cur.real[+choice.slice(5)], pal = extractPalette(r.front);
-    return newBook(Object.assign(base, {img:r.front, spineImg:r.spine, source:hostOf(r.source), bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real'}, r.front.src ? {thumb:r.front.src} : {}));
+    const r = cur.real[+choice.slice(5)], front = r.front || cur.img || r.spine, pal = extractPalette(front);
+    return newBook(Object.assign(base, {img:front, spineImg:r.spine, source:r.archive ? 'the archive' : hostOf(r.source), bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real'}, front.src ? {thumb:front.src} : {}));
   }
   const img = cur.img, pal = extractPalette(img), t = film ? cur.title : null;
   const bg = t ? t.bg : film ? '#111111' : pal.bg, fg = t ? (contrast('#F4F4F2', bg) >= contrast('#111111', bg) ? '#F4F4F2' : '#111111') : film ? '#F4F4F2' : pal.fg;
@@ -712,11 +778,15 @@ function bookFor(cur, choice){
 }
 const tileCanvas = (b, w, H0) => { const dpr = Math.min(2, window.devicePixelRatio || 1), sp = makeSpine(b, w*dpr, H0*dpr); sp.style.width = sp.width/dpr + 'px'; sp.setAttribute('aria-hidden', 'true'); return sp; };
 function showTiles(cur){
-  const m = cur.m, noun = m.kind === 'movie' ? 'poster' : 'cover', on = books.find(b => b.key === cur.key), pressed = c => ` aria-pressed="${!!on && on.choice === c}"`;
-  const tiles = cur.real.map((r,i) => `<button class="pick" type="button" data-c="real:${i}"${pressed('real:' + i)}><span>Real spine</span><a class="src" href="${esc(r.source)}" target="_blank" rel="noopener">${esc(hostOf(r.source))}</a></button>`);
+  const m = cur.m, noun = m.kind === 'movie' ? 'poster' : 'cover', on = books.find(b => b.key === cur.key);
+  // every option side by side: where it came from, then Use this (or On shelf for the one in use)
+  const use = (c, what) => on && on.choice === c ? '<span class="on">On shelf</span>' : `<button class="dash sm" type="button" data-use="${c}" aria-label="Use ${what}">Use this</button>`;
+  const tiles = cur.real.map((r,i) => `<div class="pick" data-c="real:${i}">${r.archive
+    ? `<span class="lbl">From the archive · <a href="#" data-report="${esc(r.id)}">Report</a></span>`
+    : `<a class="src" href="${esc(r.source)}" target="_blank" rel="noopener">${esc(hostOf(r.source))}</a>`}${use('real:' + i, 'this spine')}</div>`);
   if (cur.img){
-    tiles.push(`<button class="pick" type="button" data-c="cover"${pressed('cover')}><img class="cov" src="${esc(cur.img.src)}" crossorigin="anonymous" alt="${esc(m.title)} ${noun}"><span>Cover</span></button>`);
-    tiles.push(`<button class="pick" type="button" data-c="spine"${pressed('spine')}><span>Generated</span></button>`);
+    tiles.push(`<div class="pick" data-c="cover"><img class="cov" src="${esc(cur.img.src)}" crossorigin="anonymous" alt="${esc(m.title)} ${noun}"><span class="lbl grey">Cover</span>${use('cover', 'the ' + noun)}</div>`);
+    tiles.push(`<div class="pick" data-c="spine"><span class="lbl grey">Generated</span>${use('spine', 'a spine made from the ' + noun)}</div>`);
   }
   $('#found').innerHTML = tiles.join('') || (cur.busy ? '' : '<p class="grey">No scans and no ' + noun + ' found for this title. Drop a scan below.</p>');
   const H0 = 240;
@@ -725,24 +795,46 @@ function showTiles(cur){
   if (gen){ const b = cur.preview || (cur.preview = bookFor(cur, 'spine')); gen.prepend(tileCanvas(b, isCase(b) ? H0/11 : 220*b.wf*H0/1160, H0)); }
   $('#pickDel').hidden = !on;
 }
-/* Loads each scan through the Worker and cuts it; returns the cuts, best first. */
-async function cutScans(cur){
-  const r = await timeout(getJSON(`${WORKER}/scans?kind=${cur.m.kind}&title=${encodeURIComponent(cur.m.title)}&year=${encodeURIComponent(cur.m.year || '')}&creator=${encodeURIComponent(cur.m.creator || '')}`), 20000);
-  const scans = r.results || [];
-  if (cur === current && scans.length) sstatus(`Cutting spines from ${scans.length} scan${scans.length > 1 ? 's' : ''}…`);
-  const cuts = await Promise.all(scans.map(async s => {
-    try {
-      const img = await timeout(loadImg(viaWorker(s.img)), 15000);
-      if (!canvasSafe(img)) return null;
-      const cut = findSpine(img, cur.m.kind); if (!cut) return null;
-      return {spine:crop(img, cut.x, cut.y, cut.w, cut.h), front:crop(img, cut.frontX, cut.y, img.width - cut.frontX, cut.h), score:cut.score, source:s.source, img:s.img, scan:img};
-    } catch { return null; }
-  }));
-  return {scans:scans.length, cuts:cuts.filter(c => c && c.score >= SHOW_SCORE).sort((a,b) => b.score - a.score).slice(0, 8)};
+/* Loads one scan through the Worker and cuts its spine: an archive spine is used as it is,
+   a tall thin image is a single spine, anything else is a wrap (back | spine | front). */
+async function cutOne(s, kind){
+  try {
+    const img = await timeout(loadImg(s.archive ? WORKER + s.img : viaWorker(s.img)), 15000);
+    if (!canvasSafe(img)) return null;
+    const base = {source:s.source, img:s.img, scan:img, archive:!!s.archive, id:s.id, front:null, en:s.en !== false, vhs:!!s.vhs};
+    if (s.archive) return Object.assign(base, {spine:img, score:100});   // checked by hand before it was approved
+    if (img.height/img.width >= 4){ const c = findSoloSpine(img); return c && Object.assign(base, {spine:crop(img, c.x, c.y, c.w, c.h), score:c.score, solo:true}); }
+    const cut = findSpine(img, kind); if (!cut) return null;
+    return Object.assign(base, {spine:crop(img, cut.x, cut.y, cut.w, cut.h), front:crop(img, cut.frontX, cut.y, img.width - cut.frontX, cut.h), score:cut.score});
+  } catch { return null; }
+}
+/* Asks the Worker for scans one round (one search) at a time and stops once two good spines turn up,
+   so most titles cost one or two searches. Returns the cuts, best first. */
+const ROUNDS = 4;
+async function cutScans(cur, english){
+  const q = `${WORKER}/scans?kind=${cur.m.kind}&title=${encodeURIComponent(cur.m.title)}&year=${encodeURIComponent(cur.m.year || '')}&creator=${encodeURIComponent(cur.m.creator || '')}`;
+  const seen = new Set(), cuts = []; let scans = 0, rounds = 0, busy = false;
+  for (let round = 0; round < ROUNDS && cur === current; round++){
+    if (round) sstatus(`Looking for more scans (${round + 1} of ${ROUNDS})…`);
+    let r;
+    try { r = await timeout(getJSON(q + '&round=' + round), 20000); rounds++; }
+    catch (err){ if (!cuts.length && !rounds) throw err; busy = /429/.test(err.message); break; }   // keep what the earlier rounds found
+    const fresh = (r.results || []).filter(s => !seen.has(s.img) && seen.add(s.img));
+    scans += fresh.length;
+    if (fresh.length && cur === current) sstatus(`Cutting spines from ${scans} scan${scans > 1 ? 's' : ''}…`);
+    cuts.push(...(await Promise.all(fresh.map(s => cutOne(s, cur.m.kind)))).filter(Boolean));
+    if (cuts.filter(c => c.score >= AUTO_SCORE && (!english || isEnglish(c))).length >= 2 || !r.more) break;
+  }
+  // one option per page: the same scan often comes at several sizes (reddit previews, eBay listings)
+  const best = new Map();
+  for (const c of cuts.filter(c => c.score >= SHOW_SCORE).sort((a,b) => rankCut(b, english) - rankCut(a, english)))
+    if (!best.has(c.source)) best.set(c.source, c);
+  return {scans, rounds, busy, cuts:[...best.values()].slice(0, 8)};
 }
 async function findSpines(m, again){
   const key = keyOf(m), cur = current = {m, key, real:[], res:{spines:[]}, img:null, busy:true}, noun = m.kind === 'movie' ? 'poster' : 'cover';
-  $('#spines').hidden = false; $('#spinesTitle').textContent = m.title + (m.year ? ' (' + m.year + ')' : '');
+  $('#spines').hidden = false; $('#matches').hidden = true;
+  $('#spinesTitle').textContent = m.title + (m.year ? ' (' + m.year + ')' : ''); $('#spinesBy').textContent = m.creator ? '· ' + m.creator : '';
   $('#spinesNote').hidden = server || !!WORKER; $('#found').innerHTML = ''; $('#pickDel').hidden = true; $('#dupAsk').hidden = true;
   if (!again && books.some(b => b.key === key)){
     // already on the shelf: ask inline before adding it a second time
@@ -752,9 +844,10 @@ async function findSpines(m, again){
   if (again) cur.key = key + '#' + (1 + books.filter(b => (b.key || '').split('#')[0] === key).length);
   const poster = m.cover ? timeout(loadImg(server ? API + '/api/image?url=' + encodeURIComponent(m.cover) : viaWorker(m.cover)), 15000).catch(() => null) : Promise.resolve(null);
   let found = {scans:0, cuts:[]}, failed = false;
+  const english = englishOnly();
   if (!server && WORKER){
-    sstatus('Searching DVD scans of “' + esc(m.title) + '”…');
-    try { found = await cutScans(cur); } catch { failed = true; }
+    sstatus('Searching ' + (m.kind === 'movie' ? 'DVD' : 'book') + ' scans of “' + esc(m.title) + '”…');
+    try { found = await cutScans(cur, english); } catch (err){ failed = /429/.test(err.message) ? 'busy' : true; }
   }
   const img = await poster;
   if (cur !== current) return;
@@ -777,20 +870,32 @@ async function findSpines(m, again){
     return;
   }
   cur.busy = false;
-  // book scans are rarer and less reliable, so a book never goes on by itself: the user picks
-  if (best && best.score >= AUTO_SCORE && m.kind === 'movie'){ add('real:0'); sstatus(`Real spine found in ${found.cuts.length} of ${found.scans} scans. Pick another if it looks wrong.`); }
-  else if (best){ sstatus(`${found.cuts.length} possible spine${found.cuts.length > 1 ? 's' : ''} found. Pick the one that looks right.`); }
+  // goes on by itself only when it's clearly right: a high score, the English edition (unless Edition is Any),
+  // and a film (book scans are rarer and less reliable) or a spine from the checked archive
+  const n = found.cuts.length, spines = n + ' possible spine' + (n > 1 ? 's' : '');
+  if (best && best.score >= AUTO_SCORE && (!english || isEnglish(best)) && (m.kind === 'movie' || best.archive)){
+    add('real:0'); sstatus(n > 1 ? `Real spine found. ${n - 1} more below if it’s the wrong edition.` : 'Real spine found.');
+  }
+  else if (best && english && !found.cuts.some(isEnglish)) sstatus(`${spines} found, but none looks like the English edition. Pick one, or set Edition to Any.`);
+  else if (best) sstatus(`${spines} found. Use the one that looks right.`);
   else if (cur.img){
     add('spine');
-    sstatus(!WORKER ? 'Pick Cover to show the ' + noun + ' face out instead.' : failed ? 'Scan search didn’t answer, so this spine is made from the ' + noun + '.' : 'No clean spine in the scans found online, so this one is made from the ' + noun + '.', !!WORKER);
+    sstatus(!WORKER ? 'Pick Cover to show the ' + noun + ' face out instead.' : failed === 'busy' ? 'Scan search is busy. This spine is made from the ' + noun + '; try again in a minute.'
+      : failed ? 'Scan search didn’t answer, so this spine is made from the ' + noun + '.' : 'No clean spine in the scans found online, so this one is made from the ' + noun + '.', !!WORKER);
   }
   else sstatus('No scans and no ' + noun + ' found for this title. Drop a scan below.', true);
   showTiles(cur);
 }
 $('#found').addEventListener('click', e => {
-  if (e.target.closest('a')) return;
-  const p = e.target.closest('.pick'), cur = current; if (!p || !cur) return;
-  const c = p.dataset.c, b = bookFor(cur, c), i = books.findIndex(x => x.key === cur.key);
+  const flag = e.target.closest('a[data-report]');
+  if (flag){
+    e.preventDefault(); e.stopPropagation();
+    fetch(`${WORKER}/report?id=${encodeURIComponent(flag.dataset.report)}`, {method:'POST'}).catch(() => {});
+    flag.removeAttribute('data-report'); flag.removeAttribute('href'); flag.textContent = 'Reported'; toast('Reported. Thanks.');
+    return;
+  }
+  const u = e.target.closest('[data-use]'), cur = current; if (!u || !cur) return;
+  const c = u.dataset.use, b = bookFor(cur, c), i = books.findIndex(x => x.key === cur.key);
   const what = c === 'cover' ? 'its cover' : c === 'spine' ? 'the generated spine' : 'a real spine';
   if (i >= 0){ Object.assign(b, {id:books[i].id, wf:books[i].wf, hf:books[i].hf, jit:books[i].jit, cat:books[i].cat}); books[i] = b; renderList(); toast(cur.m.title + ' now shows ' + what + '.'); }
   else if (shelve(b)) toast(cur.m.title + ' added to your shelf.');
@@ -802,6 +907,7 @@ $('#pickDel').addEventListener('click', () => {
 });
 $('#dupAdd').addEventListener('click', () => { if (current) findSpines(current.m, true); });
 $('#dupCancel').addEventListener('click', () => { $('#dupAsk').hidden = true; });
+$('#changeMatch').addEventListener('click', () => { $('#matches').hidden = false; $('#matches').scrollIntoView({behavior:'smooth', block:'nearest'}); });
 const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./,''); } catch { return 'source'; } };
 
 /* ---------- uploads ---------- */
@@ -814,10 +920,13 @@ function addFiles(files){
     fr.onload = async () => {
       let im; try { im = await loadImg(fr.result); } catch { toast('Couldn’t read ' + f.name + '.'); return; }
       let b;
-      const cut = im.width/im.height > 1.15 ? findSpine(im) : null;
-      if (cut){
+      const cut = im.width/im.height > 1.15 ? findSpine(im) : null, solo = !cut && im.height/im.width >= 4 ? findSoloSpine(im) : null;
+      if (solo){
+        const spineImg = crop(im, solo.x, solo.y, solo.w, solo.h), pal = extractPalette(spineImg);
+        b = newBook({title:titleFromName(f.name), kind:'book', img:spineImg, spineImg, bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real', font:'oswald', file:f, cutScore:solo.score});
+      } else if (cut){
         const spineImg = crop(im, cut.x, cut.y, cut.w, cut.h), front = crop(im, cut.frontX, cut.y, im.width - cut.frontX, cut.h), pal = extractPalette(front);
-        b = newBook({title:titleFromName(f.name), kind:im.width/im.height < 1.7 ? 'movie' : 'book', img:front, spineImg, bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real', font:'oswald', file:f});
+        b = newBook({title:titleFromName(f.name), kind:im.width/im.height < 1.7 ? 'movie' : 'book', img:front, spineImg, bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real', font:'oswald', file:f, cutScore:cut.score});
       } else {
         const pal = extractPalette(im);
         b = newBook({title:titleFromName(f.name), img:im, thumb:fr.result, bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'art', font:'oswald', file:f});
