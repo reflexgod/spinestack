@@ -1,0 +1,31 @@
+name = "spinestack"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+# Secrets (set with `npx wrangler secret put <NAME>`, never written here):
+#   TMDB_TOKEN     TMDB v4 "API Read Access Token" (or v3 key)
+#   BRAVE_API_KEY  Brave Search API subscription token
+
+# Caches /identify and /scans results for 30 days.
+# Create with `npx wrangler kv namespace create SPINE_CACHE` and paste the id below.
+[[kv_namespaces]]
+binding = "SPINE_CACHE"
+id = "5025e1e9a6f94d8bb1d91f90de9f9954"
+
+# About 30 searches a minute per visitor (identify + scans).
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 30
+  period = 60
+
+# Images: one search loads up to ~12, so this one is looser.
+[[ratelimits]]
+name = "IMG_LIMITER"
+namespace_id = "1002"
+
+  [ratelimits.simple]
+  limit = 150
+  period = 60

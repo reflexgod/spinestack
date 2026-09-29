@@ -4,7 +4,8 @@ Type a film or a book, get its real spine, put it on a shelf, save the shelf as 
 
 ```
 index.html            the website (GitHub Pages serves this)
-backend/              search server: name lookup, image search, spine cutting
+worker/               Cloudflare Worker: name lookup, scan search, image proxy (what the live site uses)
+backend/              older self-hosted search server (not used right now)
   api/                FastAPI app
   searxng/            your own free search engine, no API key
   docker-compose.yml  runs both with one command
@@ -20,7 +21,49 @@ backend/              search server: name lookup, image search, spine cutting
 
 At this point uploads, spine cutting from scans, the shelf and story export all work. Search by name needs step 2.
 
-## 2. Run the backend
+## Worker (what the live site uses)
+
+A free Cloudflare Worker in `worker/` does the parts a static page can't: it looks titles up on TMDB and
+Open Library, finds DVD and book scans with the Brave Image Search API, and passes scan images through with
+CORS so the page can cut the spine out of them in the browser (`findSpine()` in `index.html`).
+The TMDB and Brave keys live only in the Worker, as secrets.
+
+| Endpoint | What it returns |
+|---|---|
+| `/identify?q=&want=all\|movie\|book` | `{results:[{kind,title,year,creator,cover}]}` |
+| `/scans?title=&year=&kind=movie\|book&creator=` | up to 10 wrap-shaped scans whose page names the title: `{results:[{img,source,title,width,height}]}` |
+| `/img?url=` | the image, with CORS. http(s) and `image/*` only, 8 MB max, private addresses blocked, 3 redirects max |
+
+CORS is open only to `https://reflexgod.github.io` and `http://localhost:8080`. `/identify` and `/scans`
+are cached in Workers KV for 30 days (so each title costs one Brave search), images are cached 30 days,
+and each visitor is limited to about 30 searches and 150 images a minute.
+
+### Set up once
+
+In `worker/`:
+
+1. `npm install`
+2. `npx wrangler login` and click Allow in the browser.
+3. `npx wrangler kv namespace create SPINE_CACHE`, then put the id it prints into `wrangler.toml`.
+4. `npx wrangler secret put TMDB_TOKEN` and paste the TMDB "API Read Access Token" (themoviedb.org → Settings → API).
+5. `npx wrangler secret put BRAVE_API_KEY` and paste the Brave Search API key (api-dashboard.search.brave.com).
+6. `npx wrangler deploy`. It prints the Worker address, e.g. `https://spinestack.NAME.workers.dev`.
+7. In `index.html`, set `window.SPINESTACK_WORKER` to that address and keep `window.SPINESTACK_TMDB` empty.
+
+### Update
+
+`cd worker && npx wrangler deploy`. Secrets and the KV cache stay as they are. If you change how `/scans`
+filters results, bump the `sc…:` cache key prefix in `src/index.js` so old cached answers aren't reused.
+
+### How a real spine is found
+
+1. The Worker asks Brave for `"<title>" <year> dvd cover` and `<title> dvd cover scan` (books: `"<title>" <author> book cover spine`, `<title> <author> full cover wrap`).
+2. It keeps images shaped like a wrap (1.3–1.8 wide for films, 1.2–2.4 for books) whose title or address contains the whole title; one-word titles also need the year or director.
+3. The page loads each scan through `/img`, and `findSpine()` looks for the strip between back and front: two clear edges near the middle, about 5 % wide for a DVD, lettering on it, an even colour down it. Photos of open cases and books on a table are turned down.
+4. Each cut gets a score from 0 to 100. A film's best cut goes on the shelf by itself at 60 or more; books always let you pick. Cuts under 45 aren't shown.
+5. With no good scan, the page falls back to a spine made from the poster or cover.
+
+## 2. Run the backend (optional, not used right now)
 
 The backend has to run on a real server; GitHub Pages can't run it.
 
@@ -66,4 +109,4 @@ Keys go in `backend/.env` only. `.gitignore` already keeps `.env` and `data/` ou
 
 ## To do
 
-- [ ] Phase 2: a Cloudflare Worker to hide the TMDB token. Right now `window.SPINESTACK_TMDB` in `index.html` is public, so anyone reading the page source can see it.
+- [x] Phase 2: a Cloudflare Worker to hide the TMDB token. The token now lives only in the Worker (see "Worker" above).

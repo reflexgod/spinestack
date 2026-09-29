@@ -10,3 +10,8 @@ __pycache__/
 /src/
 /out/
 CLAUDE_CODE_PROMPT.md
+node_modules/
+.wrangler/
+.dev.vars
+worker/debug/
+debug/
