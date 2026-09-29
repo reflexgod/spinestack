@@ -11,7 +11,7 @@
   window.SPINESTACK_API = "";
   /* TMDB v4 "API Read Access Token" (long, starts with eyJ) or v3 API key, for film search
      without the backend. Anyone who reads this page's source can see it. */
-  window.SPINESTACK_TMDB = "";
+  window.SPINESTACK_TMDB = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIwNjdkOGFmYzBjODE2OTNmNjQ5ZTJlMjhlODA5OTBkMCIsIm5iZiI6MTc5MDY1Nzg3OC4wOTksInN1YiI6IjZhYmI0NTU2Mjg2ZTM5YTc3MzlkZGFmMSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.vD8ZB2ARq1mtJhpSqKYQP_nA1d2JgU59OC4hB8rT4dw";
 </script>
 </head>
 <body>
@@ -514,7 +514,10 @@ const direct = !window.claude;   // the Claude preview can't reach other sites
 const getJSON = (url, opt) => fetch(url, opt).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
 async function tmdbFilms(q){
   const bearer = TMDB.length > 40, opt = bearer ? {headers:{Authorization:'Bearer ' + TMDB}} : {}, key = bearer ? '' : '&api_key=' + encodeURIComponent(TMDB);
-  const r = await getJSON('https://api.themoviedb.org/3/search/movie?include_adult=false&query=' + encodeURIComponent(q) + key, opt);
+  const find = (s, y) => getJSON('https://api.themoviedb.org/3/search/movie?include_adult=false&query=' + encodeURIComponent(s) + (y ? '&year=' + y : '') + key, opt);
+  const yq = q.match(/^(.+?)[\s,(]+((?:19|20)\d\d)\)?$/);   // "kids 1995": TMDB finds nothing when the year is in the query
+  let r = yq ? await find(yq[1], yq[2]) : await find(q);
+  if (yq && !(r.results || []).length) r = await find(yq[1]);
   return Promise.all((r.results || []).slice(0,5).map(async (m,i) => {
     let creator = '';
     if (i < 3) try { const c = await getJSON(`https://api.themoviedb.org/3/movie/${m.id}/credits?` + key.slice(1), opt); creator = ((c.crew || []).find(p => p.job === 'Director') || {}).name || ''; } catch {}

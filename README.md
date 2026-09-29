@@ -63,3 +63,7 @@ Keys go in `backend/.env` only. `.gitignore` already keeps `.env` and `data/` ou
 - Search engines sometimes rate-limit SearXNG, so results vary. The cache helps more over time.
 - Scans are the studios' and publishers' artwork; each spine links to where it was found. To remove one, delete its files in `backend/data/media/` and its row in `backend/data/cache.db`.
 - TMDB requires the credit line that's already in the page footer.
+
+## To do
+
+- [ ] Phase 2: a Cloudflare Worker to hide the TMDB token. Right now `window.SPINESTACK_TMDB` in `index.html` is public, so anyone reading the page source can see it.
