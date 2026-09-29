@@ -130,6 +130,14 @@ input[type=color]::-webkit-color-swatch{border:0;border-radius:2px}
 .seg button{font:400 12px var(--mono);text-transform:uppercase;background:none;border:0;padding:0 0 4px;color:var(--grey);cursor:pointer;border-bottom:2px solid transparent}
 .seg button[aria-pressed="true"]{color:var(--ink);font-weight:700;border-bottom-color:var(--ink)}
 .check{display:flex;gap:8px;align-items:center;cursor:pointer;text-transform:uppercase;font-size:11.5px}
+.filters{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 4px}
+.flt{flex:none;display:grid;gap:5px;background:none;border:0;padding:0;cursor:pointer;font:400 10.5px var(--mono);text-transform:uppercase;color:var(--grey);text-align:left}
+.flt canvas{width:54px;height:96px;display:block;border:1px solid var(--hair)}
+.flt[aria-pressed="true"]{color:var(--ink);font-weight:700}
+.flt[aria-pressed="true"] canvas{outline:2px solid var(--ink);outline-offset:1px;border-color:var(--ink)}
+.flt .pro{font-style:normal;font-weight:700;font-size:9px;border:1px solid currentColor;padding:0 3px;margin-left:4px;letter-spacing:.04em}
+.range{display:flex;gap:10px;align-items:center}
+.range input{accent-color:var(--ink);flex:1;min-width:0}
 .check input{accent-color:var(--ink);margin:0}
 
 .home{padding-block:64px 72px;text-align:center}
@@ -226,10 +234,13 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
       <div class="story" id="export">
         <div class="ctl"><span class="lbl">Layout</span>
           <div class="seg" id="layout" role="group" aria-label="Layout"><button type="button" data-v="row">Spines</button><button type="button" data-v="stack">Stacked</button><button type="button" data-v="covers">Covers</button></div></div>
+        <div class="ctl"><span class="lbl">Filter</span>
+          <div class="filters" id="filters" role="group" aria-label="Filter"></div>
+          <label class="range"><span class="lbl">Intensity</span><input type="range" id="intensity" min="0" max="100" value="70" aria-label="Filter intensity"></label></div>
         <div class="phone"><canvas id="story" width="1080" height="1920" aria-label="Story preview"></canvas></div>
         <div class="ctl"><label class="lbl" for="caption">Caption</label><input type="text" id="caption" value="my next reads." maxlength="60"></div>
-        <div class="ctl"><span class="lbl">Background</span>
-          <div class="seg" id="theme" role="group" aria-label="Background"><button type="button" data-v="paper">Paper</button><button type="button" data-v="ink">Ink</button><button type="button" data-v="blush">Blush</button><button type="button" data-v="shelf">Shelf</button></div></div>
+        <div class="ctl" id="themeWrap"><span class="lbl">Background</span>
+          <div class="seg" id="theme" role="group" aria-label="Background"><button type="button" data-v="paper">Paper</button><button type="button" data-v="ink">Ink</button><button type="button" data-v="blush">Blush</button><button type="button" data-v="shelf">Shelf</button><button type="button" data-v="dark">Dark</button></div></div>
         <label class="check" id="variedWrap"><input type="checkbox" id="varied" checked> Mixed heights</label>
         <button class="btn full" id="exportBtn" type="button">Save story</button>
         <p class="note" id="exportNote"></p>
@@ -292,6 +303,7 @@ const THEMES = {
   ink:{bg:'#0E0F12', ink:'#F1F2F4', mark:'rgba(241,242,244,.38)'},
   blush:{bg:'#F3DCE0', ink:'#3A1F26', mark:'rgba(58,31,38,.4)'},
   shelf:{bg:'#E6E1DA', ink:'#2A241F', mark:'rgba(42,36,31,.4)'},
+  dark:{bg:'#232323', ink:'#E9E6DF', mark:'rgba(233,230,223,.4)'},
 };
 let books = [], isSample = true, uid = 0, server = false;
 const settings = {caption:'my next reads.', theme:'paper', layout:'row', varied:true};
@@ -588,6 +600,252 @@ function makeSpine(b, w, h){
   x.restore(); shade(x,w,h); x.restore(); return c;
 }
 
+/* ---------- filters: what happens to the books. The background is its own control; filters never touch it. ---------- */
+const SHELFSTACKD_PRO_REQUIRED = false;   // paywall off: Pro filters work for everyone and just carry a PRO tag
+const FILTERS = [
+  {id:'clean', name:'Clean'},
+  {id:'faded', name:'Faded'},
+  {id:'glossy', name:'Glossy'},
+  {id:'grain', name:'Grain'},
+  {id:'vhs', name:'Worn VHS', pro:true},
+];
+settings.filter = 'clean'; settings.intensity = 70;
+// textures come from this site (textures/), so drawing them keeps the canvas exportable
+const TEX = {};
+function texture(name){
+  if (!TEX[name]){ const t = TEX[name] = {img:null}; t.ready = loadImg('textures/' + name + '.jpg').then(im => { t.img = im; redraw(); }).catch(() => {}); }
+  return TEX[name].img;
+}
+// stable randomness: the same shelf always gets the same wear
+const hashStr = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; };
+const rngOf = seed => () => { seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0)/4294967296; };
+const blank = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+// scratch canvases, reused: a new canvas per step per spine keeps the garbage collector busy
+const SCRATCH = [];
+const scratch = (n, w, h) => { const c = SCRATCH[n] || (SCRATCH[n] = document.createElement('canvas')); c.width = w; c.height = h; return c; };
+// a tiling texture over a canvas, at a random offset and turn
+function texOver(x, img, w, h, rnd, mode, alpha, scale = 1){
+  if (!img || alpha <= 0) return;
+  x.save(); x.globalCompositeOperation = mode; x.globalAlpha = Math.min(1, alpha);
+  const pat = x.createPattern(img, 'repeat');
+  if (pat.setTransform) pat.setTransform(new DOMMatrix().translateSelf(-rnd()*img.width, -rnd()*img.height));
+  x.translate(w/2, h/2); x.rotate(Math.floor(rnd()*4)*Math.PI/2 + (rnd() - .5)*.3); x.scale(scale, scale);
+  const R = Math.hypot(w, h)/scale/2 + 4; x.fillStyle = pat; x.fillRect(-R, -R, 2*R, 2*R); x.restore();
+}
+// a texture at the spine's size as grey values, stretched sx by sy (sy > sx: its lines run along the spine)
+function texGrey(name, w, h, rnd, sx, sy){
+  const img = texture(name); if (!img) return null;
+  const c = scratch(0, w, h), x = c.getContext('2d', {willReadFrequently:true}), pat = x.createPattern(img, 'repeat');
+  if (pat.setTransform) pat.setTransform(new DOMMatrix().translateSelf(-rnd()*img.width, -rnd()*img.height));
+  x.translate(w/2, h/2); x.rotate(rnd() < .5 ? 0 : Math.PI); x.scale(sx, sy);
+  const R = Math.max(w/sx, h/sy); x.fillStyle = pat; x.fillRect(-R, -R, 2*R, 2*R);
+  const d = x.getImageData(0, 0, w, h).data, g = new Uint8Array(w*h);
+  for (let i = 0; i < g.length; i++) g[i] = d[i*4];
+  return g;
+}
+// film grain: one seeded noise tile, reused
+let GRAIN = null;
+function grainTile(){
+  if (GRAIN) return GRAIN;
+  const n = 256, c = blank(n, n), x = c.getContext('2d'), im = x.createImageData(n, n), r = rngOf(7);
+  for (let i = 0; i < im.data.length; i += 4){ const v = 128 + (r() + r() + r() - 1.5)*90; im.data[i] = im.data[i+1] = im.data[i+2] = v; im.data[i+3] = 255; }
+  x.putImageData(im, 0, 0); return GRAIN = c;
+}
+// ink and paper that have aged: less colour, blacks lifted, whites gone cream, a little more contrast
+function grade(x, w, h, k){
+  const im = x.getImageData(0, 0, w, h), d = im.data, sat = 1 - .5*k, lift = 34*k, con = 1 + .1*k;
+  for (let i = 0; i < d.length; i += 4){
+    if (!d[i+3]) continue;
+    const l = .299*d[i] + .587*d[i+1] + .114*d[i+2], t = l/255;
+    for (let c = 0; c < 3; c++){ let v = l + (d[i+c] - l)*sat; v = (v - 128)*con + 128; v = lift + v*(1 - lift/255); d[i+c] = v; }
+    d[i] -= 4*t*k; d[i+1] -= 12*t*k; d[i+2] -= 40*t*k;          // the lighter the paper, the more it has yellowed
+  }
+  x.putImageData(im, 0, 0);
+}
+const copyOf = sp => { const c = blank(sp.width, sp.height); c.getContext('2d', {willReadFrequently:true}).drawImage(sp, 0, 0); return c; };
+const outline = (c, sp) => { const x = c.getContext('2d'); x.globalCompositeOperation = 'destination-in'; x.drawImage(sp, 0, 0); x.globalCompositeOperation = 'source-over'; return c; };
+
+/* Faded: books that sat in the sun for years. Much less colour, warm cream whites, blacks gone dark grey, a yellow cast. */
+function fadedSpine(sp, k){
+  const c = copyOf(sp), w = c.width, h = c.height, x = c.getContext('2d', {willReadFrequently:true}), im = x.getImageData(0, 0, w, h), d = im.data;
+  const m = k/.7, sat = 1 - .35*m, lift = 52*m;
+  for (let i = 0; i < d.length; i += 4){
+    if (!d[i+3]) continue;
+    const l = .299*d[i] + .587*d[i+1] + .114*d[i+2], t = l/255;
+    for (let n = 0; n < 3; n++){ const v = l + (d[i+n] - l)*sat; d[i+n] = lift + v*(1 - lift/255); }
+    // the lighter it is, the more it has yellowed: whites end up warm cream
+    d[i] += (6 + 4*t)*m; d[i+1] += (1 - 4*t)*m; d[i+2] -= (10 + 26*t)*m;
+  }
+  x.putImageData(im, 0, 0); return c;
+}
+/* Glossy: a plastic cover. A bright highlight along the top edge and slightly deeper contrast on each spine;
+   the diagonal light band across the whole shelf is drawn in renderStory (it spans all the spines). */
+function glossySpine(sp, k){
+  const c = copyOf(sp), w = c.width, h = c.height, x = c.getContext('2d', {willReadFrequently:true}), im = x.getImageData(0, 0, w, h), d = im.data, m = k/.7, con = 1 + .14*m;
+  for (let i = 0; i < d.length; i += 4){ if (!d[i+3]) continue; for (let n = 0; n < 3; n++) d[i+n] = (d[i+n] - 128)*con + 128; }
+  x.putImageData(im, 0, 0);
+  x.globalCompositeOperation = 'screen';
+  const top = Math.max(6, h*.035), g = x.createLinearGradient(0, 0, 0, top);
+  g.addColorStop(0, `rgba(255,255,255,${Math.min(1, .85*m)})`); g.addColorStop(.35, `rgba(255,255,255,${.35*m})`); g.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = g; x.fillRect(0, 0, w, top);
+  return outline(c, sp);
+}
+function glossBand(x, rects, m){
+  // one soft diagonal band of light across the whole shelf, on the books only
+  if (!rects.length) return;
+  const x0 = Math.min(...rects.map(r => r.x)), x1 = Math.max(...rects.map(r => r.x + r.w)), y0 = Math.min(...rects.map(r => r.y)), y1 = Math.max(...rects.map(r => r.y + r.h));
+  x.save(); x.beginPath(); for (const r of rects) x.rect(r.x, r.y, r.w, r.h); x.clip();
+  const g = x.createLinearGradient(x0, y0, x1, y1);
+  g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.3, 'rgba(255,255,255,0)'); g.addColorStop(.42, `rgba(255,255,255,${.3*m})`);
+  g.addColorStop(.5, `rgba(255,255,255,${.4*m})`); g.addColorStop(.58, `rgba(255,255,255,${.3*m})`); g.addColorStop(.7, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  x.globalCompositeOperation = 'screen'; x.fillStyle = g; x.fillRect(x0, y0, x1 - x0, y1 - y0); x.restore();
+}
+/* Grain: film grain you can see at story size (2px grains, about 12 %), and a very light paper texture */
+let GRAIN2 = null;
+function grainTile2(){
+  if (GRAIN2) return GRAIN2;
+  const n = 256, c = blank(n, n), x = c.getContext('2d'), im = x.createImageData(n, n), r = rngOf(11);
+  for (let y = 0; y < n; y += 2) for (let X = 0; X < n; X += 2){
+    const v = 128 + (r() + r() - 1)*62;                                 // about ±12 % around the middle
+    for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]){ const i = ((y + dy)*n + X + dx)*4; im.data[i] = im.data[i+1] = im.data[i+2] = v; im.data[i+3] = 255; }
+  }
+  x.putImageData(im, 0, 0); return GRAIN2 = c;
+}
+function grainSpine(sp, k){
+  const c = copyOf(sp), x = c.getContext('2d'), w = c.width, h = c.height, m = k/.7, rnd = rngOf(3);
+  texOver(x, texture('paper'), w, h, rnd, 'multiply', .14*m, Math.max(.3, w/300));
+  texOver(x, grainTile2(), w, h, rnd, 'overlay', Math.min(1, .95*m), 1);
+  return outline(c, sp);
+}
+
+/* Worn VHS: real wear, built from the textures, different on every spine. level: 0 almost clean ... 1 heavily worn.
+   Punchy like a real tape shelf: deep blacks, colours that still pop, wear that is crisp and near-white.
+   Made once at the spine's final size and cached (see spineFor). */
+const FLAKE = [242, 237, 227];   // #F2EDE3: the card and paper where the print has come off
+function wornSpine(sp, b, level, fast){
+  const w = sp.width, h = sp.height, c = copyOf(sp), x = c.getContext('2d', {willReadFrequently:true}), rnd = rngOf(hashStr(b.id + ':vhs'));
+  // grime: only at the very ends, subtle and uneven
+  const card = texture('cardboard'), crum = texture('crumpled');
+  if (card && level > 0){
+    const g = scratch(1, w, h), gx = g.getContext('2d');
+    texOver(gx, card, w, h, rnd, 'source-over', 1, Math.max(.3, w/300));
+    gx.globalCompositeOperation = 'multiply'; gx.fillStyle = '#4A3E31'; gx.fillRect(0, 0, w, h);
+    const m = scratch(2, w, h), mx = m.getContext('2d'); mx.globalCompositeOperation = 'lighter';
+    for (const [y0, y1] of [[0, h*(.05 + rnd()*.03)], [h, h*(.93 - rnd()*.03)]]){ const lg = mx.createLinearGradient(0, y0, 0, y1); lg.addColorStop(0, 'rgba(0,0,0,1)'); lg.addColorStop(1, 'rgba(0,0,0,0)'); mx.fillStyle = lg; mx.fillRect(0, 0, w, h); }
+    if (crum) texOver(mx, crum, w, h, rnd, 'destination-in', 1, Math.max(.25, w/400));   // patchy, not a smooth fade
+    gx.globalCompositeOperation = 'destination-in'; gx.drawImage(m, 0, 0);
+    x.save(); x.globalCompositeOperation = 'multiply'; x.globalAlpha = .3 + .25*level; x.drawImage(g, 0, 0); x.restore();
+  }
+  // scratches: faint, and only in a few places
+  const scr = texture('scratches-' + (1 + Math.floor(rnd()*3)));
+  if (scr && level > .2){
+    const s = scratch(3, w, h), sx = s.getContext('2d'); sx.fillStyle = '#000'; sx.fillRect(0, 0, w, h);
+    texOver(sx, scr, w, h, rnd, 'source-over', 1, Math.max(.3, w/260));
+    const m = scratch(2, w, h), mx = m.getContext('2d');
+    for (let n = 1 + Math.floor(rnd()*2); n > 0; n--){ const cx = rnd()*w, cy = rnd()*h, r = (.5 + rnd())*w*2.5, rg = mx.createRadialGradient(cx, cy, 0, cx, cy, r); rg.addColorStop(0, 'rgba(0,0,0,1)'); rg.addColorStop(1, 'rgba(0,0,0,0)'); mx.fillStyle = rg; mx.fillRect(0, 0, w, h); }
+    sx.globalCompositeOperation = 'destination-in'; sx.drawImage(m, 0, 0);
+    x.save(); x.globalCompositeOperation = 'screen'; x.globalAlpha = .12*(.5 + level); x.drawImage(s, 0, 0); x.restore();
+  }
+  // where a sticker or tape was peeled off: a faint rectangle of lighter, yellowed paper
+  if (rnd() < .4){
+    const rw = w*(.55 + rnd()*.4), rh = h*(.025 + rnd()*.05), rx = (w - rw)*rnd(), ry = h*(.08 + rnd()*.78), tape = rnd() < .35;
+    x.save(); x.globalCompositeOperation = 'screen'; x.fillStyle = tape ? 'rgba(255,245,200,.14)' : 'rgba(250,244,228,.16)'; x.fillRect(rx, ry, rw, rh);
+    x.globalCompositeOperation = 'multiply'; x.fillStyle = tape ? 'rgba(235,205,120,.3)' : 'rgba(238,224,190,.18)'; x.fillRect(rx, ry, rw, rh); x.restore();
+  }
+  if (fast) return outline(c, sp);
+
+  // One pass over every pixel: the colour (deep blacks, a touch more contrast, a little less colour, a light
+  // warm cast), then crisp near-white crackle on the dark parts and a crisp broken line along the long edges.
+  const crk = texGrey('cracks', w, h, rnd, .14, .22), pw = Math.ceil(w/4), patch = texGrey('crumpled', pw, Math.ceil(h/4), rnd, .3, .3);
+  const pct = (g, q) => { if (!g) return 256; const hist = new Uint32Array(256); for (let i = 0; i < g.length; i++) hist[g[i]]++; let n = 0, lim = g.length*q; for (let v = 0; v < 256; v++){ n += hist[v]; if (n >= lim) return v; } return 255; };
+  const im = x.getImageData(0, 0, w, h), d = im.data;
+  const sat = .9, con = 1.12, lift = 6, warm = .5 + .5*level;
+  const crT = pct(crk, .955 - .04*level), eT = pct(crk, .84 - .12*level), ew = Math.max(2, w*.055), crA = .55 + .45*level;   // crackle: the brightest 4-8 % of the texture only
+  const flakes = [];
+  for (let y = 0, p = 0; y < h; y++) for (let X = 0; X < w; X++, p++){
+    const i = p*4; if (!d[i+3]) continue;
+    const l0 = .299*d[i] + .587*d[i+1] + .114*d[i+2];
+    let r = l0 + (d[i] - l0)*sat, g = l0 + (d[i+1] - l0)*sat, bl = l0 + (d[i+2] - l0)*sat;
+    r = (r - 128)*con + 128; g = (g - 128)*con + 128; bl = (bl - 128)*con + 128;
+    r = lift + r*(1 - lift/255); g = lift + g*(1 - lift/255); bl = lift + bl*(1 - lift/255);
+    r += 3*warm; g += 1*warm; bl -= 6*warm;                                          // light cream, not grey
+    const L = .299*r + .587*g + .114*bl;
+    if (crk){
+      const v = crk[p];
+      // crackle: a sharp, near-white line where the print is dark; almost none where it's light
+      if (v > crT){
+        const m = patch ? Math.min(1, Math.max(0, (patch[(y >> 2)*pw + (X >> 2)] - 110)/100)) : 1, dark = Math.min(1, Math.max(0, (115 - L)/45));   // truly dark parts only, and not everywhere
+        const a = dark*crA*(.25 + .75*m);
+        if (a > .3){ r += (FLAKE[0] - r)*.95; g += (FLAKE[1] - g)*.95; bl += (FLAKE[2] - bl)*.95; if (a > .7 && v > crT + 30 && rnd() < .004*level) flakes.push([X, y]); }
+      }
+      // edge: a thin, broken, crisp line where the card shows at the fold
+      const e = Math.min(X, w - 1 - X);
+      if (e < ew && v > eT + (e/ew)*(255 - eT)*.85){ r = FLAKE[0]; g = FLAKE[1]; bl = FLAKE[2]; }
+    }
+    d[i] = r; d[i+1] = g; d[i+2] = bl;
+  }
+  // creases: long folds down the spine, crisp (none on the cleaner tapes)
+  if (level >= .45){
+    const crease = texGrey('cracks', w, h, rnd, .2, 2.2), cT = pct(crease, .975 - .05*level);
+    for (let n = level > .8 ? 2 : 1; n > 0 && crease; n--){
+      const cc = w*(.15 + rnd()*.7), bw = w*(.04 + rnd()*.05), f = .6 + rnd()*1.6, ph = rnd()*6, am = w*(.03 + rnd()*.05), y0 = h*rnd()*.4, y1 = h*(.6 + rnd()*.4);
+      for (let y = Math.floor(y0); y < Math.min(h, y1); y++){
+        const cx = cc + Math.sin(y/h*Math.PI*f + ph)*am;
+        for (let X = Math.max(0, Math.floor(cx - bw)); X < Math.min(w, cx + bw); X++){
+          const p = y*w + X, i = p*4; if (!d[i+3] || crease[p] <= cT) continue;
+          d[i] += (FLAKE[0] - d[i])*.8; d[i+1] += (FLAKE[1] - d[i+1])*.8; d[i+2] += (FLAKE[2] - d[i+2])*.8;
+        }
+      }
+    }
+  }
+  // peeled spots: small (mostly under a tenth of the spine's width), 0-2, near the long edges or the ends,
+  // grey-white card with the paper's grain, ragged at the edge
+  const nPeel = level < .25 || rnd() < .35 ? 0 : level > .8 && rnd() < .6 ? 2 : 1;
+  const paper = nPeel ? texGrey('paper', w, h, rnd, .5, .5) : null, fine = nPeel ? texGrey('crumpled', w, h, rnd, .2, .2) : null;
+  for (let n = 0; n < nPeel && paper && fine; n++){
+    const edgeSide = rnd() < .6, rx = w*(.03 + rnd()*.07), ry = Math.min(h*.03, rx*(1.5 + rnd()*2.5));
+    const px = edgeSide ? (rnd() < .5 ? rx*.6 : w - rx*.6) : w*(.2 + rnd()*.6);
+    const py = edgeSide ? h*(.06 + rnd()*.88) : (rnd() < .5 ? h*(.02 + rnd()*.08) : h*(.9 + rnd()*.08));
+    const fT = pct(fine, .5);
+    for (let y = Math.max(0, Math.floor(py - ry*1.2)); y < Math.min(h, py + ry*1.2); y++) for (let X = Math.max(0, Math.floor(px - rx*1.2)); X < Math.min(w, px + rx*1.2); X++){
+      const p = y*w + X, i = p*4, u = (X - px)/rx, v = (y - py)/ry, r2 = u*u + v*v;
+      if (!d[i+3] || r2 >= 1.4 || fine[p] <= fT - 50 + r2*90) continue;
+      const t = paper[p]/255;                                        // #BDB6A6 .. #D9D4C7 with the paper's grain
+      d[i] = 189 + 28*t; d[i+1] = 182 + 30*t; d[i+2] = 166 + 33*t;
+    }
+  }
+  x.putImageData(im, 0, 0);
+  // small sharp flakes: along both long edges, and inside the crackle on the dark parts
+  const u = Math.max(1, w/60), flake = (fx, fy, size) => {
+    x.beginPath(); const n = 5 + Math.floor(rnd()*3);
+    for (let k = 0; k < n; k++){ const a = k/n*6.283 + rnd()*.6, r = size*(.45 + rnd()*.7); x.lineTo(fx + Math.cos(a)*r, fy + Math.sin(a)*r*(1.2 + rnd())); }
+    x.closePath(); x.fill();
+  };
+  x.fillStyle = 'rgb(242,237,227)';
+  for (const side of [0, 1]) for (let y = rnd()*30*u; y < h; y += (8 + rnd()*40)*u/(.4 + level)) if (rnd() < .5 + .4*level) flake(side ? w - rnd()*1.5*u : rnd()*1.5*u, y, (.8 + rnd()*2.2)*u);
+  for (const [fx, fy] of flakes.slice(0, 30)) flake(fx, fy, (.6 + rnd()*1.6)*u);
+  return outline(c, sp);
+}
+// how worn each tape on this shelf is: about 1 in 4 almost clean, most medium, one heavily worn
+function wearLevels(n, rnd){
+  const lv = Array.from({length: n}, () => rnd() < .25 ? .08 : .45 + rnd()*.25);
+  if (n) lv[Math.floor(rnd()*n)] = 1;
+  return lv;
+}
+const WORN = new Map();   // worn spines already made, so typing a caption doesn't wear them all again
+function spineFor(b, w, h, f, k, fast, level){
+  const sp = makeSpine(b, w, h);
+  if (f === 'vhs'){
+    const key = [b.id, b.title, b.author, b.style, b.font, b.bg, b.fg, b.choice, b.spineImg && b.spineImg.width, Math.round(w), Math.round(h), level, k, fast].join('|');
+    if (!WORN.has(key)){ if (WORN.size > 60) WORN.clear(); WORN.set(key, wornSpine(sp, b, Math.min(1, level*k/.7), fast)); }
+    return WORN.get(key);
+  }
+  if (f === 'faded') return fadedSpine(sp, k);
+  if (f === 'glossy') return glossySpine(sp, k);
+  if (f === 'grain') return grainSpine(sp, k);
+  return sp;
+}
+
 /* ---------- story ---------- */
 function wrapText(x, text, maxW){ const words = text.split(/\s+/), lines = []; let line = ''; for (const wd of words){ const t = line ? line+' '+wd : wd; if (x.measureText(t).width > maxW && line){ lines.push(line); line = wd; } else line = t; } if (line) lines.push(line); return lines.slice(0,3); }
 function sizes(H0, U, list = books){
@@ -599,8 +857,11 @@ function sizes(H0, U, list = books){
     return {w: U*b.wf, h: H0*(settings.varied ? b.hf : 1)};
   });
 }
-function renderStory(){
-  const x = sctx, T = THEMES[settings.theme];
+/* Draws the story on x (the preview, or a small filter thumbnail through a scaled context), on the chosen
+   background, with the chosen filter on the books.
+   Spines stand packed like books on a shelf: 0-2px apart, a thin dark line where two meet. */
+function renderStory(x = sctx, f = settings.filter, fast = false){
+  const k = settings.intensity/100, T = THEMES[settings.theme], shelfSeed = hashStr(books.map(b => b.id).join('|')), rnd = rngOf(shelfSeed ^ hashStr(f)), levels = wearLevels(books.length, rngOf(shelfSeed ^ 99));
   x.clearRect(0,0,W,H); x.fillStyle = T.bg; x.fillRect(0,0,W,H);
   x.fillStyle = T.ink; x.font = '500 52px "Geist Mono", ui-monospace, monospace'; x.textBaseline = 'alphabetic'; x.textAlign = 'left';
   let y = 290; if (settings.caption.trim()) for (const ln of wrapText(x, settings.caption, 900)){ x.fillText(ln, 90, y); y += 68; }
@@ -610,11 +871,11 @@ function renderStory(){
     x.strokeStyle = 'rgba(40,24,12,.25)'; x.lineWidth = 2; for (let i = 0; i < 5; i++){ x.beginPath(); x.moveTo(40,base+10+i*9); x.bezierCurveTo(300,base+4+i*10,700,base+16+i*8,W-40,base+8+i*9); x.stroke(); }
     const sh = x.createLinearGradient(0,base+54,0,base+110); sh.addColorStop(0,'rgba(0,0,0,.18)'); sh.addColorStop(1,'rgba(0,0,0,0)'); x.fillStyle = sh; x.fillRect(40,base+54,W-80,56);
   }
-  const shadow = settings.theme === 'ink' ? 'rgba(0,0,0,.5)' : 'rgba(0,0,0,.15)';
+  const dark = settings.theme === 'ink' || settings.theme === 'dark', shadow = dark ? 'rgba(0,0,0,.5)' : 'rgba(0,0,0,.15)', seam = dark ? 'rgba(0,0,0,.7)' : 'rgba(0,0,0,.4)';
   if (books.length && settings.layout === 'covers'){
     const n = books.length, cols = n === 1 ? 1 : n <= 4 ? 2 : n <= 9 ? 3 : 4, rows = Math.ceil(n/cols), gap = 30, top = Math.max(y+30, 400), bottom = 1780;
     const cellW = Math.min(n === 1 ? 760 : 900, (900 - gap*(cols-1))/cols), cellH = (bottom - top - gap*(rows-1))/rows;
-    const sz = books.map(b => { const k = Math.min(cellW/b.img.width, cellH/b.img.height); return [b.img.width*k, b.img.height*k]; });
+    const sz = books.map(b => { const k2 = Math.min(cellW/b.img.width, cellH/b.img.height); return [b.img.width*k2, b.img.height*k2]; });
     const rowH = []; for (let r = 0; r < rows; r++) rowH.push(Math.max(...sz.slice(r*cols, r*cols+cols).map(z => z[1])));
     let cy = top + ((bottom-top) - (rowH.reduce((a,v) => a+v, 0) + gap*(rows-1)))/2;
     for (let r = 0; r < rows; r++){
@@ -623,17 +884,46 @@ function renderStory(){
       cy += rowH[r] + gap;
     }
   } else if (books.length && settings.layout === 'row'){
-    const gap = books.length > 7 ? 10 : 18, s = sizes(1160, books.length <= 2 ? 220 : 165);
-    const sumW = s.reduce((a,z) => a+z.w, 0), room = 900 - gap*(books.length-1);
-    if (sumW > room){ const k = room/sumW; s.forEach((z,i) => { z.w *= k; if (isCover(books[i])) z.h *= k; else if (isReal(books[i]) || isCase(books[i])) z.h *= Math.max(k, .75); }); }
-    let cx = (W - (s.reduce((a,z) => a+z.w, 0) + gap*(books.length-1)))/2;
-    books.forEach((b,i) => { const sp = makeSpine(b, s[i].w, s[i].h); x.save(); x.shadowColor = shadow; x.shadowBlur = 22; x.shadowOffsetY = 8; x.drawImage(sp, Math.round(cx), Math.round(base - sp.height)); x.restore(); cx += s[i].w + gap; });
+    const s = sizes(1160, books.length <= 2 ? 220 : 165);
+    // Worn VHS: tapes are all one height, give or take 2 %
+    if (f === 'vhs') s.forEach((z,i) => { if (isCover(books[i])) return; const h1 = 1160*(1 + (rnd() - .5)*.04); if (isReal(books[i])) z.w *= h1/z.h; z.h = h1; });
+    const gaps = books.map(() => rnd()*2);   // packed: 0-2px apart
+    const room = 900 - gaps.slice(1).reduce((a,v) => a+v, 0), sumW = s.reduce((a,z) => a+z.w, 0);
+    if (sumW > room){ const k2 = room/sumW; s.forEach((z,i) => { z.w *= k2; if (isCover(books[i])) z.h *= k2; else if (isReal(books[i]) || isCase(books[i])) z.h *= Math.max(k2, .75); }); }
+    const sps = books.map((b,i) => spineFor(b, s[i].w, s[i].h, f, k, fast, levels[i]));
+    let cx = (W - (sps.reduce((a,sp) => a + sp.width, 0) + gaps.slice(1).reduce((a,v) => a+v, 0)))/2;
+    const placed = sps.map((sp,i) => { if (i) cx += gaps[i]; const p = {x:cx, w:sp.width, h:sp.height}; cx += sp.width; return p; });
+    sps.forEach((sp,i) => {
+      const tilt = f === 'vhs' ? (rnd() - .5)*1.2*Math.PI/180 : 0;   // ±0.6°
+      x.save(); x.shadowColor = shadow; x.shadowBlur = 18; x.shadowOffsetY = 6; x.translate(placed[i].x + sp.width/2, base); x.rotate(tilt); x.drawImage(sp, -sp.width/2, -sp.height); x.restore();
+    });
+    if (f === 'glossy') glossBand(x, placed.map(pl => ({x:pl.x, y:base - pl.h, w:pl.w, h:pl.h})), k/.7);
+    // where two spines meet: a thin dark line down the shorter one
+    x.fillStyle = seam;
+    for (let i = 1; i < placed.length; i++){ const a = placed[i-1], b2 = placed[i], mid = (a.x + a.w + b2.x)/2, hh = Math.min(a.h, b2.h); x.fillRect(mid - 1.5, base - hh, 3, hh); }
   } else if (books.length){
-    const flat = books.map(asSpine), s = sizes(800, 125, flat), sumT = s.reduce((a,z) => a+z.w, 0), k = Math.min(1, 1220/sumT); let cy = base;
-    flat.forEach((b,i) => { const t = s[i].w*k, L = s[i].h, sp = makeSpine(b, t, L); cy -= sp.width; const cx = (W-L)/2 + b.jit*38;
-      x.save(); x.shadowColor = shadow; x.shadowBlur = 16; x.shadowOffsetY = 5; x.translate(Math.round(cx), Math.round(cy + sp.width)); x.rotate(-Math.PI/2); x.drawImage(sp,0,0); x.restore(); });
+    const flat = books.map(asSpine), s = sizes(800, 125, flat), sumT = s.reduce((a,z) => a+z.w, 0), k2 = Math.min(1, 1220/sumT); let cy = base;
+    const placed = [];
+    flat.forEach((b,i) => { const t = s[i].w*k2, L = s[i].h, sp = spineFor(b, t, L, f, k, fast, levels[i]); cy -= sp.width; const cx = (W-L)/2 + b.jit*38;
+      x.save(); x.shadowColor = shadow; x.shadowBlur = 16; x.shadowOffsetY = 5; x.translate(Math.round(cx), Math.round(cy + sp.width)); x.rotate(-Math.PI/2); x.drawImage(sp,0,0); x.restore();
+      placed.push({x:Math.round(cx), y:Math.round(cy), L:sp.height, t:sp.width}); });
+    if (f === 'glossy') glossBand(x, placed.map(pl => ({x:pl.x, y:pl.y, w:pl.L, h:pl.t})), k/.7);
+    // lying books meet along a line too
+    x.fillStyle = seam;
+    for (let i = 1; i < placed.length; i++){ const lo = placed[i-1], up = placed[i], x0 = Math.max(lo.x, up.x), x1 = Math.min(lo.x + lo.L, up.x + up.L); if (x1 > x0) x.fillRect(x0, lo.y - 1.5, x1 - x0, 3); }
   }
   x.fillStyle = T.mark; x.font = '400 24px "Geist Mono", monospace'; x.textAlign = 'center'; x.fillText('made with spinestack', W/2, 1868);
+}
+/* the Filter row: a live thumbnail of this shelf in each look */
+function renderFilterRow(){
+  $('#filters').innerHTML = FILTERS.map(fl => `<button type="button" class="flt" data-v="${fl.id}" aria-pressed="${settings.filter === fl.id}"><canvas width="108" height="192" aria-hidden="true"></canvas><span>${fl.name}${fl.pro ? '<em class="pro">PRO</em>' : ''}</span></button>`).join('');
+}
+let thumbT = 0;
+function renderThumbs(){
+  clearTimeout(thumbT);
+  thumbT = setTimeout(() => document.querySelectorAll('#filters .flt').forEach(bt => {
+    const c = bt.querySelector('canvas'), x = c.getContext('2d'); x.setTransform(c.width/W, 0, 0, c.height/H, 0, 0); renderStory(x, bt.dataset.v, true); x.setTransform(1, 0, 0, 1, 0, 0);
+  }), 250);
 }
 function renderStrip(){
   const el = $('#strip'), none = !books.length;
@@ -652,7 +942,7 @@ $('#strip').addEventListener('click', e => {
   const li = document.querySelector(`#books .book[data-id="${bt.dataset.id}"]`); if (!li) return;
   li.scrollIntoView({behavior:'smooth', block:'center'}); document.getElementById(bt.dataset.id + '-title').focus({preventScroll:true});
 });
-let raf = 0; const redraw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { renderStory(); renderStrip(); }); };
+let raf = 0; const redraw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { renderStory(); renderStrip(); renderThumbs(); }); };
 addEventListener('resize', redraw);
 
 /* ---------- shelf list ---------- */
@@ -1019,6 +1309,14 @@ function bindSeg(id, key, after){
   seg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; settings[key] = b.dataset.v; sync(); after && after(); redraw(); }); sync();
 }
 bindSeg('#theme', 'theme');
+renderFilterRow();
+function syncFilter(){
+  document.querySelectorAll('#filters .flt').forEach(bt => bt.setAttribute('aria-pressed', String(bt.dataset.v === settings.filter)));
+}
+$('#filters').addEventListener('click', e => { const bt = e.target.closest('.flt'); if (!bt) return; settings.filter = bt.dataset.v; syncFilter(); redraw(); });
+$('#intensity').addEventListener('input', e => { settings.intensity = +e.target.value; redraw(); });
+syncFilter();
+['cardboard', 'cracks', 'crumpled', 'paper', 'scratches-1', 'scratches-2', 'scratches-3'].forEach(texture);   // small, and needed by the first thumbnails
 bindSeg('#layout', 'layout', () => { $('#variedWrap').hidden = settings.layout === 'covers'; });
 $('#caption').addEventListener('input', e => { settings.caption = e.target.value; redraw(); });
 $('#varied').addEventListener('change', e => { settings.varied = e.target.checked; redraw(); });
@@ -1032,8 +1330,9 @@ function fallback(blob){ if (lastUrl) URL.revokeObjectURL(lastUrl); lastUrl = UR
 $('#mclose').addEventListener('click', () => $('#modal').hidden = true);
 $('#modal').addEventListener('click', e => { if (e.target.id === 'modal') $('#modal').hidden = true; });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#modal').hidden = true; });
-$('#exportBtn').addEventListener('click', () => {
+$('#exportBtn').addEventListener('click', async () => {
   if (!books.length){ toast('Add something to your shelf first.'); return; }
+  await Promise.all(Object.values(TEX).map(t => t.ready).filter(Boolean));
   renderStory();
   let blobOk = true;
   try { story.toBlob(() => {}); } catch { blobOk = false; }
