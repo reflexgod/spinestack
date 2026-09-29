@@ -240,7 +240,8 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
         <div class="phone"><canvas id="story" width="1080" height="1920" aria-label="Story preview"></canvas></div>
         <div class="ctl"><label class="lbl" for="caption">Caption</label><input type="text" id="caption" value="my next reads." maxlength="60"></div>
         <div class="ctl" id="themeWrap"><span class="lbl">Background</span>
-          <div class="seg" id="theme" role="group" aria-label="Background"><button type="button" data-v="paper">Paper</button><button type="button" data-v="ink">Ink</button><button type="button" data-v="blush">Blush</button><button type="button" data-v="shelf">Shelf</button><button type="button" data-v="dark">Dark</button></div></div>
+          <div class="seg" id="theme" role="group" aria-label="Background"><button type="button" data-v="paper">Paper</button><button type="button" data-v="ink">Ink</button><button type="button" data-v="blush">Blush</button><button type="button" data-v="shelf">Shelf</button><button type="button" data-v="dark">Dark</button><button type="button" data-v="forest">Forest</button></div>
+          <label class="check"><input type="checkbox" id="woodShelf"> Wood shelf</label></div>
         <label class="check" id="variedWrap"><input type="checkbox" id="varied" checked> Mixed heights</label>
         <button class="btn full" id="exportBtn" type="button">Save story</button>
         <p class="note" id="exportNote"></p>
@@ -304,9 +305,10 @@ const THEMES = {
   blush:{bg:'#F3DCE0', ink:'#3A1F26', mark:'rgba(58,31,38,.4)'},
   shelf:{bg:'#E6E1DA', ink:'#2A241F', mark:'rgba(42,36,31,.4)'},
   dark:{bg:'#232323', ink:'#E9E6DF', mark:'rgba(233,230,223,.4)'},
+  forest:{bg:'#1F3A2E', ink:'#EDE8D8', mark:'rgba(237,232,216,.4)'},
 };
 let books = [], isSample = true, uid = 0, server = false;
-const settings = {caption:'my next reads.', theme:'paper', layout:'row', varied:true};
+const settings = {caption:'my next reads.', theme:'paper', layout:'row', varied:true, wood:false};
 
 /* ---------- colour ---------- */
 const hex = (r,g,b) => '#' + [r,g,b].map(v => Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('');
@@ -608,6 +610,11 @@ const FILTERS = [
   {id:'glossy', name:'Glossy'},
   {id:'grain', name:'Grain'},
   {id:'vhs', name:'Worn VHS', pro:true},
+  {id:'rental', name:'Rental Shop', pro:true},
+  {id:'library', name:'Library Copy', pro:true},
+  {id:'secondhand', name:'Secondhand Bookshop', pro:true},
+  {id:'cloth', name:'Clothbound', pro:true},
+  {id:'flash', name:'Flash', pro:true},
 ];
 settings.filter = 'clean'; settings.intensity = 70;
 // textures come from this site (textures/), so drawing them keeps the canvas exportable
@@ -719,25 +726,31 @@ function wornSpine(sp, b, level, fast){
   const w = sp.width, h = sp.height, c = copyOf(sp), x = c.getContext('2d', {willReadFrequently:true}), rnd = rngOf(hashStr(b.id + ':vhs'));
   // grime: only at the very ends, subtle and uneven
   const card = texture('cardboard'), crum = texture('crumpled');
+  // (both are made only where they land, the two ends and a couple of small spots, not over the whole spine)
   if (card && level > 0){
-    const g = scratch(1, w, h), gx = g.getContext('2d');
-    texOver(gx, card, w, h, rnd, 'source-over', 1, Math.max(.3, w/300));
-    gx.globalCompositeOperation = 'multiply'; gx.fillStyle = '#4A3E31'; gx.fillRect(0, 0, w, h);
-    const m = scratch(2, w, h), mx = m.getContext('2d'); mx.globalCompositeOperation = 'lighter';
-    for (const [y0, y1] of [[0, h*(.05 + rnd()*.03)], [h, h*(.93 - rnd()*.03)]]){ const lg = mx.createLinearGradient(0, y0, 0, y1); lg.addColorStop(0, 'rgba(0,0,0,1)'); lg.addColorStop(1, 'rgba(0,0,0,0)'); mx.fillStyle = lg; mx.fillRect(0, 0, w, h); }
-    if (crum) texOver(mx, crum, w, h, rnd, 'destination-in', 1, Math.max(.25, w/400));   // patchy, not a smooth fade
-    gx.globalCompositeOperation = 'destination-in'; gx.drawImage(m, 0, 0);
-    x.save(); x.globalCompositeOperation = 'multiply'; x.globalAlpha = .3 + .25*level; x.drawImage(g, 0, 0); x.restore();
+    const bh = Math.ceil(h*.12);
+    for (const top of [true, false]){
+      const g = scratch(1, w, bh), gx = g.getContext('2d');
+      texOver(gx, card, w, bh, rnd, 'source-over', 1, Math.max(.3, w/300));
+      gx.globalCompositeOperation = 'multiply'; gx.fillStyle = '#4A3E31'; gx.fillRect(0, 0, w, bh);
+      const m = scratch(2, w, bh), mx = m.getContext('2d'), reach = h*(.05 + rnd()*.03);
+      const lg = mx.createLinearGradient(0, top ? 0 : bh, 0, top ? reach : bh - reach); lg.addColorStop(0, 'rgba(0,0,0,1)'); lg.addColorStop(1, 'rgba(0,0,0,0)');
+      mx.fillStyle = lg; mx.fillRect(0, 0, w, bh);
+      if (crum) texOver(mx, crum, w, bh, rnd, 'destination-in', 1, Math.max(.25, w/400));   // patchy, not a smooth fade
+      gx.globalCompositeOperation = 'destination-in'; gx.drawImage(m, 0, 0);
+      x.save(); x.globalCompositeOperation = 'multiply'; x.globalAlpha = .3 + .25*level; x.drawImage(g, 0, top ? 0 : h - bh); x.restore();
+    }
   }
   // scratches: faint, and only in a few places
   const scr = texture('scratches-' + (1 + Math.floor(rnd()*3)));
-  if (scr && level > .2){
-    const s = scratch(3, w, h), sx = s.getContext('2d'); sx.fillStyle = '#000'; sx.fillRect(0, 0, w, h);
-    texOver(sx, scr, w, h, rnd, 'source-over', 1, Math.max(.3, w/260));
-    const m = scratch(2, w, h), mx = m.getContext('2d');
-    for (let n = 1 + Math.floor(rnd()*2); n > 0; n--){ const cx = rnd()*w, cy = rnd()*h, r = (.5 + rnd())*w*2.5, rg = mx.createRadialGradient(cx, cy, 0, cx, cy, r); rg.addColorStop(0, 'rgba(0,0,0,1)'); rg.addColorStop(1, 'rgba(0,0,0,0)'); mx.fillStyle = rg; mx.fillRect(0, 0, w, h); }
-    sx.globalCompositeOperation = 'destination-in'; sx.drawImage(m, 0, 0);
-    x.save(); x.globalCompositeOperation = 'screen'; x.globalAlpha = .12*(.5 + level); x.drawImage(s, 0, 0); x.restore();
+  if (scr && level > .2) for (let n = 1 + Math.floor(rnd()*2); n > 0; n--){
+    const r = Math.ceil((.5 + rnd())*w*1.4), cx = rnd()*w, cy = rnd()*h, sx0 = Math.max(0, Math.floor(cx - r)), sy0 = Math.max(0, Math.floor(cy - r));
+    const sw = Math.min(w, Math.ceil(cx + r)) - sx0, sh = Math.min(h, Math.ceil(cy + r)) - sy0; if (sw < 2 || sh < 2) continue;
+    const s = scratch(3, sw, sh), sx = s.getContext('2d'); sx.fillStyle = '#000'; sx.fillRect(0, 0, sw, sh);
+    texOver(sx, scr, sw, sh, rnd, 'source-over', 1, Math.max(.3, w/260));
+    const rg = sx.createRadialGradient(cx - sx0, cy - sy0, 0, cx - sx0, cy - sy0, r); rg.addColorStop(0, 'rgba(0,0,0,1)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+    sx.globalCompositeOperation = 'destination-in'; sx.fillStyle = rg; sx.fillRect(0, 0, sw, sh);
+    x.save(); x.globalCompositeOperation = 'screen'; x.globalAlpha = .12*(.5 + level); x.drawImage(s, sx0, sy0); x.restore();
   }
   // where a sticker or tape was peeled off: a faint rectangle of lighter, yellowed paper
   if (rnd() < .4){
@@ -827,24 +840,327 @@ function wornSpine(sp, b, level, fast){
   for (const [fx, fy] of flakes.slice(0, 30)) flake(fx, fy, (.6 + rnd()*1.6)*u);
   return outline(c, sp);
 }
+/* ---------- Pro 2-6: what happens to the books (and the light on them). The background stays the user's. ---------- */
+const surname = s => (String(s || '').trim().split(/\s+/).pop() || '').replace(/[^A-Za-z]/g, '').toUpperCase();
+function pixels(c){ const x = c.getContext('2d', {willReadFrequently:true}); return {x, im: x.getImageData(0, 0, c.width, c.height)}; }
+
+/* Rental Shop: a worn tape with the shop's stickers on it, day-glo and a little crooked: a round pink BE KIND REWIND with
+   its words round the edge, a yellow USED MOVIE SALE label with the price in ballpoint, a round genre dot, a white
+   PLEASE REWIND strip with a red border. slot (the spine's place on the shelf) spreads them out, so a shelf shows each kind.
+   The green light is in bookLight. */
+const GLO = {pink:'#FF4FA3', yellow:'#FFE12E', orange:'#FF8A1F', green:'#86F25C'};
+const HAND = fs => `${fs}px "Gochi Hand", "Comic Sans MS", cursive`;
+// text round a circle: top reads left to right over the top, bottom left to right under it (x is at the centre, textAlign center)
+function arcText(x, text, r, top){
+  const ch = [...text], ws = ch.map(c => x.measureText(c).width), span = ws.reduce((a, v) => a + v, 0)/r;
+  let a = top ? -Math.PI/2 - span/2 : Math.PI/2 + span/2;
+  ch.forEach((c, i) => {
+    const d = ws[i]/r/2; a += top ? d : -d;
+    x.save(); x.translate(r*Math.cos(a), r*Math.sin(a)); x.rotate(top ? a + Math.PI/2 : a - Math.PI/2); x.fillText(c, 0, 0); x.restore();
+    a += top ? d : -d;
+  });
+}
+// the paper of a sticker: a hair of shadow under it, a faint sheen on top
+function stickerPaper(x, path, col){
+  x.save(); x.shadowColor = 'rgba(0,0,0,.45)'; x.shadowBlur = 1.5; x.shadowOffsetY = 1; x.fillStyle = col; path(); x.fill(); x.restore();
+  x.save(); path(); x.clip(); x.globalCompositeOperation = 'screen'; x.fillStyle = 'rgba(255,255,255,.14)'; x.fillRect(-500, -500, 1000, 480); x.restore();
+}
+function beKindSticker(x, d){
+  const disc = () => { x.beginPath(); x.arc(0, 0, d/2, 0, 7); };
+  stickerPaper(x, disc, GLO.pink);
+  x.fillStyle = '#4A0B2C'; x.strokeStyle = '#4A0B2C'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.font = `${Math.max(5, d*.155)}px "Archivo Black", "Arial Black", sans-serif`;
+  arcText(x, 'BE KIND', d*.33, true); arcText(x, 'REWIND', d*.33, false);
+  x.lineWidth = Math.max(.8, d*.028); rr(x, -d*.2, -d*.1, d*.4, d*.2, d*.03); x.stroke();        // a little tape in the middle
+  for (const s of [-1, 1]){ x.beginPath(); x.arc(s*d*.09, 0, d*.045, 0, 7); x.stroke(); }
+}
+function genreSticker(x, d, word, col){
+  stickerPaper(x, () => { x.beginPath(); x.arc(0, 0, d/2, 0, 7); }, col);
+  x.fillStyle = '#1A1A1A'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  const fs = fitFont(x, word, s => `${s}px "Archivo Black", "Arial Black", sans-serif`, d*.26, d*.78); x.font = `${fs}px "Archivo Black", "Arial Black", sans-serif`;
+  x.fillText(word, 0, 1);
+}
+// laid along the spine, like the titles: USED MOVIE / SALE printed in red, the old price struck out and the new one in ballpoint
+function priceSticker(x, S, maxL, col, rnd){
+  const was = ['$79.98', '$59.95', '$89.95', '$24.99'][Math.floor(rnd()*4)], now = ['$12.95', '$9.99', '$4.99', '$7.50', '$3'][Math.floor(rnd()*5)];
+  // laid out at S = 100, then scaled to fit
+  x.font = '600 20px Oswald, "Arial Narrow", sans-serif'; const lw1 = x.measureText('USED MOVIE').width;
+  x.font = HAND(26); const rw1 = x.measureText(was).width; x.font = HAND(40); const rw2 = x.measureText(now).width;
+  const L100 = 12 + lw1 + 16 + Math.max(rw1, rw2) + 12, sc = Math.min(S/100, maxL/L100), L = L100*sc, H = 100*sc;
+  stickerPaper(x, () => { x.beginPath(); x.rect(-L/2, -H/2, L, H); }, col);
+  x.save(); x.translate(-L/2, -H/2); x.scale(sc, sc); x.textBaseline = 'middle';
+  x.fillStyle = '#C8161F'; x.textAlign = 'left'; x.font = '600 20px Oswald, "Arial Narrow", sans-serif'; x.fillText('USED MOVIE', 12, 26);
+  x.font = '600 38px Oswald, "Arial Narrow", sans-serif'; x.fillText('SALE', 12, 66);
+  x.fillStyle = '#1E2C8C'; x.textAlign = 'right'; x.font = HAND(26); x.fillText(was, L100 - 12, 28);
+  x.strokeStyle = '#1E2C8C'; x.lineWidth = 2.2; x.beginPath(); x.moveTo(L100 - 14 - rw1, 31); x.lineTo(L100 - 10, 25); x.stroke();
+  x.font = HAND(40); x.fillText(now, L100 - 12, 68);
+  x.textAlign = 'right'; x.globalAlpha = .85; x.font = HAND(22); x.fillText(String(1000000 + Math.floor(rnd()*8999999)), -8, 50);   // the shop's stock number, in pen, just above the label
+  x.restore();
+  return L;
+}
+function rewindStrip(x, S, maxL){
+  const t = 'PLEASE REWIND', font = s => `600 ${s}px Oswald, "Arial Narrow", sans-serif`;
+  const fs = fitFont(x, t, font, S*.5, maxL - S*.5), L = Math.min(maxL, (x.font = font(fs), x.measureText(t).width + S*.5));
+  stickerPaper(x, () => { x.beginPath(); x.rect(-L/2, -S/2, L, S); }, '#FBF7EA');
+  x.strokeStyle = '#C8202A'; x.lineWidth = Math.max(1, S*.06); x.strokeRect(-L/2 + S*.1, -S/2 + S*.1, L - S*.2, S*.8);
+  x.fillStyle = '#C8202A'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = font(fs); x.fillText(t, 0, 1);
+}
+const GENRES = ['HORROR', 'COMEDY', 'DRAMA', 'NEW', 'FAMILY', 'SCI-FI', 'CULT'];
+function rentalSpine(sp, b, level, k, fast, slot){
+  const c = wornSpine(sp, b, Math.min(1, level*k/.7*.8), fast), w = c.width, h = c.height, rnd = rngOf(hashStr(b.id + ':rental'));
+  if (k < .1) return c;
+  // stickers go on their own layer first, so the shelf's wear can go over them too
+  const s = scratch(4, w, h), sx = s.getContext('2d'), tilt = () => (rnd() - .5)*.16;
+  const plan = [['kind', 'genre'], ['price'], ['strip', 'genre'], ['price', 'kind'], ['kind', 'strip']][slot % 5];
+  const d = Math.min(w*.9, 92), S = Math.min(w*.74, 64), at = (y, draw) => { sx.save(); sx.translate(w/2 + (rnd() - .5)*w*.06, h*y); draw(); sx.restore(); };
+  let low = .84;                                                          // stickers fill in from near the bottom, upward
+  for (const kind of plan){
+    if (kind === 'kind'){ const y = low - d/2/h; at(y, () => { sx.rotate(tilt()*2); beKindSticker(sx, d); }); low = y - d/2/h - .02; }
+    if (kind === 'genre'){ const g = d*.72, y = low - g/2/h; const col = [GLO.yellow, GLO.green, GLO.orange][Math.floor(rnd()*3)];
+      at(y, () => { sx.rotate(tilt()); genreSticker(sx, g, b.kind === 'movie' ? GENRES[Math.floor(rnd()*GENRES.length)] : 'BOOKS', col); }); low = y - g/2/h - .02; }
+    if (kind === 'price'){ const maxL = Math.min(h*.24, w*3.2), y = low - maxL/2/h;
+      at(y, () => { sx.rotate(Math.PI/2 + tilt()); priceSticker(sx, S, maxL, rnd() < .7 ? GLO.yellow : GLO.orange, rnd); }); low = y - maxL/2/h - .07; }
+    if (kind === 'strip'){ const maxL = Math.min(h*.2, w*3.4); at(.14 + maxL/2/h, () => { sx.rotate(Math.PI/2 + tilt()); rewindStrip(sx, S*.8, maxL); }); }
+  }
+  // handled: the paper is a little grubby and scuffed
+  const crum = texture('crumpled'), g = scratch(5, w, h), gx = g.getContext('2d');
+  if (crum){ gx.fillStyle = '#fff'; gx.fillRect(0, 0, w, h); texOver(gx, crum, w, h, rnd, 'multiply', .35, Math.max(.25, w/400)); gx.globalCompositeOperation = 'destination-in'; gx.drawImage(s, 0, 0); sx.save(); sx.globalCompositeOperation = 'multiply'; sx.drawImage(g, 0, 0); sx.restore(); }
+  const x = c.getContext('2d'); x.drawImage(s, 0, 0);
+  return outline(c, sp);
+}
+
+/* Library Copy: in a clear plastic jacket, with the white spine label at the foot (refs: library-spine-label-*).
+   The label: portrait, rounded, a few mm up from the bottom, black upper-case sans, left aligned in its top half, grubby at the bottom.
+   The jacket: one bright glare streak down the spine, a fainter one on the far edge, scuffs and specks. */
+function libraryLines(b, rnd){
+  const film = b.kind === 'movie', who = surname(b.author) || surname(b.title) || 'XXX';
+  if (film) return ['DVD', rnd() < .5 ? 'FIC' : '791.43', who.slice(0, 5)];
+  return rnd() < .7 ? ['FICTION', who.slice(0, 8)] : ['823.914', who.slice(0, 3)];
+}
+function jacketGlare(x, w, h, m, rnd){
+  const band = (cx, bw, a) => {
+    const s = scratch(4, w, h), sx = s.getContext('2d'), g = sx.createLinearGradient(cx - bw/2, 0, cx + bw/2, 0);
+    g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.42, `rgba(255,255,255,${a*.55})`); g.addColorStop(.5, `rgba(255,255,255,${a})`); g.addColorStop(.58, `rgba(255,255,255,${a*.55})`); g.addColorStop(1, 'rgba(255,255,255,0)');
+    sx.fillStyle = g; sx.fillRect(0, 0, w, h);
+    const v = sx.createLinearGradient(0, 0, 0, h); for (let t = 0; t <= 1.001; t += .125) v.addColorStop(t, `rgba(0,0,0,${.5 + rnd()*.5})`);   // the plastic isn't flat: the streak comes and goes
+    sx.globalCompositeOperation = 'destination-in'; sx.fillStyle = v; sx.fillRect(0, 0, w, h);
+    x.save(); x.globalCompositeOperation = 'screen'; x.drawImage(s, 0, 0); x.restore();
+  };
+  x.save(); x.globalCompositeOperation = 'screen'; x.fillStyle = `rgba(255,255,255,${.05*m})`; x.fillRect(0, 0, w, h); x.restore();   // a little haze
+  band(w*(.24 + rnd()*.1), Math.max(6, w*.28), Math.min(.95, .85*m));
+  band(w*(.27 + rnd()*.04), Math.max(2, w*.05), Math.min(1, .9*m));                 // the hard core of the reflection
+  band(w*.86, Math.max(3, w*.12), Math.min(.5, .32*m));
+  x.save(); x.globalCompositeOperation = 'screen';
+  for (let n = Math.round(h/12*m); n > 0; n--){ x.fillStyle = `rgba(255,255,255,${.2 + rnd()*.35})`; x.beginPath(); x.arc(rnd()*w, rnd()*h, .4 + rnd()*.9, 0, 7); x.fill(); }   // specks
+  x.strokeStyle = `rgba(255,255,255,${.3*m})`; x.lineWidth = 1;
+  for (let n = 3 + Math.floor(rnd()*4); n > 0; n--){ const y0 = h*rnd(), x0 = w*rnd(); x.beginPath(); x.moveTo(x0, y0); x.lineTo(x0 + (rnd() - .5)*w*.7, y0 + h*(.01 + rnd()*.04)); x.stroke(); }   // scuffs
+  x.fillStyle = `rgba(255,255,255,${Math.min(.8, .55*m)})`; x.fillRect(0, 0, w, Math.max(1.5, h*.003));   // where the jacket folds over the top
+  x.restore();
+}
+function librarySpine(sp, b, k){
+  const c = glossySpine(sp, k*.5), x = c.getContext('2d'), w = c.width, h = c.height, rnd = rngOf(hashStr(b.id + ':library')), m = k/.7;
+  const lw = w*.82, lh = Math.min(h*.14, Math.max(lw*1.35, h*.075)), lx = (w - lw)/2 + (rnd() - .5)*w*.03, ly = h*(1 - .024) - lh, r = Math.min(6, lw*.08);
+  const label = () => rr(x, lx, ly, lw, lh, r);
+  x.save(); x.shadowColor = 'rgba(0,0,0,.3)'; x.shadowBlur = 1.5; x.shadowOffsetY = .5; x.fillStyle = '#FBFAF5'; label(); x.fill(); x.restore();
+  if (rnd() < .3){ x.strokeStyle = '#2F7FD8'; x.lineWidth = Math.max(1.5, lw*.05); rr(x, lx + lw*.07, ly + lw*.07, lw*.86, lh - lw*.14, r*.8); x.stroke(); }   // some libraries print a blue frame
+  const gg = x.createLinearGradient(0, ly + lh*.55, 0, ly + lh); gg.addColorStop(0, 'rgba(95,85,65,0)'); gg.addColorStop(1, 'rgba(95,85,65,.2)'); x.fillStyle = gg; label(); x.fill();
+  const lines = libraryLines(b, rnd), pad = lw*.14, font = s => `600 ${s}px "IBM Plex Sans", Arial, sans-serif`;
+  let fs = Math.min(lw*.24, 24, lh*.58/(lines.length*1.15)); x.font = font(fs);
+  const widest = Math.max(...lines.map(t => x.measureText(t).width)); if (widest > lw - 2*pad){ fs *= (lw - 2*pad)/widest; x.font = font(fs); }
+  x.fillStyle = '#141414'; x.textAlign = 'left'; x.textBaseline = 'top';
+  lines.forEach((t, i) => x.fillText(t, lx + pad, ly + lh*.1 + i*fs*1.15));
+  jacketGlare(x, w, h, m, rnd);                                            // over the label too: the jacket covers it
+  return outline(c, sp);
+}
+
+// pencil on paper: graphite only catches the tops of the grain, so the strokes break up
+let PENCIL = null;
+function pencilGrain(){
+  if (PENCIL) return PENCIL;
+  const n = 128, c = blank(n, n), x = c.getContext('2d'), im = x.createImageData(n, n), r = rngOf(13);
+  for (let i = 0; i < im.data.length; i += 4) im.data[i+3] = r() < .38 ? 255 : 0;
+  x.putImageData(im, 0, 0); return PENCIL = c;
+}
+/* Secondhand Bookshop (refs: secondhand-*): the sun got to it (reds and magentas go pink first, then it all pales and tans),
+   read hard (pale creases along the spine), rubbed at the edges, a pencil price, and on some a torn-off corner. */
+function secondhandSpine(sp, b, k, slot){
+  const w = sp.width, h = sp.height, c = copyOf(sp), rnd = rngOf(hashStr(b.id + ':second')), m = k/.7, film = b.kind === 'movie';
+  const {x, im} = pixels(c), d = im.data, crum = texGrey('crumpled', w, h, rnd, .2, .2), sun = (.55 + rnd()*.45)*m;
+  const tear = slot % 5 === 1 || rnd() < .2 ? {top: rnd() < .7, left: rnd() < .5, a: w*(.65 + rnd()*.3), b: w*(1 + rnd()*.7)} : null;
+  let lumTop = 0, nTop = 0;
+  for (let y = 0, p = 0; y < h; y++){
+    const f = Math.min(1, sun*(.8 + .25*(1 - y/h)));                       // the top got a little more of it
+    for (let X = 0; X < w; X++, p++){
+      const i = p*4; if (!d[i+3]) continue;
+      let r = d[i], g = d[i+1], bl = d[i+2];
+      const warm = Math.max(0, r - g)/255;                                   // reds, magentas, oranges: the inks that go first
+      g += (r - g)*Math.min(1, 1.2*warm*f); bl += (r - bl)*Math.min(1, .9*warm*f);
+      const l = .299*r + .587*g + .114*bl, cv = [r, g, bl];
+      for (let n = 0; n < 3; n++){ let v = l + (cv[n] - l)*(1 - .45*f); v += ([232, 220, 194][n] - v)*.32*f; d[i+n] = v; }
+      const e = Math.min(X, w - 1 - X, y, h - 1 - y), fib = crum ? crum[p]/255 : .5;   // rubbed along the edges, where the fibres show
+      if (e < 3){ const t = (1 - e/3)*.55*m*fib; d[i] += (226 - d[i])*t; d[i+1] += (218 - d[i+1])*t; d[i+2] += (198 - d[i+2])*t; }
+      if (y < 3 && fib < .3*m) d[i+3] = 0;                                   // the head of the spine, a little chipped
+      if (tear){
+        const dx = tear.left ? X : w - 1 - X, dy = tear.top ? y : h - 1 - y, s = dx/tear.a + dy/tear.b - 1 + (fib - .5)*.3;
+        if (s < 0){ d[i+3] = 0; continue; } else if (s < .14){ d[i] = 239; d[i+1] = 232; d[i+2] = 214; continue; }   // gone, with a pale torn edge
+      }
+      if (y > h*.05 && y < h*.12){ lumTop += .299*d[i] + .587*d[i+1] + .114*d[i+2]; nTop++; }
+    }
+  }
+  x.putImageData(im, 0, 0);
+  // reading creases: thin pale lines running along the spine, each with a hairline of shadow beside it
+  const creases = Math.round((film ? rnd()*1.5 : 2 + rnd()*4)*Math.min(1, m));
+  for (let n = 0; n < creases; n++){
+    let cx = w*(.18 + rnd()*.64); const y0 = h*rnd()*.35, y1 = Math.min(h*.97, y0 + h*(.25 + rnd()*.6)), pts = [];
+    for (let y = y0; y < y1; y += 5){ cx += (rnd() - .5)*.9; pts.push([cx, y, rnd() < .07]); }
+    for (const [col, dx, lw] of [[`rgba(0,0,0,${Math.min(.5, .35*m)})`, 1.3, 1.2], [`rgba(250,246,236,${Math.min(1, .9*m)})`, 0, 1.8]]){
+      x.strokeStyle = col; x.lineWidth = lw; x.beginPath();
+      pts.forEach(([px, py, gap], j) => { if (!j || gap) x.moveTo(px + dx, py); else x.lineTo(px + dx, py); }); x.stroke();
+    }
+  }
+  // a pencil price, written across the spine near the top (or the foot, if the top is torn): graphite shows light on dark covers
+  if (slot % 5 !== 2 || rnd() < .5){
+    const price = ['£3', '£2.50', '£4', '£1.50', '£5', '£6', '£2'][Math.floor(rnd()*7)], dark = nTop && lumTop/nTop < 110;
+    const fs = fitFont(x, price, HAND, Math.min(w*.5, 40), w*.86), y = tear && tear.top ? h*(.86 - rnd()*.04) : h*(.07 + rnd()*.05);
+    const s = scratch(4, w, h), sx = s.getContext('2d');
+    sx.translate(w/2, y); sx.rotate(-.1 + (rnd() - .5)*.16); sx.font = HAND(fs); sx.textAlign = 'center'; sx.textBaseline = 'middle';
+    sx.fillStyle = dark ? '#D6D6D6' : '#3F4043'; sx.fillText(price, 0, 0);
+    sx.lineWidth = Math.max(1, fs*.05); sx.strokeStyle = sx.fillStyle; sx.beginPath(); sx.moveTo(-fs*.6, fs*.55); sx.lineTo(fs*.55, fs*.5); sx.stroke();   // underlined
+    sx.setTransform(1, 0, 0, 1, 0, 0); texOver(sx, pencilGrain(), w, h, rnd, 'destination-out', .8, 1);                       // graphite breaks up on the grain
+    x.save(); x.globalAlpha = .95; x.drawImage(s, 0, 0); x.restore();
+  }
+  return c;   // no outline(): the torn corners let the background through
+}
+
+/* Clothbound (refs: cloth-penguin-*): cloth in a clear mid-tone of the spine's own colour, a fine weave,
+   pale bright foil: double rules and a small stamped pattern at head and foot, the title and author between. */
+function hsl(r, g, b){
+  r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn)/2, d = mx - mn;
+  if (!d) return [0, 0, l];
+  const s = d/(1 - Math.abs(2*l - 1)), h = mx === r ? ((g - b)/d + 6) % 6 : mx === g ? (b - r)/d + 2 : (r - g)/d + 4;
+  return [h*60, s, l];
+}
+const hslCss = (h, s, l) => `hsl(${Math.round(h)} ${Math.round(s*100)}% ${Math.round(l*100)}%)`;
+const FOIL = ['#B38C3A', '#F4DA86', '#DDBB5E', '#FFF2C0', '#C29C48'];   // pale, bright gold: champagne in the light, never brown
+function clothSpine(sp, b, k){
+  const w = sp.width, h = sp.height, c = blank(w, h), x = c.getContext('2d'), m = k/.7;
+  const one = blank(1, 1), ox = one.getContext('2d', {willReadFrequently:true}); ox.drawImage(sp, 0, 0, 1, 1);
+  const [H0, S0, L0] = hsl(...ox.getImageData(0, 0, 1, 1).data);
+  x.fillStyle = hslCss(H0, Math.max(.2, Math.min(.6, S0*1.1)), Math.max(.3, Math.min(.58, L0))); x.fillRect(0, 0, w, h);
+  texOver(x, texture('fabric'), w, h, rngOf(hashStr(b.id + ':cloth')), 'multiply', .38*m, Math.max(.25, w/360));
+  texOver(x, texture('fabric'), w, h, rngOf(hashStr(b.id + ':cloth2')), 'screen', .14*m, Math.max(.25, w/360));
+  const gold = x.createLinearGradient(0, 0, w, 0); FOIL.forEach((col, i) => gold.addColorStop([0, .3, .5, .72, 1][i], col));
+  const rule = y => { x.fillStyle = gold; x.fillRect(w*.12, y, w*.76, Math.max(1.5, h*.003)); x.fillRect(w*.12, y + Math.max(4, h*.008), w*.76, Math.max(1, h*.0015)); };
+  const lozenges = (y0, y1) => {                                           // the stamped pattern: a chain of small diamonds
+    const dw = w*.26, dh = Math.min(w*.34, (y1 - y0)/2), n = Math.max(1, Math.floor((y1 - y0)/(dh*1.25)));
+    x.fillStyle = gold;
+    for (let i = 0; i < n; i++){ const cy = y0 + (y1 - y0)*(i + .5)/n; x.beginPath(); x.moveTo(w/2, cy - dh/2); x.lineTo(w/2 + dw/2, cy); x.lineTo(w/2, cy + dh/2); x.lineTo(w/2 - dw/2, cy); x.closePath(); x.fill(); }
+  };
+  rule(h*.04); rule(h*.935); lozenges(h*.065, h*.12); lozenges(h*.875, h*.925);
+  const title = (b.title || '').toUpperCase(), author = (b.author || '').toUpperCase(), serif = fs => `600 ${fs}px "Cormorant Garamond", Georgia, serif`;
+  const letter = (text, from, to, maxFs) => {
+    if (!text.trim()) return;
+    const fs = fitFont(x, text, serif, maxFs, to - from);
+    x.save(); x.translate(w/2, 0); x.rotate(Math.PI/2); x.textBaseline = 'middle'; x.textAlign = 'center'; x.font = serif(fs);
+    x.fillStyle = 'rgba(0,0,0,.45)'; x.fillText(text, (from + to)/2 + 1, 1.5);                 // pressed into the cloth
+    const gv = x.createLinearGradient(0, -fs/2, 0, fs/2); gv.addColorStop(0, '#C9A247'); gv.addColorStop(.42, '#FFF3C4'); gv.addColorStop(.6, '#EFD27A'); gv.addColorStop(1, '#B8913C');
+    x.fillStyle = gv; x.fillText(text, (from + to)/2, 0); x.restore();
+  };
+  letter(title, h*.15, h*.68, w*.5); letter(author, h*.72, h*.85, w*.3);
+  texOver(x, grainTile(), w, h, rngOf(5), 'overlay', .2*m, 1);
+  shade(x, w, h);
+  return outline(c, sp);
+}
+
+/* Flash (refs: flash-*): one bare flash from the camera. Everything close is blown out and flattened, with a hard glare
+   on each glossy spine; the light falls off fast, so the ends go dark; a hard shadow is thrown behind (in renderStory). */
+function flashSpine(sp, b, k){
+  const c = copyOf(sp), {x, im} = pixels(c), d = im.data, m = k/.7, w = c.width, h = c.height, rnd = rngOf(hashStr(b.id + ':flash'));
+  for (let i = 0; i < d.length; i += 4){
+    if (!d[i+3]) continue;
+    const l = .299*d[i] + .587*d[i+1] + .114*d[i+2];
+    for (let n = 0; n < 3; n++){ const v = l + (d[i+n] - l)*(1 - .18*m); d[i+n] = v*(1 + .3*m) + 26*m; }   // overexposed, the colour thinned
+  }
+  x.putImageData(im, 0, 0);
+  // the flash bouncing straight back off the cover: a hard white streak, brightest at the middle of the spine
+  const cx = w*(.36 + rnd()*.14), bw = Math.max(4, w*.16), a = Math.min(.9, (.45 + rnd()*.3)*m);
+  const s = scratch(4, w, h), sx = s.getContext('2d'), g = sx.createLinearGradient(cx - bw/2, 0, cx + bw/2, 0);
+  g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.35, `rgba(255,255,255,${a*.7})`); g.addColorStop(.5, `rgba(255,255,255,${a})`); g.addColorStop(.65, `rgba(255,255,255,${a*.7})`); g.addColorStop(1, 'rgba(255,255,255,0)');
+  sx.fillStyle = g; sx.fillRect(0, 0, w, h);
+  const v = sx.createLinearGradient(0, 0, 0, h); v.addColorStop(0, 'rgba(0,0,0,.1)'); v.addColorStop(.55, 'rgba(0,0,0,1)'); v.addColorStop(1, 'rgba(0,0,0,.15)');
+  sx.globalCompositeOperation = 'destination-in'; sx.fillStyle = v; sx.fillRect(0, 0, w, h);
+  x.save(); x.globalCompositeOperation = 'screen'; x.drawImage(s, 0, 0); x.restore();
+  return outline(c, sp);
+}
+/* the light on the books: Rental Shop's green tube above; Flash's hot middle and fast falloff */
+function bookLight(f, x, rects, k){
+  if (!rects.length || (f !== 'rental' && f !== 'flash')) return;
+  const m = k/.7, x0 = Math.min(...rects.map(r => r.x)), x1 = Math.max(...rects.map(r => r.x + r.w)), y0 = Math.min(...rects.map(r => r.y)), y1 = Math.max(...rects.map(r => r.y + r.h));
+  x.save(); x.beginPath(); for (const r of rects) x.rect(r.x, r.y, r.w, r.h); x.clip();
+  if (f === 'rental'){
+    const g = x.createLinearGradient(0, y0, 0, y1); g.addColorStop(0, `rgba(170,255,200,${.3*m})`); g.addColorStop(.55, 'rgba(170,255,200,0)');
+    x.globalCompositeOperation = 'screen'; x.fillStyle = g; x.fillRect(x0, y0, x1 - x0, y1 - y0);
+    x.globalCompositeOperation = 'multiply'; x.fillStyle = `rgba(215,240,220,${.35*m})`; x.fillRect(x0, y0, x1 - x0, y1 - y0);
+  } else {
+    const cx = (x0 + x1)/2, cy = y0 + (y1 - y0)*.56, R = Math.max(x1 - x0, y1 - y0)*.72;
+    const g = x.createRadialGradient(cx, cy, 0, cx, cy, R); g.addColorStop(0, `rgba(255,255,255,${Math.min(.8, .5*m)})`); g.addColorStop(.3, `rgba(255,255,255,${Math.min(.5, .24*m)})`); g.addColorStop(.62, 'rgba(255,255,255,0)');
+    x.globalCompositeOperation = 'screen'; x.fillStyle = g; x.fillRect(x0, y0, x1 - x0, y1 - y0);
+    const v = x.createRadialGradient(cx, cy, R*.28, cx, cy, R); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(.6, `rgba(0,0,0,${Math.min(.5, .3*m)})`); v.addColorStop(1, `rgba(0,0,0,${Math.min(.9, .72*m)})`);
+    x.globalCompositeOperation = 'source-over'; x.fillStyle = v; x.fillRect(x0, y0, x1 - x0, y1 - y0);
+  }
+  x.restore();
+}
+/* Flash: the camera's orange date stamp, bottom right, 7-segment digits: '26 09 29 for today */
+function dateStamp(x){
+  const now = new Date(), p2 = n => String(n).padStart(2, '0'), text = `'${p2(now.getFullYear() % 100)} ${p2(now.getMonth() + 1)} ${p2(now.getDate())}`;
+  const SEG = {0:'abcdef', 1:'bc', 2:'abged', 3:'abgcd', 4:'fgbc', 5:'afgcd', 6:'afgedc', 7:'abc', 8:'abcdefg', 9:'abcdfg'};
+  const dh = 50, dw = 26, t = 6, gap = 10, space = 16;
+  let wAll = 0; for (const ch of text) wAll += ch === ' ' ? space : ch === "'" ? 12 : dw + gap;
+  let cx = W - 90 - wAll; const top = 1770;
+  x.save(); x.fillStyle = '#FF8A24'; x.shadowColor = 'rgba(255,110,20,.8)'; x.shadowBlur = 10; x.globalAlpha = .92;
+  const seg = (s, X, Y) => {
+    const r = {a:[X + t, Y, dw - 2*t, t], d:[X + t, Y + dh - t, dw - 2*t, t], g:[X + t, Y + dh/2 - t/2, dw - 2*t, t],
+               f:[X, Y + t, t, dh/2 - t*1.5], b:[X + dw - t, Y + t, t, dh/2 - t*1.5], e:[X, Y + dh/2 + t/2, t, dh/2 - t*1.5], c:[X + dw - t, Y + dh/2 + t/2, t, dh/2 - t*1.5]}[s];
+    x.fillRect(...r);
+  };
+  for (const ch of text){
+    if (ch === ' '){ cx += space; continue; }
+    if (ch === "'"){ x.fillRect(cx + 2, top, t, dh*.3); cx += 12; continue; }
+    for (const s of SEG[ch]) seg(s, cx, top);
+    cx += dw + gap;
+  }
+  x.restore();
+}
+/* the Wood shelf background option: a plank of the wood texture under the spines, on any background colour */
+function woodShelf(x, base){
+  const img = texture('wood'), y = base, hh = 54;
+  x.save();
+  if (img){ const pat = x.createPattern(img, 'repeat'); if (pat.setTransform) pat.setTransform(new DOMMatrix().scaleSelf(.7, .7)); x.fillStyle = pat; x.fillRect(40, y, W - 80, hh);
+    x.globalCompositeOperation = 'multiply'; x.fillStyle = '#A8764C'; x.fillRect(40, y, W - 80, hh); x.globalCompositeOperation = 'source-over'; }
+  else { x.fillStyle = '#8A6040'; x.fillRect(40, y, W - 80, hh); }
+  const g = x.createLinearGradient(0, y, 0, y + hh); g.addColorStop(0, 'rgba(255,236,210,.22)'); g.addColorStop(.16, 'rgba(255,236,210,0)'); g.addColorStop(1, 'rgba(0,0,0,.3)');
+  x.fillStyle = g; x.fillRect(40, y, W - 80, hh);
+  const sh = x.createLinearGradient(0, y + hh, 0, y + hh + 56); sh.addColorStop(0, 'rgba(0,0,0,.22)'); sh.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = sh; x.fillRect(40, y + hh, W - 80, 56);
+  x.restore();
+}
 // how worn each tape on this shelf is: about 1 in 4 almost clean, most medium, one heavily worn
 function wearLevels(n, rnd){
   const lv = Array.from({length: n}, () => rnd() < .25 ? .08 : .45 + rnd()*.25);
   if (n) lv[Math.floor(rnd()*n)] = 1;
   return lv;
 }
-const WORN = new Map();   // worn spines already made, so typing a caption doesn't wear them all again
-function spineFor(b, w, h, f, k, fast, level){
+const WORN = new Map();   // spines already made for a filter, so typing a caption doesn't make them all again
+function spineFor(b, w, h, f, k, fast, level, slot = 0){
+  if (f === 'clean') return makeSpine(b, w, h);
+  const key = [f, b.id, b.title, b.author, b.style, b.font, b.bg, b.fg, b.choice, b.spineImg && b.spineImg.width, Math.round(w), Math.round(h), level, k, fast, slot].join('|');
+  if (WORN.has(key)) return WORN.get(key);
   const sp = makeSpine(b, w, h);
-  if (f === 'vhs'){
-    const key = [b.id, b.title, b.author, b.style, b.font, b.bg, b.fg, b.choice, b.spineImg && b.spineImg.width, Math.round(w), Math.round(h), level, k, fast].join('|');
-    if (!WORN.has(key)){ if (WORN.size > 60) WORN.clear(); WORN.set(key, wornSpine(sp, b, Math.min(1, level*k/.7), fast)); }
-    return WORN.get(key);
-  }
-  if (f === 'faded') return fadedSpine(sp, k);
-  if (f === 'glossy') return glossySpine(sp, k);
-  if (f === 'grain') return grainSpine(sp, k);
-  return sp;
+  const c = f === 'vhs' ? wornSpine(sp, b, Math.min(1, level*k/.7), fast) : f === 'rental' ? rentalSpine(sp, b, level, k, fast, slot)
+    : f === 'faded' ? fadedSpine(sp, k) : f === 'glossy' ? glossySpine(sp, k) : f === 'grain' ? grainSpine(sp, k)
+    : f === 'library' ? librarySpine(sp, b, k) : f === 'secondhand' ? secondhandSpine(sp, b, k, slot) : f === 'cloth' ? clothSpine(sp, b, k)
+    : f === 'flash' ? flashSpine(sp, b, k) : sp;
+  if (WORN.size > 80) WORN.clear();
+  WORN.set(key, c); return c;
 }
 
 /* ---------- story ---------- */
@@ -867,12 +1183,8 @@ function renderStory(x = sctx, f = settings.filter, fast = false){
   x.fillStyle = T.ink; x.font = '500 52px "Geist Mono", ui-monospace, monospace'; x.textBaseline = 'alphabetic'; x.textAlign = 'left';
   let y = 290; if (settings.caption.trim()) for (const ln of wrapText(x, settings.caption, 900)){ x.fillText(ln, 90, y); y += 68; }
   const base = 1700;
-  if (settings.theme === 'shelf' && settings.layout !== 'covers'){
-    const g = x.createLinearGradient(0,base,0,base+54); g.addColorStop(0,'#8A6040'); g.addColorStop(1,'#5B3C25'); x.fillStyle = g; x.fillRect(40,base,W-80,54);
-    x.strokeStyle = 'rgba(40,24,12,.25)'; x.lineWidth = 2; for (let i = 0; i < 5; i++){ x.beginPath(); x.moveTo(40,base+10+i*9); x.bezierCurveTo(300,base+4+i*10,700,base+16+i*8,W-40,base+8+i*9); x.stroke(); }
-    const sh = x.createLinearGradient(0,base+54,0,base+110); sh.addColorStop(0,'rgba(0,0,0,.18)'); sh.addColorStop(1,'rgba(0,0,0,0)'); x.fillStyle = sh; x.fillRect(40,base+54,W-80,56);
-  }
-  const dark = settings.theme === 'ink' || settings.theme === 'dark', shadow = dark ? 'rgba(0,0,0,.5)' : 'rgba(0,0,0,.15)', seam = dark ? 'rgba(0,0,0,.7)' : 'rgba(0,0,0,.4)';
+  if (settings.wood && settings.layout !== 'covers') woodShelf(x, base);
+  const dark = settings.theme === 'ink' || settings.theme === 'dark' || settings.theme === 'forest', shadow = dark ? 'rgba(0,0,0,.5)' : 'rgba(0,0,0,.15)', flashShadow = `rgba(0,0,0,${Math.min(.9, (dark ? .75 : .5)*k/.7)})`, seam = dark ? 'rgba(0,0,0,.7)' : 'rgba(0,0,0,.4)';
   if (books.length && settings.layout === 'covers'){
     const n = books.length, cols = n === 1 ? 1 : n <= 4 ? 2 : n <= 9 ? 3 : 4, rows = Math.ceil(n/cols), gap = 30, top = Math.max(y+30, 400), bottom = 1780;
     const cellW = Math.min(n === 1 ? 760 : 900, (900 - gap*(cols-1))/cols), cellH = (bottom - top - gap*(rows-1))/rows;
@@ -887,30 +1199,33 @@ function renderStory(x = sctx, f = settings.filter, fast = false){
   } else if (books.length && settings.layout === 'row'){
     const s = sizes(1160, books.length <= 2 ? 220 : 165);
     // Worn VHS: tapes are all one height, give or take 2 %
-    if (f === 'vhs') s.forEach((z,i) => { if (isCover(books[i])) return; const h1 = 1160*(1 + (rnd() - .5)*.04); if (isReal(books[i])) z.w *= h1/z.h; z.h = h1; });
+    if (f === 'vhs' || f === 'rental') s.forEach((z,i) => { if (isCover(books[i])) return; const h1 = 1160*(1 + (rnd() - .5)*.04); if (isReal(books[i])) z.w *= h1/z.h; z.h = h1; });
     const gaps = books.map(() => rnd()*2);   // packed: 0-2px apart
     const room = 900 - gaps.slice(1).reduce((a,v) => a+v, 0), sumW = s.reduce((a,z) => a+z.w, 0);
     if (sumW > room){ const k2 = room/sumW; s.forEach((z,i) => { z.w *= k2; if (isCover(books[i])) z.h *= k2; else if (isReal(books[i]) || isCase(books[i])) z.h *= Math.max(k2, .75); }); }
-    const sps = books.map((b,i) => spineFor(b, s[i].w, s[i].h, f, k, fast, levels[i]));
+    const sps = books.map((b,i) => spineFor(b, s[i].w, s[i].h, f, k, fast, levels[i], i));
     let cx = (W - (sps.reduce((a,sp) => a + sp.width, 0) + gaps.slice(1).reduce((a,v) => a+v, 0)))/2;
     const placed = sps.map((sp,i) => { if (i) cx += gaps[i]; const p = {x:cx, w:sp.width, h:sp.height}; cx += sp.width; return p; });
     sps.forEach((sp,i) => {
-      const tilt = f === 'vhs' ? (rnd() - .5)*1.2*Math.PI/180 : 0;   // ±0.6°
-      x.save(); x.shadowColor = shadow; x.shadowBlur = 18; x.shadowOffsetY = 6; x.translate(placed[i].x + sp.width/2, base); x.rotate(tilt); x.drawImage(sp, -sp.width/2, -sp.height); x.restore();
+      const tilt = f === 'vhs' || f === 'rental' ? (rnd() - .5)*1.2*Math.PI/180 : 0;   // ±0.6°
+      x.save(); x.shadowColor = f === 'flash' ? flashShadow : shadow; x.shadowBlur = f === 'flash' ? 1 : 18; x.shadowOffsetX = f === 'flash' ? 26 : 0; x.shadowOffsetY = f === 'flash' ? 12 : 6; x.translate(placed[i].x + sp.width/2, base); x.rotate(tilt); x.drawImage(sp, -sp.width/2, -sp.height); x.restore();
     });
+    bookLight(f, x, placed.map(pl => ({x:pl.x, y:base - pl.h, w:pl.w, h:pl.h})), k);
     // where two spines meet: a thin dark line down the shorter one
     x.fillStyle = seam;
     for (let i = 1; i < placed.length; i++){ const a = placed[i-1], b2 = placed[i], mid = (a.x + a.w + b2.x)/2, hh = Math.min(a.h, b2.h); x.fillRect(mid - 1.5, base - hh, 3, hh); }
   } else if (books.length){
     const flat = books.map(asSpine), s = sizes(800, 125, flat), sumT = s.reduce((a,z) => a+z.w, 0), k2 = Math.min(1, 1220/sumT); let cy = base;
     const placed = [];
-    flat.forEach((b,i) => { const t = s[i].w*k2, L = s[i].h, sp = spineFor(b, t, L, f, k, fast, levels[i]); cy -= sp.width; const cx = (W-L)/2 + b.jit*38;
-      x.save(); x.shadowColor = shadow; x.shadowBlur = 16; x.shadowOffsetY = 5; x.translate(Math.round(cx), Math.round(cy + sp.width)); x.rotate(-Math.PI/2); x.drawImage(sp,0,0); x.restore();
+    flat.forEach((b,i) => { const t = s[i].w*k2, L = s[i].h, sp = spineFor(b, t, L, f, k, fast, levels[i], i); cy -= sp.width; const cx = (W-L)/2 + b.jit*38;
+      x.save(); x.shadowColor = f === 'flash' ? flashShadow : shadow; x.shadowBlur = f === 'flash' ? 1 : 16; x.shadowOffsetX = f === 'flash' ? 20 : 0; x.shadowOffsetY = f === 'flash' ? 12 : 5; x.translate(Math.round(cx), Math.round(cy + sp.width)); x.rotate(-Math.PI/2); x.drawImage(sp,0,0); x.restore();
       placed.push({x:Math.round(cx), y:Math.round(cy), L:sp.height, t:sp.width}); });
+    bookLight(f, x, placed.map(pl => ({x:pl.x, y:pl.y, w:pl.L, h:pl.t})), k);
     // lying books meet along a line too
     x.fillStyle = seam;
     for (let i = 1; i < placed.length; i++){ const lo = placed[i-1], up = placed[i], x0 = Math.max(lo.x, up.x), x1 = Math.min(lo.x + lo.L, up.x + up.L); if (x1 > x0) x.fillRect(x0, lo.y - 1.5, x1 - x0, 3); }
   }
+  if (f === 'flash' && books.length) dateStamp(x);
   x.fillStyle = T.mark; x.font = '400 24px "Geist Mono", monospace'; x.textAlign = 'center'; x.fillText('made with spinestack', W/2, 1868);
 }
 /* the Filter row: a live thumbnail of this shelf in each look */
@@ -1307,7 +1622,8 @@ function bindSeg(id, key, after){
   const seg = $(id), sync = () => seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === settings[key])));
   seg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; settings[key] = b.dataset.v; sync(); after && after(); redraw(); }); sync();
 }
-bindSeg('#theme', 'theme');
+bindSeg('#theme', 'theme', () => { if (settings.theme === 'shelf'){ settings.wood = true; $('#woodShelf').checked = true; } });   // Shelf has always come with its shelf
+$('#woodShelf').addEventListener('change', e => { settings.wood = e.target.checked; redraw(); });
 renderFilterRow();
 function syncFilter(){
   document.querySelectorAll('#filters .flt').forEach(bt => bt.setAttribute('aria-pressed', String(bt.dataset.v === settings.filter)));
@@ -1315,7 +1631,7 @@ function syncFilter(){
 $('#filters').addEventListener('click', e => { const bt = e.target.closest('.flt'); if (!bt) return; settings.filter = bt.dataset.v; syncFilter(); redraw(); });
 $('#intensity').addEventListener('input', e => { settings.intensity = +e.target.value; redraw(); });
 syncFilter();
-['cardboard', 'cracks', 'crumpled', 'paper', 'scratches-1', 'scratches-2', 'scratches-3'].forEach(texture);   // small, and needed by the first thumbnails
+['cardboard', 'cracks', 'crumpled', 'paper', 'fabric', 'wood', 'scratches-1', 'scratches-2', 'scratches-3'].forEach(texture);   // small, and needed by the first thumbnails
 bindSeg('#layout', 'layout', () => { $('#variedWrap').hidden = settings.layout === 'covers'; });
 $('#caption').addEventListener('input', e => { settings.caption = e.target.value; redraw(); });
 $('#varied').addEventListener('change', e => { settings.varied = e.target.checked; redraw(); });
