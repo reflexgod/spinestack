@@ -102,13 +102,36 @@ async function tmdbFilms(q, token) {
   }));
 }
 async function olBooks(q) {
-  const r = await getJSON('https://openlibrary.org/search.json?limit=5&fields=title,author_name,first_publish_year,cover_i&q=' + encodeURIComponent(q), {headers: {'User-Agent': UA}});
-  return (r.docs || []).map(d => ({kind: 'book', title: d.title || '', year: String(d.first_publish_year || ''), creator: (d.author_name || [''])[0], cover: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-L.jpg` : ''}));
+  const r = await getJSON('https://openlibrary.org/search.json?limit=5&fields=title,author_name,first_publish_year,publish_year,cover_i&q=' + encodeURIComponent(q), {headers: {'User-Agent': UA}});
+  const docs = r.docs || [];
+  // Open Library's first year is sometimes a stray record (It Ends With Us: 2012, The Bell Jar: 1948).
+  // Wikidata's publication date is right for known books; without it, a lone early year with a gap after it is dropped.
+  const years = await Promise.all(docs.map(d => wikidataYear(d.title, (d.author_name || [''])[0]).then(y => y ? String(y) : olYear(d))));
+  return docs.map((d, i) => ({kind: 'book', title: d.title || '', year: years[i], creator: (d.author_name || [''])[0], cover: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-L.jpg` : ''}));
+}
+function olYear(d) {
+  const ys = (d.publish_year || []).filter(y => y > 1000).sort((a, b) => a - b), first = d.first_publish_year || ys[0];
+  if (!first) return '';
+  const next = ys.find(y => y > first);
+  return next && next - first > 2 && ys.length > 3 ? '' : String(first);   // unsure: show no year
+}
+async function wikidataYear(title, author) {
+  try {
+    const want = words(title).join(' '), last = words(author).slice(-1)[0] || '', init = {headers: {'User-Agent': UA}};
+    if (!want || !last) return null;
+    const s = await getJSON('https://www.wikidata.org/w/api.php?action=wbsearchentities&format=json&language=en&type=item&limit=7&search=' + encodeURIComponent(title), init);
+    // same title, and the author's surname in the description ("2016 novel by Colleen Hoover")
+    const hit = (s.search || []).find(x => words(x.label).join(' ') === want && words(x.description).includes(last));
+    if (!hit) return null;
+    const e = (await getJSON(`https://www.wikidata.org/wiki/Special:EntityData/${hit.id}.json`, init)).entities[hit.id];
+    const ys = ((e.claims || {}).P577 || []).map(c => c.mainsnak.datavalue && parseInt(c.mainsnak.datavalue.value.time.slice(1, 5), 10)).filter(y => y > 1000);
+    return ys.length ? Math.min(...ys) : null;
+  } catch { return null; }
 }
 async function identify(p, env, cors, ctx) {
   const q = clean(p.get('q'), 120), want = ['movie', 'book'].includes(p.get('want')) ? p.get('want') : 'all';
   if (!q) return json({error: 'Type a title to search.'}, 400, cors);
-  const {body, hit} = await cached(env, ctx, `id1:${want}:${q.toLowerCase()}`, MONTH, async () => {
+  const {body, hit} = await cached(env, ctx, `id2:${want}:${q.toLowerCase()}`, MONTH, async () => {
     const [f, b] = await Promise.allSettled([want !== 'book' ? tmdbFilms(q, env.TMDB_TOKEN) : [], want !== 'movie' ? olBooks(q) : []]);
     if (f.status === 'rejected' && b.status === 'rejected') throw new Error('TMDB and Open Library did not answer');
     return {results: [...(f.value || []), ...(b.value || [])]};
@@ -147,14 +170,43 @@ async function brave(q, key) {
   if (!r.ok) throw new Error('Brave answered ' + r.status);
   return (await r.json()).results || [];
 }
+/* What Brave said for one title and round, kept as it came (trimmed to the fields we use). The key has no
+   filter or scoring version in it: when the filters change they run again on this, with no new search. */
+const LEGACY = ['sc11', 'sc10', 'sc9', 'sc8', 'sc7', 'sc6'];
+const slim = list => list.map(r => ({title: r.title || '', url: r.url || '',
+  properties: {url: r.properties && r.properties.url, width: (r.properties && r.properties.width) || 0, height: (r.properties && r.properties.height) || 0},
+  thumbnail: r.thumbnail ? {width: r.thumbnail.width || 0, height: r.thumbnail.height || 0} : null}));
+async function rawScans(env, ctx, kind, title, year, creator, round, cacheOnly) {
+  // book searches don't use the year (and book years get corrected), so a book's key has none
+  const key = `raw1:${kind}:${words(title).join(' ')}:${kind === 'book' ? '' : year}:${round}`, keep = n => ({expirationTtl: n ? 365 * DAY : 7 * DAY});
+  const hit = await env.SPINE_CACHE.get(key, 'json');
+  if (hit) return {list: hit, from: 'raw'};
+  // before raw1, only the filtered results were kept (sc6-sc11). They still carry everything the filters read,
+  // so they stand in for the raw answer instead of a new search, and are copied to raw1 for next time.
+  for (const v of LEGACY) {
+    let old = await env.SPINE_CACHE.get(`${v}:${kind}:${title.toLowerCase()}:${year}:${creator.toLowerCase()}:${round}`, 'json');
+    if (!old && kind === 'book') {   // stored under whatever year the book had then
+      const k = (await env.SPINE_CACHE.list({prefix: `${v}:book:${title.toLowerCase()}:`, limit: 50})).keys.find(x => x.name.endsWith(':' + round));
+      if (k) old = await env.SPINE_CACHE.get(k.name, 'json');
+    }
+    if (!old || !old.results) continue;
+    const list = old.results.map(r => ({title: r.title || '', url: r.source || '', properties: {url: r.img, width: r.width || 0, height: r.height || 0}, thumbnail: null}));
+    ctx.waitUntil(env.SPINE_CACHE.put(key, JSON.stringify(list), keep(list.length)));
+    return {list, from: v};
+  }
+  if (cacheOnly || !env.BRAVE_API_KEY) return {list: [], from: 'miss'};
+  const list = slim(await brave(queryFor(kind, round, title, year, creator), env.BRAVE_API_KEY));
+  ctx.waitUntil(env.SPINE_CACHE.put(key, JSON.stringify(list), keep(list.length)));
+  return {list, from: 'brave'};
+}
 async function scans(p, env, cors, ctx) {
   const title = clean(p.get('title'), 120), year = clean(p.get('year'), 4).replace(/\D/g, ''), creator = clean(p.get('creator'), 80);
   const kind = p.get('kind') === 'book' ? 'book' : 'movie', round = Math.max(0, Math.min(ROUNDS - 1, parseInt(p.get('round'), 10) || 0));
   if (!title) return json({error: 'A title is needed.'}, 400, cors);
   const archived = round === 0 ? await archiveFor(env, kind, title, year, creator) : [];
-  if (!env.BRAVE_API_KEY) return json({results: archived, round, more: false}, 200, cors);
-  const {body, hit} = await cached(env, ctx, `sc11:${kind}:${title.toLowerCase()}:${year}:${creator.toLowerCase()}:${round}`, MONTH, async () => {
-    const found = await brave(queryFor(kind, round, title, year, creator), env.BRAVE_API_KEY);
+  // cacheonly=1: never search Brave, answer from what's stored (for tests)
+  const {list: found, from} = await rawScans(env, ctx, kind, title, year, creator, round, p.get('cacheonly') === '1');
+  const body = (() => {
     // wraps: back | spine | front. Films 1.3-1.9 wide (Blu-ray wraps run wider than DVDs), books 1.2-2.4.
     // Also single spines: at least 4 times taller than wide.
     const [lo, hi] = kind === 'movie' ? [1.3, 1.9] : [1.2, 2.4];
@@ -187,8 +239,8 @@ async function scans(p, env, cors, ctx) {
     }
     out.sort((a, b) => b.rank - a.rank);
     return {results: out.slice(0, 10).map(({rank, ...r}) => r)};
-  });
-  return json({results: [...archived, ...body.results], round, more: round < ROUNDS - 1}, 200, cors, {'X-Cache': hit ? 'HIT' : 'MISS'});
+  })();
+  return json({results: [...archived, ...body.results], round, more: round < ROUNDS - 1}, 200, cors, {'X-Cache': from});
 }
 
 /* ---------- /img: CORS image proxy ---------- */

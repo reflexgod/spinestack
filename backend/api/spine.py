@@ -122,6 +122,22 @@ def find_spine(img: Image.Image, kind: str = "movie") -> SpineCut | None:
     text = float(np.abs(np.diff(g)).mean()) if len(g) > 1 else 0.0
     penalty = (0.6 if abs(aspect - 4 / 3) < 0.012 else 1) * (0.7 if text < 2.0 else 1)   # 4:3 is a phone photo, not a scan
 
+    # Books: scans are rare and look-alikes common (3D mock-ups, a strip of one cover, two books side by side,
+    # wooden boards for "Norwegian Wood"). Keep only a flat scan: a busy edge all round, clear edges on both
+    # sides of the spine, straight up and down, and an even colour top to bottom.
+    if not film:
+        at = lambda x: float(edge[max(0, x - 3):x + 4].max())
+        def drift(x: int) -> float:
+            pos = []
+            for a, b in ((0.1, 0.4), (0.6, 0.9)):
+                band = px[int(ch * a):int(ch * b):2].mean(axis=0)
+                lo_i, hi_i = max(3, x - 12), min(cw - 4, x + 12)
+                e = [_dist(band[i + 1:i + 4].mean(axis=0), band[i - 3:i].mean(axis=0)) for i in range(lo_i, hi_i + 1)]
+                pos.append(lo_i + int(np.argmax(e)))
+            return abs(pos[0] - pos[1]) / cw
+        if border < 20 or min(at(bl), at(br)) < 25 or u < 0.9 or max(drift(bl), drift(br)) > 0.012:
+            return None
+
     score = round(100 * min(1, e / 60) * fit * (0.5 + 0.5 * u) * penalty)
     if score < 20:
         return None
