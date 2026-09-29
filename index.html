@@ -678,27 +678,20 @@ function fadedSpine(sp, k){
   }
   x.putImageData(im, 0, 0); return c;
 }
-/* Glossy: a plastic cover. A bright highlight along the top edge and slightly deeper contrast on each spine;
-   the diagonal light band across the whole shelf is drawn in renderStory (it spans all the spines). */
+/* Glossy: a plastic cover catching the light. A soft sheen down each spine, a thin line of light along the top, a little more contrast. */
 function glossySpine(sp, k){
   const c = copyOf(sp), w = c.width, h = c.height, x = c.getContext('2d', {willReadFrequently:true}), im = x.getImageData(0, 0, w, h), d = im.data, m = k/.7, con = 1 + .14*m;
   for (let i = 0; i < d.length; i += 4){ if (!d[i+3]) continue; for (let n = 0; n < 3; n++) d[i+n] = (d[i+n] - 128)*con + 128; }
   x.putImageData(im, 0, 0);
   x.globalCompositeOperation = 'screen';
-  const top = Math.max(6, h*.035), g = x.createLinearGradient(0, 0, 0, top);
-  g.addColorStop(0, `rgba(255,255,255,${Math.min(1, .85*m)})`); g.addColorStop(.35, `rgba(255,255,255,${.35*m})`); g.addColorStop(1, 'rgba(255,255,255,0)');
-  x.fillStyle = g; x.fillRect(0, 0, w, top);
+  // a plastic cover catching the light: one soft vertical sheen a quarter of the way in
+  const g = x.createLinearGradient(0, 0, w, 0), a = Math.min(.5, .2*m);
+  g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.175, 'rgba(255,255,255,0)'); g.addColorStop(.25, `rgba(255,255,255,${a})`);
+  g.addColorStop(.325, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = g; x.fillRect(0, 0, w, h);
+  // and a very thin highlight along the top edge
+  x.fillStyle = `rgba(255,255,255,${Math.min(.7, .45*m)})`; x.fillRect(0, 0, w, Math.max(1, Math.round(h*.0025)));
   return outline(c, sp);
-}
-function glossBand(x, rects, m){
-  // one soft diagonal band of light across the whole shelf, on the books only
-  if (!rects.length) return;
-  const x0 = Math.min(...rects.map(r => r.x)), x1 = Math.max(...rects.map(r => r.x + r.w)), y0 = Math.min(...rects.map(r => r.y)), y1 = Math.max(...rects.map(r => r.y + r.h));
-  x.save(); x.beginPath(); for (const r of rects) x.rect(r.x, r.y, r.w, r.h); x.clip();
-  const g = x.createLinearGradient(x0, y0, x1, y1);
-  g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.3, 'rgba(255,255,255,0)'); g.addColorStop(.42, `rgba(255,255,255,${.3*m})`);
-  g.addColorStop(.5, `rgba(255,255,255,${.4*m})`); g.addColorStop(.58, `rgba(255,255,255,${.3*m})`); g.addColorStop(.7, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(255,255,255,0)');
-  x.globalCompositeOperation = 'screen'; x.fillStyle = g; x.fillRect(x0, y0, x1 - x0, y1 - y0); x.restore();
 }
 /* Grain: film grain you can see at story size (2px grains, about 12 %), and a very light paper texture */
 let GRAIN2 = null;
@@ -756,11 +749,19 @@ function wornSpine(sp, b, level, fast){
 
   // One pass over every pixel: the colour (deep blacks, a touch more contrast, a little less colour, a light
   // warm cast), then crisp near-white crackle on the dark parts and a crisp broken line along the long edges.
-  const crk = texGrey('cracks', w, h, rnd, .14, .22), pw = Math.ceil(w/4), patch = texGrey('crumpled', pw, Math.ceil(h/4), rnd, .3, .3);
+  const crk = texGrey('cracks', w, h, rnd, .14, .22);
+  // crackle lives in 1-2 zones on each spine (along an edge, at an end, down a crease line), clean in between
+  const zones = Array.from({length: 1 + (rnd() < .45 ? 1 : 0)}, () => {
+    const t = rnd();
+    if (t < .4){ const side = rnd() < .5, y0 = h*rnd()*.6; return {x0: side ? 0 : w*.65, x1: side ? w*.35 : w, y0, y1: y0 + h*(.2 + rnd()*.3)}; }   // along a long edge
+    if (t < .75){ const top = rnd() < .5; return {x0: 0, x1: w, y0: top ? 0 : h*(.78 + rnd()*.06), y1: top ? h*(.16 + rnd()*.06) : h}; }         // an end
+    const cx = w*(.25 + rnd()*.5), y0 = h*rnd()*.5; return {x0: cx - w*.12, x1: cx + w*.12, y0, y1: y0 + h*(.25 + rnd()*.3)};                   // down a crease line
+  });
+  const soft = Math.max(4, w*.12), zoneAt = (X, y) => { let m = 0; for (const z of zones){ const dx = Math.max(z.x0 - X, 0, X - z.x1), dy = Math.max(z.y0 - y, 0, y - z.y1), dd = Math.max(dx, dy*.25); m = Math.max(m, 1 - Math.min(1, dd/soft)); } return m; };
   const pct = (g, q) => { if (!g) return 256; const hist = new Uint32Array(256); for (let i = 0; i < g.length; i++) hist[g[i]]++; let n = 0, lim = g.length*q; for (let v = 0; v < 256; v++){ n += hist[v]; if (n >= lim) return v; } return 255; };
   const im = x.getImageData(0, 0, w, h), d = im.data;
   const sat = .9, con = 1.12, lift = 6, warm = .5 + .5*level;
-  const crT = pct(crk, .955 - .04*level), eT = pct(crk, .84 - .12*level), ew = Math.max(2, w*.055), crA = .55 + .45*level;   // crackle: the brightest 4-8 % of the texture only
+  const crT = pct(crk, .973 - .025*level), eT = pct(crk, .84 - .12*level), ew = Math.max(2, w*.055), crA = .55 + .45*level;   // crackle: the brightest 2.5-5 % of the texture only
   const flakes = [];
   for (let y = 0, p = 0; y < h; y++) for (let X = 0; X < w; X++, p++){
     const i = p*4; if (!d[i+3]) continue;
@@ -774,7 +775,7 @@ function wornSpine(sp, b, level, fast){
       const v = crk[p];
       // crackle: a sharp, near-white line where the print is dark; almost none where it's light
       if (v > crT){
-        const m = patch ? Math.min(1, Math.max(0, (patch[(y >> 2)*pw + (X >> 2)] - 110)/100)) : 1, dark = Math.min(1, Math.max(0, (115 - L)/45));   // truly dark parts only, and not everywhere
+        const m = zoneAt(X, y), dark = Math.min(1, Math.max(0, (115 - L)/45));   // truly dark parts only, and only in this spine's zones
         const a = dark*crA*(.25 + .75*m);
         if (a > .3){ r += (FLAKE[0] - r)*.95; g += (FLAKE[1] - g)*.95; bl += (FLAKE[2] - bl)*.95; if (a > .7 && v > crT + 30 && rnd() < .004*level) flakes.push([X, y]); }
       }
@@ -897,7 +898,6 @@ function renderStory(x = sctx, f = settings.filter, fast = false){
       const tilt = f === 'vhs' ? (rnd() - .5)*1.2*Math.PI/180 : 0;   // ±0.6°
       x.save(); x.shadowColor = shadow; x.shadowBlur = 18; x.shadowOffsetY = 6; x.translate(placed[i].x + sp.width/2, base); x.rotate(tilt); x.drawImage(sp, -sp.width/2, -sp.height); x.restore();
     });
-    if (f === 'glossy') glossBand(x, placed.map(pl => ({x:pl.x, y:base - pl.h, w:pl.w, h:pl.h})), k/.7);
     // where two spines meet: a thin dark line down the shorter one
     x.fillStyle = seam;
     for (let i = 1; i < placed.length; i++){ const a = placed[i-1], b2 = placed[i], mid = (a.x + a.w + b2.x)/2, hh = Math.min(a.h, b2.h); x.fillRect(mid - 1.5, base - hh, 3, hh); }
@@ -907,7 +907,6 @@ function renderStory(x = sctx, f = settings.filter, fast = false){
     flat.forEach((b,i) => { const t = s[i].w*k2, L = s[i].h, sp = spineFor(b, t, L, f, k, fast, levels[i]); cy -= sp.width; const cx = (W-L)/2 + b.jit*38;
       x.save(); x.shadowColor = shadow; x.shadowBlur = 16; x.shadowOffsetY = 5; x.translate(Math.round(cx), Math.round(cy + sp.width)); x.rotate(-Math.PI/2); x.drawImage(sp,0,0); x.restore();
       placed.push({x:Math.round(cx), y:Math.round(cy), L:sp.height, t:sp.width}); });
-    if (f === 'glossy') glossBand(x, placed.map(pl => ({x:pl.x, y:pl.y, w:pl.L, h:pl.t})), k/.7);
     // lying books meet along a line too
     x.fillStyle = seam;
     for (let i = 1; i < placed.length; i++){ const lo = placed[i-1], up = placed[i], x0 = Math.max(lo.x, up.x), x1 = Math.min(lo.x + lo.L, up.x + up.L); if (x1 > x0) x.fillRect(x0, lo.y - 1.5, x1 - x0, 3); }
