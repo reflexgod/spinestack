@@ -9,6 +9,9 @@
      Leave empty when the backend serves this page itself (localhost:8000).
      With no backend, search is off but uploads still work. */
   window.SPINESTACK_API = "";
+  /* TMDB v4 "API Read Access Token" (long, starts with eyJ) or v3 API key, for film search
+     without the backend. Anyone who reads this page's source can see it. */
+  window.SPINESTACK_TMDB = "";
 </script>
 </head>
 <body>
@@ -71,6 +74,7 @@ td.no{color:var(--grey);font-variant-numeric:tabular-nums}
 .found{display:flex;gap:18px;overflow-x:auto;padding:8px 0 4px;align-items:flex-end}
 .pick{flex:none;display:grid;gap:6px;justify-items:center;background:none;border:0;padding:0;cursor:pointer;font:inherit;color:inherit}
 .pick img{height:320px;width:auto;display:block}
+.pick img.cov{aspect-ratio:auto 2/3;background:#F2F2F2}
 .pick span{font-size:11px}
 .pick:hover span{text-decoration:underline}
 .gen{height:320px;width:88px;border:1px dashed var(--ink);display:grid;place-items:center;text-align:center;font-size:11px;text-transform:uppercase;line-height:1.4}
@@ -83,7 +87,7 @@ td.no{color:var(--grey);font-variant-numeric:tabular-nums}
 
 .shelfgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:40px;align-items:start;margin-top:8px}
 ol.books{list-style:none;margin:0;padding:0;border-top:1px solid var(--ink)}
-.book{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:12px;padding:12px 0;border-bottom:1px solid var(--ink)}
+ol.books .book{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:12px;padding:12px 0;border-bottom:1px solid var(--ink)}
 .thumb{width:42px;height:62px;object-fit:cover;background:#EEE}
 .fields{display:grid;gap:7px;min-width:0}
 .row2{display:grid;grid-template-columns:1.3fr 1fr;gap:7px}
@@ -178,6 +182,7 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
     <div id="spines" hidden style="margin-top:26px">
       <h2><span id="spinesTitle">Spines</span></h2>
       <div class="found" id="found"></div>
+      <p class="grey" id="spinesNote" hidden>Real DVD and book spines show up once the Spinestack server is connected. Until then, paste a full DVD scan below.</p>
     </div>
   </section>
 
@@ -502,46 +507,82 @@ function shelve(b){
   books.push(b); renderList(); return true;
 }
 
-/* ---------- search (needs the Spinestack server) ---------- */
+/* ---------- search: the Spinestack server, or TMDB + Open Library straight from the browser ---------- */
 const sstatus = (msg, err) => { const s = $('#sstatus'); s.classList.toggle('err', !!err); s.innerHTML = msg; };
+const TMDB = String(window.SPINESTACK_TMDB || '').trim();
+const direct = !window.claude;   // the Claude preview can't reach other sites
+const getJSON = (url, opt) => fetch(url, opt).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+async function tmdbFilms(q){
+  const bearer = TMDB.length > 40, opt = bearer ? {headers:{Authorization:'Bearer ' + TMDB}} : {}, key = bearer ? '' : '&api_key=' + encodeURIComponent(TMDB);
+  const r = await getJSON('https://api.themoviedb.org/3/search/movie?include_adult=false&query=' + encodeURIComponent(q) + key, opt);
+  return Promise.all((r.results || []).slice(0,5).map(async (m,i) => {
+    let creator = '';
+    if (i < 3) try { const c = await getJSON(`https://api.themoviedb.org/3/movie/${m.id}/credits?` + key.slice(1), opt); creator = ((c.crew || []).find(p => p.job === 'Director') || {}).name || ''; } catch {}
+    return {kind:'movie', title:m.title || '', year:(m.release_date || '').slice(0,4), creator, cover:m.poster_path ? 'https://image.tmdb.org/t/p/w500' + m.poster_path : ''};
+  }));
+}
+async function olBooks(q){
+  const r = await getJSON('https://openlibrary.org/search.json?limit=5&fields=title,author_name,first_publish_year,cover_i&q=' + encodeURIComponent(q));
+  return (r.docs || []).map(d => ({kind:'book', title:d.title || '', year:String(d.first_publish_year || ''), creator:(d.author_name || [''])[0], cover:d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-L.jpg` : ''}));
+}
+async function identifyDirect(q, want){
+  const films = want !== 'book' && TMDB, books = want !== 'movie';
+  const [f, b] = await Promise.allSettled([films ? tmdbFilms(q) : [], books ? olBooks(q) : []]);
+  if ((!films || f.status === 'rejected') && (!books || b.status === 'rejected')) throw new Error('no answer');
+  return [...(f.value || []), ...(b.value || [])];
+}
 let matches = [];
 $('#sform').addEventListener('submit', async e => {
   e.preventDefault();
   const q = $('#q').value.trim(); if (!q) return;
-  if (!server){ sstatus('Search runs on the Spinestack server, which this preview doesn’t have. Drop a scan below instead.', true); return; }
+  const want = $('#qkind').value, noFilms = !server && !TMDB && want !== 'book';
+  if (!server && !direct){ sstatus('Search runs on the Spinestack server, which this preview doesn’t have. Drop a scan below instead.', true); return; }
+  if (noFilms && want === 'movie'){ sstatus('Film search needs a TMDB key. Books work without one.', true); $('#matches').hidden = true; return; }
   $('#spines').hidden = true; sstatus('Looking up “' + esc(q) + '”…');
   try {
-    const r = await fetch(API + '/api/identify?q=' + encodeURIComponent(q)).then(r => r.json());
-    const want = $('#qkind').value;
-    matches = r.results.filter(m => want === 'all' || m.kind === want);
+    const results = server ? (await fetch(API + '/api/identify?q=' + encodeURIComponent(q)).then(r => r.json())).results : await identifyDirect(q, want);
+    matches = results.filter(m => want === 'all' || m.kind === want);
     if (!matches.length){ sstatus('Nothing matched “' + esc(q) + '”. Check the spelling, or drop a scan below.', true); $('#matches').hidden = true; return; }
-    sstatus(matches.length + ' match' + (matches.length > 1 ? 'es' : '') + '.');
+    sstatus(matches.length + ' match' + (matches.length > 1 ? 'es' : '') + '.' + (noFilms ? ' Film search needs a TMDB key.' : ''));
     $('#mrows').innerHTML = matches.map((m,i) => `<tr tabindex="0" data-i="${i}"><td class="no">${String(i+1).padStart(3,'0')}</td><td class="t">${esc(m.title)}</td><td>${esc(m.year || '—')}</td><td><span class="kind ${m.kind}">${m.kind === 'movie' ? 'Film' : 'Book'}</span></td><td>${esc(m.creator || '—')}</td></tr>`).join('');
     $('#matches').hidden = false;
-  } catch { sstatus('The search server didn’t answer. Try again in a moment.', true); }
+  } catch { sstatus((server ? 'The search server' : 'The search') + ' didn’t answer. Try again in a moment.', true); }
 });
 const pickMatch = tr => tr && findSpines(matches[+tr.dataset.i]);
 $('#mrows').addEventListener('click', e => pickMatch(e.target.closest('tr')));
 $('#mrows').addEventListener('keydown', e => { if (e.key === 'Enter') pickMatch(e.target.closest('tr')); });
 
+/* An image that fails this would stop Save story from working, so it never goes on the shelf. */
+const canvasSafe = img => { try { const c = document.createElement('canvas'); c.width = c.height = 1; const x = c.getContext('2d'); x.drawImage(img, 0, 0, 1, 1); c.toDataURL(); return true; } catch { return false; } };
 async function findSpines(m){
   $('#spines').hidden = false; $('#spinesTitle').textContent = m.title + (m.year ? ' (' + m.year + ')' : '');
-  $('#found').innerHTML = ''; sstatus('Searching scans of “' + esc(m.title) + '”. Takes 10 to 20 seconds.');
+  $('#spinesNote').hidden = server;
+  const noun = m.kind === 'movie' ? 'poster' : 'cover';
   let res = {spines:[]};
-  try { res = await fetch(`${API}/api/spines?title=${encodeURIComponent(m.title)}&kind=${m.kind}&year=${encodeURIComponent(m.year||'')}&creator=${encodeURIComponent(m.creator||'')}`).then(r => r.json()); }
-  catch { sstatus('The search server didn’t answer. Try again in a moment.', true); }
+  if (server){
+    $('#found').innerHTML = ''; sstatus('Searching scans of “' + esc(m.title) + '”. Takes 10 to 20 seconds.');
+    try { res = await fetch(`${API}/api/spines?title=${encodeURIComponent(m.title)}&kind=${m.kind}&year=${encodeURIComponent(m.year||'')}&creator=${encodeURIComponent(m.creator||'')}`).then(r => r.json()); }
+    catch { sstatus('The search server didn’t answer. Try again in a moment.', true); }
+  }
   const tiles = res.spines.map((s,i) => `<button class="pick" type="button" data-i="${i}"><img src="${API + s.spine}" alt="Spine ${i+1} of ${esc(m.title)}" loading="lazy"><span>${String(i+1).padStart(2,'0')}</span><a class="src" href="${esc(s.source)}" target="_blank" rel="noopener">${esc(hostOf(s.source))}</a></button>`);
-  if (m.cover) tiles.push(`<button class="pick" type="button" data-gen="1"><div class="gen">Make one<br>from the<br>${m.kind === 'movie' ? 'poster' : 'cover'}</div><span>Generated</span></button>`);
+  if (m.cover) tiles.push(`<button class="pick" type="button" data-gen="1"><div class="gen">Make one<br>from the<br>${noun}</div><span>Generated</span></button>`);
+  if (m.cover && !server) tiles.push(`<button class="pick" type="button" data-gen="1" data-cover="1"><img class="cov" src="${esc(m.cover)}" crossorigin="anonymous" alt="${esc(m.title)} ${noun}"><span>Add as cover</span></button>`);
   $('#found').innerHTML = tiles.join('') || '<p class="dim">No scans and no cover found for this title. Drop a scan below.</p>';
-  sstatus(res.spines.length ? `${res.spines.length} real spine${res.spines.length > 1 ? 's' : ''} found.` : 'No clean spine in the scans found online. You can make one from the ' + (m.kind === 'movie' ? 'poster.' : 'cover.'), !res.spines.length);
+  if (server) sstatus(res.spines.length ? `${res.spines.length} real spine${res.spines.length > 1 ? 's' : ''} found.` : 'No clean spine in the scans found online. You can make one from the ' + noun + '.', !res.spines.length);
+  else sstatus(m.cover ? 'Make a spine from the ' + noun + ', or add the ' + noun + ' as it is.' : 'No ' + noun + ' found for this title. Drop a scan below.', !m.cover);
   $('#found').onclick = async e => {
     if (e.target.closest('a')) return;
     const p = e.target.closest('.pick'); if (!p) return;
     try {
       if (p.dataset.gen){
-        const img = await loadImg(API + '/api/image?url=' + encodeURIComponent(m.cover)), pal = extractPalette(img);
+        let img;
+        try { img = await loadImg(server ? API + '/api/image?url=' + encodeURIComponent(m.cover) : m.cover); } catch { img = null; }
+        if (!img || !canvasSafe(img)){ toast('The ' + noun + ' from ' + hostOf(m.cover) + ' can’t be used in a story. Try another match.'); return; }
+        const pal = extractPalette(img);
         const b = newBook({title:m.title, author:m.creator||'', kind:m.kind, img, thumb:img.src, bg:m.kind === 'movie' ? '#111111' : pal.bg, fg:m.kind === 'movie' ? '#F4F4F2' : pal.fg, accent:pal.accent, style:m.kind === 'movie' ? 'dvd' : 'art', font:'oswald'});
-        if (shelve(b)) toast('Added a generated spine for ' + m.title + '.');
+        if (!shelve(b)) return;
+        if (p.dataset.cover){ if (settings.layout !== 'covers') $('#layout [data-v="covers"]').click(); toast(m.title + ' is on your shelf as a cover.'); }
+        else toast('Added a generated spine for ' + m.title + '.');
       } else {
         const s = res.spines[+p.dataset.i];
         const [spineImg, img] = await Promise.all([loadImg(API + s.spine), loadImg(API + s.front)]), pal = extractPalette(img);
@@ -660,6 +701,7 @@ async function boot(){
     server = !!(h && h.ok);
   } catch { server = false; }
   $('#modeNote').hidden = server;
+  if (!server && direct) $('#modeNote').textContent = TMDB ? 'Search works here. Real DVD and book spines need the Spinestack server.' : 'Book search works here. Films need a TMDB key, and real spines need the Spinestack server.';
   $('#exportNote').textContent = 'On a phone this opens the share sheet. Pick Instagram, then Story.';
   if (server){
     try { const r = await fetch(API + '/api/recent').then(r => r.json()); fillRecent(r.recent.map(x => x.title)); } catch {}
