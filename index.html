@@ -67,18 +67,24 @@ table{border-collapse:collapse;width:100%}
 th,td{text-align:left;padding:9px 8px 9px 0;border-bottom:1px solid var(--ink);white-space:nowrap;vertical-align:top}
 th{font-weight:400;color:var(--grey);text-transform:uppercase;font-size:11px}
 td.t{white-space:normal;font-weight:700;text-transform:uppercase}
+td.t,td.by{white-space:normal;overflow-wrap:anywhere}
 tbody tr{cursor:pointer}
 tbody tr:hover td{background:#F2F2F2}
 td.no{color:var(--grey);font-variant-numeric:tabular-nums}
 
 .found{display:flex;gap:18px;overflow-x:auto;padding:8px 0 4px;align-items:flex-end}
 .pick{flex:none;display:grid;gap:6px;justify-items:center;background:none;border:0;padding:0;cursor:pointer;font:inherit;color:inherit}
-.pick img{height:320px;width:auto;display:block}
+.pick img,.pick canvas{height:240px;width:auto;display:block}
 .pick img.cov{aspect-ratio:auto 2/3;background:#F2F2F2}
-.pick span{font-size:11px}
+.pick span{font-size:11px;text-transform:uppercase;padding-bottom:3px;border-bottom:2px solid transparent}
 .pick:hover span{text-decoration:underline}
-.gen{height:320px;width:88px;border:1px dashed var(--ink);display:grid;place-items:center;text-align:center;font-size:11px;text-transform:uppercase;line-height:1.4}
+.pick[aria-pressed="true"] span{font-weight:700;border-bottom-color:var(--ink);text-decoration:none}
 .found{margin-bottom:8px}
+
+/* the shelf as it stands, drawn with the same spines as the story */
+.strip{display:flex;gap:5px;align-items:flex-end;height:260px;margin-top:26px;overflow-x:auto;overflow-y:hidden}
+.strip button{flex:none;background:none;border:0;padding:0;cursor:pointer;line-height:0}
+.strip canvas{display:block}
 .src{font-size:10.5px;color:var(--grey);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 .drop{display:block;border:1px dashed var(--ink);border-radius:8px;padding:22px 18px;cursor:pointer;text-align:center}
@@ -144,6 +150,7 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
   .mark{font-size:17px!important;letter-spacing:.22em;margin-right:-.22em}
   .top a{font-size:11.5px}
   form.search{grid-template-columns:1fr}
+  .strip{height:200px}
   .row2{grid-template-columns:1fr}
   section{padding-block:40px 0}
 }
@@ -170,6 +177,8 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
       <label><input type="radio" name="qk" value="book">Books</label>
     </div>
     <select id="qkind" hidden aria-hidden="true"><option value="all">all</option><option value="movie">movie</option><option value="book">book</option></select>
+    <div class="strip" id="strip" role="group" aria-label="Your shelf"></div>
+    <p class="grey" id="stripEmpty" hidden style="margin-top:26px">Your shelf is empty. Search a title.</p>
     <p class="grey" id="modeNote" style="margin-top:14px">Search needs the Spinestack server, so it's off in this preview. Uploading a scan below still works.</p>
     <p class="grey" id="recent" hidden style="margin-top:14px">Recently found: <span></span></p>
     <div class="status" id="sstatus" role="status"></div>
@@ -182,6 +191,7 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
     <div id="spines" hidden style="margin-top:26px">
       <h2><span id="spinesTitle">Spines</span></h2>
       <div class="found" id="found"></div>
+      <p><button class="dash sm" id="pickDel" type="button" hidden>Remove from shelf</button></p>
       <p class="grey" id="spinesNote" hidden>Real DVD and book spines show up once the Spinestack server is connected. Until then, paste a full DVD scan below.</p>
     </div>
   </section>
@@ -264,7 +274,7 @@ const FONTS = {
   hand:{label:'Handwritten', t:fs=>`${fs}px "Gochi Hand", "Comic Sans MS", cursive`, a:fs=>`${fs}px "Gochi Hand", "Comic Sans MS", cursive`},
   mono:{label:'Typewriter', t:fs=>`500 ${fs}px "IBM Plex Mono", monospace`, a:fs=>`400 ${fs}px "IBM Plex Mono", monospace`},
 };
-const STYLES = {real:'Real spine', dvd:'DVD case', art:'Artwork + colour', solid:'Solid colour', classic:'Classic band', strip:'Cover strip'};
+const STYLES = {real:'Real spine', cover:'Cover', dvd:'DVD case', art:'Artwork + colour', solid:'Solid colour', classic:'Classic band', strip:'Cover strip'};
 const THEMES = {
   paper:{bg:'#FFFFFF', ink:'#0F1419', mark:'rgba(15,20,25,.38)'},
   ink:{bg:'#0E0F12', ink:'#F1F2F4', mark:'rgba(241,242,244,.38)'},
@@ -318,6 +328,39 @@ function findSpine(img){
   const k = img.width / cw; return {x:best.L*k, w:(best.R-best.L)*k, frontX:best.R*k};
 }
 function crop(img, sx, sy, sw, sh){ const c = document.createElement('canvas'); c.width = Math.max(1,Math.round(sw)); c.height = Math.max(1,Math.round(sh)); c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height); return c; }
+
+/* ---------- posters: lift the printed title off the top, to use on a DVD spine ---------- */
+function posterTitle(img){
+  const cw = 160, ch = Math.round(cw*img.height/img.width), top = Math.round(ch*.42);
+  const c = document.createElement('canvas'); c.width = cw; c.height = ch;
+  const x = c.getContext('2d', {willReadFrequently:true}); x.drawImage(img, 0, 0, cw, ch);
+  const d = x.getImageData(0, 0, cw, top).data, px = i => [d[i], d[i+1], d[i+2]];
+  // background = the most common colour in the top part of the poster
+  const buckets = new Map();
+  for (let i = 0; i < d.length; i += 4){ const k = (d[i]>>5)<<6 | (d[i+1]>>5)<<3 | (d[i+2]>>5), e = buckets.get(k) || {n:0,r:0,g:0,b:0}; e.n++; e.r += d[i]; e.g += d[i+1]; e.b += d[i+2]; buckets.set(k, e); }
+  const e = [...buckets.values()].sort((a,b) => b.n - a.n)[0], bg = [e.r/e.n, e.g/e.n, e.b/e.n];
+  if (e.n < cw*top*.3) return null;                                   // no plain background up there: a photo
+  const ink = [], rows = [];
+  for (let y = 0; y < top; y++){ let n = 0; for (let X = 0; X < cw; X++){ const on = dist(px((y*cw+X)*4), bg) > 90; ink.push(on); n += on; } rows.push(n/cw); }
+  // the title: the first run of inked rows with plain rows above and below it
+  const m = Math.max(1, Math.round(ch*.01));
+  for (let y = m; y < top - m; y++){
+    if (rows[y] < .03) continue;
+    let y1 = y; while (y1 < top && rows[y1] >= .03) y1++;
+    const h = y1 - y;
+    if (y1 < top - m && h >= ch*.03 && h <= ch*.2){
+      let L = cw, R = -1;
+      for (let yy = y; yy < y1; yy++) for (let X = 0; X < cw; X++) if (ink[yy*cw+X]){ L = Math.min(L, X); R = Math.max(R, X); }
+      const w = R - L + 1, fill = rows.slice(y, y1).reduce((a,v) => a+v, 0)/h;
+      if (w >= cw*.25 && w/h >= 1.8 && fill < .75){
+        const k = img.width/cw, p = 2, x0 = Math.max(0, L-p), x1 = Math.min(cw, R+1+p), y0 = Math.max(0, y-p), y2 = Math.min(top, y1+p);
+        return {img: crop(img, x0*k, y0*k, (x1-x0)*k, (y2-y0)*k), bg: hex(...bg)};
+      }
+    }
+    y = y1;
+  }
+  return null;
+}
 const API = String(window.SPINESTACK_API || '').replace(/\/+$/, '');
 const loadImg = src => new Promise((res, rej) => { const im = new Image(); if (!/^(data|blob):/.test(src)) im.crossOrigin = 'anonymous'; im.onload = () => res(im); im.onerror = rej; im.src = src; });
 
@@ -348,12 +391,15 @@ function coverCrop(x, img, dx, dy, dw, dh){ const iw = img.width, ih = img.heigh
 function shade(x,w,h){ const g = x.createLinearGradient(0,0,w,0); g.addColorStop(0,'rgba(0,0,0,.2)'); g.addColorStop(.1,'rgba(0,0,0,0)'); g.addColorStop(.45,'rgba(255,255,255,.07)'); g.addColorStop(.9,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.18)'); x.fillStyle = g; x.fillRect(0,0,w,h); }
 const isReal = b => b.style === 'real' && b.spineImg;
 const isCase = b => b.style === 'dvd';
+const isCover = b => b.style === 'cover' && b.img;   // stands face out on the shelf
+const asSpine = b => isCover(b) ? Object.assign({}, b, {style: b.kind === 'movie' ? 'dvd' : 'art'}) : b;
 function makeSpine(b, w, h){
   w = Math.max(14, Math.round(w)); h = Math.round(h);
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const x = c.getContext('2d'), r = Math.min(8, w*.07), F = FONTS[b.font] || FONTS.oswald;
   x.save(); rr(x,0,0,w,h,r); x.clip();
   if (isReal(b)){ x.drawImage(b.spineImg, 0, 0, w, h); shade(x,w,h); x.restore(); return c; }
+  if (isCover(b)){ x.drawImage(b.img, 0, 0, w, h); x.restore(); return c; }
   if (b.style === 'strip' && b.img){ const iw = b.img.width, ih = b.img.height; let sw = ih*w/h; if (sw > iw) sw = iw; x.drawImage(b.img, (iw-sw)/2, 0, sw, ih, 0, 0, w, h); x.fillStyle = alpha(b.bg,.22); x.fillRect(0,0,w,h); }
   else { x.fillStyle = b.bg; x.fillRect(0,0,w,h); }
 
@@ -376,7 +422,11 @@ function makeSpine(b, w, h){
     yb -= w*.25; const s = w*.74;
     if (b.img){ const iw = b.img.width, ih = b.img.height, ry = ih*.1, rh = ih*.55, k = Math.max(s/iw, s/rh), sw = s/k, sh = s/k; x.drawImage(b.img, (iw-sw)/2, ry+(rh-sh)/2, sw, sh, cx-s/2, yb-s, s, s); }
     const tEnd = yb - s - w*.5, tStart = w*.5, title = F.upper ? b.title.toUpperCase() : b.title;
-    if (title.trim()){ const fs = fitFont(x, title, F.t, w*.46, tEnd - tStart); x.save(); x.translate(w/2 + w*.02, 0); x.rotate(Math.PI/2); x.textBaseline = 'middle'; x.textAlign = 'left'; x.fillStyle = b.fg; x.font = F.t(fs); x.fillText(title, tStart, 0); x.restore(); }
+    if (b.titleImg){
+      // the title as printed on the poster, turned to run down the spine
+      const t = b.titleImg, k = Math.min((tEnd - tStart)/t.width, w*.8/t.height);
+      x.save(); x.translate(w/2, 0); x.rotate(Math.PI/2); x.drawImage(t, tStart, -t.height*k/2, t.width*k, t.height*k); x.restore();
+    } else if (title.trim()){ const fs = fitFont(x, title, F.t, w*.46, tEnd - tStart); x.save(); x.translate(w/2 + w*.02, 0); x.rotate(Math.PI/2); x.textBaseline = 'middle'; x.textAlign = 'left'; x.fillStyle = b.fg; x.font = F.t(fs); x.fillText(title, tStart, 0); x.restore(); }
     shade(x,w,h); x.restore(); return c;
   }
 
@@ -397,10 +447,11 @@ function makeSpine(b, w, h){
 
 /* ---------- story ---------- */
 function wrapText(x, text, maxW){ const words = text.split(/\s+/), lines = []; let line = ''; for (const wd of words){ const t = line ? line+' '+wd : wd; if (x.measureText(t).width > maxW && line){ lines.push(line); line = wd; } else line = t; } if (line) lines.push(line); return lines.slice(0,3); }
-function sizes(H0, U){
+function sizes(H0, U, list = books){
   // width and height of each spine before fitting to the 900px row
-  return books.map(b => {
+  return list.map(b => {
     if (isReal(b)) return {w: H0 * b.spineImg.width / b.spineImg.height, h: H0};
+    if (isCover(b)){ const h = H0*.62; return {w: h * b.img.width / b.img.height, h}; }
     if (isCase(b)) return {w: Math.min(U*.58, H0/11), h: H0};
     return {w: U*b.wf, h: H0*(settings.varied ? b.hf : 1)};
   });
@@ -431,17 +482,35 @@ function renderStory(){
   } else if (books.length && settings.layout === 'row'){
     const gap = books.length > 7 ? 10 : 18, s = sizes(1160, books.length <= 2 ? 220 : 165);
     const sumW = s.reduce((a,z) => a+z.w, 0), room = 900 - gap*(books.length-1);
-    if (sumW > room){ const k = room/sumW; s.forEach((z,i) => { z.w *= k; if (isReal(books[i]) || isCase(books[i])) z.h *= Math.max(k, .75); }); }
+    if (sumW > room){ const k = room/sumW; s.forEach((z,i) => { z.w *= k; if (isCover(books[i])) z.h *= k; else if (isReal(books[i]) || isCase(books[i])) z.h *= Math.max(k, .75); }); }
     let cx = (W - (s.reduce((a,z) => a+z.w, 0) + gap*(books.length-1)))/2;
     books.forEach((b,i) => { const sp = makeSpine(b, s[i].w, s[i].h); x.save(); x.shadowColor = shadow; x.shadowBlur = 22; x.shadowOffsetY = 8; x.drawImage(sp, Math.round(cx), Math.round(base - sp.height)); x.restore(); cx += s[i].w + gap; });
   } else if (books.length){
-    const s = sizes(800, 125), sumT = s.reduce((a,z) => a+z.w, 0), k = Math.min(1, 1220/sumT); let cy = base;
-    books.forEach((b,i) => { const t = s[i].w*k, L = s[i].h, sp = makeSpine(b, t, L); cy -= sp.width; const cx = (W-L)/2 + b.jit*38;
+    const flat = books.map(asSpine), s = sizes(800, 125, flat), sumT = s.reduce((a,z) => a+z.w, 0), k = Math.min(1, 1220/sumT); let cy = base;
+    flat.forEach((b,i) => { const t = s[i].w*k, L = s[i].h, sp = makeSpine(b, t, L); cy -= sp.width; const cx = (W-L)/2 + b.jit*38;
       x.save(); x.shadowColor = shadow; x.shadowBlur = 16; x.shadowOffsetY = 5; x.translate(Math.round(cx), Math.round(cy + sp.width)); x.rotate(-Math.PI/2); x.drawImage(sp,0,0); x.restore(); });
   }
   x.fillStyle = T.mark; x.font = '400 24px "Geist Mono", monospace'; x.textAlign = 'center'; x.fillText('made with spinestack', W/2, 1868);
 }
-let raf = 0; const redraw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(renderStory); };
+function renderStrip(){
+  const el = $('#strip'), none = !books.length;
+  el.hidden = none; $('#stripEmpty').hidden = !none; if (none){ el.replaceChildren(); return; }
+  const dpr = Math.min(2, window.devicePixelRatio || 1), s = sizes(1160, books.length <= 2 ? 220 : 165);
+  const build = H0 => el.replaceChildren(...books.map((b,i) => {
+    const k = (H0 - 2)/1160, sp = makeSpine(b, s[i].w*k*dpr, s[i].h*k*dpr), bt = document.createElement('button');
+    sp.style.width = sp.width/dpr + 'px'; sp.style.height = sp.height/dpr + 'px';
+    bt.type = 'button'; bt.dataset.id = b.id; bt.setAttribute('aria-label', (b.title || 'Untitled') + ', show in the list'); bt.append(sp); return bt;
+  }));
+  const h0 = el.clientHeight; build(h0);
+  if (el.clientHeight !== h0) build(el.clientHeight);   // a sideways scrollbar took some height
+}
+$('#strip').addEventListener('click', e => {
+  const bt = e.target.closest('button'); if (!bt) return;
+  const li = document.querySelector(`#books .book[data-id="${bt.dataset.id}"]`); if (!li) return;
+  li.scrollIntoView({behavior:'smooth', block:'center'}); document.getElementById(bt.dataset.id + '-title').focus({preventScroll:true});
+});
+let raf = 0; const redraw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { renderStory(); renderStrip(); }); };
+addEventListener('resize', redraw);
 
 /* ---------- shelf list ---------- */
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -486,6 +555,7 @@ function setNote(b){
 $('#books').addEventListener('input', e => {
   const li = e.target.closest('.book'), f = e.target.dataset.f; if (!li || !f) return;
   const b = books.find(b => b.id === li.dataset.id); b[f] = e.target.value; b.touched = true;
+  if (f === 'title') delete b.titleImg;   // an edited title can't come from the poster any more
   if (f === 'kind' && !isReal(b)){
     if (b.kind === 'movie'){ b.style = 'dvd'; b.bg = '#111111'; b.fg = '#F4F4F2'; } else { b.style = 'art'; Object.assign(b, extractPalette(b.img)); }
     renderList(); return;
@@ -547,7 +617,7 @@ $('#sform').addEventListener('submit', async e => {
     matches = results.filter(m => want === 'all' || m.kind === want);
     if (!matches.length){ sstatus('Nothing matched “' + esc(q) + '”. Check the spelling, or drop a scan below.', true); $('#matches').hidden = true; return; }
     sstatus(matches.length + ' match' + (matches.length > 1 ? 'es' : '') + '.' + (noFilms ? ' Film search needs a TMDB key.' : ''));
-    $('#mrows').innerHTML = matches.map((m,i) => `<tr tabindex="0" data-i="${i}"><td class="no">${String(i+1).padStart(3,'0')}</td><td class="t">${esc(m.title)}</td><td>${esc(m.year || '—')}</td><td><span class="kind ${m.kind}">${m.kind === 'movie' ? 'Film' : 'Book'}</span></td><td>${esc(m.creator || '—')}</td></tr>`).join('');
+    $('#mrows').innerHTML = matches.map((m,i) => `<tr tabindex="0" data-i="${i}"><td class="no">${String(i+1).padStart(3,'0')}</td><td class="t">${esc(m.title)}</td><td>${esc(m.year || '—')}</td><td><span class="kind ${m.kind}">${m.kind === 'movie' ? 'Film' : 'Book'}</span></td><td class="by">${esc(m.creator || '—')}</td></tr>`).join('');
     $('#matches').hidden = false;
   } catch { sstatus((server ? 'The search server' : 'The search') + ' didn’t answer. Try again in a moment.', true); }
 });
@@ -557,45 +627,78 @@ $('#mrows').addEventListener('keydown', e => { if (e.key === 'Enter') pickMatch(
 
 /* An image that fails this would stop Save story from working, so it never goes on the shelf. */
 const canvasSafe = img => { try { const c = document.createElement('canvas'); c.width = c.height = 1; const x = c.getContext('2d'); x.drawImage(img, 0, 0, 1, 1); c.toDataURL(); return true; } catch { return false; } };
-async function findSpines(m){
-  $('#spines').hidden = false; $('#spinesTitle').textContent = m.title + (m.year ? ' (' + m.year + ')' : '');
-  $('#spinesNote').hidden = server;
-  const noun = m.kind === 'movie' ? 'poster' : 'cover';
-  let res = {spines:[]};
-  if (server){
-    $('#found').innerHTML = ''; sstatus('Searching scans of “' + esc(m.title) + '”. Takes 10 to 20 seconds.');
-    try { res = await fetch(`${API}/api/spines?title=${encodeURIComponent(m.title)}&kind=${m.kind}&year=${encodeURIComponent(m.year||'')}&creator=${encodeURIComponent(m.creator||'')}`).then(r => r.json()); }
-    catch { sstatus('The search server didn’t answer. Try again in a moment.', true); }
-  }
-  const tiles = res.spines.map((s,i) => `<button class="pick" type="button" data-i="${i}"><img src="${API + s.spine}" alt="Spine ${i+1} of ${esc(m.title)}" loading="lazy"><span>${String(i+1).padStart(2,'0')}</span><a class="src" href="${esc(s.source)}" target="_blank" rel="noopener">${esc(hostOf(s.source))}</a></button>`);
-  if (m.cover) tiles.push(`<button class="pick" type="button" data-gen="1"><div class="gen">Make one<br>from the<br>${noun}</div><span>Generated</span></button>`);
-  if (m.cover && !server) tiles.push(`<button class="pick" type="button" data-gen="1" data-cover="1"><img class="cov" src="${esc(m.cover)}" crossorigin="anonymous" alt="${esc(m.title)} ${noun}"><span>Add as cover</span></button>`);
-  $('#found').innerHTML = tiles.join('') || '<p class="dim">No scans and no cover found for this title. Drop a scan below.</p>';
-  if (server) sstatus(res.spines.length ? `${res.spines.length} real spine${res.spines.length > 1 ? 's' : ''} found.` : 'No clean spine in the scans found online. You can make one from the ' + noun + '.', !res.spines.length);
-  else sstatus(m.cover ? 'Make a spine from the ' + noun + ', or add the ' + noun + ' as it is.' : 'No ' + noun + ' found for this title. Drop a scan below.', !m.cover);
-  $('#found').onclick = async e => {
-    if (e.target.closest('a')) return;
-    const p = e.target.closest('.pick'); if (!p) return;
-    try {
-      if (p.dataset.gen){
-        let img;
-        try { img = await loadImg(server ? API + '/api/image?url=' + encodeURIComponent(m.cover) : m.cover); } catch { img = null; }
-        if (!img || !canvasSafe(img)){ toast('The ' + noun + ' from ' + hostOf(m.cover) + ' can’t be used in a story. Try another match.'); return; }
-        const pal = extractPalette(img);
-        const b = newBook({title:m.title, author:m.creator||'', kind:m.kind, img, thumb:img.src, bg:m.kind === 'movie' ? '#111111' : pal.bg, fg:m.kind === 'movie' ? '#F4F4F2' : pal.fg, accent:pal.accent, style:m.kind === 'movie' ? 'dvd' : 'art', font:'oswald'});
-        if (!shelve(b)) return;
-        if (p.dataset.cover){ if (settings.layout !== 'covers') $('#layout [data-v="covers"]').click(); toast(m.title + ' is on your shelf as a cover.'); }
-        else toast('Added a generated spine for ' + m.title + '.');
-      } else {
-        const s = res.spines[+p.dataset.i];
-        const [spineImg, img] = await Promise.all([loadImg(API + s.spine), loadImg(API + s.front)]), pal = extractPalette(img);
-        const b = newBook({title:m.title, author:m.creator||'', kind:m.kind, img, spineImg, thumb:s.front, source:hostOf(s.source), bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real', font:'oswald'});
-        if (shelve(b)) toast(m.title + ' is on your shelf.');
-      }
-      document.getElementById('shelf').scrollIntoView({behavior:'smooth', block:'start'});
-    } catch { toast('Couldn’t load that image. Try another one.'); }
-  };
+/* Picking a match puts a spine made from its poster or cover on the shelf at once.
+   The tiles then switch that shelf item between real spines, the made spine and the plain cover. */
+let current = null;
+const keyOf = m => [m.kind, m.title.toLowerCase(), m.year || ''].join('|');
+function bookFor(cur, choice, spineImg, front, source){
+  const m = cur.m, film = m.kind === 'movie', base = {title:m.title, author:m.creator || '', kind:m.kind, font:'oswald', key:cur.key, choice};
+  if (spineImg){ const pal = extractPalette(front); return newBook(Object.assign(base, {img:front, spineImg, thumb:front.src, source, bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real'})); }
+  const img = cur.img, pal = extractPalette(img), t = film ? cur.title : null;
+  const bg = t ? t.bg : film ? '#111111' : pal.bg, fg = t ? (contrast('#F4F4F2', bg) >= contrast('#111111', bg) ? '#F4F4F2' : '#111111') : film ? '#F4F4F2' : pal.fg;
+  return newBook(Object.assign(base, {img, thumb:img.src, bg, fg, accent:pal.accent, titleImg:t && t.img, style:choice === 'cover' ? 'cover' : film ? 'dvd' : 'art'}));
 }
+function showTiles(cur){
+  const m = cur.m, noun = m.kind === 'movie' ? 'poster' : 'cover', on = books.find(b => b.key === cur.key), pressed = c => on && on.choice === c ? ' aria-pressed="true"' : ' aria-pressed="false"';
+  const tiles = cur.res.spines.map((s,i) => `<button class="pick" type="button" data-c="real:${i}"${pressed('real:' + i)}><img src="${API + s.spine}" alt="Real spine ${i+1} of ${esc(m.title)}" loading="lazy"><span>Real spine</span><a class="src" href="${esc(s.source)}" target="_blank" rel="noopener">${esc(hostOf(s.source))}</a></button>`);
+  if (cur.img){
+    tiles.push(`<button class="pick" type="button" data-c="spine"${pressed('spine')}><span>Spine</span></button>`);
+    tiles.push(`<button class="pick" type="button" data-c="cover"${pressed('cover')}><img class="cov" src="${esc(cur.img.src)}" crossorigin="anonymous" alt="${esc(m.title)} ${noun}"><span>Cover</span></button>`);
+  }
+  $('#found').innerHTML = tiles.join('') || (cur.busy ? '' : '<p class="grey">No scans and no ' + noun + ' found for this title. Drop a scan below.</p>');
+  const gen = $('#found [data-c="spine"]');
+  if (gen){
+    const dpr = Math.min(2, window.devicePixelRatio || 1), b = cur.preview || (cur.preview = bookFor(cur, 'spine')), H0 = 240, U = 220;
+    const w = isCase(b) ? H0/11 : U*b.wf*H0/1160, sp = makeSpine(b, w*dpr, H0*dpr);
+    sp.style.width = sp.width/dpr + 'px'; sp.setAttribute('aria-hidden', 'true'); gen.prepend(sp);
+  }
+  $('#pickDel').hidden = !on;
+}
+async function findSpines(m){
+  const cur = current = {m, key:keyOf(m), res:{spines:[]}, img:null, busy:true}, noun = m.kind === 'movie' ? 'poster' : 'cover';
+  $('#spines').hidden = false; $('#spinesTitle').textContent = m.title + (m.year ? ' (' + m.year + ')' : '');
+  $('#spinesNote').hidden = server; $('#found').innerHTML = ''; $('#pickDel').hidden = true;
+  if (m.cover){
+    sstatus('Loading the ' + noun + ' of “' + esc(m.title) + '”…');
+    let img = null;
+    try { img = await loadImg(server ? API + '/api/image?url=' + encodeURIComponent(m.cover) : m.cover); } catch {}
+    if (cur !== current) return;
+    if (img && canvasSafe(img)){ cur.img = img; if (m.kind === 'movie') cur.title = posterTitle(img); }
+    else toast('The ' + noun + ' from ' + hostOf(m.cover) + ' can’t be used in a story. Try another match.');
+  }
+  if (cur.img && !books.some(b => b.key === cur.key) && shelve(bookFor(cur, 'spine'))) toast(m.title + ' added to your shelf.');
+  if (server){
+    showTiles(cur); sstatus('Searching scans of “' + esc(m.title) + '”. Takes 10 to 20 seconds.');
+    try { cur.res = await fetch(`${API}/api/spines?title=${encodeURIComponent(m.title)}&kind=${m.kind}&year=${encodeURIComponent(m.year||'')}&creator=${encodeURIComponent(m.creator||'')}`).then(r => r.json()); }
+    catch { if (cur === current) sstatus('The search server didn’t answer. Try again in a moment.', true); }
+    if (cur !== current) return;
+    cur.busy = false; showTiles(cur);
+    const n = cur.res.spines.length;
+    sstatus(n ? `${n} real spine${n > 1 ? 's' : ''} found. Pick one to use it instead.` : 'No clean spine in the scans found online.' + (cur.img ? ' Using one made from the ' + noun + '.' : ''), !n);
+  } else {
+    cur.busy = false; showTiles(cur);
+    if (!cur.img) sstatus('No ' + noun + ' found for this title. Drop a scan below.', true);
+    else sstatus('Pick Cover to show the ' + noun + ' face out instead.');
+  }
+}
+$('#found').addEventListener('click', async e => {
+  if (e.target.closest('a')) return;
+  const p = e.target.closest('.pick'), cur = current; if (!p || !cur) return;
+  const c = p.dataset.c; let b;
+  try {
+    if (c.startsWith('real:')){ const s = cur.res.spines[+c.slice(5)], [spineImg, front] = await Promise.all([loadImg(API + s.spine), loadImg(API + s.front)]); b = bookFor(cur, c, spineImg, front, hostOf(s.source)); }
+    else b = bookFor(cur, c);
+  } catch { toast('Couldn’t load that image. Try another one.'); return; }
+  if (cur !== current) return;
+  const i = books.findIndex(x => x.key === cur.key);
+  if (i >= 0){ Object.assign(b, {id:books[i].id, wf:books[i].wf, hf:books[i].hf, jit:books[i].jit, cat:books[i].cat}); books[i] = b; renderList(); toast(cur.m.title + ' now shows ' + (c === 'cover' ? 'its cover' : c === 'spine' ? 'the made spine' : 'the real spine') + '.'); }
+  else if (shelve(b)) toast(cur.m.title + ' added to your shelf.');
+  showTiles(cur);
+});
+$('#pickDel').addEventListener('click', () => {
+  const cur = current; if (!cur) return;
+  books = books.filter(b => b.key !== cur.key); renderList(); showTiles(cur); toast(cur.m.title + ' removed.');
+});
 const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./,''); } catch { return 'source'; } };
 
 /* ---------- uploads ---------- */
