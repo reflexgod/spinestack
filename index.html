@@ -9,9 +9,12 @@
      Leave empty when the backend serves this page itself (localhost:8000).
      With no backend, search is off but uploads still work. */
   window.SPINESTACK_API = "";
-  /* TMDB v4 "API Read Access Token" (long, starts with eyJ) or v3 API key, for film search
-     without the backend. Anyone who reads this page's source can see it. */
-  window.SPINESTACK_TMDB = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIwNjdkOGFmYzBjODE2OTNmNjQ5ZTJlMjhlODA5OTBkMCIsIm5iZiI6MTc5MDY1Nzg3OC4wOTksInN1YiI6IjZhYmI0NTU2Mjg2ZTM5YTc3MzlkZGFmMSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.vD8ZB2ARq1mtJhpSqKYQP_nA1d2JgU59OC4hB8rT4dw";
+  /* Address of the Spinestack Cloudflare Worker (worker/ folder), e.g. "https://spinestack.NAME.workers.dev".
+     It looks up titles, finds DVD and book scans, and passes images through with CORS. */
+  window.SPINESTACK_WORKER = "https://spinestack.spinestack-worker.workers.dev";
+  /* Only for running without the Worker: a TMDB v4 "API Read Access Token" or v3 key for film search.
+     Anyone who reads this page's source can see it, so keep it empty while the Worker is set. */
+  window.SPINESTACK_TMDB = "";
 </script>
 </head>
 <body>
@@ -190,6 +193,7 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
     </div>
     <div id="spines" hidden style="margin-top:26px">
       <h2><span id="spinesTitle">Spines</span></h2>
+      <p id="dupAsk" hidden><span id="dupText"></span> <button class="dash sm" id="dupAdd" type="button">Add again</button> <button class="dash sm" id="dupCancel" type="button">Cancel</button></p>
       <div class="found" id="found"></div>
       <p><button class="dash sm" id="pickDel" type="button" hidden>Remove from shelf</button></p>
       <p class="grey" id="spinesNote" hidden>Real DVD and book spines show up once the Spinestack server is connected. Until then, paste a full DVD scan below.</p>
@@ -212,12 +216,12 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
     <div class="shelfgrid">
       <ol class="books" id="books"></ol>
       <div class="story" id="export">
+        <div class="ctl"><span class="lbl">Layout</span>
+          <div class="seg" id="layout" role="group" aria-label="Layout"><button type="button" data-v="row">Spines</button><button type="button" data-v="stack">Stacked</button><button type="button" data-v="covers">Covers</button></div></div>
         <div class="phone"><canvas id="story" width="1080" height="1920" aria-label="Story preview"></canvas></div>
         <div class="ctl"><label class="lbl" for="caption">Caption</label><input type="text" id="caption" value="my next reads." maxlength="60"></div>
         <div class="ctl"><span class="lbl">Background</span>
           <div class="seg" id="theme" role="group" aria-label="Background"><button type="button" data-v="paper">Paper</button><button type="button" data-v="ink">Ink</button><button type="button" data-v="blush">Blush</button><button type="button" data-v="shelf">Shelf</button></div></div>
-        <div class="ctl"><span class="lbl">Layout</span>
-          <div class="seg" id="layout" role="group" aria-label="Layout"><button type="button" data-v="row">Spines</button><button type="button" data-v="stack">Stacked</button><button type="button" data-v="covers">Covers</button></div></div>
         <label class="check" id="variedWrap"><input type="checkbox" id="varied" checked> Mixed heights</label>
         <button class="btn full" id="exportBtn" type="button">Save story</button>
         <p class="note" id="exportNote"></p>
@@ -314,18 +318,75 @@ function extractPalette(img){
 }
 
 /* ---------- wrap scans: find the spine between back and front ---------- */
-function findSpine(img){
-  const cw = 600, ch = Math.max(40, Math.round(600*img.height/img.width));
+/* Returns {x, w, frontX, score} in image pixels, or null when there's no clear spine.
+   score is 0-100: how sure we are this is a clean spine (clear edges, where a DVD spine sits,
+   an even colour down its height, lettering on it). The same logic lives in backend/api/spine.py. */
+function findSpine(img, kind){
+  kind = kind || (img.width/img.height >= 1.3 && img.width/img.height <= 1.8 ? 'movie' : 'book');
+  const aspect = img.width/img.height, [lo, hi] = kind === 'movie' ? [1.3, 1.8] : [1.2, 2.4];
+  if (aspect < lo || aspect > hi) return null;
+  const cw = 600, ch = Math.max(40, Math.round(cw/aspect));
   const c = document.createElement('canvas'); c.width = cw; c.height = ch;
-  const x = c.getContext('2d', {willReadFrequently:true}); x.drawImage(img, 0, 0, cw, ch);
-  const d = x.getImageData(0,0,cw,ch).data, y0 = Math.floor(ch*.1), y1 = Math.floor(ch*.9), cols = [];
-  for (let cx = 0; cx < cw; cx++){ let r=0,g=0,b=0,n=0; for (let cy = y0; cy < y1; cy += 2){ const i = (cy*cw+cx)*4; r+=d[i]; g+=d[i+1]; b+=d[i+2]; n++; } cols.push([r/n,g/n,b/n]); }
-  const diff = cols.map((c,i) => i ? dist(c, cols[i-1]) : 0);
+  const x = c.getContext('2d', {willReadFrequently:true}); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, cw, ch);
+  const d = x.getImageData(0,0,cw,ch).data, y0 = Math.floor(ch*.08), y1 = Math.floor(ch*.92), cols = [];
+  const px = (X, Y) => { const i = (Y*cw+X)*4; return [d[i], d[i+1], d[i+2]]; };
+  // a photo of a case or book on a table has a plain background down both sides; a scan runs to the edge
+  const band = Math.max(4, Math.floor(cw/50)), sd = (x0, x1) => { const s = [0,0,0], q = [0,0,0]; let n = 0;
+    for (let Y = 0; Y < ch; Y++) for (let X = x0; X < x1; X++){ const p = px(X, Y); for (let k = 0; k < 3; k++){ s[k] += p[k]; q[k] += p[k]*p[k]; } n++; }
+    return [0,1,2].reduce((a, k) => a + Math.sqrt(Math.max(0, q[k]/n - (s[k]/n)**2)), 0)/3; };
+  const border = (sd(0, band) + sd(cw - band, cw))/2;
+  if (border < 10) return null;
+  for (let X = 0; X < cw; X++){ let r=0,g=0,b=0,n=0; for (let Y = y0; Y < y1; Y += 2){ const i = (Y*cw+X)*4; r+=d[i]; g+=d[i+1]; b+=d[i+2]; n++; } cols.push([r/n,g/n,b/n]); }
+  const avg = (a, b) => { const s = [0,0,0]; for (let i = a; i <= b; i++){ s[0]+=cols[i][0]; s[1]+=cols[i][1]; s[2]+=cols[i][2]; } const n = b-a+1; return [s[0]/n, s[1]/n, s[2]/n]; };
+  const median = list => [0,1,2].map(k => { const v = list.map(p => p[k]).sort((a,b) => a-b), m = v.length >> 1; return v.length % 2 ? v[m] : (v[m-1] + v[m])/2; });
+  // colour step between the 3 columns left and right of X: scans have soft, blurred edges
+  const edge = cols.map((_, i) => i < 3 || i > cw-4 ? 0 : dist(avg(i-3, i-1), avg(i+1, i+3)));
+  const film = kind === 'movie', minW = Math.round(cw*(film ? .025 : .02)), maxW = Math.round(cw*(film ? .09 : .14));
+  const cands = [];
+  for (let L = Math.floor(cw*.36); L <= Math.floor(cw*.56); L++)
+    for (let R = L + minW; R <= Math.min(cw-4, L + maxW); R++){
+      const lo = Math.min(edge[L], edge[R]), hi = Math.max(edge[L], edge[R]);
+      if (lo < 10 || hi < 25) continue;                           // one edge can be soft (spine and front alike), not both
+      const e = .6*lo + .4*hi, wf = (R-L)/cw, off = Math.abs((L+R)/2/cw - .5);
+      const fit = film ? (wf >= .03 && wf <= .07 ? 1 : .75)*Math.exp(-.5*(off/.035)**2)   // a DVD wrap is 129 mm | 14 mm | 129 mm
+                       : Math.exp(-.5*(off/.1)**2);
+      cands.push({L, R, e, fit, s:e*fit});
+    }
+  if (!cands.length) return null;
+  cands.sort((a,b) => b.s - a.s);
+  // among the best, prefer an even colour down the height (a spine, not a slice of a photo)
+  const evenness = (L, R) => {
+    const rows = [];
+    for (let Y = y0; Y < y1; Y += 2){ let r=0,g=0,b=0; for (let X = L+1; X < R; X++){ const i = (Y*cw+X)*4; r+=d[i]; g+=d[i+1]; b+=d[i+2]; } const n = R-L-1; rows.push([r/n,g/n,b/n]); }
+    const med = median(rows);
+    return rows.filter(v => dist(v, med) < 60).length / rows.length;
+  };
   let best = null;
-  for (let L = Math.floor(cw*.38); L <= Math.floor(cw*.53); L++)
-    for (let R = L + Math.floor(cw*.02); R <= Math.min(cw-1, L + Math.floor(cw*.12)); R++){ const s = diff[L] + diff[R]; if (!best || s > best.s) best = {L, R, s}; }
-  if (!best || best.s < 40) return null;
-  const k = img.width / cw; return {x:best.L*k, w:(best.R-best.L)*k, frontX:best.R*k};
+  for (const cd of cands.slice(0, 40)){ cd.u = evenness(cd.L, cd.R); cd.f = cd.s*(.5 + .5*cd.u); if (!best || cd.f > best.f) best = cd; }
+  // move each edge inward past columns that look more like the back or front cover than the spine
+  const bl = best.L, br = best.R, q = Math.floor((br-bl)/4), inner = median(cols.slice(bl+q, br-q+1)), cap = Math.max(2, Math.round(cw*.02));
+  const outL = avg(Math.max(0, bl-5), bl-2), outR = avg(br+2, Math.min(cw-1, br+5));
+  let L = bl, R = br;
+  while (L - bl < cap && R - L > minW && dist(cols[L], inner) > dist(cols[L], outL)) L++;
+  while (br - R < cap && R - L > minW && dist(cols[R], inner) > dist(cols[R], outR)) R--;
+  // spine and cover the same colour (Gummo: yellow on yellow) leave a soft edge that lettering can beat:
+  // widen a thin film spine over columns that still match it, up to a DVD spine's usual 5 %
+  if (film) while ((R-L)/cw < .05){ const r = R < cw-4 && dist(cols[R+1], inner) < 35, l = L > 3 && dist(cols[L-1], inner) < 35; if (!r && !l) break; if (r) R++; if (l && (R-L)/cw < .05) L--; }
+  L++; R--;                                                         // one more column for the soft edge itself
+  // a spine carries lettering: rows change as they cross it. A blank strip is a gap or a case hinge.
+  const g = [];
+  for (let Y = y0; Y < y1; Y++){ let s = 0; for (let X = L+1; X < R; X++){ const i = (Y*cw+X)*4; s += d[i] + d[i+1] + d[i+2]; } g.push(s/(3*Math.max(1, R-L-1))); }
+  let text = 0; for (let i = 1; i < g.length; i++) text += Math.abs(g[i] - g[i-1]); text /= Math.max(1, g.length - 1);
+  const penalty = (Math.abs(aspect - 4/3) < .012 ? .6 : 1)*(text < 2 ? .7 : 1);   // 4:3 is a phone photo, not a scan
+  const score = Math.round(100*Math.min(1, best.e/60)*best.fit*(.5 + .5*best.u)*penalty);
+  if (score < 20) return null;
+  // drop plain margins above and below the wrap (rows that are one flat colour right across the scan)
+  const flat = Y => { let s = 0, q = 0; for (let X = 0; X < cw; X += 2){ const i = (Y*cw+X)*4, v = d[i] + d[i+1] + d[i+2]; s += v; q += v*v; } const n = Math.ceil(cw/2); return Math.sqrt(Math.max(0, q/n - (s/n)**2))/3 < 6; };
+  let top = 0, bot = ch - 1;
+  while (top < ch*.15 && flat(top)) top++;
+  while (bot > ch*.85 && flat(bot)) bot--;
+  const k = img.width/cw, ky = img.height/ch;
+  return {x:L*k, w:(R-L+1)*k, frontX:(br+1)*k, y:top*ky, h:(bot-top+1)*ky, score};
 }
 function crop(img, sx, sy, sw, sh){ const c = document.createElement('canvas'); c.width = Math.max(1,Math.round(sw)); c.height = Math.max(1,Math.round(sh)); c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height); return c; }
 
@@ -580,7 +641,10 @@ function shelve(b){
 /* ---------- search: the Spinestack server, or TMDB + Open Library straight from the browser ---------- */
 const sstatus = (msg, err) => { const s = $('#sstatus'); s.classList.toggle('err', !!err); s.innerHTML = msg; };
 const TMDB = String(window.SPINESTACK_TMDB || '').trim();
+const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
 const direct = !window.claude;   // the Claude preview can't reach other sites
+const viaWorker = u => WORKER ? WORKER + '/img?url=' + encodeURIComponent(u) : u;
+const timeout = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('timeout')), ms))]);
 const getJSON = (url, opt) => fetch(url, opt).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
 async function tmdbFilms(q){
   const bearer = TMDB.length > 40, opt = bearer ? {headers:{Authorization:'Bearer ' + TMDB}} : {}, key = bearer ? '' : '&api_key=' + encodeURIComponent(TMDB);
@@ -608,12 +672,15 @@ let matches = [];
 $('#sform').addEventListener('submit', async e => {
   e.preventDefault();
   const q = $('#q').value.trim(); if (!q) return;
-  const want = $('#qkind').value, noFilms = !server && !TMDB && want !== 'book';
+  const want = $('#qkind').value, noFilms = !server && !WORKER && !TMDB && want !== 'book';
   if (!server && !direct){ sstatus('Search runs on the Spinestack server, which this preview doesn’t have. Drop a scan below instead.', true); return; }
   if (noFilms && want === 'movie'){ sstatus('Film search needs a TMDB key. Books work without one.', true); $('#matches').hidden = true; return; }
   $('#spines').hidden = true; sstatus('Looking up “' + esc(q) + '”…');
   try {
-    const results = server ? (await fetch(API + '/api/identify?q=' + encodeURIComponent(q)).then(r => r.json())).results : await identifyDirect(q, want);
+    let results;
+    if (server) results = (await fetch(API + '/api/identify?q=' + encodeURIComponent(q)).then(r => r.json())).results;
+    else if (WORKER) results = await getJSON(`${WORKER}/identify?want=${want}&q=` + encodeURIComponent(q)).then(r => r.results).catch(() => identifyDirect(q, want));
+    else results = await identifyDirect(q, want);
     matches = results.filter(m => want === 'all' || m.kind === want);
     if (!matches.length){ sstatus('Nothing matched “' + esc(q) + '”. Check the spelling, or drop a scan below.', true); $('#matches').hidden = true; return; }
     sstatus(matches.length + ' match' + (matches.length > 1 ? 'es' : '') + '.' + (noFilms ? ' Film search needs a TMDB key.' : ''));
@@ -627,71 +694,105 @@ $('#mrows').addEventListener('keydown', e => { if (e.key === 'Enter') pickMatch(
 
 /* An image that fails this would stop Save story from working, so it never goes on the shelf. */
 const canvasSafe = img => { try { const c = document.createElement('canvas'); c.width = c.height = 1; const x = c.getContext('2d'); x.drawImage(img, 0, 0, 1, 1); c.toDataURL(); return true; } catch { return false; } };
-/* Picking a match puts a spine made from its poster or cover on the shelf at once.
-   The tiles then switch that shelf item between real spines, the made spine and the plain cover. */
+/* Picking a match looks for real spines in DVD and book scans (the Worker finds them, the browser cuts them).
+   A clearly good one goes on the shelf by itself; otherwise the user picks. With no scans, a spine made
+   from the poster or cover goes on instead. The tiles then switch that shelf item between the choices. */
+const AUTO_SCORE = 60, SHOW_SCORE = 45;   // below 45 the cuts were mostly photos of open cases
 let current = null;
 const keyOf = m => [m.kind, m.title.toLowerCase(), m.year || ''].join('|');
-function bookFor(cur, choice, spineImg, front, source){
+function bookFor(cur, choice){
   const m = cur.m, film = m.kind === 'movie', base = {title:m.title, author:m.creator || '', kind:m.kind, font:'oswald', key:cur.key, choice};
-  if (spineImg){ const pal = extractPalette(front); return newBook(Object.assign(base, {img:front, spineImg, thumb:front.src, source, bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real'})); }
+  if (choice.startsWith('real:')){
+    const r = cur.real[+choice.slice(5)], pal = extractPalette(r.front);
+    return newBook(Object.assign(base, {img:r.front, spineImg:r.spine, source:hostOf(r.source), bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real'}, r.front.src ? {thumb:r.front.src} : {}));
+  }
   const img = cur.img, pal = extractPalette(img), t = film ? cur.title : null;
   const bg = t ? t.bg : film ? '#111111' : pal.bg, fg = t ? (contrast('#F4F4F2', bg) >= contrast('#111111', bg) ? '#F4F4F2' : '#111111') : film ? '#F4F4F2' : pal.fg;
   return newBook(Object.assign(base, {img, thumb:img.src, bg, fg, accent:pal.accent, titleImg:t && t.img, style:choice === 'cover' ? 'cover' : film ? 'dvd' : 'art'}));
 }
+const tileCanvas = (b, w, H0) => { const dpr = Math.min(2, window.devicePixelRatio || 1), sp = makeSpine(b, w*dpr, H0*dpr); sp.style.width = sp.width/dpr + 'px'; sp.setAttribute('aria-hidden', 'true'); return sp; };
 function showTiles(cur){
-  const m = cur.m, noun = m.kind === 'movie' ? 'poster' : 'cover', on = books.find(b => b.key === cur.key), pressed = c => on && on.choice === c ? ' aria-pressed="true"' : ' aria-pressed="false"';
-  const tiles = cur.res.spines.map((s,i) => `<button class="pick" type="button" data-c="real:${i}"${pressed('real:' + i)}><img src="${API + s.spine}" alt="Real spine ${i+1} of ${esc(m.title)}" loading="lazy"><span>Real spine</span><a class="src" href="${esc(s.source)}" target="_blank" rel="noopener">${esc(hostOf(s.source))}</a></button>`);
+  const m = cur.m, noun = m.kind === 'movie' ? 'poster' : 'cover', on = books.find(b => b.key === cur.key), pressed = c => ` aria-pressed="${!!on && on.choice === c}"`;
+  const tiles = cur.real.map((r,i) => `<button class="pick" type="button" data-c="real:${i}"${pressed('real:' + i)}><span>Real spine</span><a class="src" href="${esc(r.source)}" target="_blank" rel="noopener">${esc(hostOf(r.source))}</a></button>`);
   if (cur.img){
-    tiles.push(`<button class="pick" type="button" data-c="spine"${pressed('spine')}><span>Spine</span></button>`);
     tiles.push(`<button class="pick" type="button" data-c="cover"${pressed('cover')}><img class="cov" src="${esc(cur.img.src)}" crossorigin="anonymous" alt="${esc(m.title)} ${noun}"><span>Cover</span></button>`);
+    tiles.push(`<button class="pick" type="button" data-c="spine"${pressed('spine')}><span>Generated</span></button>`);
   }
   $('#found').innerHTML = tiles.join('') || (cur.busy ? '' : '<p class="grey">No scans and no ' + noun + ' found for this title. Drop a scan below.</p>');
+  const H0 = 240;
+  cur.real.forEach((r,i) => $(`#found [data-c="real:${i}"]`).prepend(tileCanvas({style:'real', spineImg:r.spine}, H0*r.spine.width/r.spine.height, H0)));
   const gen = $('#found [data-c="spine"]');
-  if (gen){
-    const dpr = Math.min(2, window.devicePixelRatio || 1), b = cur.preview || (cur.preview = bookFor(cur, 'spine')), H0 = 240, U = 220;
-    const w = isCase(b) ? H0/11 : U*b.wf*H0/1160, sp = makeSpine(b, w*dpr, H0*dpr);
-    sp.style.width = sp.width/dpr + 'px'; sp.setAttribute('aria-hidden', 'true'); gen.prepend(sp);
-  }
+  if (gen){ const b = cur.preview || (cur.preview = bookFor(cur, 'spine')); gen.prepend(tileCanvas(b, isCase(b) ? H0/11 : 220*b.wf*H0/1160, H0)); }
   $('#pickDel').hidden = !on;
 }
-async function findSpines(m){
-  const cur = current = {m, key:keyOf(m), res:{spines:[]}, img:null, busy:true}, noun = m.kind === 'movie' ? 'poster' : 'cover';
+/* Loads each scan through the Worker and cuts it; returns the cuts, best first. */
+async function cutScans(cur){
+  const r = await timeout(getJSON(`${WORKER}/scans?kind=${cur.m.kind}&title=${encodeURIComponent(cur.m.title)}&year=${encodeURIComponent(cur.m.year || '')}&creator=${encodeURIComponent(cur.m.creator || '')}`), 20000);
+  const scans = r.results || [];
+  if (cur === current && scans.length) sstatus(`Cutting spines from ${scans.length} scan${scans.length > 1 ? 's' : ''}…`);
+  const cuts = await Promise.all(scans.map(async s => {
+    try {
+      const img = await timeout(loadImg(viaWorker(s.img)), 15000);
+      if (!canvasSafe(img)) return null;
+      const cut = findSpine(img, cur.m.kind); if (!cut) return null;
+      return {spine:crop(img, cut.x, cut.y, cut.w, cut.h), front:crop(img, cut.frontX, cut.y, img.width - cut.frontX, cut.h), score:cut.score, source:s.source, img:s.img, scan:img};
+    } catch { return null; }
+  }));
+  return {scans:scans.length, cuts:cuts.filter(c => c && c.score >= SHOW_SCORE).sort((a,b) => b.score - a.score).slice(0, 8)};
+}
+async function findSpines(m, again){
+  const key = keyOf(m), cur = current = {m, key, real:[], res:{spines:[]}, img:null, busy:true}, noun = m.kind === 'movie' ? 'poster' : 'cover';
   $('#spines').hidden = false; $('#spinesTitle').textContent = m.title + (m.year ? ' (' + m.year + ')' : '');
-  $('#spinesNote').hidden = server; $('#found').innerHTML = ''; $('#pickDel').hidden = true;
-  if (m.cover){
-    sstatus('Loading the ' + noun + ' of “' + esc(m.title) + '”…');
-    let img = null;
-    try { img = await loadImg(server ? API + '/api/image?url=' + encodeURIComponent(m.cover) : m.cover); } catch {}
-    if (cur !== current) return;
-    if (img && canvasSafe(img)){ cur.img = img; if (m.kind === 'movie') cur.title = posterTitle(img); }
-    else toast('The ' + noun + ' from ' + hostOf(m.cover) + ' can’t be used in a story. Try another match.');
+  $('#spinesNote').hidden = server || !!WORKER; $('#found').innerHTML = ''; $('#pickDel').hidden = true; $('#dupAsk').hidden = true;
+  if (!again && books.some(b => b.key === key)){
+    // already on the shelf: ask inline before adding it a second time
+    $('#dupText').textContent = m.title + ' is already on your shelf.'; $('#dupAsk').hidden = false; cur.busy = false; showTiles(cur); sstatus('');
+    return;
   }
-  if (cur.img && !books.some(b => b.key === cur.key) && shelve(bookFor(cur, 'spine'))) toast(m.title + ' added to your shelf.');
+  if (again) cur.key = key + '#' + (1 + books.filter(b => (b.key || '').split('#')[0] === key).length);
+  const poster = m.cover ? timeout(loadImg(server ? API + '/api/image?url=' + encodeURIComponent(m.cover) : viaWorker(m.cover)), 15000).catch(() => null) : Promise.resolve(null);
+  let found = {scans:0, cuts:[]}, failed = false;
+  if (!server && WORKER){
+    sstatus('Searching DVD scans of “' + esc(m.title) + '”…');
+    try { found = await cutScans(cur); } catch { failed = true; }
+  }
+  const img = await poster;
+  if (cur !== current) return;
+  if (img && canvasSafe(img)){ cur.img = img; if (m.kind === 'movie') cur.title = posterTitle(img); }
+  else if (m.cover) toast('The ' + noun + ' from ' + hostOf(m.cover) + ' can’t be used in a story. Try another match.');
+  cur.real = found.cuts;
+  const best = cur.real[0], add = c => { if (shelve(bookFor(cur, c))) toast(m.title + ' added to your shelf.'); };
   if (server){
+    // the Spinestack backend (backend/): unchanged, it cuts the spines itself
+    if (cur.img) add('spine');
     showTiles(cur); sstatus('Searching scans of “' + esc(m.title) + '”. Takes 10 to 20 seconds.');
     try { cur.res = await fetch(`${API}/api/spines?title=${encodeURIComponent(m.title)}&kind=${m.kind}&year=${encodeURIComponent(m.year||'')}&creator=${encodeURIComponent(m.creator||'')}`).then(r => r.json()); }
     catch { if (cur === current) sstatus('The search server didn’t answer. Try again in a moment.', true); }
     if (cur !== current) return;
+    cur.real = (await Promise.all(cur.res.spines.map(s => Promise.all([loadImg(API + s.spine), loadImg(API + s.front)]).then(([spine, front]) => ({spine, front, score:s.score, source:s.source})).catch(() => null)))).filter(Boolean);
+    if (cur !== current) return;
     cur.busy = false; showTiles(cur);
-    const n = cur.res.spines.length;
+    const n = cur.real.length;
     sstatus(n ? `${n} real spine${n > 1 ? 's' : ''} found. Pick one to use it instead.` : 'No clean spine in the scans found online.' + (cur.img ? ' Using one made from the ' + noun + '.' : ''), !n);
-  } else {
-    cur.busy = false; showTiles(cur);
-    if (!cur.img) sstatus('No ' + noun + ' found for this title. Drop a scan below.', true);
-    else sstatus('Pick Cover to show the ' + noun + ' face out instead.');
+    return;
   }
+  cur.busy = false;
+  // book scans are rarer and less reliable, so a book never goes on by itself: the user picks
+  if (best && best.score >= AUTO_SCORE && m.kind === 'movie'){ add('real:0'); sstatus(`Real spine found in ${found.cuts.length} of ${found.scans} scans. Pick another if it looks wrong.`); }
+  else if (best){ sstatus(`${found.cuts.length} possible spine${found.cuts.length > 1 ? 's' : ''} found. Pick the one that looks right.`); }
+  else if (cur.img){
+    add('spine');
+    sstatus(!WORKER ? 'Pick Cover to show the ' + noun + ' face out instead.' : failed ? 'Scan search didn’t answer, so this spine is made from the ' + noun + '.' : 'No clean spine in the scans found online, so this one is made from the ' + noun + '.', !!WORKER);
+  }
+  else sstatus('No scans and no ' + noun + ' found for this title. Drop a scan below.', true);
+  showTiles(cur);
 }
-$('#found').addEventListener('click', async e => {
+$('#found').addEventListener('click', e => {
   if (e.target.closest('a')) return;
   const p = e.target.closest('.pick'), cur = current; if (!p || !cur) return;
-  const c = p.dataset.c; let b;
-  try {
-    if (c.startsWith('real:')){ const s = cur.res.spines[+c.slice(5)], [spineImg, front] = await Promise.all([loadImg(API + s.spine), loadImg(API + s.front)]); b = bookFor(cur, c, spineImg, front, hostOf(s.source)); }
-    else b = bookFor(cur, c);
-  } catch { toast('Couldn’t load that image. Try another one.'); return; }
-  if (cur !== current) return;
-  const i = books.findIndex(x => x.key === cur.key);
-  if (i >= 0){ Object.assign(b, {id:books[i].id, wf:books[i].wf, hf:books[i].hf, jit:books[i].jit, cat:books[i].cat}); books[i] = b; renderList(); toast(cur.m.title + ' now shows ' + (c === 'cover' ? 'its cover' : c === 'spine' ? 'the made spine' : 'the real spine') + '.'); }
+  const c = p.dataset.c, b = bookFor(cur, c), i = books.findIndex(x => x.key === cur.key);
+  const what = c === 'cover' ? 'its cover' : c === 'spine' ? 'the generated spine' : 'a real spine';
+  if (i >= 0){ Object.assign(b, {id:books[i].id, wf:books[i].wf, hf:books[i].hf, jit:books[i].jit, cat:books[i].cat}); books[i] = b; renderList(); toast(cur.m.title + ' now shows ' + what + '.'); }
   else if (shelve(b)) toast(cur.m.title + ' added to your shelf.');
   showTiles(cur);
 });
@@ -699,6 +800,8 @@ $('#pickDel').addEventListener('click', () => {
   const cur = current; if (!cur) return;
   books = books.filter(b => b.key !== cur.key); renderList(); showTiles(cur); toast(cur.m.title + ' removed.');
 });
+$('#dupAdd').addEventListener('click', () => { if (current) findSpines(current.m, true); });
+$('#dupCancel').addEventListener('click', () => { $('#dupAsk').hidden = true; });
 const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./,''); } catch { return 'source'; } };
 
 /* ---------- uploads ---------- */
@@ -713,7 +816,7 @@ function addFiles(files){
       let b;
       const cut = im.width/im.height > 1.15 ? findSpine(im) : null;
       if (cut){
-        const spineImg = crop(im, cut.x, 0, cut.w, im.height), front = crop(im, cut.frontX, 0, im.width - cut.frontX, im.height), pal = extractPalette(front);
+        const spineImg = crop(im, cut.x, cut.y, cut.w, cut.h), front = crop(im, cut.frontX, cut.y, im.width - cut.frontX, cut.h), pal = extractPalette(front);
         b = newBook({title:titleFromName(f.name), kind:im.width/im.height < 1.7 ? 'movie' : 'book', img:front, spineImg, bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real', font:'oswald', file:f});
       } else {
         const pal = extractPalette(im);
@@ -806,8 +909,8 @@ async function boot(){
     const h = await fetch(API + '/api/health', {signal:ctl.signal}).then(r => r.ok ? r.json() : null);
     server = !!(h && h.ok);
   } catch { server = false; }
-  $('#modeNote').hidden = server;
-  if (!server && direct) $('#modeNote').textContent = TMDB ? 'Search works here. Real DVD and book spines need the Spinestack server.' : 'Book search works here. Films need a TMDB key, and real spines need the Spinestack server.';
+  $('#modeNote').hidden = server || !!WORKER;
+  if (!server && !WORKER && direct) $('#modeNote').textContent = TMDB ? 'Search works here. Real DVD and book spines need the Spinestack server.' : 'Book search works here. Films need a TMDB key, and real spines need the Spinestack server.';
   $('#exportNote').textContent = 'On a phone this opens the share sheet. Pick Instagram, then Story.';
   if (server){
     try { const r = await fetch(API + '/api/recent').then(r => r.json()); fillRecent(r.recent.map(x => x.title)); } catch {}
