@@ -136,7 +136,7 @@ function edition(r, img, text) {
 }
 function queryFor(kind, round, title, year, creator) {
   const q = kind === 'movie'
-    ? [`"${title}" ${year} dvd cover`, `"${title}" ${year} dvd cover english`, `"${title}" ${year} region 1 dvd`, `"${title}" criterion dvd`]
+    ? [`"${title}" ${year} dvd cover`, `"${title}" ${year} dvd cover english`, `"${title}" dvd cover scan`, `"${title}" criterion dvd`]
     : [`"${title}" ${creator} book cover spine`, `"${title}" ${creator} book spine`, `"${title}" spine`, `${title} ${creator} full cover wrap`];
   return q[round].replace(/\s+/g, ' ').trim();
 }
@@ -153,7 +153,7 @@ async function scans(p, env, cors, ctx) {
   if (!title) return json({error: 'A title is needed.'}, 400, cors);
   const archived = round === 0 ? await archiveFor(env, kind, title, year, creator) : [];
   if (!env.BRAVE_API_KEY) return json({results: archived, round, more: false}, 200, cors);
-  const {body, hit} = await cached(env, ctx, `sc9:${kind}:${title.toLowerCase()}:${year}:${creator.toLowerCase()}:${round}`, MONTH, async () => {
+  const {body, hit} = await cached(env, ctx, `sc11:${kind}:${title.toLowerCase()}:${year}:${creator.toLowerCase()}:${round}`, MONTH, async () => {
     const found = await brave(queryFor(kind, round, title, year, creator), env.BRAVE_API_KEY);
     // wraps: back | spine | front. Films 1.3-1.9 wide (Blu-ray wraps run wider than DVDs), books 1.2-2.4.
     // Also single spines: at least 4 times taller than wide.
@@ -175,7 +175,10 @@ async function scans(p, env, cors, ctx) {
       if (!wrap && !solo) continue;
       if (r.properties.width && (wrap ? r.properties.width < 400 : r.properties.height < 400)) continue;
       const text = ' ' + words([r.title, decode(r.url || ''), decode(img)].join(' ')).join(' ') + ' ';
-      if (!text.includes(' ' + phrase.join(' ') + ' ')) continue;
+      // ...and it has to be in the image's own title or file name, not only the page address: shop pages
+      // (amazon.com/Paris-Texas/...) also show other films' covers, e.g. "The Longest Day" on Paris, Texas's page
+      const own = ' ' + words([r.title, decode(img)].join(' ')).join(' ') + ' ';
+      if (!own.includes(' ' + phrase.join(' ') + ' ')) continue;
       const hits = extra.filter(x => text.includes(' ' + x + ' ')).length;
       if (phrase.length === 1 && extra.length && !hits) continue;   // "Kids" alone also matches "Spy Kids": want the year or director too
       const ed = edition(r, img, text);
