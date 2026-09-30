@@ -159,6 +159,9 @@ em.pro{font-style:normal;font-weight:700;font-size:9px;border:1px solid currentC
 .pngbox{position:absolute;border:1px dashed var(--ink);box-shadow:0 0 0 1px rgba(255,255,255,.85);pointer-events:none}
 .pngx{pointer-events:auto;position:absolute;top:-12px;right:-12px;width:24px;height:24px;border-radius:50%;border:1px solid var(--ink);background:var(--paper);color:var(--ink);font:500 12px var(--mono);cursor:pointer;padding:0;line-height:1;touch-action:none}
 .pngh{pointer-events:auto;position:absolute;right:-7px;bottom:-7px;width:14px;height:14px;background:var(--paper);border:1px solid var(--ink);cursor:nwse-resize;touch-action:none}
+.pngr{pointer-events:auto;position:absolute;left:50%;top:-34px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:var(--paper);border:1px solid var(--ink);cursor:grab;touch-action:none}
+.pngr::after{content:"";position:absolute;left:6px;top:13px;width:1px;height:20px;background:var(--ink)}
+.pngadd .range{justify-self:stretch;max-width:340px}
 .range{display:flex;gap:10px;align-items:center}
 .range input{accent-color:var(--ink);flex:1;min-width:0}
 .check input{accent-color:var(--ink);margin:0}
@@ -288,7 +291,7 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
           <div class="filters" id="filters" role="group" aria-label="Filter"></div>
           <label class="range"><span class="lbl">Intensity</span><input type="range" id="intensity" min="0" max="100" value="70" aria-label="Filter intensity"></label></div>
         <div class="phone"><div class="stage" id="stage"><canvas id="story" width="1080" height="1920" aria-label="Story preview"></canvas>
-          <div class="pngbox" id="pngBox" hidden><button class="pngx" id="pngX" type="button" aria-label="Remove this PNG">✕</button><span class="pngh" id="pngH" aria-hidden="true"></span></div></div></div>
+          <div class="pngbox" id="pngBox" hidden><button class="pngx" id="pngX" type="button" aria-label="Remove this PNG">✕</button><span class="pngh" id="pngH" aria-hidden="true"></span><span class="pngr" id="pngR" aria-hidden="true"></span></div></div></div>
         <div class="ctl"><label class="lbl" for="caption">Caption</label><input type="text" id="caption" value="my next reads." maxlength="60"></div>
         <div class="ctl" id="themeWrap"><span class="lbl">Background</span>
           <div class="seg" id="theme" role="group" aria-label="Background"><button type="button" data-v="paper">Paper</button><button type="button" data-v="ink">Ink</button><button type="button" data-v="blush">Blush</button><button type="button" data-v="shelf">Shelf</button><button type="button" data-v="dark">Dark</button><button type="button" data-v="forest">Forest</button><button type="button" data-v="wall">Your PNG<em class="pro">PRO</em></button></div>
@@ -302,6 +305,7 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
           <div class="pngadd"><button class="dash sm" id="pngAdd" type="button">+ Add PNG<em class="pro">PRO</em></button>
             <p class="note">Posters, photos, anything. PNG, JPG or WEBP, max 5 MB each. Transparent PNGs work. Place it anywhere on the wall. It always stays behind the books.</p>
             <p class="note" id="pngNote"></p>
+            <label class="range" id="pngOpWrap" hidden><span class="lbl">Opacity</span><input type="range" id="pngOp" min="10" max="100" value="100" aria-label="Opacity of the picked PNG"><span class="lbl" id="pngOpV">100%</span></label>
             <input type="file" id="pngFile" accept="image/png,image/jpeg,image/webp" multiple hidden></div>
           <label class="check"><input type="checkbox" id="woodShelf"> Wood shelf</label>
           <label class="check"><input type="checkbox" id="plank"> Floating shelf<em class="pro">PRO</em></label>
@@ -390,7 +394,7 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
 </div>
 <div class="toast" id="toast" hidden></div>
 
-<script src="shelf.js?v=20260930"></script>
+<script src="shelf.js?v=20260930b"></script>
 <script>
 (() => {
 const $ = s => document.querySelector(s);
@@ -601,13 +605,16 @@ const proNote = (el, msg) => { el.innerHTML = PRO_TAG + esc(msg); };
 function proToast(msg){ toast(msg); $('#toast').insertAdjacentHTML('afterbegin', PRO_TAG); }
 /* Your own wall and PNGs (Pro). They stay in this page while you make the shelf and go to the Worker only when you
    save it (so a story needs no account), and they're deleted from storage once no saved shelf of yours uses them. */
-const media = {wall: null, pngs: []};   // wall: {img, blob, name, small, dark, key}; pngs: [{img, blob, key, x, y, w}]
+const media = {wall: null, pngs: []};   // wall: {img, blob, name, small, dark, key}; pngs: [{img, blob, key, x, y, w, rot, opacity}]
 const art = () => ({wall: media.wall && media.wall.img, wallDark: !!(media.wall && media.wall.dark), pngs: media.pngs});
 const walled = () => settings.theme === 'wall' && !!media.wall;
 // the Pro settings a shelf keeps (in shelves.pro); the pictures' keys exist once they're uploaded
 const r4 = v => Math.round(v*1e4)/1e4;
+// a PNG's turn and opacity are kept only when they're not the plain 0° and 100 %
+const itemOf = p => { const rot = Math.round((p.rot || 0)*10)/10, opacity = Math.round((p.opacity == null ? 1 : p.opacity)*100)/100;
+  return clean0({key: p.key, x: r4(p.x), y: r4(p.y), w: r4(p.w), rot: rot || undefined, opacity: opacity < 1 ? opacity : undefined}); };
 const proSettings = () => clean0({plank: settings.plank || undefined, shelf_colour: settings.plank && settings.shelfColour !== '#FFFFFF' ? settings.shelfColour : undefined, wall_key: walled() && media.wall.key || undefined,
-  wall_items: media.pngs.length ? media.pngs.map(p => ({key: p.key, x: r4(p.x), y: r4(p.y), w: r4(p.w)})) : undefined});
+  wall_items: media.pngs.length ? media.pngs.map(itemOf) : undefined});
 const usesPro = () => !!settings.plank || walled() || media.pngs.length > 0;
 const keysOf = pro => [pro && pro.wall_key, ...((pro && pro.wall_items) || []).map(p => p.key)].filter(Boolean);
 // this page's shelf, drawn by shelf.js
@@ -1132,7 +1139,7 @@ async function makePng(file, nth = 2){
     c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
     try {
       const blob = await under2mb(c, true), a = c.width/c.height;
-      return {img: c, blob, key: null, ...landing(a, nth)};
+      return {img: c, blob, key: null, ...landing(a, nth), rot: 0, opacity: 1};
     } catch {}
   }
   throw new Error('That picture couldn’t be made small enough.');
@@ -1140,14 +1147,22 @@ async function makePng(file, nth = 2){
 let sel = -1;          // the PNG picked on the preview
 const stage = $('#stage'), pointers = new Map(); let grab = null;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const rectOf = p => { const w = p.w*W, h = w*p.img.height/p.img.width; return {x: p.x*W - w/2, y: p.y*H - h/2, w, h}; };
+const rectOf = p => { const w = p.w*W, h = w*p.img.height/p.img.width; return {x: p.x*W - w/2, y: p.y*H - h/2, w, h}; };   // before its turn
 const atStory = e => { const r = story.getBoundingClientRect(), k = W/r.width; return {x: (e.clientX - r.left)*k, y: (e.clientY - r.top)*k}; };
+// is the point on the PNG, turned as it is?
+const onPng = (p, pt) => { const r = rectOf(p), a = -(p.rot || 0)*Math.PI/180, dx = pt.x - p.x*W, dy = pt.y - p.y*H;
+  return Math.abs(dx*Math.cos(a) - dy*Math.sin(a)) <= r.w/2 && Math.abs(dx*Math.sin(a) + dy*Math.cos(a)) <= r.h/2; };
+// a turn in degrees, -180 to 180, straight again when it comes within 4° of straight
+const turn = d => { d = ((d % 360) + 540) % 360 - 180; return Math.abs(d) < 4 ? 0 : d; };
+const heading = (a, b) => Math.atan2(b.y - a.y, b.x - a.x)*180/Math.PI;
 function paintPngs(){
   stage.classList.toggle('arranging', media.pngs.length > 0);
   const p = media.pngs[sel], box = $('#pngBox');
+  $('#pngOpWrap').hidden = !p;
   if (!p){ box.hidden = true; return; }
-  const r = rectOf(p), k = story.clientWidth/W;
-  box.hidden = false; Object.assign(box.style, {left: r.x*k + 'px', top: r.y*k + 'px', width: r.w*k + 'px', height: r.h*k + 'px'});
+  const r = rectOf(p), k = story.clientWidth/W, op = Math.round((p.opacity == null ? 1 : p.opacity)*100);
+  box.hidden = false; Object.assign(box.style, {left: r.x*k + 'px', top: r.y*k + 'px', width: r.w*k + 'px', height: r.h*k + 'px', transform: p.rot ? `rotate(${p.rot}deg)` : ''});
+  $('#pngOp').value = op; $('#pngOpV').textContent = op + '%';
 }
 addEventListener('resize', paintPngs);
 $('#pngAdd').addEventListener('click', () => {
@@ -1160,22 +1175,25 @@ $('#pngFile').addEventListener('change', async e => {
   $('#pngNote').textContent = files.length > 1 ? 'Reading the pictures…' : 'Reading the picture…';
   let failed = '';
   for (const [i, f] of files.entries()){ try { media.pngs.push(await makePng(f, files.length > 1 ? i : 2)); sel = media.pngs.length - 1; } catch (err){ failed = err.message; } }
-  $('#pngNote').textContent = failed || 'Drag it on the preview to move it. Pull its corner, or pinch, to resize.';
+  $('#pngNote').textContent = failed || 'Drag it on the preview to move it. Pull its corner, or pinch, to resize. Turn it with the dot above it, or with two fingers.';
   paintPngs(); redraw();
 });
-// tap a PNG to pick it and drag it; pull the corner or pinch to resize; tap the wall to let go
+// tap a PNG to pick it and drag it; pull the corner or pinch to resize; turn it with the dot above it or two
+// fingers; tap the wall to let go
 stage.addEventListener('pointerdown', e => {
   if (!media.pngs.length || e.target.closest('#pngX')) return;
   const pt = atStory(e); pointers.set(e.pointerId, pt);
-  const p = media.pngs[sel];
-  if (pointers.size === 2 && p){ const [a, b] = [...pointers.values()]; grab = {mode: 'pinch', w0: p.w, d0: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y))}; }
-  else if (e.target.closest('#pngH') && p) grab = {mode: 'size', w0: p.w, d0: Math.max(1, Math.hypot(pt.x - p.x*W, pt.y - p.y*H))};
+  const p = media.pngs[sel], mid = p && {x: p.x*W, y: p.y*H};
+  if (pointers.size === 2 && p){ const [a, b] = [...pointers.values()]; grab = {mode: 'pinch', w0: p.w, d0: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), rot0: p.rot || 0, a0: heading(a, b)}; }
+  else if (e.target.closest('#pngH') && p) grab = {mode: 'size', w0: p.w, d0: Math.max(1, Math.hypot(pt.x - mid.x, pt.y - mid.y))};
+  else if (e.target.closest('#pngR') && p) grab = {mode: 'turn', off: (p.rot || 0) - heading(mid, pt)};
   else {
     sel = -1;
-    for (let i = media.pngs.length - 1; i >= 0; i--){ const r = rectOf(media.pngs[i]); if (pt.x >= r.x && pt.x <= r.x + r.w && pt.y >= r.y && pt.y <= r.y + r.h){ sel = i; break; } }
+    for (let i = media.pngs.length - 1; i >= 0; i--) if (onPng(media.pngs[i], pt)){ sel = i; break; }
     const q = media.pngs[sel]; grab = q ? {mode: 'move', dx: pt.x - q.x*W, dy: pt.y - q.y*H} : null;
   }
   if (grab){ e.preventDefault(); try { stage.setPointerCapture(e.pointerId); } catch {} }
+  if (media.pngs[sel] && document.activeElement && typing(document.activeElement)) document.activeElement.blur();   // so Delete goes to the PNG
   paintPngs();
 });
 stage.addEventListener('pointermove', e => {
@@ -1183,12 +1201,22 @@ stage.addEventListener('pointermove', e => {
   const pt = atStory(e), p = media.pngs[sel]; pointers.set(e.pointerId, pt); if (!p) return;
   if (grab.mode === 'move'){ p.x = clamp((pt.x - grab.dx)/W, 0, 1); p.y = clamp((pt.y - grab.dy)/H, 0, 1); }
   else if (grab.mode === 'size') p.w = clamp(grab.w0*Math.hypot(pt.x - p.x*W, pt.y - p.y*H)/grab.d0, .02, 2);
-  else if (pointers.size === 2){ const [a, b] = [...pointers.values()]; p.w = clamp(grab.w0*Math.hypot(a.x - b.x, a.y - b.y)/grab.d0, .02, 2); }
+  else if (grab.mode === 'turn') p.rot = turn(heading({x: p.x*W, y: p.y*H}, pt) + grab.off);
+  else if (pointers.size === 2){ const [a, b] = [...pointers.values()]; p.w = clamp(grab.w0*Math.hypot(a.x - b.x, a.y - b.y)/grab.d0, .02, 2); p.rot = turn(grab.rot0 + heading(a, b) - grab.a0); }
   paintPngs(); redraw();
 });
 const letGo = e => { pointers.delete(e.pointerId); if (!pointers.size || (grab && grab.mode === 'pinch')) grab = null; };
 stage.addEventListener('pointerup', letGo); stage.addEventListener('pointercancel', letGo);
-$('#pngX').addEventListener('click', () => { if (sel < 0) return; media.pngs.splice(sel, 1); sel = -1; $('#pngNote').textContent = ''; paintPngs(); redraw(); });
+function dropPng(){ if (sel < 0) return; media.pngs.splice(sel, 1); sel = -1; $('#pngNote').textContent = ''; paintPngs(); redraw(); }
+$('#pngX').addEventListener('click', dropPng);
+$('#pngOp').addEventListener('input', e => { const p = media.pngs[sel]; if (!p) return; p.opacity = clamp(+e.target.value/100, .1, 1); $('#pngOpV').textContent = e.target.value + '%'; redraw(); });
+// Delete or Backspace removes the picked PNG and Escape lets go of it, never while typing in a box
+const typing = t => t.isContentEditable || /^(TEXTAREA|SELECT)$/.test(t.tagName) || (t.tagName === 'INPUT' && !/^(range|checkbox|radio|button|submit|reset|file|color)$/.test(t.type));
+addEventListener('keydown', e => {
+  if (!media.pngs[sel] || e.ctrlKey || e.metaKey || e.altKey || typing(e.target)) return;
+  if (e.key === 'Delete' || e.key === 'Backspace'){ e.preventDefault(); dropPng(); }
+  else if (e.key === 'Escape'){ sel = -1; paintPngs(); }
+});
 
 /* ---------- export: Claude download, phone share sheet, or plain download ---------- */
 let downloads = null;
@@ -1584,7 +1612,7 @@ async function restoreArt(s, drafted){
   const items = drafted ? drafted.pngs || [] : pro.wall_items || [];
   const got = await Promise.all(items.map(async it => {
     const url = it.blob ? URL.createObjectURL(it.blob) : `${WORKER}/m/img?k=${encodeURIComponent(it.key)}`;
-    try { return {img: await timeout(loadImg(url), 15000), blob: it.blob || null, key: it.key || null, x: it.x, y: it.y, w: it.w}; }
+    try { return {img: await timeout(loadImg(url), 15000), blob: it.blob || null, key: it.key || null, x: it.x, y: it.y, w: it.w, rot: +it.rot || 0, opacity: it.opacity == null ? 1 : +it.opacity}; }
     catch { return null; } finally { if (it.blob) URL.revokeObjectURL(url); }
   }));
   media.pngs = got.filter(Boolean);
@@ -1622,7 +1650,7 @@ async function stashDraft(){
     const items = await Promise.all(books.map(b => itemFor(b, inline)));
     sessionStorage.setItem(DRAFT, JSON.stringify({at: Date.now(), settings: {...settings}, shelfId: acct.shelfId, save: acct.pendingSave, items}));
     try { await idb.put(DRAFT, {wall: media.wall && {blob: media.wall.blob, key: media.wall.key, name: media.wall.name, small: media.wall.small, dark: media.wall.dark},
-      pngs: media.pngs.map(p => ({blob: p.blob, key: p.key, x: p.x, y: p.y, w: p.w}))}); } catch {}
+      pngs: media.pngs.map(p => ({blob: p.blob, key: p.key, x: p.x, y: p.y, w: p.w, rot: p.rot, opacity: p.opacity}))}); } catch {}
   } catch { try { sessionStorage.removeItem(DRAFT); } catch {} }
 }
 function takeDraft(){

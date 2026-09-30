@@ -932,8 +932,9 @@ function sizes(H0, U, list, settings){
 /* bare: just the books and their shelf, on nothing (the profile page draws a shelf on its own white page): no
    background, caption, watermark, or Flash's vignette and date stamp, which belong to the photo, not the shelf.
    art (Pro): the user's own wall, a 1080 x 1920 picture used when the background is 'wall' (with dark: whether it's a
-   dark picture, for the caption and shadows), and their PNGs, each {img, x, y, w}: the middle and the width as fractions
-   of the story. Always in this order: wall, PNGs, shelf, books.
+   dark picture, for the caption and shadows), and their PNGs, each {img, x, y, w, rot, opacity}: the middle and the width
+   as fractions of the story, the turn in degrees (clockwise, about the middle) and 0.1-1. Always in this order: wall,
+   PNGs, shelf, books.
    Returns where the caption ends and the books begin (y in the story, booksTop null with no books), so the builder
    can put a new PNG on the open wall between them. */
 const WALL_LIGHT = {bg:'#FFFFFF', ink:'#0F1419', mark:'rgba(15,20,25,.5)'}, WALL_DARK = {bg:'#000000', ink:'#F1F2F4', mark:'rgba(241,242,244,.55)'};
@@ -943,7 +944,11 @@ function renderStory(x, f, fast, books, settings, bare = false, art = {}){
   x.clearRect(0,0,W,H);
   if (!bare){
     if (wall) x.drawImage(wall, 0, 0, W, H); else { x.fillStyle = T.bg; x.fillRect(0,0,W,H); }
-    for (const p of art.pngs || []){ const w = p.w*W, h = w*p.img.height/p.img.width; x.drawImage(p.img, p.x*W - w/2, p.y*H - h/2, w, h); }
+    for (const p of art.pngs || []){
+      const w = p.w*W, h = w*p.img.height/p.img.width;
+      x.save(); x.globalAlpha = p.opacity == null ? 1 : p.opacity; x.translate(p.x*W, p.y*H); if (p.rot) x.rotate(p.rot*Math.PI/180);
+      x.drawImage(p.img, -w/2, -h/2, w, h); x.restore();
+    }
   }
   x.fillStyle = T.ink; x.font = '500 52px "Geist Mono", ui-monospace, monospace'; x.textBaseline = 'alphabetic'; x.textAlign = 'left';
   let y = 290; if (!bare && settings.caption.trim()) for (const ln of wrapText(x, settings.caption, 900)){ x.fillText(ln, 90, y); y += 68; }

@@ -1,4 +1,5 @@
--- Spinestack, phase 2: checks the Row Level Security rules after 0002 (profiles, public and private shelves, Pro, reports).
+-- Spinestack, phase 2: checks the Row Level Security rules after 0002 (profiles, public and private shelves, Pro, reports)
+-- and 0004 (a PNG on the wall can be turned and see-through). Run it once both are in.
 -- Run in the Supabase dashboard: SQL Editor -> New query -> paste -> Run.
 -- It makes two throwaway users inside a transaction and rolls everything back at the end: nothing is kept.
 -- The last result says "ALL PHASE 2 CHECKS PASSED". Any failed check stops with an error that starts "FAIL:".
@@ -67,7 +68,8 @@ end $$;
 select public.save_shelf(
   '{"id":"00000000-0000-4000-8000-0000000000a1","caption":"a shelf","filter":"vhs","background":"dark","layout":"row",
     "pro":{"wall_key":"00000000-0000-4000-8000-00000000000a/wall/0123456789abcdef0123456789abcdef","shelf_colour":"#FFFFFF","plank":true,
-           "wall_items":[{"key":"00000000-0000-4000-8000-00000000000a/png/0123456789abcdef0123456789abcde0","x":0.5,"y":0.3,"w":0.4}]}}',
+           "wall_items":[{"key":"00000000-0000-4000-8000-00000000000a/png/0123456789abcdef0123456789abcde0","x":0.5,"y":0.3,"w":0.4,"rot":-12.5,"opacity":0.6},
+                         {"key":"00000000-0000-4000-8000-00000000000a/png/0123456789abcdef0123456789abcde1","x":0.2,"y":0.2,"w":0.3}]}}',
   '[{"item_id":"b0","kind":"movie","title":"Gummo","author":"Harmony Korine","year":"1997","spine_src":"a:0123abcd","look":{"style":"real"}},
     {"item_id":"b1","kind":"book","title":"The Waves","author":"Virginia Woolf","cover_src":"url:https://covers.openlibrary.org/b/id/1-L.jpg","look":{"style":"art"}}]');
 -- a2: public, 20 spines (Gummo is on this one too)
@@ -102,6 +104,28 @@ do $$ begin
   begin
     perform public.save_shelf('{"caption":"x","pro":{"wall_items":[{"key":"00000000-0000-4000-8000-00000000000a/png/0123456789abcdef0123456789abcdef","x":"0.5","y":0.3,"w":0.4}]}}', '[]');
     raise exception 'FAIL: a PNG with a text position was saved';
+  exception when check_violation then null; end;
+  -- a PNG's turn and opacity (0004): kept as saved, and only in range
+  if (select pro -> 'wall_items' -> 0 ->> 'rot' from public.shelves where id = '00000000-0000-4000-8000-0000000000a1') <> '-12.5'
+     or (select pro -> 'wall_items' -> 0 ->> 'opacity' from public.shelves where id = '00000000-0000-4000-8000-0000000000a1') <> '0.6'
+     or (select pro -> 'wall_items' -> 1 ? 'rot' from public.shelves where id = '00000000-0000-4000-8000-0000000000a1') then
+    raise exception 'FAIL: a PNG''s turn and opacity were not saved as they were sent';
+  end if;
+  begin
+    perform public.save_shelf('{"caption":"x","pro":{"wall_items":[{"key":"00000000-0000-4000-8000-00000000000a/png/0123456789abcdef0123456789abcdef","x":0.5,"y":0.3,"w":0.4,"rot":200}]}}', '[]');
+    raise exception 'FAIL: a PNG turned past 180 degrees was saved';
+  exception when check_violation then null; end;
+  begin
+    perform public.save_shelf('{"caption":"x","pro":{"wall_items":[{"key":"00000000-0000-4000-8000-00000000000a/png/0123456789abcdef0123456789abcdef","x":0.5,"y":0.3,"w":0.4,"opacity":0.05}]}}', '[]');
+    raise exception 'FAIL: a PNG at 5 %% opacity was saved';
+  exception when check_violation then null; end;
+  begin
+    perform public.save_shelf('{"caption":"x","pro":{"wall_items":[{"key":"00000000-0000-4000-8000-00000000000a/png/0123456789abcdef0123456789abcdef","x":0.5,"y":0.3,"w":0.4,"opacity":"0.5"}]}}', '[]');
+    raise exception 'FAIL: a PNG with a text opacity was saved';
+  exception when check_violation then null; end;
+  begin
+    perform public.save_shelf('{"caption":"x","pro":{"wall_items":[{"key":"00000000-0000-4000-8000-00000000000a/png/0123456789abcdef0123456789abcdef","x":0.5,"y":0.3,"w":0.4,"spin":1}]}}', '[]');
+    raise exception 'FAIL: a PNG with an unknown setting was saved';
   exception when check_violation then null; end;
   begin
     perform public.save_shelf('{"caption":"x","pro":{"lamp":true}}', '[]');
