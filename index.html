@@ -2184,7 +2184,8 @@ $('#saveNew').addEventListener('click', () => saveShelf(true));
 const SHELF_COLS = 'id,caption,filter,intensity,background,wood,layout,varied,is_public,preview_key,created_at,updated_at,shelf_items(count)';
 async function loadMine(){
   if (!acct.profile) return;
-  const {data, error} = await acct.sb.from('shelves').select(SHELF_COLS).order('updated_at', {ascending:false}).limit(60);
+  // own shelves only: since phase 2, other people's public shelves are readable too
+  const {data, error} = await acct.sb.from('shelves').select(SHELF_COLS).eq('owner', acct.user.id).order('updated_at', {ascending:false}).limit(60);
   if (error){ toast('Couldn’t load your shelves. Try again in a moment.'); return; }
   acct.shelves = data || []; paintMine();
 }

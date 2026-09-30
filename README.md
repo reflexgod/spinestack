@@ -97,8 +97,14 @@ signed-out visitors never load the Supabase library.
   `[vars]`. Both are public; Row Level Security protects every table. The secret / service_role key isn't used
   anywhere and must never be added to the page, the repo or the Worker.
 - **Database:** run each file in `supabase/migrations/` once, in order, in the dashboard's SQL Editor. Then run the
-  matching `supabase/tests/rls_*.sql`: it plays two users and a signed-out visitor, undoes everything, and ends with
-  `ALL ... CHECKS PASSED` (or stops at the first `FAIL:`).
+  test for the newest one (`supabase/tests/rls_phase2.sql` after `0002`): it plays two users and a signed-out visitor,
+  undoes everything, and ends with `ALL ... CHECKS PASSED` (or stops at the first `FAIL:`). `rls_phase1.sql` is for a
+  database with `0001` only.
+- **Pro:** two switches that must agree: `SHELFSTACKD_PRO_REQUIRED` in `index.html` (what the page offers) and
+  `app_config.pro_required` in the database (what the database and the Worker allow). Both are off, so everyone gets Pro.
+  With them on, an account is Pro when `profiles.is_pro` is true (set in the SQL Editor; never from the page).
+- **Admins** can read reports. Add yourself once in the SQL Editor:
+  `insert into public.admins (user_id) select id from auth.users where email = '<your sign-in email>';`
 - **Sign-in addresses:** Supabase → Authentication → URL Configuration allows `https://reflexgod.github.io/spinestack/**`,
   `https://shelfstackd.com/**` and `http://localhost:8080/**`. Google's client sends people back to
   `https://fiukspnovrlzlcdekcnb.supabase.co/auth/v1/callback`.
