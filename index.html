@@ -169,7 +169,7 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
 .mine .open img{width:100%;height:100%;object-fit:cover;display:block}
 .mine .card.on .open{outline:2px solid var(--ink)}
 .mine .cap{font-weight:500;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mine .acts{display:flex;flex-direction:row;gap:18px;margin-top:4px}
+.mine .acts{display:flex;flex-direction:row;flex-wrap:wrap;gap:6px 18px;margin-top:4px}
 .sheet{position:fixed;inset:0;background:rgba(0,0,0,.35);display:grid;place-items:center;z-index:30;padding:16px}
 .sheetbox{background:var(--paper);border:1px solid var(--ink);border-radius:12px;width:100%;max-width:380px;padding:26px 24px 22px;position:relative}
 .sheetbox > div{display:grid;gap:14px}
@@ -288,7 +288,7 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
   </section>
 
   <section id="mine" class="wide" hidden>
-    <h2>My shelves <small id="mineCount"></small> <button class="dash sm" id="signOut" type="button" style="margin-left:auto">Sign out</button></h2>
+    <h2>My shelves <small id="mineCount"></small> <a class="dash sm" id="profileLink" href="u/" style="margin-left:auto">Profile</a> <button class="dash sm" id="signOut" type="button">Sign out</button></h2>
     <p class="grey" id="mineEmpty" hidden>No saved shelves yet. Make one above and press Save shelf.</p>
     <ol class="mine" id="mineList"></ol>
   </section>
@@ -1057,6 +1057,8 @@ async function startAccounts(){
     if (err) toast('Sign-in didn’t finish: ' + err);
     await setUser(session && session.user);
     watchAuth();
+    const openId = new URLSearchParams(location.search).get('open');
+    if (openId && !draft){ history.replaceState(null, '', here() + location.hash); if (acct.shelves.some(s => s.id === openId)) await openShelf(openId); }
   } catch (e){ toast(friendly(e)); }
 }
 function watchAuth(){
@@ -1085,9 +1087,10 @@ function paintAcct(){
   $('#saveNew').hidden = !acct.shelfId;
   $('#saveNote').textContent = acct.user ? '' : 'Sign in to keep this shelf and open it again later.';
   $('#mine').hidden = !p;
+  if (p) $('#profileLink').href = 'u/?' + p.username;
 }
 $('#acctBtn').addEventListener('click', () => {
-  if (acct.profile) $('#mine').scrollIntoView({behavior:'smooth'});
+  if (acct.profile) location.href = 'u/?' + acct.profile.username;
   else openSheet(acct.user ? 'name' : 'signin');
 });
 
@@ -1258,9 +1261,21 @@ function paintMine(){
     const src = s.preview_key ? `${WORKER}/u/preview?k=${encodeURIComponent(s.preview_key)}&v=${encodeURIComponent(s.updated_at)}` : '';
     return `<li class="card${s.id === acct.shelfId ? ' on' : ''}"><button class="open" type="button" data-open="${s.id}" aria-label="Open ${esc(cap)}">${src ? `<img src="${esc(src)}" alt="" loading="lazy" width="360" height="640">` : ''}</button>
       <div class="cap">${esc(cap)}</div><div class="grey">${n} ${n === 1 ? 'spine' : 'spines'} · ${esc(fmtDate(s.updated_at))}</div>
-      <div class="acts"><button class="dash sm" type="button" data-open="${s.id}">Open</button><button class="dash sm" type="button" data-del="${s.id}">Delete</button></div></li>`;
+      <div class="acts"><button class="dash sm" type="button" data-open="${s.id}">Open</button><button class="dash sm" type="button" data-del="${s.id}">Delete</button>
+        <label class="check"><input type="checkbox" data-private="${s.id}"${s.is_public ? '' : ' checked'}> Private</label></div></li>`;
   }).join('');
 }
+// Private: only its owner sees it (never on the profile); public is the default
+$('#mineList').addEventListener('change', async e => {
+  const box = e.target.closest('[data-private]'); if (!box) return;
+  const id = box.dataset.private, s = acct.shelves.find(x => x.id === id), priv = box.checked;
+  box.disabled = true;
+  const {error} = await acct.sb.from('shelves').update({is_public: !priv}).eq('id', id);
+  box.disabled = false;
+  if (error){ box.checked = !priv; toast(friendly(error)); return; }
+  if (s) s.is_public = !priv;
+  toast(priv ? 'Only you can see this shelf now.' : 'This shelf shows on your profile again.');
+});
 $('#mineList').addEventListener('click', async e => {
   const o = e.target.closest('[data-open]'), d = e.target.closest('[data-del]');
   if (o) openShelf(o.dataset.open);

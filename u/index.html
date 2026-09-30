@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Shelves on Spinestack.">
+<title>Spinestack</title>
+<script>
+  /* The same public addresses as index.html (see the notes there). */
+  window.SPINESTACK_WORKER = "https://spinestack.spinestack-worker.workers.dev";
+  window.SPINESTACK_SUPABASE_URL = "https://fiukspnovrlzlcdekcnb.supabase.co";
+  window.SPINESTACK_SUPABASE_KEY = "sb_publishable_cZeUDJXk-nCbSJ4VZWn_GQ_6xNFyBo2";
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
+<style>
+/* the site's own look, as in index.html */
+:root{--paper:#FFFFFF;--ink:#000000;--grey:#6B6B6B;--hair:#D9D9D9;--mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--paper)}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 12px/1.55 var(--mono)}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 24px}
+.top a{text-decoration:none;font-size:13px;text-transform:uppercase}
+.top .r{justify-self:end;display:flex;gap:18px;align-items:center}
+.mark{font-weight:800;font-size:22px!important;letter-spacing:.34em;margin-right:-.34em;line-height:1}
+.acct{font:400 13px var(--mono);text-transform:uppercase;background:none;border:0;padding:0;color:var(--ink);cursor:pointer;text-decoration:none}
+.acct.named{text-transform:none}
+p{margin:0 0 12px}
+.grey{color:var(--grey)}
+.dash{display:inline-block;background:none;border:0;padding:0 0 9px;font:500 16px var(--mono);text-transform:uppercase;color:var(--ink);cursor:pointer;text-decoration:none;
+  background-image:repeating-linear-gradient(90deg,var(--ink) 0 11px,transparent 11px 14px);background-size:100% 4px;background-repeat:no-repeat;background-position:left bottom}
+.dash.sm{font-size:12px;padding-bottom:6px;background-size:100% 3px;background-image:repeating-linear-gradient(90deg,var(--ink) 0 8px,transparent 8px 11px)}
+.btn{font:500 13px var(--mono);text-transform:uppercase;background:var(--ink);color:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 22px;cursor:pointer;text-decoration:none;display:inline-block}
+.btn:hover{background:#222}
+.btn.full{width:100%}
+.btn.ghost{background:var(--paper);color:var(--ink)}
+.btn.ghost:hover{background:#F2F2F2}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.sm{font-size:11.5px;padding:7px 14px}
+.lbl{font-size:11px;color:var(--grey);text-transform:uppercase}
+.check{display:flex;gap:8px;align-items:center;cursor:pointer;text-transform:uppercase;font-size:11.5px}
+.check input{accent-color:var(--ink);margin:0}
+.note{font-size:11px;color:var(--grey)}
+.note:empty{display:none}
+.note.warn{color:var(--ink);font-weight:700}
+input[type=text],select,textarea{font:400 13px var(--mono);color:var(--ink);background:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 12px;width:100%;min-width:0}
+textarea{resize:vertical;line-height:1.5}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.35);display:grid;place-items:center;z-index:30;padding:16px}
+.sheetbox{background:var(--paper);border:1px solid var(--ink);border-radius:12px;width:100%;max-width:380px;padding:26px 24px 22px;position:relative;max-height:calc(100% - 16px);overflow:auto}
+.sheetbox > div{display:grid;gap:14px}
+.sheetbox h2{margin:0;font-size:16px;font-weight:700;text-transform:uppercase}
+.sheetbox p{margin:0}
+.x{position:absolute;top:8px;right:12px;background:none;border:0;font:400 22px var(--mono);cursor:pointer;color:var(--ink);padding:4px}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);background:var(--ink);color:var(--paper);border-radius:8px;padding:10px 16px;font-size:12px;max-width:calc(100% - 32px);z-index:40}
+footer{background:var(--ink);color:var(--paper);padding:36px 24px 22px;margin-top:72px}
+.fgrid{display:grid;grid-template-columns:1.1fr 1.3fr 1fr;gap:36px;max-width:1200px;margin:0 auto}
+footer h3{font-size:16px;font-weight:700;text-transform:uppercase;margin:0 0 10px}
+footer p,footer li{font-size:13px;letter-spacing:.02em}
+footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
+.fbtn{display:inline-block;background:var(--paper);color:var(--ink);border-radius:8px;padding:12px 28px;text-transform:uppercase;text-decoration:none;font-size:14px;margin-top:4px}
+.fbase{max-width:1200px;margin:34px auto 0;border-top:1px solid #8A8A8A;padding-top:12px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:11.5px}
+
+/* the profile */
+.prof{max-width:1120px;margin:0 auto;padding:36px 24px 0}
+.phead{display:grid;grid-template-columns:120px minmax(0,1fr) auto;grid-template-areas:"ava who stats";gap:0 28px;align-items:center}
+.ava{grid-area:ava;width:120px;height:120px;border-radius:50%;border:1px solid var(--ink);background:#F2F2F2;display:grid;place-items:center;overflow:hidden;font:400 44px var(--mono);text-transform:uppercase;color:var(--ink);padding:0}
+.ava img{width:100%;height:100%;object-fit:cover;display:block}
+.ava.add{border-style:dashed;background:var(--paper)}
+.addphoto{width:100%;height:100%;border:0;border-radius:50%;background:none;font:400 12px var(--mono);color:var(--ink);cursor:pointer}
+.who{grid-area:who;min-width:0}
+.who h1{font-size:30px;line-height:1.2;font-weight:700;margin:0;overflow-wrap:anywhere}
+.handle{color:var(--grey);margin:4px 0 14px;font-size:13px}
+.pbtns{display:flex;gap:10px;align-items:center;position:relative}
+.menu{position:absolute;top:calc(100% + 6px);left:0;z-index:6;background:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:6px 0;min-width:160px;display:grid}
+.menu button{background:none;border:0;font:400 12px var(--mono);text-transform:uppercase;text-align:left;padding:8px 14px;cursor:pointer;color:var(--ink)}
+.menu button:hover{background:#F2F2F2}
+.bio-m{grid-area:bio;display:none;white-space:pre-line;overflow-wrap:anywhere;margin:0}
+.stats{grid-area:stats;display:flex;margin:0}
+.stats div{padding:0 22px;text-align:center;border-left:1px solid var(--hair);display:flex;flex-direction:column-reverse}
+.stats div:first-child{border-left:0}
+.stats dd{margin:0;font-size:26px;font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums}
+.stats dt{font-size:10.5px;color:var(--grey);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.tabs{display:flex;gap:30px;border-bottom:1px solid var(--ink);margin-top:34px}
+.tabs button{font:400 12px var(--mono);text-transform:uppercase;letter-spacing:.06em;background:none;border:0;padding:0 0 10px;margin-bottom:-1px;color:var(--grey);cursor:pointer;border-bottom:2px solid transparent}
+.tabs button[aria-selected="true"]{color:var(--ink);font-weight:700;border-bottom-color:var(--ink)}
+.pgrid{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:56px;margin-top:32px;align-items:start}
+.pmain{display:grid;gap:44px;min-width:0}
+.sechead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
+.feat{display:grid;justify-items:center;gap:10px}
+.feat .pic1{display:block;line-height:0}
+.feat .pic1 canvas{display:block;max-width:100%;height:auto;max-height:min(62vh,600px);width:auto}
+.featmeta{justify-self:stretch;display:flex;gap:6px 14px;flex-wrap:wrap;align-items:baseline}
+.featmeta b{font-weight:500}
+.thumbs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:26px 18px}
+.thumbs a{display:grid;gap:4px;text-decoration:none;align-content:start}
+.thumbs .pic{display:block;background:#F3F3F3;border-radius:8px;aspect-ratio:9/16;overflow:hidden}
+.thumbs img{width:100%;height:100%;object-fit:cover;display:block}
+.thumbs .cap{font-weight:500;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.side{display:grid;gap:34px;min-width:0}
+.side .rule{border-bottom:1px solid var(--ink);padding-bottom:8px;margin-bottom:12px;display:block}
+.side .bio{white-space:pre-line;overflow-wrap:anywhere;margin:0}
+.addbio{background:none;border:0;padding:0;font:inherit;color:var(--grey);cursor:pointer;text-align:left}
+.most{display:flex;gap:3px;align-items:flex-end;height:132px;overflow:hidden}
+.most canvas{display:block;flex:none}
+.none{display:grid;justify-items:center;gap:14px;padding:26px 0 8px;text-align:center}
+.outlines{display:flex;gap:6px;align-items:flex-end;height:180px;margin-bottom:12px}
+.outlines i{display:block;width:32px;border:1px dashed var(--ink)}
+.none .dash{border:1px dashed var(--ink);border-radius:8px;padding:11px 18px;background:none}
+.back{margin-bottom:22px;display:inline-block}
+.photo-row{display:flex;gap:16px;align-items:center}
+.photo-row .ava{width:72px;height:72px;font-size:26px}
+.photo-row .acts{display:flex;gap:14px;flex-wrap:wrap}
+.field{display:grid;gap:6px}
+
+@media (max-width:980px){ .thumbs{grid-template-columns:repeat(3,minmax(0,1fr))} }
+@media (max-width:820px){
+  .pgrid{grid-template-columns:minmax(0,1fr);gap:44px}
+  .fgrid{grid-template-columns:1fr;gap:26px}
+}
+@media (max-width:640px){
+  .prof{padding:22px 16px 0}
+  .phead{grid-template-columns:88px minmax(0,1fr);grid-template-areas:"ava who" "bio bio" "stats stats";gap:16px 18px}
+  .ava{width:88px;height:88px;font-size:34px}
+  .who h1{font-size:24px}
+  .handle{margin-bottom:10px}
+  .bio-m{display:block}
+  .bio-m:empty{display:none}
+  .side .biosec{display:none}
+  .stats{border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);padding:12px 0;justify-content:space-around}
+  .stats div{padding:0 6px;border-left:0}
+  .stats dd{font-size:20px}
+  .stats dt{font-size:9.5px}
+  .tabs{margin-top:22px}
+  .pgrid{margin-top:22px}
+  .feat .pic1 canvas{max-height:min(44vh,380px)}
+  .thumbs{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:520px){
+  .top{padding:12px 16px}
+  .mark{font-size:17px!important;letter-spacing:.22em;margin-right:-.22em}
+  .top a,.acct{font-size:11.5px}
+  .top .r{gap:12px}
+}
+</style>
+</head>
+<body>
+<header class="top" id="top">
+  <a href="../#how">Info</a>
+  <a class="mark" href="../" aria-label="Spinestack, the shelf builder">SPINESTACK</a>
+  <span class="r"><a href="../#shelf">Shelf</a><a class="acct" id="acctBtn" href="#" hidden>Sign in</a></span>
+</header>
+
+<main class="prof">
+  <p class="grey" id="state" role="status">Loading…</p>
+  <div id="page" hidden>
+    <div class="phead">
+      <div class="ava" id="ava"></div>
+      <div class="who">
+        <h1 id="name"></h1>
+        <p class="handle" id="handle"></p>
+        <div class="pbtns">
+          <button class="btn ghost sm" id="editBtn" type="button" hidden>Edit profile</button>
+          <button class="btn ghost sm" id="moreBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More">···</button>
+          <div class="menu" id="menu" role="menu" hidden><button type="button" role="menuitem" id="copyLink">Copy link</button></div>
+        </div>
+      </div>
+      <p class="bio-m" id="bioM"></p>
+      <dl class="stats">
+        <div><dt>Shelves</dt><dd id="nShelves">0</dd></div>
+        <div><dt>Spines</dt><dd id="nSpines">0</dd></div>
+        <div><dt>Following</dt><dd>0</dd></div>
+        <div><dt>Followers</dt><dd>0</dd></div>
+      </dl>
+    </div>
+    <p class="note" id="privNote" hidden style="margin-top:18px">Your profile is private: only you can see it and its shelves.</p>
+
+    <div id="viewProfile">
+      <nav class="tabs" role="tablist" aria-label="Profile">
+        <button type="button" role="tab" id="tabP" data-tab="profile" aria-selected="true" aria-controls="panelP">Profile</button>
+        <button type="button" role="tab" id="tabS" data-tab="shelves" aria-selected="false" aria-controls="panelS">Shelves</button>
+      </nav>
+      <div class="pgrid" id="panelP" role="tabpanel" aria-labelledby="tabP">
+        <div class="pmain">
+          <section id="featWrap" hidden>
+            <div class="sechead"><span class="lbl">Featured shelf</span></div>
+            <div class="feat"><a class="pic1" id="featLink" href="#"></a><div class="featmeta"><b id="featCap"></b><span class="grey" id="featMeta"></span></div></div>
+          </section>
+          <section id="recentWrap" hidden>
+            <div class="sechead"><span class="lbl">Recent shelves</span></div>
+            <ol class="thumbs" id="recent"></ol>
+          </section>
+          <div class="none" id="none" hidden>
+            <div class="outlines" aria-hidden="true"><i style="height:150px"></i><i style="height:170px"></i><i style="height:140px"></i><i style="height:162px"></i></div>
+            <p style="font-size:14px;margin:0">No shelves yet.</p>
+            <a class="dash sm" id="buildBtn" href="../#search" hidden>+ Build a shelf</a>
+          </div>
+        </div>
+        <aside class="side">
+          <section class="biosec" id="bioSec" hidden><span class="lbl rule">Bio</span><p class="bio" id="bio"></p><button class="addbio" id="addBio" type="button" hidden>add a bio</button></section>
+          <section id="mostSec" hidden><span class="lbl rule">Most shelved</span><div class="most" id="most" role="img"></div></section>
+          <p class="grey" id="since"></p>
+        </aside>
+      </div>
+      <div id="panelS" role="tabpanel" aria-labelledby="tabS" hidden style="margin-top:32px">
+        <ol class="thumbs" id="all"></ol>
+        <p class="grey" id="allNone" hidden>No shelves yet.</p>
+      </div>
+    </div>
+
+    <section id="viewShelf" hidden style="margin-top:34px">
+      <a class="dash sm back" id="backLink" href="#">← All shelves</a>
+      <div class="feat"><div class="pic1" id="oneShelf"></div><div class="featmeta"><b id="oneCap"></b><span class="grey" id="oneMeta"></span><a class="dash sm" id="openBuilder" href="#" hidden style="margin-left:auto">Open in builder</a></div></div>
+    </section>
+  </div>
+</main>
+
+<div class="sheet" id="signSheet" hidden role="dialog" aria-modal="true" aria-label="Sign in">
+  <div class="sheetbox">
+    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <div>
+      <h2>Sign in</h2>
+      <p>Save your shelves to your account and open them again on any device.</p>
+      <button class="btn full" id="googleBtn" type="button">Continue with Google</button>
+      <p class="note">Accounts are for people 18 or older. <a href="../privacy.html">Privacy</a></p>
+    </div>
+  </div>
+</div>
+
+<div class="sheet" id="editSheet" hidden role="dialog" aria-modal="true" aria-label="Edit profile">
+  <div class="sheetbox">
+    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <div>
+      <h2>Edit profile</h2>
+      <div class="photo-row">
+        <div class="ava" id="editAva"></div>
+        <div class="field">
+          <div class="acts"><label class="dash sm" for="photoFile" style="cursor:pointer">Choose photo</label><button class="dash sm" id="photoRemove" type="button">Remove</button></div>
+          <input type="file" id="photoFile" accept="image/jpeg,image/png,image/webp" hidden>
+          <span class="note">JPG, PNG or WEBP, up to 5 MB.</span>
+        </div>
+      </div>
+      <label class="field"><span class="lbl">Display name</span><input type="text" id="nameIn" maxlength="40" autocomplete="name"></label>
+      <label class="field"><span class="lbl">Bio</span><textarea id="bioIn" maxlength="160" rows="3"></textarea><span class="note" id="bioCount"></span></label>
+      <label class="field"><span class="lbl">Featured shelf</span><select id="pinIn"></select></label>
+      <label class="check"><input type="checkbox" id="privIn"> Private profile</label>
+      <p class="note">A private profile and its shelves show only to you. Your username, <b id="unameRO"></b>, stays as it is.</p>
+      <button class="btn full" id="saveBtn" type="button">Save</button>
+      <p class="note" id="editNote"></p>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="fgrid">
+    <div id="how">
+      <h3>How it works</h3>
+      <ol>
+        <li>You type a name. Films come from TMDB, books from Open Library.</li>
+        <li>We look for full DVD and book scans of that title.</li>
+        <li>The strip between back and front is the spine. We cut it out.</li>
+        <li>No clean scan? You get a spine made from the poster or cover.</li>
+      </ol>
+    </div>
+    <div id="sources">
+      <h3>Sources</h3>
+      <p>Film data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB. Book data from Open Library. Scans belong to their studios and publishers, and every spine links back to where it was found.</p>
+    </div>
+    <div>
+      <h3>Shelf</h3>
+      <p>Build it, then post it.</p>
+      <a class="fbtn" href="../#shelf">Open shelf</a>
+    </div>
+  </div>
+  <div class="fbase"><span>© 2026 SPINESTACK. All rights reserved.</span><span>Not affiliated with any studio or publisher.</span></div>
+</footer>
+<div class="toast" id="toast" hidden></div>
+
+<script src="../shelf.js?v=20260930"></script>
+<script>
+(() => {
+/* A profile: /u/?username, and one of its shelves: /u/?username&shelf=<id>.
+   Anyone can read a public profile (straight from Supabase with the public key, Row Level Security decides what shows).
+   The Supabase library only loads for someone who's signed in on this device or signing in. */
+const $ = s => document.querySelector(s);
+const W = 1080, H = 1920;
+const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
+const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
+const SB_LIB = {src:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
+const {makeSpine, loadImg, posterTitle} = Shelf;
+
+const params = new URLSearchParams(location.search);
+const NAME = [...params.keys()].find(k => /^[a-z0-9_]{3,20}$/.test(k) && !params.get(k)) || '';
+const SHELF = /^[0-9a-f-]{36}$/.test(params.get('shelf') || '') ? params.get('shelf') : '';
+const pageUrl = (name, shelf) => location.pathname + '?' + name + (shelf ? '&shelf=' + shelf : '');
+
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const clean0 = o => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null));
+const fmtDate = s => new Date(s).toLocaleDateString(undefined, {day:'numeric', month:'short', year:'numeric'});
+const spines = n => `${n} ${n === 1 ? 'spine' : 'spines'}`;
+const timeout = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('timeout')), ms))]);
+const blobOf = (c, type, q) => new Promise(r => c.toBlob(r, type, q));
+let toastT = 0; function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 4200); }
+function friendly(e){
+  const m = (e && e.message) || '';
+  if (/fetch|network/i.test(m)) return 'Couldn’t reach Spinestack. Check your connection and try again.';
+  return m || 'Something went wrong. Try again in a moment.';
+}
+
+/* ---------- signing in (the same Supabase client and settings as index.html) ---------- */
+const me = {sb:null, user:null, profile:null};
+let sbLoading = null;
+function supa(){
+  return sbLoading || (sbLoading = new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = SB_LIB.src; s.integrity = SB_LIB.integrity; s.crossOrigin = 'anonymous';
+    s.onload = () => { me.sb = window.supabase.createClient(SB_URL, SB_KEY, {auth:{flowType:'pkce', persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}}); res(me.sb); };
+    s.onerror = () => { sbLoading = null; s.remove(); rej(new Error('Sign-in couldn’t load. Check your connection and try again.')); };
+    document.head.appendChild(s);
+  }));
+}
+const hasSession = () => { try { return Object.keys(localStorage).some(k => /^sb-.+-auth-token$/.test(k)); } catch { return false; } };
+const returning = () => /[?&](code|error|error_description)=/.test(location.search);
+async function token(){
+  if (!me.sb) return null;
+  const {data:{session}} = await me.sb.auth.getSession();
+  return session ? session.access_token : null;
+}
+// Supabase's REST API: as the signed-in person when there is one, otherwise as a visitor
+async function api(path, opt = {}){
+  const t = await token(), r = await fetch(`${SB_URL}/rest/v1/${path}`, {...opt,
+    headers: {apikey: SB_KEY, 'Content-Type': 'application/json', ...(t ? {Authorization: 'Bearer ' + t} : {}), ...(opt.headers || {})}});
+  const j = r.status === 204 ? null : await r.json().catch(() => null);
+  if (!r.ok) throw new Error((j && j.message) || 'Couldn’t load this profile. Try again in a moment.');
+  return j;
+}
+const rpc = (fn, args) => api('rpc/' + fn, {method:'POST', body: JSON.stringify(args)});
+async function workerPost(path, body){
+  const t = await token();
+  if (!t) throw new Error('Sign in again to save.');
+  const r = await fetch(WORKER + path, {method:'POST', headers:{Authorization:'Bearer ' + t, 'Content-Type': body ? body.type : 'text/plain'}, body: body || ''});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'Saving didn’t work. Try again in a moment.');
+  return j;
+}
+async function startSession(){
+  if (!hasSession() && !returning()) return;
+  try {
+    const sb = await supa(), {data:{session}} = await sb.auth.getSession();   // finishes a Google sign-in coming back with ?code=
+    const err = new URLSearchParams(location.search).get('error_description');
+    if (returning()) history.replaceState(null, '', (NAME ? pageUrl(NAME, SHELF) : location.pathname) + location.hash);
+    if (err) toast('Sign-in didn’t finish: ' + err);
+    me.user = session && session.user;
+    if (me.user){
+      const rows = await api(`profiles?select=id,username&id=eq.${me.user.id}`);
+      me.profile = rows[0] || null;
+    }
+    sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') location.reload(); });
+  } catch (e){ toast(friendly(e)); }
+}
+function paintAcct(){
+  const b = $('#acctBtn'); b.hidden = false; b.classList.toggle('named', !!me.profile);
+  if (me.profile){ b.textContent = '@' + me.profile.username; b.href = pageUrl(me.profile.username); }
+  else if (me.user){ b.textContent = 'Finish sign-up'; b.href = '../'; }
+  else { b.textContent = 'Sign in'; b.href = '#'; }
+}
+$('#acctBtn').addEventListener('click', e => { if (!me.user){ e.preventDefault(); openSheet('#signSheet', '#googleBtn'); } });
+$('#googleBtn').addEventListener('click', async () => {
+  const btn = $('#googleBtn'); btn.disabled = true;
+  try {
+    const sb = await supa(), back = location.origin + (NAME ? pageUrl(NAME, SHELF) : location.pathname);
+    const {error} = await sb.auth.signInWithOAuth({provider:'google', options:{redirectTo: back}});
+    if (error) throw error;
+  } catch (e){ btn.disabled = false; toast(friendly(e)); }
+});
+
+/* sheets */
+let sheetFrom = null;
+function openSheet(id, focus){ sheetFrom = document.activeElement; $(id).hidden = false; const f = $(focus); if (f) f.focus(); }
+function closeSheets(){ document.querySelectorAll('.sheet').forEach(s => s.hidden = true); if (sheetFrom && sheetFrom.focus) sheetFrom.focus(); }
+document.querySelectorAll('.sheet').forEach(s => s.addEventListener('click', e => { if (e.target === s || e.target.closest('[data-close]')) closeSheets(); }));
+document.addEventListener('keydown', e => { if (e.key === 'Escape'){ closeSheets(); closeMenu(); } });
+
+/* ---------- a saved spine back into a book (the same as rebuild() in index.html: keep the two in step) ---------- */
+const srcOf = ref => ref.startsWith('a:') ? `${WORKER}/archive/img?id=${ref.slice(2)}` : ref.startsWith('u:') ? `${WORKER}/u/blob?k=${encodeURIComponent(ref.slice(2))}`
+  : ref.startsWith('url:') ? `${WORKER}/img?url=${encodeURIComponent(ref.slice(4))}` : '';
+async function bookOf(r){
+  const [spine, cover] = await Promise.all([r.spine_src, r.cover_src].map(ref => ref && srcOf(ref) ? timeout(loadImg(srcOf(ref)), 15000).catch(() => null) : null));
+  const look = r.look || {}, style = look.style || 'art';
+  if ((style === 'real' && !spine) || (style === 'cover' && !cover)) return null;
+  const t = look.pt && cover && r.kind === 'movie' ? posterTitle(cover) : null, img = cover || spine;
+  return Object.assign({kind:'book', author:'', studio:'', status:'', wf:1, hf:1, jit:0, cat:''}, clean0({id: r.item_id, title: r.title || '', author: r.author, kind: r.kind,
+    year: r.year ? String(r.year) : undefined, style, font: look.font || 'oswald', bg: look.bg, fg: look.fg, accent: look.accent, wf: look.wf, hf: look.hf, jit: look.jit,
+    studio: look.studio, cat: look.cat, img: img || undefined, spineImg: spine || undefined, titleImg: t ? t.img : undefined}));
+}
+const books = async rows => (await Promise.all(rows.map(bookOf))).filter(Boolean);
+const ITEM_COLS = 'position,item_id,kind,title,author,year,spine_src,cover_src,look';
+
+/* ---------- drawing: a shelf on its own, on the white page ---------- */
+// the story drawn "bare" (no background, caption or watermark), then cut down to the books and their shelf
+function bareShelf(list, s){
+  const st = {caption:'', theme:'paper', layout: s.layout || 'row', varied: s.varied !== false, wood: !!s.wood, filter: s.filter || 'clean', intensity: s.intensity == null ? 70 : s.intensity};
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d');   // as the builder's canvas, so the books come out the same
+  Shelf.renderStory(x, st.filter, false, list, st, true);
+  const d = x.getImageData(0, 0, W, H).data;
+  let x0 = W, y0 = H, x1 = -1, y1 = -1;
+  for (let y = 0; y < H; y += 2) for (let X = 0; X < W; X += 2) if (d[(y*W + X)*4 + 3] > 10){ if (X < x0) x0 = X; if (X > x1) x1 = X; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (x1 < 0) return null;
+  const m = 16; x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m); x1 = Math.min(W, x1 + m); y1 = Math.min(H, y1 + m);
+  const out = document.createElement('canvas'); out.width = x1 - x0; out.height = y1 - y0;
+  out.getContext('2d').drawImage(c, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
+  out.setAttribute('role', 'img');
+  out.setAttribute('aria-label', (s.caption || 'A shelf') + ': ' + list.map(b => b.title).filter(Boolean).join(', '));
+  return out;
+}
+// small spines in a row, the height given (as the builder's strip draws them)
+function smallSpines(list, height){
+  const dpr = Math.min(2, window.devicePixelRatio || 1), s = Shelf.sizes(1160, 165, list, {varied:true}), k = (height - 2)/1160;
+  return list.map((b, i) => { const sp = makeSpine(b, s[i].w*k*dpr, s[i].h*k*dpr); sp.style.width = sp.width/dpr + 'px'; sp.style.height = sp.height/dpr + 'px'; sp.title = b.title; return sp; });
+}
+const FACES = ['600 40px Oswald','400 40px Oswald','600 40px "Cormorant Garamond"','italic 500 40px "Cormorant Garamond"','40px "Archivo Black"','40px "Gochi Hand"','500 40px "IBM Plex Mono"','400 40px "IBM Plex Mono"','600 40px "IBM Plex Sans"'];
+const fontsReady = document.fonts ? Promise.all(FACES.map(f => document.fonts.load(f).catch(() => {}))) : Promise.resolve();
+
+/* ---------- the page ---------- */
+const view = {profile:null, shelves:[], mine:false, drawn:[]};   // drawn: what to draw again once fonts or textures arrive
+const previewSrc = s => s.preview_key ? `${WORKER}/u/preview?k=${encodeURIComponent(s.preview_key)}&v=${encodeURIComponent(s.updated_at)}` : '';
+const countOf = s => ((s.shelf_items || [])[0] || {}).count || 0;
+function thumbs(list){
+  return list.map(s => { const cap = s.caption.trim() || 'Untitled shelf', src = previewSrc(s);
+    return `<li><a href="${esc(pageUrl(view.profile.username, s.id))}" aria-label="${esc(cap)}"><span class="pic">${src ? `<img src="${esc(src)}" alt="" loading="lazy" width="360" height="640">` : ''}</span>
+      <span class="cap">${esc(cap)}</span><span class="grey">${spines(countOf(s))} · ${esc(fmtDate(s.updated_at))}</span></a></li>`; }).join('');
+}
+let redrawT = 0;
+function redrawAll(){ clearTimeout(redrawT); redrawT = setTimeout(() => { for (const f of view.drawn) f(); }, 60); }
+Shelf.onTextureLoaded(() => redrawAll());
+
+async function load(){
+  await startSession();
+  paintAcct();
+  if (!NAME){
+    if (me.profile){ location.replace(pageUrl(me.profile.username)); return; }
+    $('#state').innerHTML = 'Whose shelves? <a href="../">Build your own</a>.'; return;
+  }
+  let p;
+  try { p = (await api(`profiles?select=id,username,display_name,bio,avatar_key,pinned_shelf_id,is_private,created_at&username=eq.${NAME}`))[0]; }
+  catch (e){ $('#state').textContent = friendly(e); return; }
+  if (!p){ $('#state').innerHTML = `No one here. Profiles can be private, or the name may have changed. <a href="../">Build your own shelf</a>.`; return; }
+  view.profile = p; view.mine = !!(me.user && me.user.id === p.id);
+  document.title = (p.display_name || '@' + p.username) + ' · Spinestack';
+  const [stats, shelves] = await Promise.all([
+    rpc('profile_stats', {uid: p.id}).catch(() => []),
+    api(`shelves?select=id,caption,filter,intensity,background,wood,layout,varied,preview_key,pro,created_at,updated_at,shelf_items(count)&owner=eq.${p.id}&is_public=is.true&hidden=is.false&order=updated_at.desc&limit=200`).catch(() => []),
+  ]);
+  view.shelves = shelves;
+  const st = stats[0] || {};
+  $('#nShelves').textContent = st.shelf_count || 0; $('#nSpines').textContent = st.spine_count || 0;
+  paintHead();
+  $('#state').hidden = true; $('#page').hidden = false;
+  if (SHELF) return showShelf(SHELF);
+  $('#viewProfile').hidden = false; $('#viewShelf').hidden = true;
+  paintTabs();
+  paintLists();
+  await fontsReady;
+  paintFeatured();
+  paintMost();
+}
+function paintHead(){
+  const p = view.profile, name = p.display_name.trim(), mine = view.mine;
+  $('#name').textContent = name || '@' + p.username;
+  $('#handle').textContent = '@' + p.username;
+  $('#handle').hidden = !name;
+  const ava = $('#ava');
+  if (p.avatar_key){ ava.className = 'ava'; ava.innerHTML = `<img src="${esc(WORKER + '/m/img?k=' + encodeURIComponent(p.avatar_key))}" alt="${esc(name || p.username)}">`; }
+  else if (mine){ ava.className = 'ava add'; ava.innerHTML = '<button type="button" class="addphoto">+ photo</button>'; ava.querySelector('button').addEventListener('click', openEdit); }
+  else { ava.className = 'ava'; ava.textContent = (name || p.username).trim()[0] || '·'; ava.setAttribute('aria-hidden', 'true'); }
+  $('#editBtn').hidden = !mine;
+  $('#privNote').hidden = !(mine && p.is_private);
+  $('#bioM').textContent = p.bio;
+  $('#bio').textContent = p.bio; $('#bio').hidden = !p.bio;
+  $('#addBio').hidden = !(mine && !p.bio);
+  $('#bioSec').hidden = !p.bio && !mine;
+  $('#since').textContent = 'on shelfstackd since ' + new Date(p.created_at).toLocaleDateString('en-US', {month:'short', year:'numeric'});
+}
+function paintLists(){
+  const list = view.shelves, none = !list.length;
+  $('#recent').innerHTML = thumbs(list.slice(0, 4));
+  $('#recentWrap').hidden = none;
+  $('#all').innerHTML = thumbs(list); $('#allNone').hidden = !none;
+  $('#none').hidden = !none; $('#buildBtn').hidden = !view.mine;
+}
+function featured(){ const p = view.profile; return view.shelves.find(s => s.id === p.pinned_shelf_id) || view.shelves[0] || null; }
+async function paintFeatured(){
+  const s = featured(); $('#featWrap').hidden = !s; if (!s) return;
+  $('#featLink').href = pageUrl(view.profile.username, s.id);
+  $('#featCap').textContent = s.caption.trim() || 'Untitled shelf';
+  $('#featMeta').textContent = `${spines(countOf(s))} · ${fmtDate(s.updated_at)}`;
+  let list;
+  try { list = await books(await api(`shelf_items?select=${ITEM_COLS}&shelf_id=eq.${s.id}&order=position`)); } catch { list = []; }
+  const draw = () => { const c = list.length && bareShelf(list, s); $('#featLink').replaceChildren(...(c ? [c] : [])); };
+  draw(); view.drawn.push(draw);
+}
+async function paintMost(){
+  let rows = [];
+  try { rows = await rpc('most_shelved', {uid: view.profile.id}); } catch {}
+  const list = await books(rows);
+  $('#mostSec').hidden = !list.length; if (!list.length) return;
+  $('#most').setAttribute('aria-label', 'Most shelved: ' + list.map(b => b.title).join(', '));
+  const draw = () => $('#most').replaceChildren(...smallSpines(list, 130));
+  draw(); view.drawn.push(draw);
+}
+async function showShelf(id){
+  $('#viewProfile').hidden = true; $('#viewShelf').hidden = false;
+  const p = view.profile, s = view.shelves.find(x => x.id === id);
+  $('#backLink').href = pageUrl(p.username) + '#shelves';
+  $('#backLink').textContent = '← @' + p.username;
+  if (!s){ $('#oneCap').textContent = 'This shelf is private, or it was deleted.'; return; }
+  $('#oneCap').textContent = s.caption.trim() || 'Untitled shelf';
+  $('#oneMeta').textContent = `${spines(countOf(s))} · ${fmtDate(s.updated_at)}`;
+  $('#openBuilder').hidden = !view.mine; $('#openBuilder').href = '../?open=' + s.id;
+  document.title = (s.caption.trim() || 'A shelf') + ' · @' + p.username + ' · Spinestack';
+  await fontsReady;
+  let list;
+  try { list = await books(await api(`shelf_items?select=${ITEM_COLS}&shelf_id=eq.${s.id}&order=position`)); } catch { list = []; }
+  const draw = () => { const c = list.length && bareShelf(list, s); $('#oneShelf').replaceChildren(...(c ? [c] : [])); };
+  draw(); view.drawn.push(draw);
+}
+
+/* tabs: Profile / Shelves (#shelves keeps the second one on reload) */
+function paintTabs(){
+  const shelvesTab = location.hash === '#shelves';
+  $('#tabP').setAttribute('aria-selected', String(!shelvesTab)); $('#tabS').setAttribute('aria-selected', String(shelvesTab));
+  $('#panelP').hidden = shelvesTab; $('#panelS').hidden = !shelvesTab;
+}
+document.querySelector('.tabs').addEventListener('click', e => {
+  const b = e.target.closest('[data-tab]'); if (!b) return;
+  history.replaceState(null, '', location.pathname + location.search + (b.dataset.tab === 'shelves' ? '#shelves' : ''));
+  paintTabs();
+});
+document.querySelector('.tabs').addEventListener('keydown', e => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+  const next = document.activeElement === $('#tabP') ? $('#tabS') : $('#tabP'); next.focus(); next.click();
+});
+
+/* the ··· menu */
+function closeMenu(){ $('#menu').hidden = true; $('#moreBtn').setAttribute('aria-expanded', 'false'); }
+$('#moreBtn').addEventListener('click', e => { e.stopPropagation(); const open = $('#menu').hidden; $('#menu').hidden = !open; $('#moreBtn').setAttribute('aria-expanded', String(open)); if (open) $('#menu button').focus(); });
+document.addEventListener('click', e => { if (!e.target.closest('#menu')) closeMenu(); });
+$('#copyLink').addEventListener('click', async () => {
+  const url = location.origin + pageUrl(view.profile.username);
+  closeMenu();
+  try { await navigator.clipboard.writeText(url); toast('Link copied.'); } catch { toast(url); }
+});
+
+/* ---------- Edit profile ---------- */
+const edit = {photo:undefined, preview:null};   // photo: undefined = unchanged, null = removed, Blob = new
+function paintEditAva(){
+  const a = $('#editAva'), p = view.profile;
+  if (edit.photo instanceof Blob){ a.innerHTML = `<img src="${edit.preview}" alt="Your new photo">`; return; }
+  if (edit.photo !== null && p.avatar_key){ a.innerHTML = `<img src="${esc(WORKER + '/m/img?k=' + encodeURIComponent(p.avatar_key))}" alt="Your photo">`; return; }
+  a.textContent = ((p.display_name || p.username).trim()[0] || '·');
+}
+function openEdit(){
+  const p = view.profile; if (!view.mine) return;
+  edit.photo = undefined; if (edit.preview) URL.revokeObjectURL(edit.preview); edit.preview = null;
+  $('#nameIn').value = p.display_name; $('#bioIn').value = p.bio; $('#privIn').checked = p.is_private; $('#unameRO').textContent = '@' + p.username;
+  $('#pinIn').innerHTML = `<option value="">Your most recent shelf</option>` + view.shelves.map(s => `<option value="${s.id}"${s.id === p.pinned_shelf_id ? ' selected' : ''}>${esc(s.caption.trim() || 'Untitled shelf')} · ${esc(fmtDate(s.updated_at))}</option>`).join('');
+  $('#editNote').textContent = ''; bioCount(); paintEditAva();
+  openSheet('#editSheet', '#nameIn');
+}
+$('#editBtn').addEventListener('click', openEdit);
+$('#addBio').addEventListener('click', () => { openEdit(); $('#bioIn').focus(); });
+function bioCount(){ $('#bioCount').textContent = `${$('#bioIn').value.length} / 160`; }
+$('#bioIn').addEventListener('input', bioCount);
+// a photo: JPG, PNG or WEBP up to 5 MB, cut to the middle square, 400 x 400, drawn again (which drops EXIF and location)
+async function squarePhoto(file){
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error('Pick a JPG, PNG or WEBP photo.');
+  if (file.size > 5*1024*1024) throw new Error('That photo is larger than 5 MB.');
+  const url = URL.createObjectURL(file); let im;
+  try { im = await loadImg(url); } catch { throw new Error('That photo couldn’t be read.'); } finally { URL.revokeObjectURL(url); }
+  const w = im.naturalWidth, h = im.naturalHeight, s = Math.min(w, h), c = document.createElement('canvas'); c.width = 400; c.height = 400;
+  const x = c.getContext('2d'); x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, 400, 400); x.imageSmoothingQuality = 'high';
+  x.drawImage(im, (w - s)/2, (h - s)/2, s, s, 0, 0, 400, 400);
+  for (const q of [.9, .8, .7]){
+    let b = await blobOf(c, 'image/webp', q);
+    if (!b || b.type !== 'image/webp') b = await blobOf(c, 'image/jpeg', q);   // Safari before 17 has no WebP encoder
+    if (b && b.size <= 2*1024*1024) return b;
+  }
+  throw new Error('That photo couldn’t be made small enough.');
+}
+$('#photoFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try { const b = await squarePhoto(f); if (edit.preview) URL.revokeObjectURL(edit.preview); edit.photo = b; edit.preview = URL.createObjectURL(b); paintEditAva(); $('#editNote').textContent = ''; }
+  catch (err){ $('#editNote').textContent = err.message; }
+});
+$('#photoRemove').addEventListener('click', () => { edit.photo = null; paintEditAva(); });
+$('#saveBtn').addEventListener('click', async () => {
+  const p = view.profile, btn = $('#saveBtn'), note = $('#editNote');
+  const patch = {display_name: $('#nameIn').value.trim().slice(0, 40), bio: $('#bioIn').value.trim().slice(0, 160), pinned_shelf_id: $('#pinIn').value || null, is_private: $('#privIn').checked};
+  btn.disabled = true; note.textContent = 'Saving…';
+  const old = p.avatar_key; let added = null;
+  try {
+    if (edit.photo instanceof Blob){ added = (await workerPost('/m/upload?kind=avatar', edit.photo)).key; patch.avatar_key = added; }
+    else if (edit.photo === null) patch.avatar_key = null;
+    const rows = await api(`profiles?id=eq.${p.id}&select=id,username,display_name,bio,avatar_key,pinned_shelf_id,is_private,created_at`,
+      {method:'PATCH', headers:{Prefer:'return=representation'}, body: JSON.stringify(patch)});
+    if (!rows || !rows[0]) throw new Error('Couldn’t save. Sign in again and try once more.');
+    view.profile = rows[0];
+    if (old && old !== view.profile.avatar_key) workerPost('/m/delete?k=' + encodeURIComponent(old)).catch(() => {});   // the old photo goes for good
+    closeSheets(); toast('Profile saved.');
+    paintHead();
+    if (patch.pinned_shelf_id !== (p.pinned_shelf_id || null)){ view.drawn = []; paintFeatured(); paintMost(); }
+  } catch (err){
+    if (added) workerPost('/m/delete?k=' + encodeURIComponent(added)).catch(() => {});   // the new photo isn't used after all
+    note.textContent = friendly(err);
+  } finally { btn.disabled = false; }
+});
+
+load().catch(e => { $('#state').hidden = false; $('#state').textContent = friendly(e); });
+if (document.fonts) document.fonts.ready.then(() => redrawAll());
+})();
+</script>
+</body>
+</html>

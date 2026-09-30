@@ -3,7 +3,9 @@
 Type a film or a book, get its real spine, put it on a shelf, save the shelf as an Instagram story.
 
 ```
-index.html            the website (GitHub Pages serves this)
+index.html            the website (GitHub Pages serves this): search, the shelf, the story
+shelf.js              draws the spines and the story; index.html and u/ both use it, so a shelf looks the same everywhere
+u/index.html          profiles: /u/?username, and one shelf: /u/?username&shelf=<id>
 admin.html            approve or delete archive uploads (needs the admin token)
 worker/               Cloudflare Worker: name lookup, scan search, image proxy (what the live site uses)
 backend/              older self-hosted search server (not used right now)
@@ -38,6 +40,9 @@ The TMDB and Brave keys live only in the Worker, as secrets.
 | `/archive/img?id=` | an approved archive spine |
 | `POST /report?id=` | one report per visitor; the third sends an approved spine back to pending |
 | `/admin/list`, `POST /admin/approve`, `POST /admin/delete` | for `admin.html`, with `Authorization: Bearer <ADMIN_TOKEN>` |
+| `POST /m/upload?kind=avatar|wall|png` | signed in: a profile photo, a wall or a wall PNG (PNG, JPEG or WebP by its first bytes, 2 MB max) into R2 under a random key; walls and PNGs only for Pro. 20 a minute and 200 a day per account, 20,000 a day in all: `{key}` |
+| `/m/img?k=` | one of those pictures |
+| `POST /m/delete?k=` | signed in: deletes one of your own pictures, once no shelf of yours and not your profile uses it |
 
 CORS is open only to `https://reflexgod.github.io`, `https://shelfstackd.com` and `http://localhost:8080`. `/identify` and `/scans`
 are cached in Workers KV for 30 days (so each title costs one Brave search), images are cached 30 days,
@@ -84,6 +89,18 @@ filters results, bump the `sc…:` cache key prefix in `src/index.js` so old cac
 4. Each cut gets a score from 0 to 100. A film's best cut goes on the shelf by itself only at 75 or more (in tests right spines scored 76–97 and wrong ones up to 69) **and** when it looks like the English edition; books always let you pick, unless the spine comes from the archive. Cuts under 45 aren't shown, and each page gives one option at most.
    Editions: the Worker marks a scan as another edition when its page title, address or file name has another language or region (Polish, Deutsch, español, français, 日本, region 2, `.pl`/`.de`/… pages, `nl`/`ger`/… in file names) and marks VHS tapes. With **Edition: English** (the default) English DVDs and Blu-rays come first; VHS comes last either way. **Any** drops the language rule.
 5. With no good scan, the page falls back to a spine made from the poster or cover.
+
+## Profiles
+
+`/u/?username` (a real file, so GitHub Pages answers 200 and link previews work): photo, name, @username, the numbers,
+the featured shelf drawn on its own, recent shelves, bio, most shelved. `/u/?username&shelf=<id>` shows one shelf. The
+owner gets Edit profile (photo, name, bio, featured shelf, Private profile). The header's @username and the Profile link
+in My shelves lead there; "Open in builder" on your own shelf opens `index.html?open=<id>`.
+Private shelves (the tick in My shelves) and private profiles show only to their owner.
+
+Photos, walls and PNGs live in the R2 bucket `shelfstackd-media` (binding `MEDIA`). Create it once, in `worker/`:
+`npx wrangler r2 bucket create shelfstackd-media`, then `npx wrangler deploy`. Keep `USER_R2` commented out: binding it
+would hide the shelf images already saved in KV.
 
 ## Accounts (Supabase)
 

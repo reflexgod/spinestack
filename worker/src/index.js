@@ -24,6 +24,11 @@
    GET  /u/preview?k=<user id>/p/<shelf id>&v=<updated>  -> the picture
    POST /u/forget?shelf=<id>  -> removes that shelf's picture (the shelf itself is deleted in Supabase)
         Limits: 150 images a day per account and 600 a day in all (KV's free plan allows 1,000 writes a day).
+   POST /m/upload?kind=avatar|wall|png  (body: a PNG, WebP or JPEG, 2 MB max) -> {key: '<user id>/<kind>/<32 hex>'}
+        a profile photo, a wall or a PNG for the wall, kept in R2 (MEDIA). Walls and PNGs need Pro.
+        Limits: 20 a minute and 200 a day per account, 20,000 a day in all.
+   GET  /m/img?k=<key>  -> the picture (anyone with the key)
+   POST /m/delete?k=<key>  -> deletes one of your own pictures once no shelf of yours and not your profile uses it
    Every day at 03:00 UTC (cron) the Worker makes one tiny read from Supabase, so the free project isn't
    paused for being inactive.
 */
@@ -57,6 +62,14 @@ export default {
         if (path === '/u/blob') return await putUserImage(req, env, cors, user, 'blob');
         if (path === '/u/preview') return await putUserImage(req, env, cors, user, 'preview', p.get('shelf'));
         if (path === '/u/forget') return await forgetPreview(env, cors, user, p.get('shelf'));
+        return json({error: 'Not found.'}, 404, cors);
+      }
+      if (!post && path === '/m/img') return await mediaImage(p, env, cors, ctx);
+      if (post && path.startsWith('/m/')) {
+        const user = await userOf(req, env);
+        if (!user) return json({error: 'Sign in again to save pictures.'}, 401, cors);
+        if (path === '/m/upload') return await putMedia(req, p, env, cors, user);
+        if (path === '/m/delete') return await deleteMedia(req, p, env, cors, user);
         return json({error: 'Not found.'}, 404, cors);
       }
       if (path.startsWith('/admin/')) {
@@ -355,6 +368,17 @@ export class Archive extends DurableObject {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS uploads (who TEXT, day TEXT, n INTEGER, PRIMARY KEY (who, day))`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS reports (id TEXT, who TEXT, PRIMARY KEY (id, who))`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS userwrites (who TEXT, day TEXT, n INTEGER, PRIMARY KEY (who, day))`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS mediawrites (who TEXT, day TEXT, n INTEGER, PRIMARY KEY (who, day))`);
+  }
+  // one more photo, wall or PNG for this account today, if there's room (per account and in all)
+  spendMedia(who, day) {
+    const mine = (this.one('SELECT n FROM mediawrites WHERE who = ? AND day = ?', who, day) || {}).n || 0;
+    if (mine >= MEDIA_PER_DAY) return {ok: false, error: 'That’s 200 pictures today. Try again tomorrow.'};
+    const all = (this.one('SELECT SUM(n) AS n FROM mediawrites WHERE day = ?', day) || {}).n || 0;
+    if (all >= MEDIA_PER_DAY_ALL) return {ok: false, error: 'Uploads are full for today. Try again tomorrow.'};
+    this.sql.exec('INSERT INTO mediawrites (who, day, n) VALUES (?, ?, 1) ON CONFLICT (who, day) DO UPDATE SET n = n + 1', who, day);
+    this.sql.exec('DELETE FROM mediawrites WHERE day < ?', day);
+    return {ok: true};
   }
   // one more image written for this account today, if there's room (per account and in all)
   spend(who, day) {
@@ -555,4 +579,64 @@ async function forgetPreview(env, cors, user, shelf) {
   if (!UUID.test(shelf || '')) return json({error: 'Which shelf?'}, 400, cors);
   await userStore(env).del(`${user}/p/${shelf}`);
   return json({ok: true}, 200, cors);
+}
+
+/* ---------- accounts: profile photos, walls and wall PNGs, in R2 ----------
+   Keys are <user id>/<avatar|wall|png>/<32 random hex>, never the file's name. The page shrinks and re-encodes every
+   picture before sending it (which also drops EXIF and location); here each one is checked again: PNG, JPEG or WebP by
+   its first bytes, 2 MB at most, 20 a minute and 200 a day per account, 20,000 a day in all, and walls and PNGs only
+   for Pro accounts (the database decides who is Pro). */
+const MAX_MEDIA = 2 * 1024 * 1024, MEDIA_PER_DAY = 200, MEDIA_PER_DAY_ALL = 20000, MEDIA_KINDS = ['avatar', 'wall', 'png'];
+const MEDIA_KEY = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(avatar|wall|png)\/[0-9a-f]{32}$/;
+// a database function, called as the signed-in person (so Row Level Security applies)
+async function asUser(req, env, fn, args) {
+  const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+  const r = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/${fn}`, {method: 'POST', body: JSON.stringify(args || {}),
+    headers: {apikey: env.SUPABASE_KEY, Authorization: 'Bearer ' + token, 'Content-Type': 'application/json'}});
+  if (!r.ok) throw new Error(`${fn} answered ${r.status}`);
+  return r.json();
+}
+async function putMedia(req, p, env, cors, user) {
+  if (!env.MEDIA) return json({error: 'Picture uploads aren’t set up yet.'}, 503, cors);
+  const kind = p.get('kind');
+  if (!MEDIA_KINDS.includes(kind)) return json({error: 'What kind of picture is it?'}, 400, cors);
+  if (!(await allowed(env.UPLOAD_LIMITER, user))) return json({error: 'That’s a lot of pictures at once. Wait a minute and try again.'}, 429, cors);
+  const tooBig = 'That picture is larger than 2 MB.';
+  if (+(req.headers.get('Content-Length') || 0) > MAX_MEDIA) return json({error: tooBig}, 413, cors);
+  const buf = req.body && await readCapped(req.body, MAX_MEDIA);
+  if (!buf) return json({error: tooBig}, 413, cors);
+  const type = imageType(buf);
+  if (!type) return json({error: 'That is not a PNG, JPEG or WebP image.'}, 415, cors);
+  if (kind !== 'avatar' && (await asUser(req, env, 'am_i_pro')) !== true) return json({error: 'Your own wall and PNGs come with Pro.', pro: true}, 403, cors);
+  const r = await store(env).spendMedia(user, new Date().toISOString().slice(0, 10));
+  if (!r.ok) return json({error: r.error}, 429, cors);
+  const key = `${user}/${kind}/${hex(crypto.getRandomValues(new Uint8Array(16)))}`;
+  await env.MEDIA.put(key, buf, {httpMetadata: {contentType: type}});
+  return json({ok: true, key}, 200, cors);
+}
+async function mediaImage(p, env, cors, ctx) {
+  const k = String(p.get('k') || '');
+  if (!MEDIA_KEY.test(k) || !env.MEDIA) return json({error: 'Not found.'}, 404, cors);
+  const cache = caches.default, ckey = new Request(`https://media.cache/${k}`);
+  let res = await cache.match(ckey);
+  if (!res) {
+    const o = await env.MEDIA.get(k);
+    if (!o) return json({error: 'Not found.'}, 404, cors);
+    // a day, not forever: a deleted picture shouldn't linger in caches
+    res = new Response(o.body, {headers: {'Content-Type': (o.httpMetadata || {}).contentType || 'application/octet-stream', 'Cache-Control': 'public, max-age=86400', 'X-Content-Type-Options': 'nosniff'}});
+    ctx.waitUntil(cache.put(ckey, res.clone()));
+  }
+  const out = new Response(res.body, res);
+  for (const [h, v] of Object.entries(cors)) out.headers.set(h, v);
+  return out;
+}
+async function deleteMedia(req, p, env, cors, user) {
+  if (!env.MEDIA) return json({error: 'Picture uploads aren’t set up yet.'}, 503, cors);
+  const k = String(p.get('k') || '');
+  if (!MEDIA_KEY.test(k) || !k.startsWith(user + '/')) return json({error: 'That picture isn’t yours.'}, 403, cors);
+  // "Save as a new shelf" shares pictures between shelves: only delete what nothing of yours uses any more
+  if ((await asUser(req, env, 'media_in_use', {k})) !== false) return json({ok: true, deleted: false}, 200, cors);
+  await env.MEDIA.delete(k);
+  await caches.default.delete(new Request(`https://media.cache/${k}`));
+  return json({ok: true, deleted: true}, 200, cors);
 }

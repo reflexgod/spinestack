@@ -23,6 +23,22 @@ crons = ["0 3 * * *"]
 # binding = "USER_R2"
 # bucket_name = "spinestack-user"
 
+# Profile photos, walls and wall PNGs (/m/...). Create the bucket once with:
+#   npx wrangler r2 bucket create shelfstackd-media
+# (Separate from USER_R2 above: keep that one commented out, or the shelf images already saved in KV stop showing.)
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "shelfstackd-media"
+
+# Photos, walls and PNGs: 20 uploads a minute per account.
+[[ratelimits]]
+name = "UPLOAD_LIMITER"
+namespace_id = "1003"
+
+  [ratelimits.simple]
+  limit = 20
+  period = 60
+
 # Caches /identify and /scans results for 30 days.
 # Create with `npx wrangler kv namespace create SPINE_CACHE` and paste the id below.
 [[kv_namespaces]]

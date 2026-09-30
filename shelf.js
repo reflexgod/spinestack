@@ -908,11 +908,13 @@ function sizes(H0, U, list, settings){
 /* Draws the story on x (the preview, or a small filter thumbnail through a scaled context), on the chosen
    background, with the chosen filter on the books.
    Spines stand packed like books on a shelf: 0-2px apart, a thin dark line where two meet. */
-function renderStory(x, f, fast, books, settings){
+/* bare: just the books and their shelf, on nothing (the profile page draws a shelf on its own white page): no
+   background, caption, watermark, or Flash's vignette and date stamp, which belong to the photo, not the shelf. */
+function renderStory(x, f, fast, books, settings, bare = false){
   const k = settings.intensity/100, T = THEMES[settings.theme], shelfSeed = hashStr(books.map(b => b.id).join('|')), rnd = rngOf(shelfSeed ^ hashStr(f)), levels = wearLevels(books.length, rngOf(shelfSeed ^ 99));
-  x.clearRect(0,0,W,H); x.fillStyle = T.bg; x.fillRect(0,0,W,H);
+  x.clearRect(0,0,W,H); if (!bare){ x.fillStyle = T.bg; x.fillRect(0,0,W,H); }
   x.fillStyle = T.ink; x.font = '500 52px "Geist Mono", ui-monospace, monospace'; x.textBaseline = 'alphabetic'; x.textAlign = 'left';
-  let y = 290; if (settings.caption.trim()) for (const ln of wrapText(x, settings.caption, 900)){ x.fillText(ln, 90, y); y += 68; }
+  let y = 290; if (!bare && settings.caption.trim()) for (const ln of wrapText(x, settings.caption, 900)){ x.fillText(ln, 90, y); y += 68; }
   const base = 1700;
   if (settings.wood && settings.layout !== 'covers') woodShelf(x, base);
   const dark = settings.theme === 'ink' || settings.theme === 'dark' || settings.theme === 'forest', shadow = dark ? 'rgba(0,0,0,.5)' : 'rgba(0,0,0,.15)', flashShadow = `rgba(0,0,0,${Math.min(.92, (dark ? .85 : .7)*k/.7)})`, seam = dark ? 'rgba(0,0,0,.7)' : 'rgba(0,0,0,.4)';
@@ -956,8 +958,8 @@ function renderStory(x, f, fast, books, settings){
     x.fillStyle = seam;
     for (let i = 1; i < placed.length; i++){ const lo = placed[i-1], up = placed[i], x0 = Math.max(lo.x, up.x), x1 = Math.min(lo.x + lo.L, up.x + up.L); if (x1 > x0) x.fillRect(x0, lo.y - 1.5, x1 - x0, 3); }
   }
-  if (f === 'flash' && books.length){ flashVignette(x, k); dateStamp(x); }
-  x.fillStyle = T.mark; x.font = '400 24px "Geist Mono", monospace'; x.textAlign = 'center'; x.fillText('made with spinestack', W/2, 1868);
+  if (f === 'flash' && books.length && !bare){ flashVignette(x, k); dateStamp(x); }
+  if (!bare){ x.fillStyle = T.mark; x.font = '400 24px "Geist Mono", monospace'; x.textAlign = 'center'; x.fillText('made with spinestack', W/2, 1868); }
 }
 
 window.Shelf = {FONTS, STYLES, THEMES, hex, rgb, lum, contrast, alpha, sat, dist, crop, posterTitle, loadImg, rr, fitFont, coverCrop, shade, isReal, isCase, isCover, asSpine, calmRect, topBlock, makeSpine, TEX, texture, hashStr, rngOf, blank, SCRATCH, scratch, texOver, texGrey, GRAIN, grainTile, grade, copyOf, outline, fadedSpine, glossySpine, GRAIN2, grainTile2, grainSpine, FLAKE, wornSpine, surname, pixels, rowDetail, freeBand, GLO, HAND, arcText, stickerPaper, beKindSticker, genreSticker, priceSticker, rewindStrip, GENRES, rentalSpine, libLabel, libFoot, libraryLines, jacketGlare, librarySpine, PENCIL, pencilGrain, secondhandSpine, hsl, hslCss, FOIL, WEAVE, weaveTile, MOTIFS, clothSpine, flashSpine, flashVignette, NOISE, noiseAt, filmSpine, RISO_PAPER, risoSpine, xeroxSpine, nightSpine, bookLight, dateStamp, woodShelf, wearLevels, WORN, spineFor, wrapText, sizes, renderStory, onTextureLoaded: fn => { onTexture = fn; }};
