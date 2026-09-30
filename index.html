@@ -148,6 +148,11 @@ em.pro{font-style:normal;font-weight:700;font-size:9px;border:1px solid currentC
 .wallrow{display:flex;gap:6px 16px;align-items:baseline;flex-wrap:wrap;margin:0}
 .wallname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
 .pngadd{display:grid;gap:4px;justify-items:start;margin-top:6px}
+.colours{display:grid;gap:6px;margin:2px 0 4px 22px}
+.swatches{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.swatch{width:22px;height:22px;border-radius:50%;border:1px solid var(--ink);padding:0;cursor:pointer}
+.swatch[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:2px}
+.colours input[type=text]{width:96px;padding:5px 8px;font-size:12px;border-radius:6px;text-transform:uppercase}
 .stage{position:relative}
 .stage.arranging{touch-action:none}
 .stage.arranging canvas{cursor:grab}
@@ -300,6 +305,10 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
             <input type="file" id="pngFile" accept="image/png,image/jpeg,image/webp" multiple hidden></div>
           <label class="check"><input type="checkbox" id="woodShelf"> Wood shelf</label>
           <label class="check"><input type="checkbox" id="plank"> Floating shelf<em class="pro">PRO</em></label>
+          <div class="colours" id="colourWrap" hidden><span class="lbl">Shelf colour<em class="pro">PRO</em></span>
+            <div class="swatches" id="swatches" role="group" aria-label="Shelf colour">
+              <button type="button" class="swatch" data-c="#FFFFFF" aria-label="White" style="background:#FFFFFF"></button><button type="button" class="swatch" data-c="#161616" aria-label="Black" style="background:#161616"></button><button type="button" class="swatch" data-c="#B7B7B2" aria-label="Grey" style="background:#B7B7B2"></button><button type="button" class="swatch" data-c="#D8A86A" aria-label="Oak" style="background:#D8A86A"></button><button type="button" class="swatch" data-c="#7A4E2D" aria-label="Walnut" style="background:#7A4E2D"></button><button type="button" class="swatch" data-c="#86A27B" aria-label="Sage" style="background:#86A27B"></button>
+              <input type="text" id="colourHex" value="#FFFFFF" maxlength="7" spellcheck="false" autocomplete="off" aria-label="Shelf colour as a hex code"></div></div>
           <p class="note" id="plankNote"></p></div>
         <label class="check" id="variedWrap"><input type="checkbox" id="varied" checked> Mixed heights</label>
         <button class="btn full" id="exportBtn" type="button">Save story</button>
@@ -390,7 +399,7 @@ const W = 1080, H = 1920;
 // the spines and the story are drawn by shelf.js (shared with the profile page)
 const {FONTS, STYLES, hex, lum, contrast, sat, dist, crop, posterTitle, loadImg, isReal, isCase, makeSpine, TEX, texture} = Shelf;
 let books = [], isSample = true, uid = 0, server = false;
-const settings = {caption:'my next reads.', theme:'paper', layout:'row', varied:true, wood:false, plank:false};
+const settings = {caption:'my next reads.', theme:'paper', layout:'row', varied:true, wood:false, plank:false, shelfColour:'#FFFFFF'};
 
 /* ---------- colour ---------- */
 function extractPalette(img){
@@ -586,7 +595,7 @@ const art = () => ({wall: media.wall && media.wall.img, wallDark: !!(media.wall 
 const walled = () => settings.theme === 'wall' && !!media.wall;
 // the Pro settings a shelf keeps (in shelves.pro); the pictures' keys exist once they're uploaded
 const r4 = v => Math.round(v*1e4)/1e4;
-const proSettings = () => clean0({plank: settings.plank || undefined, wall_key: walled() && media.wall.key || undefined,
+const proSettings = () => clean0({plank: settings.plank || undefined, shelf_colour: settings.plank && settings.shelfColour !== '#FFFFFF' ? settings.shelfColour : undefined, wall_key: walled() && media.wall.key || undefined,
   wall_items: media.pngs.length ? media.pngs.map(p => ({key: p.key, x: r4(p.x), y: r4(p.y), w: r4(p.w)})) : undefined});
 const usesPro = () => !!settings.plank || walled() || media.pngs.length > 0;
 const keysOf = pro => [pro && pro.wall_key, ...((pro && pro.wall_items) || []).map(p => p.key)].filter(Boolean);
@@ -1006,7 +1015,22 @@ $('#plank').addEventListener('change', e => {
   if (settings.plank){ settings.wood = false; $('#woodShelf').checked = false; }
   redraw();
 });
-const woodTakesOver = () => { if (settings.wood && settings.plank){ settings.plank = false; $('#plank').checked = false; } };
+const woodTakesOver = () => { if (settings.wood && settings.plank){ settings.plank = false; $('#plank').checked = false; } paintColour(); };
+// the Floating shelf's colour: one colour, and its top, front edge and shadows are shaded from it
+function paintColour(){
+  $('#colourWrap').hidden = !settings.plank;
+  $('#swatches').querySelectorAll('.swatch').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.c === settings.shelfColour)));
+  if (document.activeElement !== $('#colourHex')) $('#colourHex').value = settings.shelfColour;
+}
+function setColour(c){
+  $('#plankNote').textContent = '';
+  if (!isPro()){ proNote($('#plankNote'), 'The shelf colour comes with Pro.'); return; }
+  settings.shelfColour = c; paintColour(); redraw();
+}
+$('#swatches').addEventListener('click', e => { const b = e.target.closest('.swatch'); if (b) setColour(b.dataset.c); });
+$('#colourHex').addEventListener('input', e => { const v = e.target.value.trim().replace(/^#?/, '#').toUpperCase(); if (/^#[0-9A-F]{6}$/.test(v)) setColour(v); });
+$('#colourHex').addEventListener('blur', paintColour);
+$('#plank').addEventListener('change', paintColour);
 $('#woodShelf').addEventListener('change', woodTakesOver);
 $('#theme').addEventListener('click', woodTakesOver);
 $('#caption').addEventListener('input', e => { settings.caption = e.target.value; redraw(); });
@@ -1513,8 +1537,8 @@ async function rebuild(r){
 }
 function applySettings(s){
   Object.assign(settings, {caption: s.caption, filter: s.filter, intensity: s.intensity, theme: s.background || s.theme, wood: !!s.wood, layout: s.layout, varied: s.varied !== false,
-    plank: !!(s.pro ? s.pro.plank : s.plank)});   // a saved shelf keeps it in pro, a draft in its settings
-  $('#plank').checked = settings.plank;
+    plank: !!(s.pro ? s.pro.plank : s.plank), shelfColour: (s.pro ? s.pro.shelf_colour : s.shelfColour) || '#FFFFFF'});   // a saved shelf keeps these in pro, a draft in its settings
+  $('#plank').checked = settings.plank; paintColour();
   $('#caption').value = settings.caption; $('#intensity').value = settings.intensity; $('#woodShelf').checked = settings.wood; $('#varied').checked = settings.varied;
   for (const [id, key] of [['#theme', 'theme'], ['#layout', 'layout']]) document.querySelectorAll(id + ' button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === settings[key])));
   $('#variedWrap').hidden = settings.layout === 'covers';
