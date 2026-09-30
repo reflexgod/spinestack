@@ -111,7 +111,8 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
 .name{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;cursor:text;text-align:left;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .name:hover,.name:focus-visible{text-decoration:underline dashed var(--grey);text-decoration-thickness:1px;text-underline-offset:3px}
 .cap .tag,.featmeta .tag{flex:none}
-input.renamer{font:inherit;font-weight:500;padding:1px 6px;border-radius:6px;min-width:0;width:100%;max-width:320px}
+/* exactly the height of the name it replaces, so nothing below it moves (a link that moves mid-press misses its click) */
+input.renamer{font:inherit;font-weight:500;line-height:inherit;height:1.55em;padding:0 5px;border-radius:5px;min-width:0;width:100%;max-width:320px}
 .newcard{display:block;width:100%;padding:0;border:0;background:none;cursor:pointer;font:inherit;color:var(--ink)}
 .thumbs .pic.new{background:var(--paper);border:1px dashed var(--ink);display:grid;place-items:center;font:500 12px var(--mono);text-transform:uppercase;letter-spacing:.04em}
 .newcard:hover .pic.new{background:#F7F7F7}
@@ -581,7 +582,8 @@ function paintHead(){
   $('#since').textContent = 'on shelfstackd since ' + new Date(p.created_at).toLocaleDateString('en-US', {month:'short', year:'numeric'});
 }
 function paintLists(){
-  const list = view.shelves, none = !list.length, mine = view.mine;
+  // the main shelf first, then the rest newest first
+  const main = featured(), list = main ? [main, ...view.shelves.filter(s => s !== main)] : view.shelves, none = !list.length, mine = view.mine;
   $('#recent').innerHTML = thumbs(list.slice(0, mine ? 3 : 4));   // on your own profile, + new shelf comes first
   $('#recentWrap').hidden = none && !mine;
   $('#all').innerHTML = thumbs(list); $('#allNone').hidden = !none || mine;
@@ -662,8 +664,11 @@ async function cardAction(b){
   try {
     if (act === 'main'){
       const rows = await api(`profiles?id=eq.${view.profile.id}&select=${PROFILE_COLS}`, {method:'PATCH', headers:{Prefer:'return=representation'}, body: JSON.stringify({pinned_shelf_id: id})});
-      if (!rows || !rows[0]) throw new Error('Couldn’t change it. Sign in again and try once more.');
-      view.profile = rows[0]; view.drawn = []; paintLists(); paintFeatured(); toast('That’s your main shelf now.');
+      if (!rows || !rows[0] || rows[0].pinned_shelf_id !== id) throw new Error('That didn’t save, so your main shelf is as it was. Try again.');
+      // then what's saved, read back: the page never shows a main shelf the database doesn't have
+      await refresh();
+      if ((featured() || {}).id !== id) throw new Error('That didn’t save, so your main shelf is as it was. Try again.');
+      toast('That’s your main shelf now.');
     } else if (act === 'privacy'){
       const rows = await api(`shelves?id=eq.${id}&select=id`, {method:'PATCH', headers:{Prefer:'return=representation'}, body: JSON.stringify({is_public: !s.is_public})});
       if (!rows || !rows[0]) throw new Error('Couldn’t change it. Sign in again and try once more.');
