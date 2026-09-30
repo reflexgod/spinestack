@@ -3,11 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="Shelves on Spinestack.">
-<title>Spinestack</title>
+<meta name="description" content="Shelves on shelfstackd.">
+<title>shelfstackd</title>
 <script>
   /* The same public addresses as index.html (see the notes there). */
-  window.SPINESTACK_WORKER = "https://spinestack.spinestack-worker.workers.dev";
+  window.SPINESTACK_WORKER = "https://api.shelfstackd.com";
+  /* The Worker's old address, for a visit when the one above doesn't answer (while the move to shelfstackd.com
+     settles; to be removed once api.shelfstackd.com is confirmed). */
+  window.SPINESTACK_WORKER_FALLBACK = "https://spinestack.spinestack-worker.workers.dev";
   window.SPINESTACK_SUPABASE_URL = "https://fiukspnovrlzlcdekcnb.supabase.co";
   window.SPINESTACK_SUPABASE_KEY = "sb_publishable_cZeUDJXk-nCbSJ4VZWn_GQ_6xNFyBo2";
 </script>
@@ -176,7 +179,7 @@ input.renamer{font:inherit;font-weight:500;line-height:inherit;height:1.55em;pad
 <body>
 <header class="top" id="top">
   <a href="../#how">Info</a>
-  <a class="mark" href="../" aria-label="Spinestack, the shelf builder">SPINESTACK</a>
+  <a class="mark" href="../" aria-label="shelfstackd, the shelf builder">SHELFSTACKD</a>
   <span class="r"><a href="../#shelf">Shelf</a><a class="acct" id="acctBtn" href="#" hidden>Sign in</a></span>
 </header>
 
@@ -319,11 +322,11 @@ input.renamer{font:inherit;font-weight:500;line-height:inherit;height:1.55em;pad
       <a class="fbtn" href="../#shelf">Open shelf</a>
     </div>
   </div>
-  <div class="fbase"><span>© 2026 SPINESTACK. All rights reserved.</span><span>Not affiliated with any studio or publisher.</span></div>
+  <div class="fbase"><span>© 2026 SHELFSTACKD. All rights reserved.</span><span>Not affiliated with any studio or publisher.</span></div>
 </footer>
 <div class="toast" id="toast" hidden></div>
 
-<script src="../shelf.js?v=20260930c"></script>
+<script src="../shelf.js?v=20260930d"></script>
 <script>
 (() => {
 /* A profile: /u/?username, and one of its shelves: /u/?username&shelf=<id>.
@@ -331,7 +334,15 @@ input.renamer{font:inherit;font-weight:500;line-height:inherit;height:1.55em;pad
    The Supabase library only loads for someone who's signed in on this device or signing in. */
 const $ = s => document.querySelector(s);
 const W = 1080, H = 1920;
-const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
+let WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
+// the Worker at its new address; for this visit, at its old one if the new one doesn't answer /health in 2.5 s
+const workerReady = (async () => {
+  const alt = String(window.SPINESTACK_WORKER_FALLBACK || '').trim().replace(/\/+$/, '');
+  if (!WORKER || !alt || alt === WORKER) return;
+  const c = new AbortController(), t = setTimeout(() => c.abort(), 2500);
+  try { if ((await fetch(WORKER + '/health', {signal: c.signal})).ok) return; } catch {} finally { clearTimeout(t); }
+  WORKER = alt;
+})();
 const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
 const SB_LIB = {src:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
 const {makeSpine, loadImg, posterTitle, isDark, shelfName} = Shelf;
@@ -350,7 +361,7 @@ const blobOf = (c, type, q) => new Promise(r => c.toBlob(r, type, q));
 let toastT = 0; function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 4200); }
 function friendly(e){
   const m = (e && e.message) || '';
-  if (/fetch|network/i.test(m)) return 'Couldn’t reach Spinestack. Check your connection and try again.';
+  if (/fetch|network/i.test(m)) return 'Couldn’t reach shelfstackd. Check your connection and try again.';
   return m || 'Something went wrong. Try again in a moment.';
 }
 
@@ -528,6 +539,7 @@ function redrawAll(){ clearTimeout(redrawT); redrawT = setTimeout(() => { for (c
 Shelf.onTextureLoaded(() => redrawAll());
 
 async function load(){
+  await workerReady;
   await startSession();
   paintAcct();
   if (!NAME){
@@ -539,7 +551,7 @@ async function load(){
   catch (e){ $('#state').textContent = friendly(e); return; }
   if (!p){ $('#state').innerHTML = `No one here. Profiles can be private, or the name may have changed. <a href="../">Build your own shelf</a>.`; return; }
   view.profile = p; view.mine = !!(me.user && me.user.id === p.id);
-  document.title = (p.display_name || '@' + p.username) + ' · Spinestack';
+  document.title = (p.display_name || '@' + p.username) + ' · shelfstackd';
   const [stats, shelves] = await Promise.all([rpc('profile_stats', {uid: p.id}).catch(() => []), fetchShelves().catch(() => [])]);
   view.shelves = shelves;
   paintStats(stats);
@@ -624,7 +636,7 @@ async function showShelf(id){
   $('#oneMeta').textContent = `${spines(countOf(s))} · ${fmtDate(s.updated_at)}`;
   $('#openBuilder').hidden = !view.mine; $('#openBuilder').dataset.id = s.id;
   $('#reportShelf').hidden = view.mine; $('#reportShelf').dataset.id = s.id;
-  document.title = shelfName(s) + ' · @' + p.username + ' · Spinestack';
+  document.title = shelfName(s) + ' · @' + p.username + ' · shelfstackd';
   await fontsReady;
   let list = [], wall = null, pngs = [];
   try { [list, wall, pngs] = await Promise.all([books(await api(`shelf_items?select=${ITEM_COLS}&shelf_id=eq.${s.id}&order=position`)), wallOf(s), pngsOf(s)]); } catch { list = []; }
@@ -774,7 +786,7 @@ $('#reportSend').addEventListener('click', async () => {
   if (r && r.ok){ closeSheets(); toast('Thanks. We’ll take a look.'); return; }
   const j = r ? await r.json().catch(() => ({})) : {};
   btn.disabled = false;
-  note.textContent = !r ? 'Couldn’t reach Spinestack. Check your connection and try again.' : j.code === '23505' ? 'You’ve already reported this. Thanks.' : j.code === 'P0001' && j.message ? j.message : 'Couldn’t send the report. Try again in a moment.';
+  note.textContent = !r ? 'Couldn’t reach shelfstackd. Check your connection and try again.' : j.code === '23505' ? 'You’ve already reported this. Thanks.' : j.code === 'P0001' && j.message ? j.message : 'Couldn’t send the report. Try again in a moment.';
 });
 
 /* ---------- Edit profile ---------- */

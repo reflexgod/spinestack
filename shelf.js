@@ -1013,7 +1013,7 @@ function renderStory(x, f, fast, books, settings, bare = false, art = {}){
     for (let i = 1; i < placed.length; i++){ const lo = placed[i-1], up = placed[i], x0 = Math.max(lo.x, up.x), x1 = Math.min(lo.x + lo.L, up.x + up.L); if (x1 > x0) x.fillRect(x0, lo.y - 1.5, x1 - x0, 3); }
   }
   if (f === 'flash' && books.length && !bare){ flashVignette(x, k); dateStamp(x); }
-  if (!bare){ x.fillStyle = T.mark; x.font = '400 24px "Geist Mono", monospace'; x.textAlign = 'center'; x.fillText('made with spinestack', W/2, 1868); }
+  if (!bare){ x.fillStyle = T.mark; x.font = '400 24px "Geist Mono", monospace'; x.textAlign = 'center'; x.fillText('made with shelfstackd', W/2, 1868); }
   return {captionBottom, booksTop};
 }
 

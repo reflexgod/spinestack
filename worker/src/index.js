@@ -35,7 +35,7 @@
 import UPNG from 'upng-js';
 import {DurableObject} from 'cloudflare:workers';
 
-const ORIGINS = ['https://reflexgod.github.io', 'https://shelfstackd.com', 'http://localhost:8080'];
+const ORIGINS = ['https://reflexgod.github.io', 'https://shelfstackd.com', 'https://www.shelfstackd.com', 'http://localhost:8080'];
 const DAY = 86400, MONTH = 30 * DAY;
 const MAX_IMG = 8 * 1024 * 1024, MAX_UPLOAD = 300 * 1024, UPLOADS_PER_DAY = 10, REPORTS_TO_HIDE = 3, ROUNDS = 4;
 const UA = 'Spinestack/1.0 (+https://reflexgod.github.io/spinestack/)';
