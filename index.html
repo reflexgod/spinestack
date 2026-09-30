@@ -147,6 +147,13 @@ em.pro{font-style:normal;font-weight:700;font-size:9px;border:1px solid currentC
 .wallbox{display:grid;gap:4px;margin-top:2px}
 .wallrow{display:flex;gap:6px 16px;align-items:baseline;flex-wrap:wrap;margin:0}
 .wallname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.pngadd{display:grid;gap:4px;justify-items:start;margin-top:6px}
+.stage{position:relative}
+.stage.arranging{touch-action:none}
+.stage.arranging canvas{cursor:grab}
+.pngbox{position:absolute;border:1px dashed var(--ink);box-shadow:0 0 0 1px rgba(255,255,255,.85);pointer-events:none}
+.pngx{pointer-events:auto;position:absolute;top:-12px;right:-12px;width:24px;height:24px;border-radius:50%;border:1px solid var(--ink);background:var(--paper);color:var(--ink);font:500 12px var(--mono);cursor:pointer;padding:0;line-height:1;touch-action:none}
+.pngh{pointer-events:auto;position:absolute;right:-7px;bottom:-7px;width:14px;height:14px;background:var(--paper);border:1px solid var(--ink);cursor:nwse-resize;touch-action:none}
 .range{display:flex;gap:10px;align-items:center}
 .range input{accent-color:var(--ink);flex:1;min-width:0}
 .check input{accent-color:var(--ink);margin:0}
@@ -275,7 +282,8 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
         <div class="ctl"><span class="lbl">Filter</span>
           <div class="filters" id="filters" role="group" aria-label="Filter"></div>
           <label class="range"><span class="lbl">Intensity</span><input type="range" id="intensity" min="0" max="100" value="70" aria-label="Filter intensity"></label></div>
-        <div class="phone"><canvas id="story" width="1080" height="1920" aria-label="Story preview"></canvas></div>
+        <div class="phone"><div class="stage" id="stage"><canvas id="story" width="1080" height="1920" aria-label="Story preview"></canvas>
+          <div class="pngbox" id="pngBox" hidden><button class="pngx" id="pngX" type="button" aria-label="Remove this PNG">✕</button><span class="pngh" id="pngH" aria-hidden="true"></span></div></div></div>
         <div class="ctl"><label class="lbl" for="caption">Caption</label><input type="text" id="caption" value="my next reads." maxlength="60"></div>
         <div class="ctl" id="themeWrap"><span class="lbl">Background</span>
           <div class="seg" id="theme" role="group" aria-label="Background"><button type="button" data-v="paper">Paper</button><button type="button" data-v="ink">Ink</button><button type="button" data-v="blush">Blush</button><button type="button" data-v="shelf">Shelf</button><button type="button" data-v="dark">Dark</button><button type="button" data-v="forest">Forest</button><button type="button" data-v="wall">Your PNG<em class="pro">PRO</em></button></div>
@@ -286,6 +294,10 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
             <p class="note warn" id="wallWarn"></p>
           </div>
           <input type="file" id="wallFile" accept="image/png,image/jpeg,image/webp" hidden>
+          <div class="pngadd"><button class="dash sm" id="pngAdd" type="button">+ Add PNG<em class="pro">PRO</em></button>
+            <p class="note">Posters, photos, anything. PNG, JPG or WEBP, max 5 MB each. Transparent PNGs work. Place it anywhere on the wall. It always stays behind the books.</p>
+            <p class="note" id="pngNote"></p>
+            <input type="file" id="pngFile" accept="image/png,image/jpeg,image/webp" multiple hidden></div>
           <label class="check"><input type="checkbox" id="woodShelf"> Wood shelf</label>
           <label class="check"><input type="checkbox" id="plank"> Floating shelf<em class="pro">PRO</em></label>
           <p class="note" id="plankNote"></p></div>
@@ -569,7 +581,7 @@ const proNote = (el, msg) => { el.innerHTML = PRO_TAG + esc(msg); };
 function proToast(msg){ toast(msg); $('#toast').insertAdjacentHTML('afterbegin', PRO_TAG); }
 /* Your own wall and PNGs (Pro). They stay in this page while you make the shelf and go to the Worker only when you
    save it (so a story needs no account), and they're deleted from storage once no saved shelf of yours uses them. */
-const media = {wall: null, pngs: []};   // wall: {img, blob, name, small, dark, key}; pngs: step 5
+const media = {wall: null, pngs: []};   // wall: {img, blob, name, small, dark, key}; pngs: [{img, blob, key, x, y, w}]
 const art = () => ({wall: media.wall && media.wall.img, wallDark: !!(media.wall && media.wall.dark), pngs: media.pngs});
 const walled = () => settings.theme === 'wall' && !!media.wall;
 // the Pro settings a shelf keeps (in shelves.pro); the pictures' keys exist once they're uploaded
@@ -1062,6 +1074,73 @@ $('#wallFile').addEventListener('change', async e => {
 });
 $('#wallRemove').addEventListener('click', () => { media.wall = null; settings.theme = 'paper'; wallPicking = false; syncTheme(); paintWall(); redraw(); });
 
+/* ---------- PNGs on the wall (Pro): as many as you like, always behind the books ---------- */
+// long side 1080 at most, drawn again (EXIF gone, transparency kept), under 2 MB
+async function makePng(file){
+  const im = await readPicture(file), w0 = im.naturalWidth, h0 = im.naturalHeight;
+  for (let k = Math.min(1, 1080/Math.max(w0, h0)), tries = 0; tries < 5; tries++, k *= .8){
+    const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w0*k)); c.height = Math.max(1, Math.round(h0*k));
+    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+    try {
+      const blob = await under2mb(c, true), a = c.width/c.height;
+      return {img: c, blob, key: null, x: .5, y: .5, w: Math.min(.45, .45*H/W*a)};   // lands in the middle of the wall
+    } catch {}
+  }
+  throw new Error('That picture couldn’t be made small enough.');
+}
+let sel = -1;          // the PNG picked on the preview
+const stage = $('#stage'), pointers = new Map(); let grab = null;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rectOf = p => { const w = p.w*W, h = w*p.img.height/p.img.width; return {x: p.x*W - w/2, y: p.y*H - h/2, w, h}; };
+const atStory = e => { const r = story.getBoundingClientRect(), k = W/r.width; return {x: (e.clientX - r.left)*k, y: (e.clientY - r.top)*k}; };
+function paintPngs(){
+  stage.classList.toggle('arranging', media.pngs.length > 0);
+  const p = media.pngs[sel], box = $('#pngBox');
+  if (!p){ box.hidden = true; return; }
+  const r = rectOf(p), k = story.clientWidth/W;
+  box.hidden = false; Object.assign(box.style, {left: r.x*k + 'px', top: r.y*k + 'px', width: r.w*k + 'px', height: r.h*k + 'px'});
+}
+addEventListener('resize', paintPngs);
+$('#pngAdd').addEventListener('click', () => {
+  $('#pngNote').textContent = '';
+  if (!isPro()){ proNote($('#pngNote'), 'PNGs on the wall come with Pro.'); return; }
+  $('#pngFile').click();
+});
+$('#pngFile').addEventListener('change', async e => {
+  const files = [...e.target.files]; e.target.value = ''; if (!files.length) return;
+  $('#pngNote').textContent = files.length > 1 ? 'Reading the pictures…' : 'Reading the picture…';
+  let failed = '';
+  for (const f of files){ try { media.pngs.push(await makePng(f)); sel = media.pngs.length - 1; } catch (err){ failed = err.message; } }
+  $('#pngNote').textContent = failed || 'Drag it on the preview to move it. Pull its corner, or pinch, to resize.';
+  paintPngs(); redraw();
+});
+// tap a PNG to pick it and drag it; pull the corner or pinch to resize; tap the wall to let go
+stage.addEventListener('pointerdown', e => {
+  if (!media.pngs.length || e.target.closest('#pngX')) return;
+  const pt = atStory(e); pointers.set(e.pointerId, pt);
+  const p = media.pngs[sel];
+  if (pointers.size === 2 && p){ const [a, b] = [...pointers.values()]; grab = {mode: 'pinch', w0: p.w, d0: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y))}; }
+  else if (e.target.closest('#pngH') && p) grab = {mode: 'size', w0: p.w, d0: Math.max(1, Math.hypot(pt.x - p.x*W, pt.y - p.y*H))};
+  else {
+    sel = -1;
+    for (let i = media.pngs.length - 1; i >= 0; i--){ const r = rectOf(media.pngs[i]); if (pt.x >= r.x && pt.x <= r.x + r.w && pt.y >= r.y && pt.y <= r.y + r.h){ sel = i; break; } }
+    const q = media.pngs[sel]; grab = q ? {mode: 'move', dx: pt.x - q.x*W, dy: pt.y - q.y*H} : null;
+  }
+  if (grab){ e.preventDefault(); try { stage.setPointerCapture(e.pointerId); } catch {} }
+  paintPngs();
+});
+stage.addEventListener('pointermove', e => {
+  if (!grab || !pointers.has(e.pointerId)) return;
+  const pt = atStory(e), p = media.pngs[sel]; pointers.set(e.pointerId, pt); if (!p) return;
+  if (grab.mode === 'move'){ p.x = clamp((pt.x - grab.dx)/W, 0, 1); p.y = clamp((pt.y - grab.dy)/H, 0, 1); }
+  else if (grab.mode === 'size') p.w = clamp(grab.w0*Math.hypot(pt.x - p.x*W, pt.y - p.y*H)/grab.d0, .02, 2);
+  else if (pointers.size === 2){ const [a, b] = [...pointers.values()]; p.w = clamp(grab.w0*Math.hypot(a.x - b.x, a.y - b.y)/grab.d0, .02, 2); }
+  paintPngs(); redraw();
+});
+const letGo = e => { pointers.delete(e.pointerId); if (!pointers.size || (grab && grab.mode === 'pinch')) grab = null; };
+stage.addEventListener('pointerup', letGo); stage.addEventListener('pointercancel', letGo);
+$('#pngX').addEventListener('click', () => { if (sel < 0) return; media.pngs.splice(sel, 1); sel = -1; $('#pngNote').textContent = ''; paintPngs(); redraw(); });
+
 /* ---------- export: Claude download, phone share sheet, or plain download ---------- */
 let downloads = null;
 if (window.claude && window.claude.use) window.claude.use('downloads').then(d => { downloads = d; }).catch(() => {});
@@ -1453,8 +1532,16 @@ async function restoreArt(s, drafted){
     } catch { toast('The wall couldn’t load, so this shelf is on Paper for now.'); }
     finally { if (w.blob) URL.revokeObjectURL(url); }
   }
+  const items = drafted ? drafted.pngs || [] : pro.wall_items || [];
+  const got = await Promise.all(items.map(async it => {
+    const url = it.blob ? URL.createObjectURL(it.blob) : `${WORKER}/m/img?k=${encodeURIComponent(it.key)}`;
+    try { return {img: await timeout(loadImg(url), 15000), blob: it.blob || null, key: it.key || null, x: it.x, y: it.y, w: it.w}; }
+    catch { return null; } finally { if (it.blob) URL.revokeObjectURL(url); }
+  }));
+  media.pngs = got.filter(Boolean);
+  if (media.pngs.length < got.length) toast(`${got.length - media.pngs.length} of the PNGs couldn’t load.`);
   if (media.wall) settings.theme = 'wall'; else if (settings.theme === 'wall') settings.theme = 'paper';
-  wallPicking = false; syncTheme(); paintWall();
+  wallPicking = false; sel = -1; syncTheme(); paintWall(); paintPngs();
 }
 async function putOnShelf(rows, s, drafted){
   const got = await Promise.all(rows.map(rebuild)), ok = got.filter(Boolean);
