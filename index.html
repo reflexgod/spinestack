@@ -467,44 +467,55 @@ function findSpine(img, kind){
     const med = median(rows);
     return rows.filter(v => dist(v, med) < 60).length / rows.length;
   };
-  let best = null;
-  for (const cd of cands.slice(0, 40)){ cd.u = evenness(cd.L, cd.R); cd.f = cd.s*(.5 + .5*cd.u); if (!best || cd.f > best.f) best = cd; }
-  // move each edge inward past columns that look more like the back or front cover than the spine
-  const bl = best.L, br = best.R, q = Math.floor((br-bl)/4), inner = median(cols.slice(bl+q, br-q+1)), cap = Math.max(2, Math.round(cw*.02));
-  const outL = avg(Math.max(0, bl-5), bl-2), outR = avg(br+2, Math.min(cw-1, br+5));
-  let L = bl, R = br;
-  while (L - bl < cap && R - L > minW && dist(cols[L], inner) > dist(cols[L], outL)) L++;
-  while (br - R < cap && R - L > minW && dist(cols[R], inner) > dist(cols[R], outR)) R--;
-  // spine and cover the same colour (Gummo: yellow on yellow) leave a soft edge that lettering can beat:
-  // widen a thin film spine over columns that still match it, up to a DVD spine's usual 5 %
-  if (film) while ((R-L)/cw < .05){ const r = R < cw-4 && dist(cols[R+1], inner) < 35, l = L > 3 && dist(cols[L-1], inner) < 35; if (!r && !l) break; if (r) R++; if (l && (R-L)/cw < .05) L--; }
-  L++; R--;                                                         // one more column for the soft edge itself
-  // a spine carries lettering: rows change as they cross it. A blank strip is a gap or a case hinge.
-  const g = [];
-  for (let Y = y0; Y < y1; Y++){ let s = 0; for (let X = L+1; X < R; X++){ const i = (Y*cw+X)*4; s += d[i] + d[i+1] + d[i+2]; } g.push(s/(3*Math.max(1, R-L-1))); }
-  let text = 0; for (let i = 1; i < g.length; i++) text += Math.abs(g[i] - g[i-1]); text /= Math.max(1, g.length - 1);
-  const penalty = (Math.abs(aspect - 4/3) < .012 ? .6 : 1)*(text < 2 ? .7 : 1);   // 4:3 is a phone photo, not a scan
-  // Books: scans are rare and look-alikes common (3D mock-ups, a strip of one cover, two books side by side,
-  // wooden boards for "Norwegian Wood"). Keep only a flat scan: a busy edge all round, clear edges on both
-  // sides of the spine, straight up and down, and an even colour top to bottom.
-  if (!film){
-    const at = X => Math.max(...edge.slice(Math.max(0, X-3), X+4));
-    const drift = X => { const pos = [[.1, .4], [.6, .9]].map(([a, b]) => { let best = -1, arg = X;
-      for (let i = Math.max(3, X-12); i <= Math.min(cw-4, X+12); i++){ const col = (i0, i1) => { const t = [0,0,0]; let n = 0;
-        for (let Y = Math.floor(ch*a); Y < Math.floor(ch*b); Y += 2) for (let c2 = i0; c2 <= i1; c2++){ const j = (Y*cw+c2)*4; t[0]+=d[j]; t[1]+=d[j+1]; t[2]+=d[j+2]; n++; } return t.map(v => v/n); };
-        const e = dist(col(i+1, i+3), col(i-3, i-1)); if (e > best){ best = e; arg = i; } } return arg; });
-      return Math.abs(pos[0] - pos[1])/cw; };
-    if (border < 20 || Math.min(at(bl), at(br)) < 25 || best.u < .9 || Math.max(drift(bl), drift(br)) > .012) return null;
-  }
-  const score = Math.round(100*Math.min(1, best.e/60)*best.fit*(.5 + .5*best.u)*penalty);
-  if (score < 20) return null;
+  const top40 = cands.slice(0, 40);
+  for (const cd of top40){ cd.u = evenness(cd.L, cd.R); cd.f = cd.s*(.5 + .5*cd.u); }
+  const ranked = top40.slice().sort((a,b) => b.f - a.f);            // best first; equal ones keep their order
   // drop plain margins above and below the wrap (rows that are one flat colour right across the scan)
   const flat = Y => { let s = 0, q = 0; for (let X = 0; X < cw; X += 2){ const i = (Y*cw+X)*4, v = d[i] + d[i+1] + d[i+2]; s += v; q += v*v; } const n = Math.ceil(cw/2); return Math.sqrt(Math.max(0, q/n - (s/n)**2))/3 < 6; };
   let top = 0, bot = ch - 1;
   while (top < ch*.15 && flat(top)) top++;
   while (bot > ch*.85 && flat(bot)) bot--;
   const k = img.width/cw, ky = img.height/ch;
-  return {x:L*k, w:(R-L+1)*k, frontX:(br+1)*k, y:top*ky, h:(bot-top+1)*ky, score};
+  const cut = best => {
+    // move each edge inward past columns that look more like the back or front cover than the spine
+    const bl = best.L, br = best.R, q = Math.floor((br-bl)/4), inner = median(cols.slice(bl+q, br-q+1)), cap = Math.max(2, Math.round(cw*.02));
+    const outL = avg(Math.max(0, bl-5), bl-2), outR = avg(br+2, Math.min(cw-1, br+5));
+    let L = bl, R = br;
+    while (L - bl < cap && R - L > minW && dist(cols[L], inner) > dist(cols[L], outL)) L++;
+    while (br - R < cap && R - L > minW && dist(cols[R], inner) > dist(cols[R], outR)) R--;
+    // spine and cover the same colour (Gummo: yellow on yellow) leave a soft edge that lettering can beat:
+    // widen a thin film spine over columns that still match it, up to a DVD spine's usual 5 %
+    if (film) while ((R-L)/cw < .05){ const r = R < cw-4 && dist(cols[R+1], inner) < 35, l = L > 3 && dist(cols[L-1], inner) < 35; if (!r && !l) break; if (r) R++; if (l && (R-L)/cw < .05) L--; }
+    L++; R--;                                                         // one more column for the soft edge itself
+    // a spine carries lettering: rows change as they cross it. A blank strip is a gap or a case hinge.
+    const g = [];
+    for (let Y = y0; Y < y1; Y++){ let s = 0; for (let X = L+1; X < R; X++){ const i = (Y*cw+X)*4; s += d[i] + d[i+1] + d[i+2]; } g.push(s/(3*Math.max(1, R-L-1))); }
+    let text = 0; for (let i = 1; i < g.length; i++) text += Math.abs(g[i] - g[i-1]); text /= Math.max(1, g.length - 1);
+    const penalty = (Math.abs(aspect - 4/3) < .012 ? .6 : 1)*(text < 2 ? .7 : 1);   // 4:3 is a phone photo, not a scan
+    // Books: scans are rare and look-alikes common (3D mock-ups, a strip of one cover, two books side by side,
+    // wooden boards for "Norwegian Wood"). Keep only a flat scan: a busy edge all round, clear edges on both
+    // sides of the spine, straight up and down, and an even colour top to bottom.
+    if (!film){
+      const at = X => Math.max(...edge.slice(Math.max(0, X-3), X+4));
+      const drift = X => { const pos = [[.1, .4], [.6, .9]].map(([a, b]) => { let best = -1, arg = X;
+        for (let i = Math.max(3, X-12); i <= Math.min(cw-4, X+12); i++){ const col = (i0, i1) => { const t = [0,0,0]; let n = 0;
+          for (let Y = Math.floor(ch*a); Y < Math.floor(ch*b); Y += 2) for (let c2 = i0; c2 <= i1; c2++){ const j = (Y*cw+c2)*4; t[0]+=d[j]; t[1]+=d[j+1]; t[2]+=d[j+2]; n++; } return t.map(v => v/n); };
+          const e = dist(col(i+1, i+3), col(i-3, i-1)); if (e > best){ best = e; arg = i; } } return arg; });
+        return Math.abs(pos[0] - pos[1])/cw; };
+      if (border < 20 || Math.min(at(bl), at(br)) < 25 || best.u < .9 || Math.max(drift(bl), drift(br)) > .012) return null;
+    }
+    const score = Math.round(100*Math.min(1, best.e/60)*best.fit*(.5 + .5*best.u)*penalty);
+    if (score < 20) return null;
+    return {x:L*k, w:(R-L+1)*k, frontX:(br+1)*k, y:top*ky, h:(bot-top+1)*ky, score};
+  };
+  // A spine is never much wider than a real one for its height: a DVD's is 14 x 184 mm (1:13), a Blu-ray's
+  // 12 x 148, and scans squash them (right cuts in the tested scans ran up to 1:8). The thickest paperbacks
+  // are about 1:3.5. A wider cut has taken in part of the back or front, so the next candidate gets a turn;
+  // with none left, there's no clean spine here (the caller moves on to the next scan, or the cover).
+  const most = film ? .14 : .3, first = cut(ranked[0]);
+  if (!first || first.w/first.h <= most) return first;
+  for (const cd of ranked.slice(1)){ const r = cut(cd); if (r && r.w/r.h <= most) return r; }
+  return null;
 }
 /* A photo or scan of a single spine (at least 4 times taller than wide). Trims plain background
    around it. score 0-100: a clean background around it (or none at all) and lettering on it. */
@@ -958,6 +969,11 @@ function addFiles(files){
       } else if (cut){
         const spineImg = crop(im, cut.x, cut.y, cut.w, cut.h), front = crop(im, cut.frontX, cut.y, im.width - cut.frontX, cut.h), pal = extractPalette(front);
         b = newBook({title:titleFromName(f.name), kind:im.width/im.height < 1.7 ? 'movie' : 'book', img:front, spineImg, bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real', font:'oswald', file:f, cutScore:cut.score});
+      } else if (im.width/im.height >= 1.3 && im.width/im.height <= 1.9){
+        // shaped like a DVD or Blu-ray wrap (or a photo of a case) with no clean spine in it: the DVD case spine a
+        // film gets from its poster, not a book-wide one with the whole picture shrunk into its top
+        const pal = extractPalette(im);
+        b = newBook({title:titleFromName(f.name), kind:'movie', img:im, thumb:fr.result, bg:'#111111', fg:'#F4F4F2', accent:pal.accent, style:'dvd', font:'oswald', file:f});
       } else {
         const pal = extractPalette(im);
         b = newBook({title:titleFromName(f.name), img:im, thumb:fr.result, bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'art', font:'oswald', file:f});
