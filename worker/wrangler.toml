@@ -6,6 +6,22 @@ compatibility_date = "2026-09-01"
 #   TMDB_TOKEN     TMDB v4 "API Read Access Token" (or v3 key)
 #   BRAVE_API_KEY  Brave Search API subscription token
 #   ADMIN_TOKEN    for admin.html (approve or delete archive uploads)
+# No Supabase secret key: the Worker checks sign-ins with the public (publishable) key below.
+
+# Supabase (accounts). Both are public: the same two values are in index.html.
+[vars]
+SUPABASE_URL = "https://fiukspnovrlzlcdekcnb.supabase.co"
+SUPABASE_KEY = "sb_publishable_cZeUDJXk-nCbSJ4VZWn_GQ_6xNFyBo2"
+
+# One tiny Supabase read a day, so the free project isn't paused for inactivity.
+[triggers]
+crons = ["0 3 * * *"]
+
+# Images saved shelves need are in SPINE_CACHE (KV, keys ub:...) for now. To move them to R2 later: create a
+# bucket, then uncomment this; the Worker uses R2 whenever USER_R2 is bound.
+# [[r2_buckets]]
+# binding = "USER_R2"
+# bucket_name = "spinestack-user"
 
 # Caches /identify and /scans results for 30 days.
 # Create with `npx wrangler kv namespace create SPINE_CACHE` and paste the id below.

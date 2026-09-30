@@ -39,7 +39,7 @@ The TMDB and Brave keys live only in the Worker, as secrets.
 | `POST /report?id=` | one report per visitor; the third sends an approved spine back to pending |
 | `/admin/list`, `POST /admin/approve`, `POST /admin/delete` | for `admin.html`, with `Authorization: Bearer <ADMIN_TOKEN>` |
 
-CORS is open only to `https://reflexgod.github.io` and `http://localhost:8080`. `/identify` and `/scans`
+CORS is open only to `https://reflexgod.github.io`, `https://shelfstackd.com` and `http://localhost:8080`. `/identify` and `/scans`
 are cached in Workers KV for 30 days (so each title costs one Brave search), images are cached 30 days,
 and each visitor is limited to about 30 searches and 150 images a minute.
 
@@ -84,6 +84,32 @@ filters results, bump the `sc…:` cache key prefix in `src/index.js` so old cac
 4. Each cut gets a score from 0 to 100. A film's best cut goes on the shelf by itself only at 75 or more (in tests right spines scored 76–97 and wrong ones up to 69) **and** when it looks like the English edition; books always let you pick, unless the spine comes from the archive. Cuts under 45 aren't shown, and each page gives one option at most.
    Editions: the Worker marks a scan as another edition when its page title, address or file name has another language or region (Polish, Deutsch, español, français, 日本, region 2, `.pl`/`.de`/… pages, `nl`/`ger`/… in file names) and marks VHS tapes. With **Edition: English** (the default) English DVDs and Blu-rays come first; VHS comes last either way. **Any** drops the language rule.
 5. With no good scan, the page falls back to a spine made from the poster or cover.
+
+## Accounts (Supabase)
+
+Sign in with Google, save shelves, open them again. Everything else on the site works without an account, and
+signed-out visitors never load the Supabase library.
+
+- **Where things live:** text rows (profiles, shelves, shelf items) in the Supabase project "shelfstackd"
+  (Mumbai, free plan). Images a saved shelf needs, and each shelf's small preview, in the Worker's KV
+  (`ub:<user id>/...`); archive spines and TMDB / Open Library covers are pointed at, not copied.
+- **Keys:** only the Project URL and the *publishable* key are used, in `index.html` and in `worker/wrangler.toml`
+  `[vars]`. Both are public; Row Level Security protects every table. The secret / service_role key isn't used
+  anywhere and must never be added to the page, the repo or the Worker.
+- **Database:** run each file in `supabase/migrations/` once, in order, in the dashboard's SQL Editor. Then run the
+  matching `supabase/tests/rls_*.sql`: it plays two users and a signed-out visitor, undoes everything, and ends with
+  `ALL ... CHECKS PASSED` (or stops at the first `FAIL:`).
+- **Sign-in addresses:** Supabase → Authentication → URL Configuration allows `https://reflexgod.github.io/spinestack/**`,
+  `https://shelfstackd.com/**` and `http://localhost:8080/**`. Google's client sends people back to
+  `https://fiukspnovrlzlcdekcnb.supabase.co/auth/v1/callback`.
+- **Email sign-in** is built but off (`SPINESTACK_EMAIL_LOGIN = false` in `index.html`, and the Email provider is
+  off in Supabase) until email can be sent from shelfstackd.com.
+- **Limits:** 12 spines a shelf, 200 shelves an account; the Worker saves at most 150 images a day per account and
+  600 a day in all (KV's free plan allows 1,000 writes a day). To move images to R2 later, create a bucket and
+  uncomment the `USER_R2` binding in `wrangler.toml`; the same keys are used there.
+- **Staying awake:** Supabase pauses free projects after a week without activity; the Worker's daily cron
+  (03:00 UTC) makes one tiny read so it doesn't.
+- **Privacy:** `privacy.html`. Accounts are for people 18 or older.
 
 ## 2. Run the backend (optional, not used right now)
 

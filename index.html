@@ -15,6 +15,12 @@
   /* Only for running without the Worker: a TMDB v4 "API Read Access Token" or v3 key for film search.
      Anyone who reads this page's source can see it, so keep it empty while the Worker is set. */
   window.SPINESTACK_TMDB = "";
+  /* Supabase (accounts: sign in, saved shelves). Both values are public and meant for the page: every table is
+     protected by Row Level Security. The secret (service_role) key must never be put here. */
+  window.SPINESTACK_SUPABASE_URL = "https://fiukspnovrlzlcdekcnb.supabase.co";
+  window.SPINESTACK_SUPABASE_KEY = "sb_publishable_cZeUDJXk-nCbSJ4VZWn_GQ_6xNFyBo2";
+  /* Sign-in by email link: off until the site has its own domain to send email from. */
+  window.SPINESTACK_EMAIL_LOGIN = false;
 </script>
 </head>
 <body>
@@ -150,6 +156,32 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
 .fbtn{display:inline-block;background:var(--paper);color:var(--ink);border-radius:8px;padding:12px 28px;text-transform:uppercase;text-decoration:none;font-size:14px;margin-top:4px}
 .fbase{max-width:1200px;margin:34px auto 0;border-top:1px solid #8A8A8A;padding-top:12px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:11.5px}
 
+.top .r{display:flex;gap:18px;align-items:center}
+.acct{font:400 13px var(--mono);text-transform:uppercase;background:none;border:0;padding:0;color:var(--ink);cursor:pointer}
+.acct.named{text-transform:none}   /* usernames are lowercase: show them as they are */
+.btn.ghost{background:var(--paper);color:var(--ink)}
+.btn.ghost:hover{background:#F2F2F2}
+.btn:disabled{opacity:.5;cursor:default}
+.savewrap{display:grid;gap:8px;justify-items:start;margin-top:4px}
+.mine{list-style:none;margin:10px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:26px 18px}
+.mine .card{display:grid;gap:4px;align-content:start}
+.mine .open{padding:0;border:0;background:#F3F3F3;border-radius:8px;cursor:pointer;aspect-ratio:9/16;overflow:hidden;outline-offset:3px}
+.mine .open img{width:100%;height:100%;object-fit:cover;display:block}
+.mine .card.on .open{outline:2px solid var(--ink)}
+.mine .cap{font-weight:500;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mine .acts{display:flex;flex-direction:row;gap:18px;margin-top:4px}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.35);display:grid;place-items:center;z-index:30;padding:16px}
+.sheetbox{background:var(--paper);border:1px solid var(--ink);border-radius:12px;width:100%;max-width:380px;padding:26px 24px 22px;position:relative}
+.sheetbox > div{display:grid;gap:14px}
+.sheetbox h2{margin:0}
+.sheetbox p{margin:0}
+.sheetbox form{display:grid;gap:10px}
+.x{position:absolute;top:8px;right:12px;background:none;border:0;font:400 22px var(--mono);cursor:pointer;color:var(--ink);padding:4px}
+.uname{display:flex;align-items:center;gap:6px;border:1px solid var(--ink);border-radius:8px;padding:0 0 0 12px}
+.uname input[type=text]{border:0;padding-left:0}
+.uname input[type=text]:focus{outline:none}
+.uname:focus-within{outline:2px solid var(--ink);outline-offset:2px}
+input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 12px;width:100%}
 .toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);background:var(--ink);color:var(--paper);border-radius:8px;padding:10px 16px;font-size:12px;max-width:calc(100% - 32px);z-index:20}
 .modal{position:fixed;inset:0;background:rgba(255,255,255,.92);display:grid;place-items:center;padding:16px;z-index:30}
 .modal-card{background:var(--paper);border:1px solid var(--ink);border-radius:10px;padding:18px;max-width:380px;width:100%;display:grid;gap:12px;max-height:calc(100% - 32px);overflow:auto}
@@ -163,7 +195,8 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
 @media (max-width:520px){
   .top{padding:12px 16px}
   .mark{font-size:17px!important;letter-spacing:.22em;margin-right:-.22em}
-  .top a{font-size:11.5px}
+  .top a,.acct{font-size:11.5px}
+  .top .r{gap:12px}
   form.search{grid-template-columns:1fr}
   .strip{height:200px}
   .found{--th:220px;--tw:84px}
@@ -175,7 +208,7 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
 <header class="top" id="top">
   <a href="#how">Info</a>
   <a class="mark" href="#top" aria-label="Spinestack, back to top">SPINESTACK</a>
-  <a class="r" href="#shelf">Shelf (<span id="navCount">0</span>)</a>
+  <span class="r"><a href="#shelf">Shelf (<span id="navCount">0</span>)</a><button class="acct" id="acctBtn" type="button" hidden>Sign in</button></span>
 </header>
 
 <main>
@@ -245,12 +278,48 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
         <label class="check" id="variedWrap"><input type="checkbox" id="varied" checked> Mixed heights</label>
         <button class="btn full" id="exportBtn" type="button">Save story</button>
         <p class="note" id="exportNote"></p>
+        <div class="savewrap" id="saveWrap" hidden>
+          <button class="btn full ghost" id="saveShelf" type="button">Save shelf</button>
+          <button class="dash sm" id="saveNew" type="button" hidden>Save as a new shelf</button>
+          <p class="note" id="saveNote"></p>
+        </div>
       </div>
     </div>
   </section>
 
+  <section id="mine" class="wide" hidden>
+    <h2>My shelves <small id="mineCount"></small> <button class="dash sm" id="signOut" type="button" style="margin-left:auto">Sign out</button></h2>
+    <p class="grey" id="mineEmpty" hidden>No saved shelves yet. Make one above and press Save shelf.</p>
+    <ol class="mine" id="mineList"></ol>
+  </section>
+
   <div class="home"><a class="dash" href="#top">Back to top</a></div>
 </main>
+
+<div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-label="Account">
+  <div class="sheetbox">
+    <button class="x" id="sheetClose" type="button" aria-label="Close">×</button>
+    <div id="signinPane">
+      <h2>Sign in</h2>
+      <p>Save your shelves to your account and open them again on any device.</p>
+      <button class="btn full" id="googleBtn" type="button">Continue with Google</button>
+      <form id="emailForm" hidden>
+        <input type="email" id="email" placeholder="you@example.com" autocomplete="email" aria-label="Email">
+        <button class="btn full ghost" type="submit">Email me a sign-in link</button>
+      </form>
+      <p class="note">Accounts are for people 18 or older. <a href="privacy.html">Privacy</a></p>
+    </div>
+    <div id="namePane" hidden>
+      <h2>Pick a username</h2>
+      <p>It’s how your shelves will be found later. You can change it once a month.</p>
+      <label class="uname"><span aria-hidden="true">@</span><input type="text" id="uname" maxlength="20" autocapitalize="off" autocomplete="off" spellcheck="false" aria-label="Username"></label>
+      <p class="note" id="unameNote"></p>
+      <label class="check"><input type="checkbox" id="adult"> I’m 18 or older</label>
+      <button class="btn full" id="nameBtn" type="button" disabled>Create account</button>
+      <p class="note">By creating an account you agree to how we keep your data: <a href="privacy.html">Privacy</a>. <button class="dash sm" id="nameOut" type="button">Sign out</button></p>
+    </div>
+  </div>
+</div>
 
 <footer>
   <div class="fgrid">
@@ -1609,10 +1678,10 @@ const rankCut = (c, english) => (english && !isEnglish(c) ? -1000 : 0) + (c.vhs 
 let current = null;
 const keyOf = m => [m.kind, m.title.toLowerCase(), m.year || ''].join('|');
 function bookFor(cur, choice){
-  const m = cur.m, film = m.kind === 'movie', base = {title:m.title, author:m.creator || '', kind:m.kind, font:'oswald', key:cur.key, choice};
+  const m = cur.m, film = m.kind === 'movie', base = {title:m.title, author:m.creator || '', kind:m.kind, year:m.year || '', coverUrl:m.cover || '', font:'oswald', key:cur.key, choice};
   if (choice.startsWith('real:')){
     const r = cur.real[+choice.slice(5)], front = r.front || cur.img || r.spine, pal = extractPalette(front);
-    return newBook(Object.assign(base, {img:front, spineImg:r.spine, source:r.archive ? 'the archive' : hostOf(r.source), bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real'}, front.src ? {thumb:front.src} : {}));
+    return newBook(Object.assign(base, {img:front, spineImg:r.spine, archiveId:r.archive ? r.id : undefined, source:r.archive ? 'the archive' : hostOf(r.source), bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real'}, front.src ? {thumb:front.src} : {}));
   }
   const img = cur.img, pal = extractPalette(img), t = film ? cur.title : null;
   const bg = t ? t.bg : film ? '#111111' : pal.bg, fg = t ? (contrast('#F4F4F2', bg) >= contrast('#111111', bg) ? '#F4F4F2' : '#111111') : film ? '#F4F4F2' : pal.fg;
@@ -1882,7 +1951,327 @@ async function boot(){
     try { const r = await fetch(API + '/api/recent').then(r => r.json()); fillRecent(r.recent.map(x => x.title)); } catch {}
   }
 }
+
+/* ---------- accounts (Supabase): sign in with Google, save shelves, open them again ----------
+   Only for people who use them: the Supabase library loads the first time it's needed (a click on Sign in or
+   Save shelf, or a session already on this device), so nothing changes for anyone else.
+   Text goes to Supabase (every table has Row Level Security); images a shelf needs go to the Worker. */
+const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
+const EMAIL_LOGIN = window.SPINESTACK_EMAIL_LOGIN === true;
+const SB_LIB = {src:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
+const accounts = !!(SB_URL && SB_KEY && WORKER);
+const acct = {sb:null, user:null, profile:null, shelfId:null, shelves:[], pendingSave:false, watching:false};
+let sbLoading = null;
+function supa(){
+  if (!accounts) return Promise.reject(new Error('Accounts aren’t set up on this copy of the site.'));
+  return sbLoading || (sbLoading = new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = SB_LIB.src; s.integrity = SB_LIB.integrity; s.crossOrigin = 'anonymous';
+    s.onload = () => { acct.sb = window.supabase.createClient(SB_URL, SB_KEY, {auth:{flowType:'pkce', persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}}); res(acct.sb); };
+    s.onerror = () => { sbLoading = null; s.remove(); rej(new Error('Sign-in couldn’t load. Check your connection and try again.')); };
+    document.head.appendChild(s);
+  }));
+}
+const hasSession = () => { try { return Object.keys(localStorage).some(k => /^sb-.+-auth-token$/.test(k)); } catch { return false; } };
+const returning = () => /[?&](code|error|error_description)=/.test(location.search);
+const here = () => location.origin + location.pathname;
+const clean0 = o => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null));
+const blobOf = (c, type, q) => new Promise(r => c.toBlob(r, type, q));
+function friendly(e){
+  const m = (e && e.message) || '';
+  if (e && e.code === '23505') return 'That username is taken.';
+  if (e && e.code === 'P0001' && m) return m;
+  if (/fetch|network/i.test(m)) return 'Couldn’t reach your account. Check your connection and try again.';
+  return m || 'Something went wrong. Try again in a moment.';
+}
+
+/* the account, and what the page shows for it */
+async function startAccounts(){
+  if (!accounts) return;
+  $('#acctBtn').hidden = false; $('#saveWrap').hidden = false; paintAcct();
+  const draft = takeDraft();
+  if (draft) await restoreDraft(draft);
+  if (!hasSession() && !returning()) return;          // signed out: nothing more loads
+  try {
+    const sb = await supa(), {data:{session}} = await sb.auth.getSession();   // finishes a Google sign-in coming back with ?code=
+    const err = new URLSearchParams(location.search).get('error_description');
+    if (returning()) history.replaceState(null, '', here() + location.hash);
+    if (err) toast('Sign-in didn’t finish: ' + err);
+    await setUser(session && session.user);
+    watchAuth();
+  } catch (e){ toast(friendly(e)); }
+}
+function watchAuth(){
+  if (acct.watching) return; acct.watching = true;
+  // (no Supabase calls inside this callback: they'd wait on the lock it holds)
+  acct.sb.auth.onAuthStateChange((ev, s) => { if (ev === 'SIGNED_IN' || ev === 'SIGNED_OUT' || ev === 'USER_UPDATED') setTimeout(() => setUser(s && s.user), 0); });
+}
+async function setUser(user){
+  const same = (user && user.id) === (acct.user && acct.user.id);
+  if (same && (acct.profile || !user)) return;
+  acct.user = user || null; acct.profile = null;
+  if (!user){ acct.shelfId = null; acct.shelves = []; acct.pendingSave = false; paintAcct(); paintMine(); return; }
+  const {data, error} = await acct.sb.from('profiles').select('id,username,is_private').eq('id', user.id).maybeSingle();
+  if (error){ toast('Couldn’t load your account. Try again in a moment.'); paintAcct(); return; }
+  acct.profile = data;
+  paintAcct();
+  if (!data){ if (!same) openSheet('name'); return; }
+  await loadMine();
+  if (acct.pendingSave){ acct.pendingSave = false; saveShelf(false); }
+}
+function paintAcct(){
+  if (!accounts) return;
+  const p = acct.profile, b = $('#acctBtn');
+  b.textContent = p ? '@' + p.username : acct.user ? 'Finish sign-up' : 'Sign in'; b.classList.toggle('named', !!p);
+  $('#saveShelf').textContent = acct.shelfId ? 'Update shelf' : 'Save shelf';
+  $('#saveNew').hidden = !acct.shelfId;
+  $('#saveNote').textContent = acct.user ? '' : 'Sign in to keep this shelf and open it again later.';
+  $('#mine').hidden = !p;
+}
+$('#acctBtn').addEventListener('click', () => {
+  if (acct.profile) $('#mine').scrollIntoView({behavior:'smooth'});
+  else openSheet(acct.user ? 'name' : 'signin');
+});
+
+/* the sign-in and username sheet */
+let sheetFrom = null;
+function openSheet(which){
+  sheetFrom = document.activeElement;
+  $('#signinPane').hidden = which !== 'signin'; $('#namePane').hidden = which !== 'name'; $('#emailForm').hidden = !EMAIL_LOGIN;
+  $('#sheet').hidden = false;
+  if (which === 'name') prefillName();
+  (which === 'name' ? $('#uname') : $('#googleBtn')).focus();
+}
+function closeSheet(){ if (!$('#signinPane').hidden) acct.pendingSave = false; $('#sheet').hidden = true; if (sheetFrom && sheetFrom.focus) sheetFrom.focus(); }
+$('#sheetClose').addEventListener('click', closeSheet);
+$('#sheet').addEventListener('click', e => { if (e.target.id === 'sheet') closeSheet(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#sheet').hidden) closeSheet(); });
+$('#googleBtn').addEventListener('click', async () => {
+  const btn = $('#googleBtn'); btn.disabled = true;
+  try {
+    const sb = await supa(); await stashDraft();      // the page reloads after Google: keep this shelf for when it's back
+    const {error} = await sb.auth.signInWithOAuth({provider:'google', options:{redirectTo: here()}});
+    if (error) throw error;
+  } catch (e){ btn.disabled = false; toast(friendly(e)); }
+});
+$('#emailForm').addEventListener('submit', async e => {       // off until the site can send email (SPINESTACK_EMAIL_LOGIN)
+  e.preventDefault(); if (!EMAIL_LOGIN) return;
+  const email = $('#email').value.trim(); if (!email) return;
+  try {
+    const sb = await supa(); await stashDraft();
+    const {error} = await sb.auth.signInWithOtp({email, options:{emailRedirectTo: here(), shouldCreateUser:true}});
+    if (error) throw error;
+    toast('Check your email for a sign-in link.'); closeSheet();
+  } catch (err){ toast(friendly(err)); }
+});
+// usernames: 3-20 lowercase letters, numbers or _; the database has the final say (reserved names, taken names)
+const NAME_OK = /^[a-z0-9_]{3,20}$/;
+let nameT = 0, nameFree = false;
+function prefillName(){
+  const u = acct.user || {}, m = u.user_metadata || {};
+  const guess = String(m.preferred_username || m.name || m.full_name || (u.email || '').split('@')[0] || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 20);
+  if (!$('#uname').value && guess.length >= 3) $('#uname').value = guess;
+  checkName();
+}
+function paintName(msg, ok){ const n = $('#unameNote'); n.textContent = msg; n.classList.toggle('warn', !ok && !!msg); $('#nameBtn').disabled = !(nameFree && $('#adult').checked); }
+function checkName(){
+  const el = $('#uname'), v = el.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20);
+  if (el.value !== v) el.value = v;
+  nameFree = false; clearTimeout(nameT);
+  if (!v){ paintName('3 to 20 letters, numbers or _.', true); return; }
+  if (!NAME_OK.test(v)){ paintName('At least 3 characters: letters, numbers or _.', false); return; }
+  paintName('Checking…', true);
+  nameT = setTimeout(async () => {
+    const {data, error} = await acct.sb.rpc('username_available', {name: v});
+    if (el.value !== v) return;
+    if (error){ paintName('Couldn’t check that name. Try again.', false); return; }
+    nameFree = !!data; paintName(data ? '@' + v + ' is free.' : 'That username is taken.', !!data);
+  }, 350);
+}
+$('#uname').addEventListener('input', checkName);
+$('#adult').addEventListener('change', () => paintName($('#unameNote').textContent, nameFree || !$('#unameNote').classList.contains('warn')));
+$('#nameBtn').addEventListener('click', async () => {
+  const v = $('#uname').value, btn = $('#nameBtn');
+  if (!nameFree || !$('#adult').checked || !acct.user) return;
+  btn.disabled = true;
+  const {data, error} = await acct.sb.from('profiles').insert({id: acct.user.id, username: v}).select('id,username,is_private').single();
+  if (error){ nameFree = false; paintName(friendly(error), false); return; }
+  acct.profile = data; closeSheet(); paintAcct(); toast('Welcome, @' + data.username + '.');
+  await loadMine();
+  if (acct.pendingSave){ acct.pendingSave = false; saveShelf(false); }
+});
+async function signOut(){
+  try { await (await supa()).auth.signOut(); } catch {}
+  await setUser(null); closeSheet(); toast('Signed out.');
+}
+$('#nameOut').addEventListener('click', signOut);
+$('#signOut').addEventListener('click', signOut);
+
+/* a shelf as rows: each spine points at its images (a:archive id, u:saved image, url:TMDB / Open Library cover) */
+const COVER_HOSTS = /^https:\/\/(image\.tmdb\.org|covers\.openlibrary\.org)\/\S+$/;
+async function itemFor(b, put){
+  const look = clean0({style:b.style, font:b.font, bg:b.bg, fg:b.fg, accent:b.accent, wf:+(+b.wf).toFixed(3), hf:+(+b.hf).toFixed(3), jit:+(+b.jit).toFixed(3),
+    studio:b.studio || undefined, cat:b.cat || undefined, pt:b.titleImg ? 1 : undefined});
+  const rec = {item_id:b.id, kind:b.kind === 'movie' ? 'movie' : 'book', title:String(b.title || '').slice(0, 200), author:String(b.author || '').slice(0, 200),
+    year:/^\d{4}$/.test(String(b.year || '')) ? String(b.year) : null, look};
+  if (isReal(b)) rec.spine_src = b.archiveId ? 'a:' + b.archiveId : await put(b.spineImg, 'spine');
+  // the cover: from TMDB / Open Library when we have its address (a scan's front is kept only when there's none)
+  if (b.coverUrl && COVER_HOSTS.test(b.coverUrl) && b.coverUrl.length <= 396) rec.cover_src = 'url:' + b.coverUrl;
+  else if (b.img && b.img !== b.spineImg) rec.cover_src = await put(b.img, 'cover');
+  return rec;
+}
+// an image made small enough to keep: spines up to 1400px tall, covers up to 800px, WebP where the browser can
+async function encode(src, kind){
+  const w0 = src.naturalWidth || src.width, h0 = src.naturalHeight || src.height, max = kind === 'spine' ? 1400 : 800;
+  for (let k = Math.min(1, max/Math.max(w0, h0)), tries = 0; tries < 6; tries++, k *= .8){
+    const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w0*k)); c.height = Math.max(1, Math.round(h0*k));
+    c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+    let blob = await blobOf(c, 'image/webp', .88);
+    if (!blob || blob.type !== 'image/webp') blob = await blobOf(c, 'image/jpeg', .86);     // Safari before 17 has no WebP encoder
+    if (blob && blob.size <= 190*1024) return blob;
+  }
+  throw new Error('One image on this shelf is too large to save.');
+}
+const PUT = new WeakMap();   // image -> the key it's saved under, so saving again doesn't send it again
+async function putImage(src, kind){
+  const memo = PUT.get(src); if (memo && memo.user === acct.user.id) return memo.ref;
+  const r = await workerPost('/u/blob', await encode(src, kind)), ref = 'u:' + r.key;
+  PUT.set(src, {user: acct.user.id, ref}); return ref;
+}
+async function workerPost(path, body){
+  const {data:{session}} = await acct.sb.auth.getSession();
+  if (!session) throw new Error('Sign in again to save shelves.');
+  const r = await fetch(WORKER + path, {method:'POST', headers:{Authorization:'Bearer ' + session.access_token, 'Content-Type': body ? body.type : 'text/plain'}, body: body || ''});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'Saving didn’t work. Try again in a moment.');
+  return j;
+}
+// the shelf's picture for lists: the story, 360 x 640
+async function previewBlob(){
+  await Promise.all(Object.values(TEX).map(t => t.ready).filter(Boolean));
+  const c = document.createElement('canvas'); c.width = W; c.height = H; renderStory(c.getContext('2d'));
+  const p = document.createElement('canvas'); p.width = 360; p.height = 640;
+  const x = p.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(c, 0, 0, 360, 640);
+  for (const q of [.82, .7, .55]){
+    let b = await blobOf(p, 'image/webp', q);
+    if (!b || b.type !== 'image/webp') b = await blobOf(p, 'image/jpeg', q);
+    if (b && b.size <= 110*1024) return b;
+  }
+  throw new Error('Couldn’t make the shelf’s picture. Try again.');
+}
+let saving = false;
+async function saveShelf(asNew){
+  if (saving) return;
+  if (!books.length || isSample){ toast('Add your own titles first.'); return; }
+  if (!acct.user){ acct.pendingSave = true; openSheet('signin'); return; }
+  if (!acct.profile){ acct.pendingSave = true; openSheet('name'); return; }
+  saving = true; $('#saveShelf').disabled = true; $('#saveNote').textContent = 'Saving…';
+  const updating = !asNew && !!acct.shelfId, id = updating ? acct.shelfId : crypto.randomUUID(), was = acct.shelves.find(s => s.id === id);
+  try {
+    const items = await Promise.all(books.map(b => itemFor(b, putImage)));
+    const pv = await workerPost('/u/preview?shelf=' + id, await previewBlob());
+    const {error} = await acct.sb.rpc('save_shelf', {items, shelf:{id, caption: settings.caption.slice(0, 60), filter: settings.filter, intensity: settings.intensity,
+      background: settings.theme, wood: settings.wood, layout: settings.layout, varied: settings.varied, is_public: was ? was.is_public : true, preview_key: pv.key}});
+    if (error) throw error;
+    acct.shelfId = id; toast(updating ? 'Shelf updated.' : 'Saved to My shelves.');
+    await loadMine();
+  } catch (e){ toast(friendly(e)); }
+  finally { saving = false; $('#saveShelf').disabled = false; paintAcct(); }
+}
+$('#saveShelf').addEventListener('click', () => saveShelf(false));
+$('#saveNew').addEventListener('click', () => saveShelf(true));
+
+/* My shelves */
+const SHELF_COLS = 'id,caption,filter,intensity,background,wood,layout,varied,is_public,preview_key,created_at,updated_at,shelf_items(count)';
+async function loadMine(){
+  if (!acct.profile) return;
+  const {data, error} = await acct.sb.from('shelves').select(SHELF_COLS).order('updated_at', {ascending:false}).limit(60);
+  if (error){ toast('Couldn’t load your shelves. Try again in a moment.'); return; }
+  acct.shelves = data || []; paintMine();
+}
+const fmtDate = s => new Date(s).toLocaleDateString(undefined, {day:'numeric', month:'short', year:'numeric'});
+function paintMine(){
+  const list = acct.shelves;
+  $('#mineCount').textContent = list.length ? `(${list.length})` : '';
+  $('#mineEmpty').hidden = !!list.length || !acct.profile;
+  $('#mineList').innerHTML = list.map(s => {
+    const n = ((s.shelf_items || [])[0] || {}).count || 0, cap = s.caption.trim() || 'Untitled shelf';
+    const src = s.preview_key ? `${WORKER}/u/preview?k=${encodeURIComponent(s.preview_key)}&v=${encodeURIComponent(s.updated_at)}` : '';
+    return `<li class="card${s.id === acct.shelfId ? ' on' : ''}"><button class="open" type="button" data-open="${s.id}" aria-label="Open ${esc(cap)}">${src ? `<img src="${esc(src)}" alt="" loading="lazy" width="360" height="640">` : ''}</button>
+      <div class="cap">${esc(cap)}</div><div class="grey">${n} ${n === 1 ? 'spine' : 'spines'} · ${esc(fmtDate(s.updated_at))}</div>
+      <div class="acts"><button class="dash sm" type="button" data-open="${s.id}">Open</button><button class="dash sm" type="button" data-del="${s.id}">Delete</button></div></li>`;
+  }).join('');
+}
+$('#mineList').addEventListener('click', async e => {
+  const o = e.target.closest('[data-open]'), d = e.target.closest('[data-del]');
+  if (o) openShelf(o.dataset.open);
+  if (d){
+    if (!d.dataset.sure){ d.dataset.sure = '1'; d.textContent = 'Sure? Delete'; setTimeout(() => { if (d.isConnected){ delete d.dataset.sure; d.textContent = 'Delete'; } }, 4000); return; }
+    d.disabled = true;
+    const id = d.dataset.del, {error} = await acct.sb.from('shelves').delete().eq('id', id);
+    if (error){ toast(friendly(error)); d.disabled = false; return; }
+    workerPost('/u/forget?shelf=' + id).catch(() => {});
+    if (acct.shelfId === id) acct.shelfId = null;
+    toast('Shelf deleted.'); paintAcct(); loadMine();
+  }
+});
+// a saved item back into a book on the shelf
+const srcOf = ref => ref.startsWith('a:') ? `${WORKER}/archive/img?id=${ref.slice(2)}` : ref.startsWith('u:') ? `${WORKER}/u/blob?k=${encodeURIComponent(ref.slice(2))}`
+  : ref.startsWith('url:') ? viaWorker(ref.slice(4)) : ref.startsWith('data:image/') ? ref : '';
+async function rebuild(r){
+  const [spine, cover] = await Promise.all([r.spine_src, r.cover_src].map(ref => ref && srcOf(ref) ? timeout(loadImg(srcOf(ref)), 15000).catch(() => null) : null));
+  const look = r.look || {}, style = look.style || 'art';
+  if ((style === 'real' && !spine) || (style === 'cover' && !cover)) return null;
+  for (const [im, ref] of [[spine, r.spine_src], [cover, r.cover_src]]) if (im && acct.user && ref && ref.startsWith('u:' + acct.user.id + '/')) PUT.set(im, {user: acct.user.id, ref});
+  const t = look.pt && cover && r.kind === 'movie' ? posterTitle(cover) : null, img = cover || spine;
+  const n = /^b(\d+)$/.exec(r.item_id); if (n) uid = Math.max(uid, +n[1] + 1);   // new books never reuse a saved one's id
+  return newBook(clean0({id: r.item_id, title: r.title, author: r.author, kind: r.kind, year: r.year ? String(r.year) : undefined, style, font: look.font || 'oswald',
+    bg: look.bg, fg: look.fg, accent: look.accent, wf: look.wf, hf: look.hf, jit: look.jit, studio: look.studio, cat: look.cat, img, spineImg: spine || undefined,
+    titleImg: t ? t.img : undefined, thumb: img && img.src, archiveId: r.spine_src && r.spine_src.startsWith('a:') ? r.spine_src.slice(2) : undefined,
+    coverUrl: r.cover_src && r.cover_src.startsWith('url:') ? r.cover_src.slice(4) : undefined,
+    source: style === 'real' ? (r.spine_src.startsWith('a:') ? 'the archive' : 'your saved shelf') : undefined}));
+}
+function applySettings(s){
+  Object.assign(settings, {caption: s.caption, filter: s.filter, intensity: s.intensity, theme: s.background || s.theme, wood: !!s.wood, layout: s.layout, varied: s.varied !== false});
+  $('#caption').value = settings.caption; $('#intensity').value = settings.intensity; $('#woodShelf').checked = settings.wood; $('#varied').checked = settings.varied;
+  for (const [id, key] of [['#theme', 'theme'], ['#layout', 'layout']]) document.querySelectorAll(id + ' button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === settings[key])));
+  $('#variedWrap').hidden = settings.layout === 'covers';
+  syncFilter();
+}
+async function putOnShelf(rows, s){
+  const got = await Promise.all(rows.map(rebuild)), ok = got.filter(Boolean);
+  books = ok; isSample = false; applySettings(s); renderList();
+  if (ok.length < rows.length) toast(`${rows.length - ok.length} of the spines couldn’t load. The rest are on your shelf.`);
+}
+async function openShelf(id){
+  const s = acct.shelves.find(x => x.id === id); if (!s) return;
+  $('#saveNote').textContent = 'Opening…';
+  const {data, error} = await acct.sb.from('shelf_items').select('position,item_id,kind,title,author,year,spine_src,cover_src,look').eq('shelf_id', id).order('position');
+  if (error){ $('#saveNote').textContent = ''; toast(friendly(error)); return; }
+  await putOnShelf(data || [], s);
+  acct.shelfId = id; paintAcct(); paintMine(); $('#saveNote').textContent = '';
+  $('#shelf').scrollIntoView({behavior:'smooth'});
+}
+
+/* Signing in with Google leaves the page and comes back to it: the shelf being made waits in this tab meanwhile */
+const DRAFT = 'spinestack-draft';
+async function stashDraft(){
+  try {
+    if (isSample || !books.length){ sessionStorage.removeItem(DRAFT); return; }
+    const inline = async (src, kind) => { const b = await encode(src, kind); return await new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); }); };
+    const items = await Promise.all(books.map(b => itemFor(b, inline)));
+    sessionStorage.setItem(DRAFT, JSON.stringify({at: Date.now(), settings: {...settings}, shelfId: acct.shelfId, save: acct.pendingSave, items}));
+  } catch { try { sessionStorage.removeItem(DRAFT); } catch {} }
+}
+function takeDraft(){
+  try { const d = JSON.parse(sessionStorage.getItem(DRAFT) || 'null'); sessionStorage.removeItem(DRAFT); return d && Date.now() - d.at < 3600e3 ? d : null; } catch { return null; }
+}
+async function restoreDraft(d){
+  await putOnShelf(d.items || [], d.settings || {});
+  acct.shelfId = d.shelfId || null; acct.pendingSave = !!d.save;
+}
+
 boot();
+startAccounts();
 const faces = ['600 40px Oswald','400 40px Oswald','600 40px "Cormorant Garamond"','italic 500 40px "Cormorant Garamond"','40px "Archivo Black"','40px "Gochi Hand"','500 40px "IBM Plex Mono"','400 40px "IBM Plex Mono"','600 40px "IBM Plex Sans"','500 40px "Geist Mono"','400 40px "Geist Mono"'];
 if (document.fonts){ Promise.all(faces.map(f => document.fonts.load(f).catch(() => {}))).then(redraw); document.fonts.ready.then(redraw); }
 })();

@@ -14,11 +14,23 @@
    POST /report?id=  -> three reports send an approved spine back to pending
    GET  /admin/list?status=pending|approved, POST /admin/approve?id=, POST /admin/delete?id=
         (Authorization: Bearer ADMIN_TOKEN)
+
+   Accounts (Supabase sign-in; the page sends the user's access token as Authorization: Bearer ...):
+   POST /u/blob  (body: a PNG, WebP or JPEG, 200 KB max) -> {key: '<user id>/<sha-256>'}
+        a spine or cover image a saved shelf needs that isn't in the archive or on TMDB / Open Library.
+        Stored once per user and content: the same image again costs nothing.
+   GET  /u/blob?k=<user id>/<sha-256>  -> the image (anyone with the key; it never changes)
+   POST /u/preview?shelf=<id>  (body: a small WebP or JPEG, 120 KB max) -> {key}   the shelf's picture for lists
+   GET  /u/preview?k=<user id>/p/<shelf id>&v=<updated>  -> the picture
+   POST /u/forget?shelf=<id>  -> removes that shelf's picture (the shelf itself is deleted in Supabase)
+        Limits: 150 images a day per account and 600 a day in all (KV's free plan allows 1,000 writes a day).
+   Every day at 03:00 UTC (cron) the Worker makes one tiny read from Supabase, so the free project isn't
+   paused for being inactive.
 */
 import UPNG from 'upng-js';
 import {DurableObject} from 'cloudflare:workers';
 
-const ORIGINS = ['https://reflexgod.github.io', 'http://localhost:8080'];
+const ORIGINS = ['https://reflexgod.github.io', 'https://shelfstackd.com', 'http://localhost:8080'];
 const DAY = 86400, MONTH = 30 * DAY;
 const MAX_IMG = 8 * 1024 * 1024, MAX_UPLOAD = 300 * 1024, UPLOADS_PER_DAY = 10, REPORTS_TO_HIDE = 3, ROUNDS = 4;
 const UA = 'Spinestack/1.0 (+https://reflexgod.github.io/spinestack/)';
@@ -38,6 +50,15 @@ export default {
         return await image(p.get('url') || '', cors, ctx);
       }
       if (!post && path === '/archive/img') return await archiveImage(p.get('id'), req, env, cors);
+      if (!post && (path === '/u/blob' || path === '/u/preview')) return await userImage(path, p, env, cors, ctx);
+      if (post && path.startsWith('/u/')) {
+        const user = await userOf(req, env);
+        if (!user) return json({error: 'Sign in again to save shelves.'}, 401, cors);
+        if (path === '/u/blob') return await putUserImage(req, env, cors, user, 'blob');
+        if (path === '/u/preview') return await putUserImage(req, env, cors, user, 'preview', p.get('shelf'));
+        if (path === '/u/forget') return await forgetPreview(env, cors, user, p.get('shelf'));
+        return json({error: 'Not found.'}, 404, cors);
+      }
       if (path.startsWith('/admin/')) {
         if (!(await isAdmin(req, env))) return json({error: 'Wrong or missing admin token.'}, 401, cors);
         if (!post && path === '/admin/list') return json({items: await listMeta(env, p.get('status') === 'approved' ? 'approved' : 'pending')}, 200, cors, {'Cache-Control': 'no-store'});
@@ -53,11 +74,16 @@ export default {
       if (!post && path === '/scans') return await scans(p, env, cors, ctx);
       if (post && path === '/archive') return await upload(req, p, ip, env, cors);
       if (post && path === '/report') return await report(p.get('id'), ip, env, cors);
-      if (!post && (path === '/' || path === '/health')) return json({ok: true, tmdb: !!env.TMDB_TOKEN, brave: !!env.BRAVE_API_KEY, archive: !!(env.ADMIN_TOKEN && env.ARCHIVE)}, 200, cors);
+      if (!post && (path === '/' || path === '/health')) return json({ok: true, tmdb: !!env.TMDB_TOKEN, brave: !!env.BRAVE_API_KEY, archive: !!(env.ADMIN_TOKEN && env.ARCHIVE), accounts: !!(env.SUPABASE_URL && env.SUPABASE_KEY), userStore: env.USER_R2 ? 'r2' : 'kv'}, 200, cors);
       return json({error: 'Not found.'}, 404, cors);
     } catch (e) {
       return json({error: 'Something went wrong. Try again in a moment.', detail: String(e && e.message || e).slice(0, 200)}, 502, cors);
     }
+  },
+  // keeps the free Supabase project from pausing: one tiny read a day (with the public key; RLS returns no rows)
+  async scheduled(event, env, ctx) {
+    if (!env.SUPABASE_URL || !env.SUPABASE_KEY) return;
+    ctx.waitUntil(fetch(`${env.SUPABASE_URL}/rest/v1/profiles?select=id&limit=1`, {headers: {apikey: env.SUPABASE_KEY}}));
   },
 };
 
@@ -328,6 +354,17 @@ export class Archive extends DurableObject {
     this.sql.exec(`CREATE INDEX IF NOT EXISTS spines_title ON spines (tkey, status)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS uploads (who TEXT, day TEXT, n INTEGER, PRIMARY KEY (who, day))`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS reports (id TEXT, who TEXT, PRIMARY KEY (id, who))`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS userwrites (who TEXT, day TEXT, n INTEGER, PRIMARY KEY (who, day))`);
+  }
+  // one more image written for this account today, if there's room (per account and in all)
+  spend(who, day) {
+    const mine = (this.one('SELECT n FROM userwrites WHERE who = ? AND day = ?', who, day) || {}).n || 0;
+    if (mine >= USER_WRITES_PER_DAY) return {ok: false, error: 'That is a lot of saving for one day. Try again tomorrow.'};
+    const all = (this.one('SELECT SUM(n) AS n FROM userwrites WHERE day = ?', day) || {}).n || 0;
+    if (all >= USER_WRITES_PER_DAY_ALL) return {ok: false, error: 'Saving is full for today. Your shelf is still here; try again tomorrow.'};
+    this.sql.exec('INSERT INTO userwrites (who, day, n) VALUES (?, ?, 1) ON CONFLICT (who, day) DO UPDATE SET n = n + 1', who, day);
+    this.sql.exec('DELETE FROM userwrites WHERE day < ?', day);
+    return {ok: true};
   }
   one(q, ...a) { return this.sql.exec(q, ...a).toArray()[0] || null; }
   // checks today's limits and, if there's room, records the new pending spine: one step, so two uploads can't both slip in
@@ -439,4 +476,83 @@ async function remove(id, env, cors) {
   if (!m) return json({error: 'Not found.'}, 404, cors);
   await env.SPINE_CACHE.delete(`a:png:${id}`);
   return json({ok: true, id, deleted: true}, 200, cors);
+}
+
+/* ---------- accounts: images saved shelves need ----------
+   Who: the Supabase access token, checked by asking Supabase who it belongs to (with the public key only;
+   no secret key anywhere). Where: KV for now; bind an R2 bucket as USER_R2 and the same keys move there. */
+const USER_WRITES_PER_DAY = 150, USER_WRITES_PER_DAY_ALL = 600, MAX_BLOB = 200 * 1024, MAX_PREVIEW = 120 * 1024;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const WHO = new Map();   // token -> user id, for a minute, so one save (up to ~14 requests) asks Supabase once
+async function userOf(req, env) {
+  const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+  if (!token || !env.SUPABASE_URL || !env.SUPABASE_KEY) return null;
+  const memo = WHO.get(token);
+  if (memo && memo.until > Date.now()) return memo.id;
+  const r = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, {headers: {apikey: env.SUPABASE_KEY, Authorization: 'Bearer ' + token}});
+  if (!r.ok) return null;
+  const u = await r.json().catch(() => null), id = u && UUID.test(u.id || '') ? u.id : null;
+  if (id) { if (WHO.size > 500) WHO.clear(); WHO.set(token, {id, until: Date.now() + 60000}); }
+  return id;
+}
+function userStore(env) {
+  if (env.USER_R2) return {
+    head: async k => !!(await env.USER_R2.head(k)),
+    get: async k => { const o = await env.USER_R2.get(k); return o && {body: await o.arrayBuffer(), type: (o.httpMetadata || {}).contentType || 'application/octet-stream'}; },
+    put: (k, body, type) => env.USER_R2.put(k, body, {httpMetadata: {contentType: type}}),
+    del: k => env.USER_R2.delete(k),
+  };
+  const kv = env.SPINE_CACHE;
+  return {
+    head: async k => { const v = await kv.get('ub:' + k, 'stream'); if (v) await v.cancel(); return !!v; },
+    get: async k => { const r = await kv.getWithMetadata('ub:' + k, 'arrayBuffer'); return r.value && {body: r.value, type: (r.metadata || {}).t || 'application/octet-stream'}; },
+    put: (k, body, type) => kv.put('ub:' + k, body, {metadata: {t: type}}),
+    del: k => kv.delete('ub:' + k),
+  };
+}
+// only real PNG, JPEG or WebP files (by their first bytes, not by what the request says)
+function imageType(b) {
+  if (b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47) return 'image/png';
+  if (b.length > 3 && b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF) return 'image/jpeg';
+  if (b.length > 12 && String.fromCharCode(...b.subarray(0, 4)) === 'RIFF' && String.fromCharCode(...b.subarray(8, 12)) === 'WEBP') return 'image/webp';
+  return null;
+}
+const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+async function putUserImage(req, env, cors, user, what, shelf) {
+  const max = what === 'blob' ? MAX_BLOB : MAX_PREVIEW, tooBig = `That image is larger than ${max / 1024} KB.`;
+  if (what === 'preview' && !UUID.test(shelf || '')) return json({error: 'Which shelf?'}, 400, cors);
+  if (+(req.headers.get('Content-Length') || 0) > max) return json({error: tooBig}, 413, cors);
+  const buf = await readCapped(req.body, max);
+  if (!buf) return json({error: tooBig}, 413, cors);
+  const type = imageType(buf);
+  if (!type) return json({error: 'That is not a PNG, JPEG or WebP image.'}, 415, cors);
+  const key = what === 'blob' ? `${user}/${hex(await crypto.subtle.digest('SHA-256', buf))}` : `${user}/p/${shelf}`, st = userStore(env);
+  if (what === 'blob' && await st.head(key)) return json({ok: true, key, stored: false}, 200, cors);   // already there
+  const r = await store(env).spend(user, new Date().toISOString().slice(0, 10));
+  if (!r.ok) return json({error: r.error}, 429, cors);
+  await st.put(key, buf, type);
+  return json({ok: true, key, stored: true}, 200, cors);
+}
+async function userImage(path, p, env, cors, ctx) {
+  const k = String(p.get('k') || ''), [user, a, b] = k.split('/');
+  const ok = UUID.test(user || '') && (path === '/u/blob' ? /^[0-9a-f]{64}$/.test(a || '') && b === undefined : a === 'p' && UUID.test(b || ''));
+  if (!ok) return json({error: 'Not found.'}, 404, cors);
+  const cache = caches.default, ckey = new Request(`https://ub.cache/${k}?v=${encodeURIComponent(p.get('v') || '')}`);
+  let res = await cache.match(ckey);
+  if (!res) {
+    const o = await userStore(env).get(k);
+    if (!o) return json({error: 'Not found.'}, 404, cors);
+    // a blob never changes; a preview changes when its shelf is saved again, and the page asks with ?v=<updated>
+    const long = path === '/u/blob' || p.get('v');
+    res = new Response(o.body, {headers: {'Content-Type': o.type, 'Cache-Control': long ? 'public, max-age=31536000, immutable' : 'public, max-age=60', 'X-Content-Type-Options': 'nosniff'}});
+    ctx.waitUntil(cache.put(ckey, res.clone()));
+  }
+  const out = new Response(res.body, res);
+  for (const [h, v] of Object.entries(cors)) out.headers.set(h, v);
+  return out;
+}
+async function forgetPreview(env, cors, user, shelf) {
+  if (!UUID.test(shelf || '')) return json({error: 'Which shelf?'}, 400, cors);
+  await userStore(env).del(`${user}/p/${shelf}`);
+  return json({ok: true}, 200, cors);
 }
