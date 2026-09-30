@@ -6,7 +6,7 @@ Type a film or a book, get its real spine, put it on a shelf, save the shelf as 
 index.html            the website (GitHub Pages serves this): search, the shelf, the story
 shelf.js              draws the spines and the story; index.html and u/ both use it, so a shelf looks the same everywhere
 u/index.html          profiles: /u/?username, and one shelf: /u/?username&shelf=<id>
-admin.html            approve or delete archive uploads (needs the admin token)
+admin.html            approve or delete archive uploads (needs the admin token); read reports (Google sign-in, admins only)
 worker/               Cloudflare Worker: name lookup, scan search, image proxy (what the live site uses)
 backend/              older self-hosted search server (not used right now)
   api/                FastAPI app

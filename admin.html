@@ -9,6 +9,10 @@
   /* Same Worker as index.html. The admin token is never stored here: you type it each time,
      and it stays in this tab's sessionStorage only. */
   window.SPINESTACK_WORKER = "https://spinestack.spinestack-worker.workers.dev";
+  /* Reports are read from Supabase by an admin signed in with Google (public keys, as in index.html; the
+     admins table in the database decides who may read them). */
+  window.SPINESTACK_SUPABASE_URL = "https://fiukspnovrlzlcdekcnb.supabase.co";
+  window.SPINESTACK_SUPABASE_KEY = "sb_publishable_cZeUDJXk-nCbSJ4VZWn_GQ_6xNFyBo2";
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -43,6 +47,9 @@ li img{height:220px;width:auto;display:block;background:#F2F2F2}
 .acts{display:flex;gap:18px;margin-top:10px;flex-wrap:wrap}
 .status{min-height:18px;margin-top:10px}
 .status.err{font-weight:700}
+.reports{margin-top:64px;padding-top:28px;border-top:1px solid var(--ink)}
+#repList li{grid-template-columns:minmax(0,1fr);gap:4px}
+#repList a{color:inherit}
 @media (max-width:520px){ .top{padding:12px 16px} .mark{font-size:17px!important;letter-spacing:.22em} form{grid-template-columns:1fr} li img{height:160px} }
 </style>
 </head>
@@ -61,6 +68,17 @@ li img{height:220px;width:auto;display:block;background:#F2F2F2}
     <div class="status" id="status" role="status"></div>
     <ol id="list"></ol>
   </div>
+
+  <section class="reports" aria-labelledby="repHead">
+    <h1 id="repHead">Reports</h1>
+    <p class="grey">Profiles and shelves people reported, newest first. Sign in with the Google account that's in the admins table.</p>
+    <button class="btn" id="repIn" type="button">Sign in with Google</button>
+    <div id="repPanel" hidden>
+      <div class="acts" style="margin:0 0 6px;align-items:baseline"><span class="grey" id="repWho"></span><button class="dash" type="button" id="repOut" style="margin-left:auto">Sign out</button></div>
+      <div class="status" id="repStatus" role="status"></div>
+      <ol id="repList"></ol>
+    </div>
+  </section>
 </main>
 <script>
 (() => {
@@ -112,6 +130,47 @@ $('#list').addEventListener('click', async e => {
   catch (err){ status(err.message, true); li.querySelectorAll('button').forEach(x => x.disabled = false); }
 });
 if (token) load();
+})();
+
+/* Reports: only for admins (the database checks, in admin_reports()). The Supabase library loads when needed. */
+(() => {
+const $ = s => document.querySelector(s);
+const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '');
+const SB_LIB = {src:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const status = (msg, err) => { const s = $('#repStatus'); s.textContent = msg; s.classList.toggle('err', !!err); };
+let sb = null, loading = null;
+const supa = () => loading || (loading = new Promise((res, rej) => {
+  const s = document.createElement('script'); s.src = SB_LIB.src; s.integrity = SB_LIB.integrity; s.crossOrigin = 'anonymous';
+  s.onload = () => { sb = window.supabase.createClient(SB_URL, SB_KEY, {auth:{flowType:'pkce', persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}}); res(sb); };
+  s.onerror = () => { loading = null; s.remove(); rej(new Error('Sign-in couldn’t load. Check your connection.')); };
+  document.head.appendChild(s);
+}));
+const hasSession = () => { try { return Object.keys(localStorage).some(k => /^sb-.+-auth-token$/.test(k)); } catch { return false; } };
+const returning = () => /[?&](code|error|error_description)=/.test(location.search);
+async function show(){
+  const {data:{session}} = await sb.auth.getSession();
+  if (returning()) history.replaceState(null, '', location.pathname);
+  if (!session){ $('#repIn').hidden = false; $('#repPanel').hidden = true; return; }
+  $('#repIn').hidden = true; $('#repPanel').hidden = false; $('#repWho').textContent = session.user.email || '';
+  status('Loading…');
+  const {data, error} = await sb.rpc('admin_reports');
+  if (error){ status(error.code === '42501' ? 'This account isn’t an admin.' : 'Couldn’t load the reports: ' + error.message, true); $('#repList').innerHTML = ''; return; }
+  status(data.length ? data.length + (data.length === 1 ? ' report.' : ' reports.') : 'No reports.');
+  $('#repList').innerHTML = data.map(r => {
+    const link = r.target_type === 'profile' ? `u/?${r.target_user}` : `u/?${r.target_user}&shelf=${r.target_id}`;
+    const what = r.target_type === 'profile' ? `Profile @${esc(r.target_user || '?')}` : `Shelf “${esc(r.target_label || 'Untitled shelf')}” by @${esc(r.target_user || '?')}`;
+    return `<li><div class="t">${r.target_user ? `<a href="${esc(link)}">${what}</a>` : what + ' (gone)'}</div>
+      <div class="grey">${esc(new Date(r.reported_at).toLocaleString())} · from @${esc(r.reporter_name || 'deleted account')}</div>
+      <div>${r.reason ? esc(r.reason) : '<span class="grey">No reason given.</span>'}</div></li>`;
+  }).join('');
+}
+$('#repIn').addEventListener('click', async () => {
+  try { const c = await supa(); const {error} = await c.auth.signInWithOAuth({provider:'google', options:{redirectTo: location.origin + location.pathname}}); if (error) throw error; }
+  catch (e){ $('#repIn').insertAdjacentHTML('afterend', `<p class="status err">${esc(e.message)}</p>`); }
+});
+$('#repOut').addEventListener('click', async () => { await sb.auth.signOut(); $('#repList').innerHTML = ''; status(''); show(); });
+if (hasSession() || returning()) supa().then(show).catch(e => status(e.message, true));
 })();
 </script>
 </body>

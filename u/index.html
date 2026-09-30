@@ -33,6 +33,7 @@ p{margin:0 0 12px}
 .grey{color:var(--grey)}
 .dash{display:inline-block;background:none;border:0;padding:0 0 9px;font:500 16px var(--mono);text-transform:uppercase;color:var(--ink);cursor:pointer;text-decoration:none;
   background-image:repeating-linear-gradient(90deg,var(--ink) 0 11px,transparent 11px 14px);background-size:100% 4px;background-repeat:no-repeat;background-position:left bottom}
+.dash.grey{color:var(--grey);background-image:repeating-linear-gradient(90deg,var(--grey) 0 8px,transparent 8px 11px)}
 .dash.sm{font-size:12px;padding-bottom:6px;background-size:100% 3px;background-image:repeating-linear-gradient(90deg,var(--ink) 0 8px,transparent 8px 11px)}
 .btn{font:500 13px var(--mono);text-transform:uppercase;background:var(--ink);color:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 22px;cursor:pointer;text-decoration:none;display:inline-block}
 .btn:hover{background:#222}
@@ -165,7 +166,7 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
         <div class="pbtns">
           <button class="btn ghost sm" id="editBtn" type="button" hidden>Edit profile</button>
           <button class="btn ghost sm" id="moreBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More">···</button>
-          <div class="menu" id="menu" role="menu" hidden><button type="button" role="menuitem" id="copyLink">Copy link</button></div>
+          <div class="menu" id="menu" role="menu" hidden><button type="button" role="menuitem" id="copyLink">Copy link</button><button type="button" role="menuitem" id="reportProfile" hidden>Report</button></div>
         </div>
       </div>
       <p class="bio-m" id="bioM"></p>
@@ -213,7 +214,7 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
 
     <section id="viewShelf" hidden style="margin-top:34px">
       <a class="dash sm back" id="backLink" href="#">← All shelves</a>
-      <div class="feat"><div class="pic1" id="oneShelf"></div><div class="featmeta"><b id="oneCap"></b><span class="grey" id="oneMeta"></span><a class="dash sm" id="openBuilder" href="#" hidden style="margin-left:auto">Open in builder</a></div></div>
+      <div class="feat"><div class="pic1" id="oneShelf"></div><div class="featmeta"><b id="oneCap"></b><span class="grey" id="oneMeta"></span><a class="dash sm" id="openBuilder" href="#" hidden style="margin-left:auto">Open in builder</a><button class="dash sm grey" id="reportShelf" type="button" hidden style="margin-left:auto">Report</button></div></div>
     </section>
   </div>
 </main>
@@ -226,6 +227,20 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
       <p>Save your shelves to your account and open them again on any device.</p>
       <button class="btn full" id="googleBtn" type="button">Continue with Google</button>
       <p class="note">Accounts are for people 18 or older. <a href="../privacy.html">Privacy</a></p>
+    </div>
+  </div>
+</div>
+
+<div class="sheet" id="reportSheet" hidden role="dialog" aria-modal="true" aria-labelledby="reportTitle">
+  <div class="sheetbox">
+    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <div>
+      <h2 id="reportTitle">Report</h2>
+      <p class="grey" id="reportWhat"></p>
+      <label class="field"><span class="lbl">What's wrong? (optional)</span><textarea id="reportReason" maxlength="200" rows="3"></textarea></label>
+      <button class="btn full" id="reportSend" type="button">Send report</button>
+      <p class="note">Only we read reports. We look at every one.</p>
+      <p class="note" id="reportNote"></p>
     </div>
   </div>
 </div>
@@ -492,6 +507,7 @@ function paintHead(){
   else if (mine){ ava.className = 'ava add'; ava.innerHTML = '<button type="button" class="addphoto">+ photo</button>'; ava.querySelector('button').addEventListener('click', openEdit); }
   else { ava.className = 'ava'; ava.textContent = (name || p.username).trim()[0] || '·'; ava.setAttribute('aria-hidden', 'true'); }
   $('#editBtn').hidden = !mine;
+  $('#reportProfile').hidden = mine;
   $('#privNote').hidden = !(mine && p.is_private);
   $('#bioM').textContent = p.bio;
   $('#bio').textContent = p.bio; $('#bio').hidden = !p.bio;
@@ -536,6 +552,7 @@ async function showShelf(id){
   $('#oneCap').textContent = s.caption.trim() || 'Untitled shelf';
   $('#oneMeta').textContent = `${spines(countOf(s))} · ${fmtDate(s.updated_at)}`;
   $('#openBuilder').hidden = !view.mine; $('#openBuilder').href = '../?open=' + s.id;
+  $('#reportShelf').hidden = view.mine; $('#reportShelf').dataset.id = s.id;
   document.title = (s.caption.trim() || 'A shelf') + ' · @' + p.username + ' · Spinestack';
   await fontsReady;
   let list;
@@ -569,6 +586,33 @@ $('#copyLink').addEventListener('click', async () => {
   const url = location.origin + pageUrl(view.profile.username);
   closeMenu();
   try { await navigator.clipboard.writeText(url); toast('Link copied.'); } catch { toast(url); }
+});
+
+/* ---------- Report: a profile or a shelf, for us to look at (signed in; one each, 20 a day) ---------- */
+const reporting = {type: '', id: ''};
+function openReport(type, id){
+  closeMenu();
+  if (!me.user){ openSheet('#signSheet', '#googleBtn'); toast('Sign in to send a report.'); return; }
+  if (!me.profile){ toast('Finish signing up first: pick a username on the shelf page.'); return; }
+  reporting.type = type; reporting.id = id;
+  const p = view.profile, s = view.shelves.find(x => x.id === id);
+  $('#reportTitle').textContent = type === 'profile' ? 'Report this profile' : 'Report this shelf';
+  $('#reportWhat').textContent = type === 'profile' ? '@' + p.username : `“${(s && s.caption.trim()) || 'Untitled shelf'}” by @${p.username}`;
+  $('#reportReason').value = ''; $('#reportNote').textContent = ''; $('#reportSend').disabled = false;
+  openSheet('#reportSheet', '#reportReason');
+}
+$('#reportProfile').addEventListener('click', () => openReport('profile', view.profile.id));
+$('#reportShelf').addEventListener('click', e => openReport('shelf', e.currentTarget.dataset.id));
+$('#reportSend').addEventListener('click', async () => {
+  const btn = $('#reportSend'), note = $('#reportNote'), t = await token();
+  if (!t){ note.textContent = 'Sign in again to send a report.'; return; }
+  btn.disabled = true; note.textContent = 'Sending…';
+  const r = await fetch(`${SB_URL}/rest/v1/reports`, {method: 'POST', headers: {apikey: SB_KEY, Authorization: 'Bearer ' + t, 'Content-Type': 'application/json', Prefer: 'return=minimal'},
+    body: JSON.stringify({target_type: reporting.type, target_id: reporting.id, reason: $('#reportReason').value.trim().slice(0, 200)})}).catch(() => null);
+  if (r && r.ok){ closeSheets(); toast('Thanks. We’ll take a look.'); return; }
+  const j = r ? await r.json().catch(() => ({})) : {};
+  btn.disabled = false;
+  note.textContent = !r ? 'Couldn’t reach Spinestack. Check your connection and try again.' : j.code === '23505' ? 'You’ve already reported this. Thanks.' : j.code === 'P0001' && j.message ? j.message : 'Couldn’t send the report. Try again in a moment.';
 });
 
 /* ---------- Edit profile ---------- */
