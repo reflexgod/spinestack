@@ -401,7 +401,8 @@ const ITEM_COLS = 'position,item_id,kind,title,author,year,spine_src,cover_src,l
 /* ---------- drawing: a shelf on its own, on the white page ---------- */
 // the story drawn "bare" (no background, caption or watermark), then cut down to the books and their shelf
 function bareShelf(list, s){
-  const st = {caption:'', theme:'paper', layout: s.layout || 'row', varied: s.varied !== false, wood: !!s.wood, filter: s.filter || 'clean', intensity: s.intensity == null ? 70 : s.intensity};
+  const st = {caption:'', theme:'paper', layout: s.layout || 'row', varied: s.varied !== false, wood: !!s.wood, filter: s.filter || 'clean', intensity: s.intensity == null ? 70 : s.intensity,
+    plank: !!(s.pro || {}).plank};
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const x = c.getContext('2d');   // as the builder's canvas, so the books come out the same
   Shelf.renderStory(x, st.filter, false, list, st, true);

@@ -873,6 +873,27 @@ function woodShelf(x, base){
   const sh = x.createLinearGradient(0, y + hh, 0, y + hh + 56); sh.addColorStop(0, 'rgba(0,0,0,.22)'); sh.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = sh; x.fillRect(40, y + hh, W - 80, 56);
   x.restore();
 }
+/* the Floating shelf (Pro): a plain plank exactly as wide as its books (plus a little), in one colour. Its top face,
+   front edge and the shadows it throws are all shaded from that colour. The books stand on the top face at base. */
+const tint = (hx, t) => { const [r, g, b] = rgb(hx), to = t > 0 ? 255 : 0, a = Math.abs(t); return hex(r + (to - r)*a, g + (to - g)*a, b + (to - b)*a); };
+function floatingShelf(x, x0, x1, base, colour = '#FFFFFF'){
+  const back = base - 12, front = base + 5, edge = 24, w = x1 - x0;
+  x.save();
+  // the shadow on the wall: soft and wide under the shelf, and a tighter one right under the front edge
+  x.shadowColor = 'rgba(0,0,0,.26)'; x.shadowBlur = 44; x.shadowOffsetY = 26; x.fillStyle = tint(colour, -.2); x.fillRect(x0 + 10, front, w - 20, edge);
+  x.shadowColor = 'rgba(0,0,0,.22)'; x.shadowBlur = 8; x.shadowOffsetY = 5; x.fillRect(x0 + 2, front, w - 4, edge);
+  x.restore();
+  x.save();
+  // top face, seen a little from above: narrower at the back, lighter towards the front
+  const g = x.createLinearGradient(0, back, 0, front); g.addColorStop(0, tint(colour, -.1)); g.addColorStop(1, tint(colour, .06));
+  x.fillStyle = g; x.beginPath(); x.moveTo(x0 + 9, back); x.lineTo(x1 - 9, back); x.lineTo(x1, front); x.lineTo(x0, front); x.closePath(); x.fill();
+  // front edge: the colour itself, a little darker at the bottom, with a fine light line where it meets the top
+  const e = x.createLinearGradient(0, front, 0, front + edge); e.addColorStop(0, tint(colour, -.03)); e.addColorStop(1, tint(colour, -.14));
+  x.fillStyle = e; x.fillRect(x0, front, w, edge);
+  x.fillStyle = tint(colour, .35); x.fillRect(x0, front, w, 1.5);
+  x.fillStyle = 'rgba(0,0,0,.14)'; x.fillRect(x0, front + edge - 1.5, w, 1.5);
+  x.restore();
+}
 // how worn each tape on this shelf is: about 1 in 4 almost clean, most medium, one heavily worn
 function wearLevels(n, rnd){
   const lv = Array.from({length: n}, () => rnd() < .25 ? .08 : .45 + rnd()*.25);
@@ -916,7 +937,10 @@ function renderStory(x, f, fast, books, settings, bare = false){
   x.fillStyle = T.ink; x.font = '500 52px "Geist Mono", ui-monospace, monospace'; x.textBaseline = 'alphabetic'; x.textAlign = 'left';
   let y = 290; if (!bare && settings.caption.trim()) for (const ln of wrapText(x, settings.caption, 900)){ x.fillText(ln, 90, y); y += 68; }
   const base = 1700;
-  if (settings.wood && settings.layout !== 'covers') woodShelf(x, base);
+  // Spines: up to 10 stand in one row; more (Pro holds 20) in two rows of up to 10, the upper one a little fuller
+  const twoRows = settings.layout === 'row' && books.length > 10, bases = twoRows ? [1060, 1720] : [base], H0 = twoRows ? 530 : 1160;
+  if (settings.wood && settings.layout !== 'covers') for (const b0 of bases) woodShelf(x, b0);
+  const floating = !!settings.plank && !settings.wood && settings.layout !== 'covers';
   const dark = settings.theme === 'ink' || settings.theme === 'dark' || settings.theme === 'forest', shadow = dark ? 'rgba(0,0,0,.5)' : 'rgba(0,0,0,.15)', flashShadow = `rgba(0,0,0,${Math.min(.92, (dark ? .85 : .7)*k/.7)})`, seam = dark ? 'rgba(0,0,0,.7)' : 'rgba(0,0,0,.4)';
   if (books.length && settings.layout === 'covers'){
     const n = books.length, cols = n === 1 ? 1 : n <= 4 ? 2 : n <= 9 ? 3 : 4, rows = Math.ceil(n/cols), gap = 30, top = Math.max(y+30, 400), bottom = 1780;
@@ -930,25 +954,36 @@ function renderStory(x, f, fast, books, settings, bare = false){
       cy += rowH[r] + gap;
     }
   } else if (books.length && settings.layout === 'row'){
-    const s = sizes(1160, books.length <= 2 ? 220 : 165, books, settings);
-    // Worn VHS: tapes are all one height, give or take 2 %
-    if (f === 'vhs' || f === 'rental') s.forEach((z,i) => { if (isCover(books[i])) return; const h1 = 1160*(1 + (rnd() - .5)*.04); if (isReal(books[i])) z.w *= h1/z.h; z.h = h1; });
-    const gaps = books.map(() => rnd()*2);   // packed: 0-2px apart
-    const room = 900 - gaps.slice(1).reduce((a,v) => a+v, 0), sumW = s.reduce((a,z) => a+z.w, 0);
-    if (sumW > room){ const k2 = room/sumW; s.forEach((z,i) => { z.w *= k2; if (isCover(books[i])) z.h *= k2; else if (isReal(books[i]) || isCase(books[i])) z.h *= Math.max(k2, .75); }); }
-    const sps = books.map((b,i) => spineFor(b, s[i].w, s[i].h, f, k, fast, levels[i], i));
-    let cx = (W - (sps.reduce((a,sp) => a + sp.width, 0) + gaps.slice(1).reduce((a,v) => a+v, 0)))/2;
-    const placed = sps.map((sp,i) => { if (i) cx += gaps[i]; const p = {x:cx, w:sp.width, h:sp.height}; cx += sp.width; return p; });
-    sps.forEach((sp,i) => {
-      const tilt = f === 'vhs' || f === 'rental' ? (rnd() - .5)*1.2*Math.PI/180 : 0;   // ±0.6°
-      x.save(); x.shadowColor = f === 'flash' ? flashShadow : shadow; x.shadowBlur = f === 'flash' ? 3 : 18; x.shadowOffsetX = f === 'flash' ? 24 : 0; x.shadowOffsetY = f === 'flash' ? 16 : 6; x.translate(placed[i].x + sp.width/2, base); x.rotate(tilt); x.drawImage(sp, -sp.width/2, -sp.height); x.restore();
+    const split = twoRows ? Math.ceil(books.length/2) : books.length;
+    const rows = (twoRows ? [books.slice(0, split), books.slice(split)] : [books]).map((list, r) => {
+      const at = r ? split : 0, rb = bases[r];
+      const s = sizes(H0, (books.length <= 2 ? 220 : 165)*H0/1160, list, settings);
+      // Worn VHS: tapes are all one height, give or take 2 %
+      if (f === 'vhs' || f === 'rental') s.forEach((z,i) => { if (isCover(list[i])) return; const h1 = H0*(1 + (rnd() - .5)*.04); if (isReal(list[i])) z.w *= h1/z.h; z.h = h1; });
+      const gaps = list.map(() => rnd()*2);   // packed: 0-2px apart
+      const room = 900 - gaps.slice(1).reduce((a,v) => a+v, 0), sumW = s.reduce((a,z) => a+z.w, 0);
+      if (sumW > room){ const k2 = room/sumW; s.forEach((z,i) => { z.w *= k2; if (isCover(list[i])) z.h *= k2; else if (isReal(list[i]) || isCase(list[i])) z.h *= Math.max(k2, .75); }); }
+      const sps = list.map((b,i) => spineFor(b, s[i].w, s[i].h, f, k, fast, levels[at + i], at + i));
+      const width = sps.reduce((a,sp) => a + sp.width, 0) + gaps.slice(1).reduce((a,v) => a+v, 0);
+      let cx = (W - width)/2;
+      const placed = sps.map((sp,i) => { if (i) cx += gaps[i]; const p = {x:cx, w:sp.width, h:sp.height}; cx += sp.width; return p; });
+      return {sps, placed, rb, width};
     });
-    bookLight(f, x, placed.map(pl => ({x:pl.x, y:base - pl.h, w:pl.w, h:pl.h})), k);
+    // the floating shelf: every plank as wide as the widest row, so two rows read as one shelf
+    if (floating){ const half = Math.max(...rows.map(r => r.width))/2 + 22; for (const r of rows) floatingShelf(x, W/2 - half, W/2 + half, r.rb, settings.shelfColour); }
+    for (const {sps, placed, rb} of rows) sps.forEach((sp,i) => {
+      const tilt = f === 'vhs' || f === 'rental' ? (rnd() - .5)*1.2*Math.PI/180 : 0;   // ±0.6°
+      x.save(); x.shadowColor = f === 'flash' ? flashShadow : shadow; x.shadowBlur = f === 'flash' ? 3 : 18; x.shadowOffsetX = f === 'flash' ? 24 : 0; x.shadowOffsetY = f === 'flash' ? 16 : 6;
+      if (floating && f !== 'flash'){ x.shadowBlur = 26; x.shadowOffsetX = 9; x.shadowOffsetY = -3; }   // a soft shadow on the wall behind each book
+      x.translate(placed[i].x + sp.width/2, rb); x.rotate(tilt); x.drawImage(sp, -sp.width/2, -sp.height); x.restore();
+    });
+    bookLight(f, x, rows.flatMap(({placed, rb}) => placed.map(pl => ({x:pl.x, y:rb - pl.h, w:pl.w, h:pl.h}))), k);
     // where two spines meet: a thin dark line down the shorter one
     x.fillStyle = seam;
-    for (let i = 1; i < placed.length; i++){ const a = placed[i-1], b2 = placed[i], mid = (a.x + a.w + b2.x)/2, hh = Math.min(a.h, b2.h); x.fillRect(mid - 1.5, base - hh, 3, hh); }
+    for (const {placed, rb} of rows) for (let i = 1; i < placed.length; i++){ const a = placed[i-1], b2 = placed[i], mid = (a.x + a.w + b2.x)/2, hh = Math.min(a.h, b2.h); x.fillRect(mid - 1.5, rb - hh, 3, hh); }
   } else if (books.length){
     const flat = books.map(asSpine), s = sizes(800, 125, flat, settings), sumT = s.reduce((a,z) => a+z.w, 0), k2 = Math.min(1, 1220/sumT); let cy = base;
+    if (floating){ const xs = flat.map((b,i) => (W - s[i].h)/2 + b.jit*38); floatingShelf(x, Math.min(...xs) - 22, Math.max(...xs.map((v,i) => v + s[i].h)) + 22, base, settings.shelfColour); }
     const placed = [];
     flat.forEach((b,i) => { const t = s[i].w*k2, L = s[i].h, sp = spineFor(b, t, L, f, k, fast, levels[i], i); cy -= sp.width; const cx = (W-L)/2 + b.jit*38;
       x.save(); x.shadowColor = f === 'flash' ? flashShadow : shadow; x.shadowBlur = f === 'flash' ? 3 : 16; x.shadowOffsetX = f === 'flash' ? 20 : 0; x.shadowOffsetY = f === 'flash' ? 16 : 5; x.translate(Math.round(cx), Math.round(cy + sp.width)); x.rotate(-Math.PI/2); x.drawImage(sp,0,0); x.restore();
@@ -962,5 +997,5 @@ function renderStory(x, f, fast, books, settings, bare = false){
   if (!bare){ x.fillStyle = T.mark; x.font = '400 24px "Geist Mono", monospace'; x.textAlign = 'center'; x.fillText('made with spinestack', W/2, 1868); }
 }
 
-window.Shelf = {FONTS, STYLES, THEMES, hex, rgb, lum, contrast, alpha, sat, dist, crop, posterTitle, loadImg, rr, fitFont, coverCrop, shade, isReal, isCase, isCover, asSpine, calmRect, topBlock, makeSpine, TEX, texture, hashStr, rngOf, blank, SCRATCH, scratch, texOver, texGrey, GRAIN, grainTile, grade, copyOf, outline, fadedSpine, glossySpine, GRAIN2, grainTile2, grainSpine, FLAKE, wornSpine, surname, pixels, rowDetail, freeBand, GLO, HAND, arcText, stickerPaper, beKindSticker, genreSticker, priceSticker, rewindStrip, GENRES, rentalSpine, libLabel, libFoot, libraryLines, jacketGlare, librarySpine, PENCIL, pencilGrain, secondhandSpine, hsl, hslCss, FOIL, WEAVE, weaveTile, MOTIFS, clothSpine, flashSpine, flashVignette, NOISE, noiseAt, filmSpine, RISO_PAPER, risoSpine, xeroxSpine, nightSpine, bookLight, dateStamp, woodShelf, wearLevels, WORN, spineFor, wrapText, sizes, renderStory, onTextureLoaded: fn => { onTexture = fn; }};
+window.Shelf = {FONTS, STYLES, THEMES, hex, rgb, lum, contrast, alpha, sat, dist, crop, posterTitle, loadImg, rr, fitFont, coverCrop, shade, isReal, isCase, isCover, asSpine, calmRect, topBlock, makeSpine, TEX, texture, hashStr, rngOf, blank, floatingShelf, tint, SCRATCH, scratch, texOver, texGrey, GRAIN, grainTile, grade, copyOf, outline, fadedSpine, glossySpine, GRAIN2, grainTile2, grainSpine, FLAKE, wornSpine, surname, pixels, rowDetail, freeBand, GLO, HAND, arcText, stickerPaper, beKindSticker, genreSticker, priceSticker, rewindStrip, GENRES, rentalSpine, libLabel, libFoot, libraryLines, jacketGlare, librarySpine, PENCIL, pencilGrain, secondhandSpine, hsl, hslCss, FOIL, WEAVE, weaveTile, MOTIFS, clothSpine, flashSpine, flashVignette, NOISE, noiseAt, filmSpine, RISO_PAPER, risoSpine, xeroxSpine, nightSpine, bookLight, dateStamp, woodShelf, wearLevels, WORN, spineFor, wrapText, sizes, renderStory, onTextureLoaded: fn => { onTexture = fn; }};
 })();

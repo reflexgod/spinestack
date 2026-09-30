@@ -127,7 +127,7 @@ signed-out visitors never load the Supabase library.
   `https://fiukspnovrlzlcdekcnb.supabase.co/auth/v1/callback`.
 - **Email sign-in** is built but off (`SPINESTACK_EMAIL_LOGIN = false` in `index.html`, and the Email provider is
   off in Supabase) until email can be sent from shelfstackd.com.
-- **Limits:** 12 spines a shelf, 200 shelves an account; the Worker saves at most 150 images a day per account and
+- **Limits:** 6 spines a shelf (20 with Pro; over 10 they stand in two rows), 200 shelves an account; the Worker saves at most 150 images a day per account and
   600 a day in all (KV's free plan allows 1,000 writes a day). To move images to R2 later, create a bucket and
   uncomment the `USER_R2` binding in `wrangler.toml`; the same keys are used there.
 - **Staying awake:** Supabase pauses free projects after a week without activity; the Worker's daily cron

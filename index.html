@@ -142,6 +142,8 @@ input[type=color]::-webkit-color-swatch{border:0;border-radius:2px}
 .flt[aria-pressed="true"]{color:var(--ink);font-weight:700}
 .flt[aria-pressed="true"] canvas{outline:2px solid var(--ink);outline-offset:1px;border-color:var(--ink)}
 .flt .pro{font-style:normal;font-weight:700;font-size:9px;border:1px solid currentColor;padding:0 3px;margin-left:4px;letter-spacing:.04em}
+em.pro{font-style:normal;font-weight:700;font-size:9px;border:1px solid currentColor;padding:0 3px;margin:0 4px;letter-spacing:.04em}
+.note .pro:first-child{margin-left:0}
 .range{display:flex;gap:10px;align-items:center}
 .range input{accent-color:var(--ink);flex:1;min-width:0}
 .check input{accent-color:var(--ink);margin:0}
@@ -274,7 +276,9 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
         <div class="ctl"><label class="lbl" for="caption">Caption</label><input type="text" id="caption" value="my next reads." maxlength="60"></div>
         <div class="ctl" id="themeWrap"><span class="lbl">Background</span>
           <div class="seg" id="theme" role="group" aria-label="Background"><button type="button" data-v="paper">Paper</button><button type="button" data-v="ink">Ink</button><button type="button" data-v="blush">Blush</button><button type="button" data-v="shelf">Shelf</button><button type="button" data-v="dark">Dark</button><button type="button" data-v="forest">Forest</button></div>
-          <label class="check"><input type="checkbox" id="woodShelf"> Wood shelf</label></div>
+          <label class="check"><input type="checkbox" id="woodShelf"> Wood shelf</label>
+          <label class="check"><input type="checkbox" id="plank"> Floating shelf<em class="pro">PRO</em></label>
+          <p class="note" id="plankNote"></p></div>
         <label class="check" id="variedWrap"><input type="checkbox" id="varied" checked> Mixed heights</label>
         <button class="btn full" id="exportBtn" type="button">Save story</button>
         <p class="note" id="exportNote"></p>
@@ -364,7 +368,7 @@ const W = 1080, H = 1920;
 // the spines and the story are drawn by shelf.js (shared with the profile page)
 const {FONTS, STYLES, hex, lum, contrast, sat, dist, crop, posterTitle, loadImg, isReal, isCase, makeSpine, TEX, texture} = Shelf;
 let books = [], isSample = true, uid = 0, server = false;
-const settings = {caption:'my next reads.', theme:'paper', layout:'row', varied:true, wood:false};
+const settings = {caption:'my next reads.', theme:'paper', layout:'row', varied:true, wood:false, plank:false};
 
 /* ---------- colour ---------- */
 function extractPalette(img){
@@ -544,6 +548,18 @@ const FILTERS = [
   {id:'night', name:'Night Shelf', pro:true},
 ];
 settings.filter = 'clean'; settings.intensity = 70;
+// Free shelves hold 6 spines, Pro 20. While SHELFSTACKD_PRO_REQUIRED is false everyone is Pro; with it on, the database
+// says who is (am_i_pro, checked after sign-in). Its twin in the database is app_config.pro_required: flip both together.
+const SPINES_FREE = 6, SPINES_PRO = 20;
+let proAccount = false;
+const isPro = () => !SHELFSTACKD_PRO_REQUIRED || proAccount;
+const spineMax = () => isPro() ? SPINES_PRO : SPINES_FREE;
+const PRO_TAG = '<em class="pro">PRO</em>';
+const proNote = (el, msg) => { el.innerHTML = PRO_TAG + esc(msg); };
+function proToast(msg){ toast(msg); $('#toast').insertAdjacentHTML('afterbegin', PRO_TAG); }
+// the Pro settings a shelf keeps (in shelves.pro)
+const proSettings = () => clean0({plank: settings.plank || undefined});
+const usesPro = () => Object.keys(proSettings()).length > 0;
 // this page's shelf, drawn by shelf.js
 const renderStory = (x = sctx, f = settings.filter, fast = false) => Shelf.renderStory(x, f, fast, books, settings);
 const sizes = (H0, U, list = books) => Shelf.sizes(H0, U, list, settings);
@@ -665,7 +681,7 @@ $('#books').addEventListener('click', e => {
 $('#clear').addEventListener('click', () => { books = []; isSample = false; renderList(); });
 function shelve(b){
   if (isSample){ books = []; isSample = false; }
-  if (books.length >= 12){ toast('A shelf holds up to 12 spines. Remove one first.'); return false; }
+  if (books.length >= spineMax()){ if (isPro()) toast('A shelf holds up to 20 spines. Remove one first.'); else proToast('Free shelves hold 6 spines. Pro holds 20.'); return false; }
   books.push(b); renderList(); return true;
 }
 
@@ -890,7 +906,7 @@ function titleFromName(name){ let t = (name||'').replace(/\.[a-z0-9]+$/i,'').rep
 function addFiles(files){
   const imgs = [...files].filter(f => f.type.startsWith('image/'));
   if (!imgs.length){ toast('That wasn’t an image. Copy the image itself, or save it and drop the file.'); return; }
-  imgs.slice(0, 12).forEach(f => {
+  imgs.slice(0, spineMax()).forEach(f => {
     const fr = new FileReader();
     fr.onload = async () => {
       let im; try { im = await loadImg(fr.result); } catch { toast('Couldn’t read ' + f.name + '.'); return; }
@@ -953,6 +969,16 @@ $('#intensity').addEventListener('input', e => { settings.intensity = +e.target.
 syncFilter();
 ['cardboard', 'cracks', 'crumpled', 'paper', 'fabric', 'wood', 'scratches-1', 'scratches-2', 'scratches-3'].forEach(texture);   // small, and needed by the first thumbnails
 bindSeg('#layout', 'layout', () => { $('#variedWrap').hidden = settings.layout === 'covers'; });
+$('#plank').addEventListener('change', e => {
+  $('#plankNote').textContent = '';
+  if (e.target.checked && !isPro()){ e.target.checked = false; proNote($('#plankNote'), 'The floating shelf comes with Pro.'); return; }
+  settings.plank = e.target.checked;
+  if (settings.plank){ settings.wood = false; $('#woodShelf').checked = false; }
+  redraw();
+});
+const woodTakesOver = () => { if (settings.wood && settings.plank){ settings.plank = false; $('#plank').checked = false; } };
+$('#woodShelf').addEventListener('change', woodTakesOver);
+$('#theme').addEventListener('click', woodTakesOver);
 $('#caption').addEventListener('input', e => { settings.caption = e.target.value; redraw(); });
 $('#varied').addEventListener('change', e => { settings.varied = e.target.checked; redraw(); });
 
@@ -1070,10 +1096,11 @@ async function setUser(user){
   const same = (user && user.id) === (acct.user && acct.user.id);
   if (same && (acct.profile || !user)) return;
   acct.user = user || null; acct.profile = null;
-  if (!user){ acct.shelfId = null; acct.shelves = []; acct.pendingSave = false; paintAcct(); paintMine(); return; }
+  if (!user){ acct.shelfId = null; acct.shelves = []; acct.pendingSave = false; proAccount = false; paintAcct(); paintMine(); return; }
   const {data, error} = await acct.sb.from('profiles').select('id,username,is_private').eq('id', user.id).maybeSingle();
   if (error){ toast('Couldn’t load your account. Try again in a moment.'); paintAcct(); return; }
   acct.profile = data;
+  if (SHELFSTACKD_PRO_REQUIRED && data){ const r = await acct.sb.rpc('am_i_pro'); proAccount = r.data === true; }
   paintAcct();
   if (!data){ if (!same) openSheet('name'); return; }
   await loadMine();
@@ -1226,13 +1253,15 @@ async function saveShelf(asNew){
   if (!books.length || isSample){ toast('Add your own titles first.'); return; }
   if (!acct.user){ acct.pendingSave = true; openSheet('signin'); return; }
   if (!acct.profile){ acct.pendingSave = true; openSheet('name'); return; }
+  if (books.length > spineMax()){ proToast('Free shelves hold 6 spines. Pro holds 20.'); return; }
+  if (usesPro() && !isPro()){ proToast('Your own wall, PNGs and the floating shelf come with Pro.'); return; }
   saving = true; $('#saveShelf').disabled = true; $('#saveNote').textContent = 'Saving…';
   const updating = !asNew && !!acct.shelfId, id = updating ? acct.shelfId : crypto.randomUUID(), was = acct.shelves.find(s => s.id === id);
   try {
     const items = await Promise.all(books.map(b => itemFor(b, putImage)));
     const pv = await workerPost('/u/preview?shelf=' + id, await previewBlob());
     const {error} = await acct.sb.rpc('save_shelf', {items, shelf:{id, caption: settings.caption.slice(0, 60), filter: settings.filter, intensity: settings.intensity,
-      background: settings.theme, wood: settings.wood, layout: settings.layout, varied: settings.varied, is_public: was ? was.is_public : true, preview_key: pv.key}});
+      background: settings.theme, wood: settings.wood, layout: settings.layout, varied: settings.varied, is_public: was ? was.is_public : true, preview_key: pv.key, pro: proSettings()}});
     if (error) throw error;
     acct.shelfId = id; toast(updating ? 'Shelf updated.' : 'Saved to My shelves.');
     await loadMine();
@@ -1243,7 +1272,7 @@ $('#saveShelf').addEventListener('click', () => saveShelf(false));
 $('#saveNew').addEventListener('click', () => saveShelf(true));
 
 /* My shelves */
-const SHELF_COLS = 'id,caption,filter,intensity,background,wood,layout,varied,is_public,preview_key,created_at,updated_at,shelf_items(count)';
+const SHELF_COLS = 'id,caption,filter,intensity,background,wood,layout,varied,is_public,preview_key,pro,created_at,updated_at,shelf_items(count)';
 async function loadMine(){
   if (!acct.profile) return;
   // own shelves only: since phase 2, other people's public shelves are readable too
@@ -1306,7 +1335,9 @@ async function rebuild(r){
     source: style === 'real' ? (r.spine_src.startsWith('a:') ? 'the archive' : 'your saved shelf') : undefined}));
 }
 function applySettings(s){
-  Object.assign(settings, {caption: s.caption, filter: s.filter, intensity: s.intensity, theme: s.background || s.theme, wood: !!s.wood, layout: s.layout, varied: s.varied !== false});
+  Object.assign(settings, {caption: s.caption, filter: s.filter, intensity: s.intensity, theme: s.background || s.theme, wood: !!s.wood, layout: s.layout, varied: s.varied !== false,
+    plank: !!(s.pro ? s.pro.plank : s.plank)});   // a saved shelf keeps it in pro, a draft in its settings
+  $('#plank').checked = settings.plank;
   $('#caption').value = settings.caption; $('#intensity').value = settings.intensity; $('#woodShelf').checked = settings.wood; $('#varied').checked = settings.varied;
   for (const [id, key] of [['#theme', 'theme'], ['#layout', 'layout']]) document.querySelectorAll(id + ' button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === settings[key])));
   $('#variedWrap').hidden = settings.layout === 'covers';
