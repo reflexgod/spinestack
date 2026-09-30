@@ -2,6 +2,8 @@
 -- Run in the Supabase dashboard: SQL Editor -> New query -> paste -> Run.
 -- It makes two throwaway users inside a transaction and rolls everything back at the end: nothing is kept.
 -- The last result says "ALL PHASE 2 CHECKS PASSED". Any failed check stops with an error that starts "FAIL:".
+-- Real accounts can be in the database: since 0002 everyone sees everyone's public shelves, so every count here
+-- counts only the test's own rows (A's shelves a1, a2, a3 and the two test profiles), never the whole table.
 -- (rls_phase1.sql is for a database with 0001 only: after 0002 some of its checks are wrong on purpose,
 --  e.g. B can now read A's public profile and a 13-spine shelf is fine with Pro.)
 
@@ -10,6 +12,7 @@ begin;
 insert into auth.users (id, email, aud, role)
 values ('00000000-0000-4000-8000-00000000000a', 'rls-a@example.invalid', 'authenticated', 'authenticated'),
        ('00000000-0000-4000-8000-00000000000b', 'rls-b@example.invalid', 'authenticated', 'authenticated');
+update public.app_config set pro_required = false;
 
 -- ---------- as user A ----------
 set local role authenticated;
@@ -76,8 +79,8 @@ select public.save_shelf('{"id":"00000000-0000-4000-8000-0000000000a3","caption"
   '[{"item_id":"b0","kind":"movie","title":"Gummo"}]');
 
 do $$ begin
-  if (select count(*) from public.shelves) <> 3 then raise exception 'FAIL: A does not see A''s 3 shelves'; end if;
-  if (select count(*) from public.shelf_items) <> 23 then raise exception 'FAIL: A does not see A''s 23 items'; end if;
+  if (select count(*) from public.shelves where owner = '00000000-0000-4000-8000-00000000000a') <> 3 then raise exception 'FAIL: A does not see A''s 3 shelves'; end if;
+  if (select count(*) from public.shelf_items where shelf_id in ('00000000-0000-4000-8000-0000000000a1', '00000000-0000-4000-8000-0000000000a2', '00000000-0000-4000-8000-0000000000a3')) <> 23 then raise exception 'FAIL: A does not see A''s 23 items'; end if;
   if (select pro ->> 'shelf_colour' from public.shelves where id = '00000000-0000-4000-8000-0000000000a1') <> '#FFFFFF' then raise exception 'FAIL: the Pro settings were not saved'; end if;
   begin
     perform public.save_shelf('{"caption":"too many"}', (select jsonb_agg(jsonb_build_object('item_id', 'b' || g, 'kind', 'book')) from generate_series(1, 21) g));
@@ -134,11 +137,13 @@ insert into public.profiles (id, username) values ('00000000-0000-4000-8000-0000
 do $$
 declare n int;
 begin
-  if (select count(*) from public.profiles) <> 2 then raise exception 'FAIL: B does not see both public profiles'; end if;
+  if (select count(*) from public.profiles where id in ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-00000000000b')) <> 2 then raise exception 'FAIL: B does not see both public profiles'; end if;
   if (select display_name from public.profiles where id = '00000000-0000-4000-8000-00000000000a') <> 'Tester A' then raise exception 'FAIL: B does not see A''s name'; end if;
-  if (select count(*) from public.shelves) <> 2 then raise exception 'FAIL: B does not see exactly A''s 2 public shelves'; end if;
+  if (select count(*) from public.shelves where owner = '00000000-0000-4000-8000-00000000000a') <> 2 then raise exception 'FAIL: B does not see exactly A''s 2 public shelves'; end if;
+  if exists (select 1 from public.shelves where owner <> '00000000-0000-4000-8000-00000000000b' and not is_public) then raise exception 'FAIL: B sees someone''s private shelf'; end if;
+  if exists (select 1 from public.profiles where id <> '00000000-0000-4000-8000-00000000000b' and is_private) then raise exception 'FAIL: B sees someone''s private profile'; end if;
   if exists (select 1 from public.shelves where id = '00000000-0000-4000-8000-0000000000a3') then raise exception 'FAIL: B sees A''s private shelf'; end if;
-  if (select count(*) from public.shelf_items) <> 22 then raise exception 'FAIL: B does not see exactly the 22 spines of A''s public shelves'; end if;
+  if (select count(*) from public.shelf_items where shelf_id in ('00000000-0000-4000-8000-0000000000a1', '00000000-0000-4000-8000-0000000000a2', '00000000-0000-4000-8000-0000000000a3')) <> 22 then raise exception 'FAIL: B does not see exactly the 22 spines of A''s public shelves'; end if;
   begin
     perform hidden from public.profiles limit 1;
     raise exception 'FAIL: B can read the moderation flag';
@@ -191,9 +196,11 @@ reset role;
 set local role anon;
 select set_config('request.jwt.claims', '{"role":"anon"}', true);
 do $$ begin
-  if (select count(*) from public.profiles) <> 2 then raise exception 'FAIL: a visitor does not see the 2 public profiles'; end if;
-  if (select count(*) from public.shelves) <> 2 then raise exception 'FAIL: a visitor does not see exactly A''s 2 public shelves'; end if;
-  if (select count(*) from public.shelf_items) <> 22 then raise exception 'FAIL: a visitor does not see exactly 22 public spines'; end if;
+  if (select count(*) from public.profiles where id in ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-00000000000b')) <> 2 then raise exception 'FAIL: a visitor does not see the 2 public profiles'; end if;
+  if exists (select 1 from public.profiles where is_private) then raise exception 'FAIL: a visitor sees someone''s private profile'; end if;
+  if exists (select 1 from public.shelves where not is_public) then raise exception 'FAIL: a visitor sees someone''s private shelf'; end if;
+  if (select count(*) from public.shelves where owner = '00000000-0000-4000-8000-00000000000a') <> 2 then raise exception 'FAIL: a visitor does not see exactly A''s 2 public shelves'; end if;
+  if (select count(*) from public.shelf_items where shelf_id in ('00000000-0000-4000-8000-0000000000a1', '00000000-0000-4000-8000-0000000000a2', '00000000-0000-4000-8000-0000000000a3')) <> 22 then raise exception 'FAIL: a visitor does not see exactly 22 public spines'; end if;
   if (select spine_count from public.profile_stats('00000000-0000-4000-8000-00000000000a')) <> 22 then raise exception 'FAIL: a visitor sees the wrong spine count'; end if;
   begin perform adult_confirmed_at from public.profiles limit 1; raise exception 'FAIL: a visitor can read sign-up details';
   exception when insufficient_privilege then null; end;
@@ -217,8 +224,8 @@ update public.shelves set hidden = true where id = '00000000-0000-4000-8000-0000
 set local role anon;
 select set_config('request.jwt.claims', '{"role":"anon"}', true);
 do $$ begin
-  if (select count(*) from public.shelves) <> 1 then raise exception 'FAIL: a visitor sees a hidden shelf'; end if;
-  if (select count(*) from public.shelf_items) <> 2 then raise exception 'FAIL: a visitor sees a hidden shelf''s spines'; end if;
+  if (select count(*) from public.shelves where owner = '00000000-0000-4000-8000-00000000000a') <> 1 then raise exception 'FAIL: a visitor sees a hidden shelf'; end if;
+  if (select count(*) from public.shelf_items where shelf_id in ('00000000-0000-4000-8000-0000000000a1', '00000000-0000-4000-8000-0000000000a2', '00000000-0000-4000-8000-0000000000a3')) <> 2 then raise exception 'FAIL: a visitor sees a hidden shelf''s spines'; end if;
 end $$;
 reset role;
 update public.shelves set hidden = false where id = '00000000-0000-4000-8000-0000000000a2';
@@ -227,7 +234,7 @@ set local role anon;
 select set_config('request.jwt.claims', '{"role":"anon"}', true);
 do $$ begin
   if exists (select 1 from public.profiles where id = '00000000-0000-4000-8000-00000000000a') then raise exception 'FAIL: a visitor sees a hidden profile'; end if;
-  if (select count(*) from public.shelves) <> 0 then raise exception 'FAIL: a visitor sees the shelves of a hidden profile'; end if;
+  if (select count(*) from public.shelves where owner = '00000000-0000-4000-8000-00000000000a') <> 0 then raise exception 'FAIL: a visitor sees the shelves of a hidden profile'; end if;
 end $$;
 reset role;
 update public.profiles set hidden = false where id = '00000000-0000-4000-8000-00000000000a';
@@ -246,8 +253,8 @@ update public.profiles set is_private = true, pinned_shelf_id = '00000000-0000-4
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-00000000000b","role":"authenticated"}', true);
 do $$ begin
   if exists (select 1 from public.profiles where id = '00000000-0000-4000-8000-00000000000a') then raise exception 'FAIL: B sees A''s private profile'; end if;
-  if (select count(*) from public.shelves) <> 0 then raise exception 'FAIL: B sees shelves of a private profile'; end if;
-  if (select count(*) from public.shelf_items) <> 0 then raise exception 'FAIL: B sees spines of a private profile'; end if;
+  if (select count(*) from public.shelves where owner = '00000000-0000-4000-8000-00000000000a') <> 0 then raise exception 'FAIL: B sees shelves of a private profile'; end if;
+  if (select count(*) from public.shelf_items where shelf_id in ('00000000-0000-4000-8000-0000000000a1', '00000000-0000-4000-8000-0000000000a2', '00000000-0000-4000-8000-0000000000a3')) <> 0 then raise exception 'FAIL: B sees spines of a private profile'; end if;
   if (select shelf_count from public.profile_stats('00000000-0000-4000-8000-00000000000a')) <> 0 then raise exception 'FAIL: B sees a private profile''s numbers'; end if;
   if exists (select 1 from public.most_shelved('00000000-0000-4000-8000-00000000000a')) then raise exception 'FAIL: B sees a private profile''s most shelved'; end if;
 end $$;
@@ -257,7 +264,7 @@ set local role anon;
 select set_config('request.jwt.claims', '{"role":"anon"}', true);
 do $$ begin
   if exists (select 1 from public.profiles where id = '00000000-0000-4000-8000-00000000000a') then raise exception 'FAIL: a visitor sees A''s private profile'; end if;
-  if (select count(*) from public.shelves) <> 0 then raise exception 'FAIL: a visitor sees shelves of a private profile'; end if;
+  if (select count(*) from public.shelves where owner = '00000000-0000-4000-8000-00000000000a') <> 0 then raise exception 'FAIL: a visitor sees shelves of a private profile'; end if;
 end $$;
 
 reset role;
@@ -265,7 +272,7 @@ set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-00000000000a","role":"authenticated"}', true);
 do $$ begin
   if not exists (select 1 from public.profiles where id = '00000000-0000-4000-8000-00000000000a') then raise exception 'FAIL: A can''t see A''s own private profile'; end if;
-  if (select count(*) from public.shelves) <> 3 then raise exception 'FAIL: A can''t see A''s own shelves while private'; end if;
+  if (select count(*) from public.shelves where owner = '00000000-0000-4000-8000-00000000000a') <> 3 then raise exception 'FAIL: A can''t see A''s own shelves while private'; end if;
 end $$;
 update public.profiles set is_private = false where id = '00000000-0000-4000-8000-00000000000a';
 
@@ -318,10 +325,10 @@ set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-00000000000a","role":"authenticated"}', true);
 do $$ begin
   if not public.is_admin() then raise exception 'FAIL: the admin is not an admin'; end if;
-  if (select count(*) from public.reports) <> 2 then raise exception 'FAIL: the admin does not see the 2 reports'; end if;
-  if (select count(*) from public.admin_reports()) <> 2 then raise exception 'FAIL: the admin list does not have the 2 reports'; end if;
-  if (select reporter_name from public.admin_reports() limit 1) <> 'rls_tester_b' then raise exception 'FAIL: the admin list does not name the reporter'; end if;
-  if (select target_user from public.admin_reports() where target_type = 'shelf') <> 'rls_tester_a' then raise exception 'FAIL: the admin list does not name the shelf''s owner'; end if;
+  if (select count(*) from public.reports where reporter = '00000000-0000-4000-8000-00000000000b') <> 2 then raise exception 'FAIL: the admin does not see the 2 reports'; end if;
+  if (select count(*) from public.admin_reports() where target_id in ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000a1')) <> 2 then raise exception 'FAIL: the admin list does not have the 2 reports'; end if;
+  if (select reporter_name from public.admin_reports() where target_type = 'profile' and target_id = '00000000-0000-4000-8000-00000000000a') <> 'rls_tester_b' then raise exception 'FAIL: the admin list does not name the reporter'; end if;
+  if (select target_user from public.admin_reports() where target_type = 'shelf' and target_id = '00000000-0000-4000-8000-0000000000a1') <> 'rls_tester_a' then raise exception 'FAIL: the admin list does not name the shelf''s owner'; end if;
 end $$;
 
 -- ---------- A's shelf is untouched by B ----------
