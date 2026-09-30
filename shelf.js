@@ -933,7 +933,9 @@ function sizes(H0, U, list, settings){
    background, caption, watermark, or Flash's vignette and date stamp, which belong to the photo, not the shelf.
    art (Pro): the user's own wall, a 1080 x 1920 picture used when the background is 'wall' (with dark: whether it's a
    dark picture, for the caption and shadows), and their PNGs, each {img, x, y, w}: the middle and the width as fractions
-   of the story. Always in this order: wall, PNGs, shelf, books. */
+   of the story. Always in this order: wall, PNGs, shelf, books.
+   Returns where the caption ends and the books begin (y in the story, booksTop null with no books), so the builder
+   can put a new PNG on the open wall between them. */
 const WALL_LIGHT = {bg:'#FFFFFF', ink:'#0F1419', mark:'rgba(15,20,25,.5)'}, WALL_DARK = {bg:'#000000', ink:'#F1F2F4', mark:'rgba(241,242,244,.55)'};
 function renderStory(x, f, fast, books, settings, bare = false, art = {}){
   const wall = settings.theme === 'wall' && art.wall ? art.wall : null;
@@ -945,6 +947,7 @@ function renderStory(x, f, fast, books, settings, bare = false, art = {}){
   }
   x.fillStyle = T.ink; x.font = '500 52px "Geist Mono", ui-monospace, monospace'; x.textBaseline = 'alphabetic'; x.textAlign = 'left';
   let y = 290; if (!bare && settings.caption.trim()) for (const ln of wrapText(x, settings.caption, 900)){ x.fillText(ln, 90, y); y += 68; }
+  const captionBottom = y === 290 ? 150 : y - 50; let booksTop = null;
   const base = 1700;
   // Spines: up to 10 stand in one row; more (Pro holds 20) in two rows of up to 10, the upper one a little fuller
   const twoRows = settings.layout === 'row' && books.length > 10, bases = twoRows ? [1060, 1720] : [base], H0 = twoRows ? 530 : 1160;
@@ -956,7 +959,7 @@ function renderStory(x, f, fast, books, settings, bare = false, art = {}){
     const cellW = Math.min(n === 1 ? 760 : 900, (900 - gap*(cols-1))/cols), cellH = (bottom - top - gap*(rows-1))/rows;
     const sz = books.map(b => { const k2 = Math.min(cellW/b.img.width, cellH/b.img.height); return [b.img.width*k2, b.img.height*k2]; });
     const rowH = []; for (let r = 0; r < rows; r++) rowH.push(Math.max(...sz.slice(r*cols, r*cols+cols).map(z => z[1])));
-    let cy = top + ((bottom-top) - (rowH.reduce((a,v) => a+v, 0) + gap*(rows-1)))/2;
+    let cy = top + ((bottom-top) - (rowH.reduce((a,v) => a+v, 0) + gap*(rows-1)))/2; booksTop = cy;
     for (let r = 0; r < rows; r++){
       const items = books.slice(r*cols, r*cols+cols), s2 = sz.slice(r*cols, r*cols+cols); let cx = (W - (s2.reduce((a,z) => a+z[0], 0) + gap*(items.length-1)))/2;
       items.forEach((b,i) => { const [w,h] = s2[i], dy = cy + rowH[r] - h; x.save(); x.shadowColor = shadow; x.shadowBlur = 30; x.shadowOffsetY = 12; x.fillStyle = '#000'; rr(x,cx,dy,w,h,10); x.fill(); x.restore(); x.save(); rr(x,cx,dy,w,h,10); x.clip(); x.drawImage(b.img,cx,dy,w,h); x.restore(); cx += w + gap; });
@@ -987,6 +990,7 @@ function renderStory(x, f, fast, books, settings, bare = false, art = {}){
       x.translate(placed[i].x + sp.width/2, rb); x.rotate(tilt); x.drawImage(sp, -sp.width/2, -sp.height); x.restore();
     });
     bookLight(f, x, rows.flatMap(({placed, rb}) => placed.map(pl => ({x:pl.x, y:rb - pl.h, w:pl.w, h:pl.h}))), k);
+    booksTop = Math.min(...rows[0].placed.map(pl => rows[0].rb - pl.h));
     // where two spines meet: a thin dark line down the shorter one
     x.fillStyle = seam;
     for (const {placed, rb} of rows) for (let i = 1; i < placed.length; i++){ const a = placed[i-1], b2 = placed[i], mid = (a.x + a.w + b2.x)/2, hh = Math.min(a.h, b2.h); x.fillRect(mid - 1.5, rb - hh, 3, hh); }
@@ -998,12 +1002,14 @@ function renderStory(x, f, fast, books, settings, bare = false, art = {}){
       x.save(); x.shadowColor = f === 'flash' ? flashShadow : shadow; x.shadowBlur = f === 'flash' ? 3 : 16; x.shadowOffsetX = f === 'flash' ? 20 : 0; x.shadowOffsetY = f === 'flash' ? 16 : 5; x.translate(Math.round(cx), Math.round(cy + sp.width)); x.rotate(-Math.PI/2); x.drawImage(sp,0,0); x.restore();
       placed.push({x:Math.round(cx), y:Math.round(cy), L:sp.height, t:sp.width}); });
     bookLight(f, x, placed.map(pl => ({x:pl.x, y:pl.y, w:pl.L, h:pl.t})), k);
+    booksTop = cy;
     // lying books meet along a line too
     x.fillStyle = seam;
     for (let i = 1; i < placed.length; i++){ const lo = placed[i-1], up = placed[i], x0 = Math.max(lo.x, up.x), x1 = Math.min(lo.x + lo.L, up.x + up.L); if (x1 > x0) x.fillRect(x0, lo.y - 1.5, x1 - x0, 3); }
   }
   if (f === 'flash' && books.length && !bare){ flashVignette(x, k); dateStamp(x); }
   if (!bare){ x.fillStyle = T.mark; x.font = '400 24px "Geist Mono", monospace'; x.textAlign = 'center'; x.fillText('made with spinestack', W/2, 1868); }
+  return {captionBottom, booksTop};
 }
 
 window.Shelf = {FONTS, STYLES, THEMES, hex, rgb, lum, contrast, alpha, sat, dist, crop, posterTitle, loadImg, rr, fitFont, coverCrop, shade, isReal, isCase, isCover, asSpine, calmRect, topBlock, makeSpine, TEX, texture, hashStr, rngOf, blank, floatingShelf, tint, SCRATCH, scratch, texOver, texGrey, GRAIN, grainTile, grade, copyOf, outline, fadedSpine, glossySpine, GRAIN2, grainTile2, grainSpine, FLAKE, wornSpine, surname, pixels, rowDetail, freeBand, GLO, HAND, arcText, stickerPaper, beKindSticker, genreSticker, priceSticker, rewindStrip, GENRES, rentalSpine, libLabel, libFoot, libraryLines, jacketGlare, librarySpine, PENCIL, pencilGrain, secondhandSpine, hsl, hslCss, FOIL, WEAVE, weaveTile, MOTIFS, clothSpine, flashSpine, flashVignette, NOISE, noiseAt, filmSpine, RISO_PAPER, risoSpine, xeroxSpine, nightSpine, bookLight, dateStamp, woodShelf, wearLevels, WORN, spineFor, wrapText, sizes, renderStory, onTextureLoaded: fn => { onTexture = fn; }};
