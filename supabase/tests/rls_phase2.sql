@@ -1,5 +1,7 @@
 -- Spinestack, phase 2: checks the Row Level Security rules after 0002 (profiles, public and private shelves, Pro, reports)
--- and 0004 (a PNG on the wall can be turned and see-through). Run it once both are in.
+-- and 0004 (a PNG on the wall can be turned and see-through) and 0005 (a shelf's own name). Run it once all three are in.
+-- (Near the end it switches one trigger off for a single line inside this transaction, which locks the shelves table
+--  for the last moment of the run; it's rolled back with everything else.)
 -- Run in the Supabase dashboard: SQL Editor -> New query -> paste -> Run.
 -- It makes two throwaway users inside a transaction and rolls everything back at the end: nothing is kept.
 -- The last result says "ALL PHASE 2 CHECKS PASSED". Any failed check stops with an error that starts "FAIL:".
@@ -361,6 +363,43 @@ do $$ begin
   if (select caption from public.shelves where id = '00000000-0000-4000-8000-0000000000a1') <> 'a shelf' then raise exception 'FAIL: A''s shelf was changed by B'; end if;
   if (select bio from public.profiles where id = '00000000-0000-4000-8000-00000000000a') <> repeat('b', 160) then raise exception 'FAIL: A''s bio was changed by B'; end if;
 end $$;
+
+-- ---------- 0005: a shelf's own name, apart from its caption ----------
+-- (a1 is dated in the past first, to see that a rename keeps the date; the trigger is off for that one line only)
+alter table public.shelves disable trigger shelves_before_write;
+update public.shelves set updated_at = '2026-01-01T00:00:00Z' where id = '00000000-0000-4000-8000-0000000000a1';
+alter table public.shelves enable trigger shelves_before_write;
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-00000000000a","role":"authenticated"}', true);
+do $$ begin
+  update public.shelves set name = 'my films' where id = '00000000-0000-4000-8000-0000000000a1';
+  if (select name from public.shelves where id = '00000000-0000-4000-8000-0000000000a1') is distinct from 'my films' then raise exception 'FAIL: A could not rename A''s shelf'; end if;
+  if (select caption from public.shelves where id = '00000000-0000-4000-8000-0000000000a1') <> 'a shelf' then raise exception 'FAIL: renaming a shelf changed its caption'; end if;
+  if (select updated_at from public.shelves where id = '00000000-0000-4000-8000-0000000000a1') <> '2026-01-01T00:00:00Z' then raise exception 'FAIL: renaming a shelf changed its date'; end if;
+  begin
+    update public.shelves set name = repeat('n', 61) where id = '00000000-0000-4000-8000-0000000000a1';
+    raise exception 'FAIL: a 61-character shelf name was saved';
+  exception when check_violation then null; end;
+  update public.shelves set name = '' where id = '00000000-0000-4000-8000-0000000000a1';   -- renamed to nothing: "untitled shelf" on the page
+  -- saving the shelf in the builder keeps its name, and does move its date
+  perform public.save_shelf('{"id":"00000000-0000-4000-8000-0000000000a1","caption":"a shelf, saved again"}', '[{"item_id":"b0","kind":"book","title":"Again"}]');
+  if (select name from public.shelves where id = '00000000-0000-4000-8000-0000000000a1') is distinct from '' then raise exception 'FAIL: saving a shelf in the builder lost its name'; end if;
+  if (select updated_at from public.shelves where id = '00000000-0000-4000-8000-0000000000a1') = '2026-01-01T00:00:00Z' then raise exception 'FAIL: saving a shelf didn''t move its date'; end if;
+end $$;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-00000000000b","role":"authenticated"}', true);
+do $$
+declare n int;
+begin
+  update public.shelves set name = 'hacked' where id = '00000000-0000-4000-8000-0000000000a1';
+  get diagnostics n = row_count; if n <> 0 then raise exception 'FAIL: B renamed A''s shelf'; end if;
+end $$;
+reset role;
+set local role anon;
+select set_config('request.jwt.claims', '{"role":"anon"}', true);
+do $$ begin
+  if (select name from public.shelves where id = '00000000-0000-4000-8000-0000000000a1') is distinct from '' then raise exception 'FAIL: a visitor can''t read a public shelf''s name'; end if;
+end $$;
+reset role;
 
 select 'ALL PHASE 2 CHECKS PASSED' as result;
 rollback;

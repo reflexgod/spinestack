@@ -1566,7 +1566,7 @@ $('#saveShelf').addEventListener('click', () => saveShelf(false));
 $('#saveNew').addEventListener('click', () => saveShelf(true));
 
 /* My shelves */
-const SHELF_COLS = 'id,caption,filter,intensity,background,wood,layout,varied,is_public,preview_key,pro,created_at,updated_at,shelf_items(count)';
+const SHELF_COLS = 'id,caption,name,filter,intensity,background,wood,layout,varied,is_public,preview_key,pro,created_at,updated_at,shelf_items(count)';
 async function loadMine(){
   if (!acct.profile) return;
   // own shelves only: since phase 2, other people's public shelves are readable too
@@ -1580,7 +1580,7 @@ function paintMine(){
   $('#mineCount').textContent = list.length ? `(${list.length})` : '';
   $('#mineEmpty').hidden = !!list.length || !acct.profile;
   $('#mineList').innerHTML = list.map(s => {
-    const n = ((s.shelf_items || [])[0] || {}).count || 0, cap = shelfName(s.caption);
+    const n = ((s.shelf_items || [])[0] || {}).count || 0, cap = shelfName(s);
     const src = s.preview_key ? `${WORKER}/u/preview?k=${encodeURIComponent(s.preview_key)}&v=${encodeURIComponent(s.updated_at)}` : '';
     return `<li class="card${s.id === acct.shelfId ? ' on' : ''}"><button class="open" type="button" data-open="${s.id}" aria-label="Open ${esc(cap)}">${src ? `<img src="${esc(src)}" alt="" loading="lazy" width="360" height="640">` : ''}</button>
       <div class="cap">${esc(cap)}</div><div class="grey">${n} ${n === 1 ? 'spine' : 'spines'} · ${esc(fmtDate(s.updated_at))}</div>
