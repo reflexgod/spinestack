@@ -91,16 +91,32 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
 .pgrid{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:56px;margin-top:32px;align-items:start}
 .pmain{display:grid;gap:44px;min-width:0}
 .sechead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
-.feat{display:grid;justify-items:center;gap:10px}
+/* every shelf at one scale (a spine is 1160 story px: about 315 px here, as in the design), so one spine is one
+   normal spine on a short shelf, not a spine blown up to fill the space */
+.feat{display:grid;justify-items:center;gap:10px;--fk:.27}
 .feat .pic1{display:block;line-height:0}
-.feat .pic1 canvas{display:block;max-width:100%;height:auto;max-height:min(62vh,600px);width:auto}
+.feat .pic1 canvas{display:block;max-width:100%;height:auto;width:calc(var(--w, 600) * var(--fk) * 1px)}
+/* one shelf on its own page: the story itself, bigger */
+#viewShelf .pic1 canvas{width:min(100%, 460px, calc(74vh * 9 / 16));border:1px solid var(--hair);border-radius:12px}
 .featmeta{justify-self:stretch;display:flex;gap:6px 14px;flex-wrap:wrap;align-items:baseline}
 .featmeta b{font-weight:500}
 .thumbs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:26px 18px}
 .thumbs a{display:grid;gap:4px;text-decoration:none;align-content:start}
-.thumbs .pic{display:block;background:#F3F3F3;border-radius:8px;aspect-ratio:9/16;overflow:hidden}
+.thumbs .pic{display:block;background:#F3F3F3;border:1px solid var(--hair);border-radius:8px;aspect-ratio:9/16;overflow:hidden}
 .thumbs img{width:100%;height:100%;object-fit:cover;display:block}
 .thumbs .cap{font-weight:500;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.newcard{display:block;width:100%;padding:0;border:0;background:none;cursor:pointer;font:inherit;color:var(--ink)}
+.thumbs .pic.new{background:var(--paper);border:1px dashed var(--ink);display:grid;place-items:center;font:500 12px var(--mono);text-transform:uppercase;letter-spacing:.04em}
+.newcard:hover .pic.new{background:#F7F7F7}
+.thumbs .acts{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:8px;align-items:baseline}
+.dash.xs{font-size:10.5px;text-transform:none;padding-bottom:4px;background-size:100% 2px;background-image:repeating-linear-gradient(90deg,var(--ink) 0 6px,transparent 6px 9px)}
+.dash.xs:disabled{opacity:.5;cursor:default}
+.tag{font-style:normal;font-weight:700;font-size:9px;border:1px solid currentColor;padding:0 3px;letter-spacing:.04em;text-transform:uppercase;vertical-align:1px}
+/* the builder, over the profile */
+.builder{position:fixed;inset:0;z-index:20;background:var(--paper);display:grid;grid-template-rows:auto minmax(0,1fr)}
+.bbar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 24px;border-bottom:1px solid var(--ink);padding-top:max(12px, env(safe-area-inset-top,0px))}
+.bbar b{font-size:13px;text-transform:uppercase;letter-spacing:.06em}
+.builder iframe{display:block;width:100%;height:100%;border:0}
 .side{display:grid;gap:34px;min-width:0}
 .side .rule{border-bottom:1px solid var(--ink);padding-bottom:8px;margin-bottom:12px;display:block}
 .side .bio{white-space:pre-line;overflow-wrap:anywhere;margin:0}
@@ -137,7 +153,8 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
   .stats dt{font-size:9.5px}
   .tabs{margin-top:22px}
   .pgrid{margin-top:22px}
-  .feat .pic1 canvas{max-height:min(44vh,380px)}
+  .feat{--fk:.2}
+  .bbar{padding-inline:16px}
   .thumbs{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width:520px){
@@ -197,7 +214,6 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
           <div class="none" id="none" hidden>
             <div class="outlines" aria-hidden="true"><i style="height:150px"></i><i style="height:170px"></i><i style="height:140px"></i><i style="height:162px"></i></div>
             <p style="font-size:14px;margin:0">No shelves yet.</p>
-            <a class="dash sm" id="buildBtn" href="../#search" hidden>+ Build a shelf</a>
           </div>
         </div>
         <aside class="side">
@@ -218,6 +234,11 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
     </section>
   </div>
 </main>
+
+<div class="builder" id="builder" hidden role="dialog" aria-modal="true" aria-labelledby="bTitle">
+  <div class="bbar"><b id="bTitle">New shelf</b><button class="dash sm" id="bClose" type="button">Close</button></div>
+  <iframe id="bFrame" title="Shelf builder" allow="web-share; clipboard-write"></iframe>
+</div>
 
 <div class="sheet" id="signSheet" hidden role="dialog" aria-modal="true" aria-label="Sign in">
   <div class="sheetbox">
@@ -294,7 +315,7 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
 </footer>
 <div class="toast" id="toast" hidden></div>
 
-<script src="../shelf.js?v=20260930b"></script>
+<script src="../shelf.js?v=20260930c"></script>
 <script>
 (() => {
 /* A profile: /u/?username, and one of its shelves: /u/?username&shelf=<id>.
@@ -305,7 +326,7 @@ const W = 1080, H = 1920;
 const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
 const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
 const SB_LIB = {src:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
-const {makeSpine, loadImg, posterTitle} = Shelf;
+const {makeSpine, loadImg, posterTitle, isDark, shelfName} = Shelf;
 
 const params = new URLSearchParams(location.search);
 const NAME = [...params.keys()].find(k => /^[a-z0-9_]{3,20}$/.test(k) && !params.get(k)) || '';
@@ -396,7 +417,7 @@ let sheetFrom = null;
 function openSheet(id, focus){ sheetFrom = document.activeElement; $(id).hidden = false; const f = $(focus); if (f) f.focus(); }
 function closeSheets(){ document.querySelectorAll('.sheet').forEach(s => s.hidden = true); if (sheetFrom && sheetFrom.focus) sheetFrom.focus(); }
 document.querySelectorAll('.sheet').forEach(s => s.addEventListener('click', e => { if (e.target === s || e.target.closest('[data-close]')) closeSheets(); }));
-document.addEventListener('keydown', e => { if (e.key === 'Escape'){ closeSheets(); closeMenu(); } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape'){ if (!$('#builder').hidden) askClose(); else { closeSheets(); closeMenu(); } } });
 
 /* ---------- a saved spine back into a book (the same as rebuild() in index.html: keep the two in step) ---------- */
 const srcOf = ref => ref.startsWith('a:') ? `${WORKER}/archive/img?id=${ref.slice(2)}` : ref.startsWith('u:') ? `${WORKER}/u/blob?k=${encodeURIComponent(ref.slice(2))}`
@@ -413,6 +434,9 @@ async function bookOf(r){
 const books = async rows => (await Promise.all(rows.map(bookOf))).filter(Boolean);
 // a shelf's own wall (Pro), if it has one
 const wallOf = s => (s.pro || {}).wall_key ? timeout(loadImg(`${WORKER}/m/img?k=${encodeURIComponent(s.pro.wall_key)}`), 15000).catch(() => null) : Promise.resolve(null);
+// ...and its PNGs, as the builder keeps them ({img, x, y, w, rot, opacity}); one that won't load is left out
+const pngsOf = s => Promise.all(((s.pro || {}).wall_items || []).map(it => timeout(loadImg(`${WORKER}/m/img?k=${encodeURIComponent(it.key)}`), 15000)
+  .then(img => ({img, x: it.x, y: it.y, w: it.w, rot: +it.rot || 0, opacity: it.opacity == null ? 1 : +it.opacity})).catch(() => null))).then(a => a.filter(Boolean));
 const ITEM_COLS = 'position,item_id,kind,title,author,year,spine_src,cover_src,look';
 
 /* ---------- drawing: a shelf on its own, on the white page ---------- */
@@ -442,9 +466,20 @@ function bareShelf(list, s, wall){
     ox.globalAlpha = .17; ox.drawImage(t, 0, 0); ox.globalAlpha = 1;
   }
   ox.drawImage(c, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
+  out.style.setProperty('--w', out.width);   // drawn at one scale for every shelf (see .feat)
   out.setAttribute('role', 'img');
-  out.setAttribute('aria-label', (s.caption || 'A shelf') + ': ' + list.map(b => b.title).filter(Boolean).join(', '));
+  out.setAttribute('aria-label', shelfName(s.caption) + ': ' + list.map(b => b.title).filter(Boolean).join(', '));
   return out;
+}
+// the whole story, as Save story makes it in the builder: caption, background or wall, PNGs, the books
+function storyCanvas(list, s, wall, pngs){
+  const pro = s.pro || {}, st = {caption: s.caption || '', theme: wall ? 'wall' : s.background || 'paper', layout: s.layout || 'row', varied: s.varied !== false, wood: !!s.wood,
+    filter: s.filter || 'clean', intensity: s.intensity == null ? 70 : s.intensity, plank: !!pro.plank, shelfColour: pro.shelf_colour || '#FFFFFF'};
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  Shelf.renderStory(c.getContext('2d'), st.filter, false, list, st, false, {wall, wallDark: !!wall && isDark(wall), pngs});
+  c.setAttribute('role', 'img');
+  c.setAttribute('aria-label', shelfName(s.caption) + ': ' + list.map(b => b.title).filter(Boolean).join(', '));
+  return c;
 }
 // small spines in a row, the height given (as the builder's strip draws them)
 function smallSpines(list, height){
@@ -456,12 +491,26 @@ const fontsReady = document.fonts ? Promise.all(FACES.map(f => document.fonts.lo
 
 /* ---------- the page ---------- */
 const view = {profile:null, shelves:[], mine:false, drawn:[]};   // drawn: what to draw again once fonts or textures arrive
+// shelves: the public ones; on your own profile, your private ones too (marked, and never featured)
 const previewSrc = s => s.preview_key ? `${WORKER}/u/preview?k=${encodeURIComponent(s.preview_key)}&v=${encodeURIComponent(s.updated_at)}` : '';
 const countOf = s => ((s.shelf_items || [])[0] || {}).count || 0;
+const publicOnes = () => view.shelves.filter(s => s.is_public);
+const PROFILE_COLS = 'id,username,display_name,bio,avatar_key,pinned_shelf_id,is_private,created_at';
+const SHELF_COLS = 'id,caption,filter,intensity,background,wood,layout,varied,is_public,preview_key,pro,created_at,updated_at,shelf_items(count)';
+const fetchShelves = () => api(`shelves?select=${SHELF_COLS}&owner=eq.${view.profile.id}${view.mine ? '' : '&is_public=is.true'}&hidden=is.false&order=updated_at.desc&limit=200`);
+// a shelf's card; on your own profile it opens the builder, and has its links: open, make main shelf, private or public, delete
 function thumbs(list){
-  return list.map(s => { const cap = s.caption.trim() || 'Untitled shelf', src = previewSrc(s);
-    return `<li><a href="${esc(pageUrl(view.profile.username, s.id))}" aria-label="${esc(cap)}"><span class="pic">${src ? `<img src="${esc(src)}" alt="" loading="lazy" width="360" height="640">` : ''}</span>
-      <span class="cap">${esc(cap)}</span><span class="grey">${spines(countOf(s))} · ${esc(fmtDate(s.updated_at))}</span></a></li>`; }).join('');
+  const mine = view.mine, main = mine && featured();
+  const card = s => {
+    const name = shelfName(s.caption), src = previewSrc(s);
+    const acts = !mine ? '' : `<div class="acts"><button class="dash xs" type="button" data-act="open" data-id="${s.id}">open</button>` +
+      (main && main.id === s.id ? '<span class="tag">main</span>' : s.is_public ? `<button class="dash xs" type="button" data-act="main" data-id="${s.id}">make main shelf</button>` : '') +
+      `<button class="dash xs" type="button" data-act="privacy" data-id="${s.id}">${s.is_public ? 'private' : 'public'}</button>` +
+      `<button class="dash xs" type="button" data-act="delete" data-id="${s.id}">delete</button></div>`;
+    return `<li><a href="${esc(pageUrl(view.profile.username, s.id))}" data-shelf="${s.id}" aria-label="${esc(name)}"><span class="pic">${src ? `<img src="${esc(src)}" alt="" loading="lazy" width="360" height="640">` : ''}</span>
+      <span class="cap">${esc(name)}${mine && !s.is_public ? ' <span class="tag">private</span>' : ''}</span><span class="grey">${spines(countOf(s))} · ${esc(fmtDate(s.updated_at))}</span></a>${acts}</li>`;
+  };
+  return (mine ? '<li><button class="newcard" type="button" data-act="new"><span class="pic new">+ new shelf</span></button></li>' : '') + list.map(card).join('');
 }
 let redrawT = 0;
 function redrawAll(){ clearTimeout(redrawT); redrawT = setTimeout(() => { for (const f of view.drawn) f(); }, 60); }
@@ -475,18 +524,14 @@ async function load(){
     $('#state').innerHTML = 'Whose shelves? <a href="../">Build your own</a>.'; return;
   }
   let p;
-  try { p = (await api(`profiles?select=id,username,display_name,bio,avatar_key,pinned_shelf_id,is_private,created_at&username=eq.${NAME}`))[0]; }
+  try { p = (await api(`profiles?select=${PROFILE_COLS}&username=eq.${NAME}`))[0]; }
   catch (e){ $('#state').textContent = friendly(e); return; }
   if (!p){ $('#state').innerHTML = `No one here. Profiles can be private, or the name may have changed. <a href="../">Build your own shelf</a>.`; return; }
   view.profile = p; view.mine = !!(me.user && me.user.id === p.id);
   document.title = (p.display_name || '@' + p.username) + ' · Spinestack';
-  const [stats, shelves] = await Promise.all([
-    rpc('profile_stats', {uid: p.id}).catch(() => []),
-    api(`shelves?select=id,caption,filter,intensity,background,wood,layout,varied,preview_key,pro,created_at,updated_at,shelf_items(count)&owner=eq.${p.id}&is_public=is.true&hidden=is.false&order=updated_at.desc&limit=200`).catch(() => []),
-  ]);
+  const [stats, shelves] = await Promise.all([rpc('profile_stats', {uid: p.id}).catch(() => []), fetchShelves().catch(() => [])]);
   view.shelves = shelves;
-  const st = stats[0] || {};
-  $('#nShelves').textContent = st.shelf_count || 0; $('#nSpines').textContent = st.spine_count || 0;
+  paintStats(stats);
   paintHead();
   $('#state').hidden = true; $('#page').hidden = false;
   if (SHELF) return showShelf(SHELF);
@@ -497,6 +542,16 @@ async function load(){
   paintFeatured();
   paintMost();
 }
+// after a change on this page (a shelf saved in the builder, made main, private, deleted): everything again, in place
+async function refresh(){
+  const [rows, stats, shelves] = await Promise.all([api(`profiles?select=${PROFILE_COLS}&id=eq.${view.profile.id}`), rpc('profile_stats', {uid: view.profile.id}).catch(() => []), fetchShelves()]);
+  if (rows && rows[0]) view.profile = rows[0];
+  view.shelves = shelves; view.drawn = [];
+  paintStats(stats); paintHead();
+  if (SHELF) return showShelf(SHELF);
+  paintLists(); paintFeatured(); paintMost();
+}
+function paintStats(stats){ const st = stats[0] || {}; $('#nShelves').textContent = st.shelf_count || 0; $('#nSpines').textContent = st.spine_count || 0; }
 function paintHead(){
   const p = view.profile, name = p.display_name.trim(), mine = view.mine;
   $('#name').textContent = name || '@' + p.username;
@@ -516,21 +571,24 @@ function paintHead(){
   $('#since').textContent = 'on shelfstackd since ' + new Date(p.created_at).toLocaleDateString('en-US', {month:'short', year:'numeric'});
 }
 function paintLists(){
-  const list = view.shelves, none = !list.length;
-  $('#recent').innerHTML = thumbs(list.slice(0, 4));
-  $('#recentWrap').hidden = none;
-  $('#all').innerHTML = thumbs(list); $('#allNone').hidden = !none;
-  $('#none').hidden = !none; $('#buildBtn').hidden = !view.mine;
+  const list = view.shelves, none = !list.length, mine = view.mine;
+  $('#recent').innerHTML = thumbs(list.slice(0, mine ? 3 : 4));   // on your own profile, + new shelf comes first
+  $('#recentWrap').hidden = none && !mine;
+  $('#all').innerHTML = thumbs(list); $('#allNone').hidden = !none || mine;
+  $('#none').hidden = !none || mine;
 }
-function featured(){ const p = view.profile; return view.shelves.find(s => s.id === p.pinned_shelf_id) || view.shelves[0] || null; }
+// the main shelf: the one picked, or else the newest public one
+function featured(){ const p = view.profile, pub = publicOnes(); return pub.find(s => s.id === p.pinned_shelf_id) || pub[0] || null; }
+let featRun = 0;
 async function paintFeatured(){
-  const s = featured(); $('#featWrap').hidden = !s; if (!s) return;
+  const s = featured(), run = ++featRun; $('#featWrap').hidden = !s; if (!s) return;
   $('#featLink').href = pageUrl(view.profile.username, s.id);
-  $('#featCap').textContent = s.caption.trim() || 'Untitled shelf';
+  $('#featCap').textContent = shelfName(s.caption);
   $('#featMeta').textContent = `${spines(countOf(s))} · ${fmtDate(s.updated_at)}`;
   let list;
   let wall = null;
   try { [list, wall] = await Promise.all([books(await api(`shelf_items?select=${ITEM_COLS}&shelf_id=eq.${s.id}&order=position`)), wallOf(s)]); } catch { list = []; }
+  if (run !== featRun) return;   // another shelf was made main meanwhile
   const draw = () => { const c = list.length && bareShelf(list, s, wall); $('#featLink').replaceChildren(...(c ? [c] : [])); };
   draw(); view.drawn.push(draw);
 }
@@ -543,24 +601,84 @@ async function paintMost(){
   const draw = () => $('#most').replaceChildren(...smallSpines(list, 130));
   draw(); view.drawn.push(draw);
 }
+// one shelf on its own: the story, bigger (as its card shows it)
 async function showShelf(id){
   $('#viewProfile').hidden = true; $('#viewShelf').hidden = false;
   const p = view.profile, s = view.shelves.find(x => x.id === id);
   $('#backLink').href = pageUrl(p.username) + '#shelves';
   $('#backLink').textContent = '← @' + p.username;
-  if (!s){ $('#oneCap').textContent = 'This shelf is private, or it was deleted.'; return; }
-  $('#oneCap').textContent = s.caption.trim() || 'Untitled shelf';
+  if (!s){ $('#oneCap').textContent = 'This shelf is private, or it was deleted.'; $('#oneMeta').textContent = ''; $('#oneShelf').replaceChildren(); $('#openBuilder').hidden = $('#reportShelf').hidden = true; return; }
+  $('#oneCap').textContent = shelfName(s.caption);
   $('#oneMeta').textContent = `${spines(countOf(s))} · ${fmtDate(s.updated_at)}`;
-  $('#openBuilder').hidden = !view.mine; $('#openBuilder').href = '../?open=' + s.id;
+  $('#openBuilder').hidden = !view.mine; $('#openBuilder').dataset.id = s.id;
   $('#reportShelf').hidden = view.mine; $('#reportShelf').dataset.id = s.id;
-  document.title = (s.caption.trim() || 'A shelf') + ' · @' + p.username + ' · Spinestack';
+  document.title = shelfName(s.caption) + ' · @' + p.username + ' · Spinestack';
   await fontsReady;
-  let list;
-  let wall = null;
-  try { [list, wall] = await Promise.all([books(await api(`shelf_items?select=${ITEM_COLS}&shelf_id=eq.${s.id}&order=position`)), wallOf(s)]); } catch { list = []; }
-  const draw = () => { const c = list.length && bareShelf(list, s, wall); $('#oneShelf').replaceChildren(...(c ? [c] : [])); };
+  let list = [], wall = null, pngs = [];
+  try { [list, wall, pngs] = await Promise.all([books(await api(`shelf_items?select=${ITEM_COLS}&shelf_id=eq.${s.id}&order=position`)), wallOf(s), pngsOf(s)]); } catch { list = []; }
+  const draw = () => { const c = list.length && storyCanvas(list, s, wall, pngs); $('#oneShelf').replaceChildren(...(c ? [c] : [])); };
   draw(); view.drawn.push(draw);
 }
+
+/* ---------- your own shelves, from here: the builder over this page, and each card's links ---------- */
+// the same builder as the home page (index.html, in its embed mode), in a frame over the profile; it says when it saved
+function openBuilder(id){
+  if (!view.mine) return;
+  const b = $('#bClose'); delete b.dataset.sure; b.textContent = 'Close';
+  $('#bTitle').textContent = id ? 'Edit shelf' : 'New shelf';
+  $('#bFrame').src = '../?embed' + (id ? '&open=' + encodeURIComponent(id) : '&new');
+  $('#builder').hidden = false; document.body.style.overflow = 'hidden'; b.focus();
+}
+function closeBuilder(){ $('#builder').hidden = true; $('#bFrame').src = 'about:blank'; document.body.style.overflow = ''; }
+function askClose(){
+  const b = $('#bClose'); let dirty = false;
+  try { const w = $('#bFrame').contentWindow; dirty = !!(w && w.spinestackDirty && w.spinestackDirty()); } catch {}
+  if (dirty && !b.dataset.sure){ b.dataset.sure = '1'; b.textContent = 'Close without saving?'; setTimeout(() => { if (b.isConnected && b.dataset.sure){ delete b.dataset.sure; b.textContent = 'Close'; } }, 4000); return; }
+  closeBuilder();
+}
+$('#bClose').addEventListener('click', askClose);
+addEventListener('message', e => {
+  if (e.origin !== location.origin || !e.data || e.data.spinestack !== 'saved' || $('#builder').hidden) return;
+  closeBuilder(); toast('Shelf saved.');
+  refresh().catch(err => toast(friendly(err)));
+});
+async function cardAction(b){
+  const act = b.dataset.act, id = b.dataset.id, s = view.shelves.find(x => x.id === id);
+  if (act === 'new') return openBuilder(null);
+  if (!s) return;
+  if (act === 'open') return openBuilder(id);
+  if (act === 'delete' && !b.dataset.sure){ b.dataset.sure = '1'; b.textContent = 'sure? delete'; setTimeout(() => { if (b.isConnected){ delete b.dataset.sure; b.textContent = 'delete'; } }, 4000); return; }
+  b.disabled = true;
+  try {
+    if (act === 'main'){
+      const rows = await api(`profiles?id=eq.${view.profile.id}&select=${PROFILE_COLS}`, {method:'PATCH', headers:{Prefer:'return=representation'}, body: JSON.stringify({pinned_shelf_id: id})});
+      if (!rows || !rows[0]) throw new Error('Couldn’t change it. Sign in again and try once more.');
+      view.profile = rows[0]; view.drawn = []; paintLists(); paintFeatured(); toast('That’s your main shelf now.');
+    } else if (act === 'privacy'){
+      const rows = await api(`shelves?id=eq.${id}&select=id`, {method:'PATCH', headers:{Prefer:'return=representation'}, body: JSON.stringify({is_public: !s.is_public})});
+      if (!rows || !rows[0]) throw new Error('Couldn’t change it. Sign in again and try once more.');
+      await refresh(); toast(s.is_public ? 'Only you can see this shelf now.' : 'This shelf shows on your profile again.');
+    } else if (act === 'delete'){
+      const rows = await api(`shelves?id=eq.${id}&select=id`, {method:'DELETE', headers:{Prefer:'return=representation'}});
+      if (!rows || !rows[0]) throw new Error('Couldn’t delete it. Sign in again and try once more.');
+      // its picture for lists, and any wall or PNG no other shelf of yours uses (the Worker checks), go too
+      workerPost('/u/forget?shelf=' + id).catch(() => {});
+      const pro = s.pro || {};
+      for (const k of [pro.wall_key, ...(pro.wall_items || []).map(p => p.key)].filter(Boolean)) workerPost('/m/delete?k=' + encodeURIComponent(k)).catch(() => {});
+      await refresh(); toast('Shelf deleted.');
+    }
+  } catch (err){ toast(friendly(err)); if (b.isConnected) b.disabled = false; }
+}
+// cards: a link's own button, or (yours) the card itself, which opens the builder instead of the shelf's page
+function onCards(e){
+  const act = e.target.closest('[data-act]'), link = e.target.closest('a[data-shelf]');
+  if (act){ e.preventDefault(); cardAction(act); return; }
+  if (link && view.mine && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.button){ e.preventDefault(); openBuilder(link.dataset.shelf); }
+}
+$('#recent').addEventListener('click', onCards);
+$('#all').addEventListener('click', onCards);
+$('#featLink').addEventListener('click', e => { const s = featured(); if (view.mine && s && !e.ctrlKey && !e.metaKey && !e.shiftKey){ e.preventDefault(); openBuilder(s.id); } });
+$('#openBuilder').addEventListener('click', e => { e.preventDefault(); openBuilder(e.currentTarget.dataset.id); });
 
 /* tabs: Profile / Shelves (#shelves keeps the second one on reload) */
 function paintTabs(){
@@ -597,7 +715,7 @@ function openReport(type, id){
   reporting.type = type; reporting.id = id;
   const p = view.profile, s = view.shelves.find(x => x.id === id);
   $('#reportTitle').textContent = type === 'profile' ? 'Report this profile' : 'Report this shelf';
-  $('#reportWhat').textContent = type === 'profile' ? '@' + p.username : `“${(s && s.caption.trim()) || 'Untitled shelf'}” by @${p.username}`;
+  $('#reportWhat').textContent = type === 'profile' ? '@' + p.username : `“${shelfName(s && s.caption)}” by @${p.username}`;
   $('#reportReason').value = ''; $('#reportNote').textContent = ''; $('#reportSend').disabled = false;
   openSheet('#reportSheet', '#reportReason');
 }
@@ -627,7 +745,7 @@ function openEdit(){
   const p = view.profile; if (!view.mine) return;
   edit.photo = undefined; if (edit.preview) URL.revokeObjectURL(edit.preview); edit.preview = null;
   $('#nameIn').value = p.display_name; $('#bioIn').value = p.bio; $('#privIn').checked = p.is_private; $('#unameRO').textContent = '@' + p.username;
-  $('#pinIn').innerHTML = `<option value="">Your most recent shelf</option>` + view.shelves.map(s => `<option value="${s.id}"${s.id === p.pinned_shelf_id ? ' selected' : ''}>${esc(s.caption.trim() || 'Untitled shelf')} · ${esc(fmtDate(s.updated_at))}</option>`).join('');
+  $('#pinIn').innerHTML = `<option value="">Your most recent shelf</option>` + publicOnes().map(s => `<option value="${s.id}"${s.id === p.pinned_shelf_id ? ' selected' : ''}>${esc(shelfName(s.caption))} · ${esc(fmtDate(s.updated_at))}</option>`).join('');
   $('#editNote').textContent = ''; bioCount(); paintEditAva();
   openSheet('#editSheet', '#nameIn');
 }
@@ -672,7 +790,7 @@ $('#saveBtn').addEventListener('click', async () => {
     if (old && old !== view.profile.avatar_key) workerPost('/m/delete?k=' + encodeURIComponent(old)).catch(() => {});   // the old photo goes for good
     closeSheets(); toast('Profile saved.');
     paintHead();
-    if (patch.pinned_shelf_id !== (p.pinned_shelf_id || null)){ view.drawn = []; paintFeatured(); paintMost(); }
+    if (patch.pinned_shelf_id !== (p.pinned_shelf_id || null)){ view.drawn = []; paintLists(); paintFeatured(); paintMost(); }
   } catch (err){
     if (added) workerPost('/m/delete?k=' + encodeURIComponent(added)).catch(() => {});   // the new photo isn't used after all
     note.textContent = friendly(err);

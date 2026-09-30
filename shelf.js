@@ -1017,5 +1017,17 @@ function renderStory(x, f, fast, books, settings, bare = false, art = {}){
   return {captionBottom, booksTop};
 }
 
-window.Shelf = {FONTS, STYLES, THEMES, hex, rgb, lum, contrast, alpha, sat, dist, crop, posterTitle, loadImg, rr, fitFont, coverCrop, shade, isReal, isCase, isCover, asSpine, calmRect, topBlock, makeSpine, TEX, texture, hashStr, rngOf, blank, floatingShelf, tint, SCRATCH, scratch, texOver, texGrey, GRAIN, grainTile, grade, copyOf, outline, fadedSpine, glossySpine, GRAIN2, grainTile2, grainSpine, FLAKE, wornSpine, surname, pixels, rowDetail, freeBand, GLO, HAND, arcText, stickerPaper, beKindSticker, genreSticker, priceSticker, rewindStrip, GENRES, rentalSpine, libLabel, libFoot, libraryLines, jacketGlare, librarySpine, PENCIL, pencilGrain, secondhandSpine, hsl, hslCss, FOIL, WEAVE, weaveTile, MOTIFS, clothSpine, flashSpine, flashVignette, NOISE, noiseAt, filmSpine, RISO_PAPER, risoSpine, xeroxSpine, nightSpine, bookLight, dateStamp, woodShelf, wearLevels, WORN, spineFor, wrapText, sizes, renderStory, onTextureLoaded: fn => { onTexture = fn; }};
+// is a picture dark (so the caption and shadows on it go light)?
+function isDark(img){
+  const t = document.createElement('canvas'); t.width = 27; t.height = 48;
+  const x = t.getContext('2d', {willReadFrequently:true}); x.drawImage(img, 0, 0, 27, 48);
+  const d = x.getImageData(0, 0, 27, 48).data; let sum = 0;
+  for (let i = 0; i < d.length; i += 4) sum += .2126*d[i] + .7152*d[i+1] + .0722*d[i+2];
+  return sum/(d.length/4) < 115;
+}
+// a shelf's name is its caption; one still on the builder's first caption hasn't been named yet
+const DEFAULT_CAPTION = 'my next reads.';
+const shelfName = caption => { const c = String(caption || '').trim(); return !c || c === DEFAULT_CAPTION ? 'untitled shelf' : c; };
+
+window.Shelf = {FONTS, STYLES, THEMES, isDark, DEFAULT_CAPTION, shelfName, hex, rgb, lum, contrast, alpha, sat, dist, crop, posterTitle, loadImg, rr, fitFont, coverCrop, shade, isReal, isCase, isCover, asSpine, calmRect, topBlock, makeSpine, TEX, texture, hashStr, rngOf, blank, floatingShelf, tint, SCRATCH, scratch, texOver, texGrey, GRAIN, grainTile, grade, copyOf, outline, fadedSpine, glossySpine, GRAIN2, grainTile2, grainSpine, FLAKE, wornSpine, surname, pixels, rowDetail, freeBand, GLO, HAND, arcText, stickerPaper, beKindSticker, genreSticker, priceSticker, rewindStrip, GENRES, rentalSpine, libLabel, libFoot, libraryLines, jacketGlare, librarySpine, PENCIL, pencilGrain, secondhandSpine, hsl, hslCss, FOIL, WEAVE, weaveTile, MOTIFS, clothSpine, flashSpine, flashVignette, NOISE, noiseAt, filmSpine, RISO_PAPER, risoSpine, xeroxSpine, nightSpine, bookLight, dateStamp, woodShelf, wearLevels, WORN, spineFor, wrapText, sizes, renderStory, onTextureLoaded: fn => { onTexture = fn; }};
 })();

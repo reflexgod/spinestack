@@ -21,6 +21,8 @@
   window.SPINESTACK_SUPABASE_KEY = "sb_publishable_cZeUDJXk-nCbSJ4VZWn_GQ_6xNFyBo2";
   /* Sign-in by email link: off until the site has its own domain to send email from. */
   window.SPINESTACK_EMAIL_LOGIN = false;
+  /* Inside a profile page (u/), which opens this builder over itself: no site header, footer or My shelves. */
+  if (window.parent !== window && /[?&]embed(&|=|$)/.test(location.search)) document.documentElement.classList.add('embed');
 </script>
 </head>
 <body>
@@ -183,9 +185,15 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
 .btn.ghost:hover{background:#F2F2F2}
 .btn:disabled{opacity:.5;cursor:default}
 .savewrap{display:grid;gap:8px;justify-items:start;margin-top:4px}
+.namebox{display:grid;gap:6px;justify-self:stretch;margin:0}
+.namerow{display:flex;gap:8px}
+.namerow .btn{padding:0 18px;flex:none}
+/* the builder inside a profile page */
+.embed .top,.embed footer,.embed .home,.embed #mine{display:none!important}
+.embed main{padding-bottom:48px}
 .mine{list-style:none;margin:10px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:26px 18px}
 .mine .card{display:grid;gap:4px;align-content:start}
-.mine .open{padding:0;border:0;background:#F3F3F3;border-radius:8px;cursor:pointer;aspect-ratio:9/16;overflow:hidden;outline-offset:3px}
+.mine .open{padding:0;border:1px solid var(--hair);background:#F3F3F3;border-radius:8px;cursor:pointer;aspect-ratio:9/16;overflow:hidden;outline-offset:3px}
 .mine .open img{width:100%;height:100%;object-fit:cover;display:block}
 .mine .card.on .open{outline:2px solid var(--ink)}
 .mine .cap{font-weight:500;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -320,6 +328,11 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
         <div class="savewrap" id="saveWrap" hidden>
           <button class="btn full ghost" id="saveShelf" type="button">Save shelf</button>
           <button class="dash sm" id="saveNew" type="button" hidden>Save as a new shelf</button>
+          <form class="namebox" id="nameBox" hidden>
+            <label class="lbl" for="shelfName">Name this shelf</label>
+            <div class="namerow"><input type="text" id="shelfName" maxlength="60" autocomplete="off" spellcheck="false"><button class="btn" type="submit">Save</button></div>
+            <p class="note">It's also the caption on the story. <button class="dash sm" id="nameCancel" type="button">Cancel</button></p>
+          </form>
           <p class="note" id="saveNote"></p>
         </div>
       </div>
@@ -394,14 +407,17 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
 </div>
 <div class="toast" id="toast" hidden></div>
 
-<script src="shelf.js?v=20260930b"></script>
+<script src="shelf.js?v=20260930c"></script>
 <script>
 (() => {
 const $ = s => document.querySelector(s);
 const story = $('#story'), sctx = story.getContext('2d');
 const W = 1080, H = 1920;
 // the spines and the story are drawn by shelf.js (shared with the profile page)
-const {FONTS, STYLES, hex, lum, contrast, sat, dist, crop, posterTitle, loadImg, isReal, isCase, makeSpine, TEX, texture} = Shelf;
+const {FONTS, STYLES, hex, lum, contrast, sat, dist, crop, posterTitle, loadImg, isReal, isCase, makeSpine, TEX, texture, isDark, shelfName} = Shelf;
+// the builder inside a profile page (u/): it opens a saved shelf (?embed&open=<id>) or an empty one (?embed&new),
+// and tells the profile when it's saved
+const EMBED = document.documentElement.classList.contains('embed');
 let books = [], isSample = true, uid = 0, server = false;
 const settings = {caption:'my next reads.', theme:'paper', layout:'row', varied:true, wood:false, plank:false, shelfColour:'#FFFFFF'};
 
@@ -1078,13 +1094,6 @@ async function under2mb(c, alpha){
   throw new Error('That picture couldn’t be made small enough.');
 }
 // dark pictures get light lettering (caption, watermark) and deeper shadows, as the dark backgrounds do
-function isDark(img){
-  const t = document.createElement('canvas'); t.width = 27; t.height = 48;
-  const x = t.getContext('2d', {willReadFrequently:true}); x.drawImage(img, 0, 0, 27, 48);
-  const d = x.getImageData(0, 0, 27, 48).data; let sum = 0;
-  for (let i = 0; i < d.length; i += 4) sum += .2126*d[i] + .7152*d[i+1] + .0722*d[i+2];
-  return sum/(d.length/4) < 115;
-}
 // the wall: cover-fitted to the 1080 x 1920 story, the middle kept
 async function makeWall(file){
   const im = await readPicture(file), w = im.naturalWidth, h = im.naturalHeight, k = Math.max(W/w, H/h);
@@ -1217,6 +1226,10 @@ addEventListener('keydown', e => {
   if (e.key === 'Delete' || e.key === 'Backspace'){ e.preventDefault(); dropPng(); }
   else if (e.key === 'Escape'){ sel = -1; paintPngs(); }
 });
+// a click anywhere off the preview lets go of the picked PNG too (the controls, the list, the rest of the page);
+// on the preview, the handler above picks what's under it. Its Opacity slider is one of its tools.
+// On click, not pointerdown: hiding the slider moves what's below it, and a button that moves mid-press never gets its click.
+document.addEventListener('click', e => { if (sel >= 0 && !e.target.closest('#stage, #pngOpWrap')){ sel = -1; paintPngs(); } });
 
 /* ---------- export: Claude download, phone share sheet, or plain download ---------- */
 let downloads = null;
@@ -1258,7 +1271,8 @@ function fillRecent(items){
   el.hidden = false; el.querySelector('span').textContent = items.slice(0, 8).join(', ');
 }
 async function boot(){
-  books = samples(); renderList();
+  if (EMBED){ books = []; isSample = false; } else books = samples();   // on a profile, a new shelf starts empty
+  renderList();
   try {
     const ctl = new AbortController(); setTimeout(() => ctl.abort(), 2500);
     if (location.protocol === 'file:') throw 0;
@@ -1309,9 +1323,9 @@ function friendly(e){
 async function startAccounts(){
   if (!accounts) return;
   $('#acctBtn').hidden = false; $('#saveWrap').hidden = false; paintAcct();
-  const draft = takeDraft();
+  const draft = EMBED ? null : takeDraft();           // a draft waits for the builder page itself, not a profile's
   if (draft) await restoreDraft(draft);
-  if (!hasSession() && !returning()) return;          // signed out: nothing more loads
+  if (!hasSession() && !returning()){ embedReady(); return; }          // signed out: nothing more loads
   try {
     const sb = await supa(), {data:{session}} = await sb.auth.getSession();   // finishes a Google sign-in coming back with ?code=
     const err = new URLSearchParams(location.search).get('error_description');
@@ -1320,9 +1334,18 @@ async function startAccounts(){
     await setUser(session && session.user);
     watchAuth();
     const openId = new URLSearchParams(location.search).get('open');
-    if (openId && !draft){ history.replaceState(null, '', here() + location.hash); if (acct.shelves.some(s => s.id === openId)) await openShelf(openId); }
+    if (openId && !draft){
+      if (!EMBED) history.replaceState(null, '', here() + location.hash);
+      if (acct.shelves.some(s => s.id === openId)) await openShelf(openId); else if (EMBED) toast('Couldn’t open that shelf.');
+    }
   } catch (e){ toast(friendly(e)); }
+  embedReady();
 }
+// on a profile: what's on the shelf now, so closing the builder can ask first when there are changes
+const snapshot = () => JSON.stringify([books.map(b => [b.id, b.title, b.author, b.kind, b.style, b.font, b.bg, b.fg]), settings,
+  media.wall && (media.wall.key || media.wall.name), media.pngs.map(p => [p.key, p.x, p.y, p.w, p.rot, p.opacity])]);
+let clean = '';
+function embedReady(){ if (!EMBED) return; clean = snapshot(); window.spinestackDirty = () => snapshot() !== clean; }
 function watchAuth(){
   if (acct.watching) return; acct.watching = true;
   // (no Supabase calls inside this callback: they'd wait on the lock it holds)
@@ -1484,15 +1507,17 @@ async function previewBlob(){
   throw new Error('Couldn’t make the shelf’s picture. Try again.');
 }
 let saving = false;
-async function saveShelf(asNew){
+async function saveShelf(asNew, named){
   if (saving) return;
   if (!books.length || isSample){ toast('Add your own titles first.'); return; }
   if (!acct.user){ acct.pendingSave = true; openSheet('signin'); return; }
   if (!acct.profile){ acct.pendingSave = true; openSheet('name'); return; }
   if (books.length > spineMax()){ proToast('Free shelves hold 6 spines. Pro holds 20.'); return; }
   if (usesPro() && !isPro()){ proToast('Your own wall, PNGs and the floating shelf come with Pro.'); return; }
+  const updating = !asNew && !!acct.shelfId;
+  if (!updating && !named){ askName(asNew); return; }   // a new shelf gets its name first
   saving = true; $('#saveShelf').disabled = true; $('#saveNote').textContent = 'Saving…';
-  const updating = !asNew && !!acct.shelfId, id = updating ? acct.shelfId : crypto.randomUUID(), was = acct.shelves.find(s => s.id === id);
+  const id = updating ? acct.shelfId : crypto.randomUUID(), was = acct.shelves.find(s => s.id === id);
   try {
     const items = await Promise.all(books.map(b => itemFor(b, putImage)));
     await uploadArt();
@@ -1503,10 +1528,26 @@ async function saveShelf(asNew){
     if (error) throw error;
     forgetArt(keysOf(was && was.pro).filter(k => !keysOf(pro).includes(k)));
     acct.shelfId = id; toast(updating ? 'Shelf updated.' : 'Saved to My shelves.');
+    if (EMBED){ clean = snapshot(); parent.postMessage({spinestack: 'saved', id}, location.origin); }   // the profile closes this and shows it
     await loadMine();
   } catch (e){ toast(friendly(e)); }
   finally { saving = false; $('#saveShelf').disabled = false; paintAcct(); }
 }
+// a new shelf's name is its caption: asked for in a small field, filled in with the caption it has
+let naming = false;
+function askName(asNew){
+  naming = asNew; $('#nameBox').hidden = false; $('#saveShelf').hidden = true; $('#saveNew').hidden = true;
+  const f = $('#shelfName'); f.value = settings.caption; f.focus(); f.select();
+}
+function doneNaming(){ $('#nameBox').hidden = true; $('#saveShelf').hidden = false; paintAcct(); }
+$('#nameBox').addEventListener('submit', e => {
+  e.preventDefault();
+  const v = $('#shelfName').value.replace(/\s+/g, ' ').trim().slice(0, 60);
+  settings.caption = v; $('#caption').value = v; redraw();
+  doneNaming(); saveShelf(naming, true);
+});
+$('#nameCancel').addEventListener('click', doneNaming);
+$('#shelfName').addEventListener('keydown', e => { if (e.key === 'Escape') doneNaming(); });
 // the wall and PNGs this shelf needs, uploaded once (a picture keeps its key while it stays on the shelf)
 async function uploadArt(){
   const mine = k => k && k.startsWith(acct.user.id + '/');
@@ -1539,7 +1580,7 @@ function paintMine(){
   $('#mineCount').textContent = list.length ? `(${list.length})` : '';
   $('#mineEmpty').hidden = !!list.length || !acct.profile;
   $('#mineList').innerHTML = list.map(s => {
-    const n = ((s.shelf_items || [])[0] || {}).count || 0, cap = s.caption.trim() || 'Untitled shelf';
+    const n = ((s.shelf_items || [])[0] || {}).count || 0, cap = shelfName(s.caption);
     const src = s.preview_key ? `${WORKER}/u/preview?k=${encodeURIComponent(s.preview_key)}&v=${encodeURIComponent(s.updated_at)}` : '';
     return `<li class="card${s.id === acct.shelfId ? ' on' : ''}"><button class="open" type="button" data-open="${s.id}" aria-label="Open ${esc(cap)}">${src ? `<img src="${esc(src)}" alt="" loading="lazy" width="360" height="640">` : ''}</button>
       <div class="cap">${esc(cap)}</div><div class="grey">${n} ${n === 1 ? 'spine' : 'spines'} · ${esc(fmtDate(s.updated_at))}</div>
