@@ -5,16 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="Type a film or a book, get its real spine, save your shelf as an Instagram story.">
 <script>
-  /* Address of your Spinestack backend, e.g. "https://api.yourdomain.com".
-     Leave empty when the backend serves this page itself (localhost:8000).
-     With no backend, search is off but uploads still work. */
+  /* Only for the old self-hosted backend (backend/, not used now): its address, e.g. "http://localhost:8000" when it
+     serves this page. Empty: the page uses the Worker below and doesn't look for a backend (with no Worker either, it
+     looks on its own site, as a backend serving this page would answer there). */
   window.SPINESTACK_API = "";
   /* Address of the Spinestack Cloudflare Worker (worker/ folder), e.g. "https://spinestack.NAME.workers.dev".
      It looks up titles, finds DVD and book scans, and passes images through with CORS. */
   window.SPINESTACK_WORKER = "https://api.shelfstackd.com";
-  /* The Worker's old address, for a visit when the one above doesn't answer (while the move to shelfstackd.com
-     settles; to be removed once api.shelfstackd.com is confirmed). */
-  window.SPINESTACK_WORKER_FALLBACK = "https://spinestack.spinestack-worker.workers.dev";
   /* Only for running without the Worker: a TMDB v4 "API Read Access Token" or v3 key for film search.
      Anyone who reads this page's source can see it, so keep it empty while the Worker is set. */
   window.SPINESTACK_TMDB = "";
@@ -765,15 +762,7 @@ function shelve(b){
 /* ---------- search: the Spinestack server, or TMDB + Open Library straight from the browser ---------- */
 const sstatus = (msg, err) => { const s = $('#sstatus'); s.classList.toggle('err', !!err); s.innerHTML = msg; };
 const TMDB = String(window.SPINESTACK_TMDB || '').trim();
-let WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
-// the Worker at its new address; for this visit, at its old one if the new one doesn't answer /health in 2.5 s
-const workerReady = (async () => {
-  const alt = String(window.SPINESTACK_WORKER_FALLBACK || '').trim().replace(/\/+$/, '');
-  if (!WORKER || !alt || alt === WORKER) return;
-  const c = new AbortController(), t = setTimeout(() => c.abort(), 2500);
-  try { if ((await fetch(WORKER + '/health', {signal: c.signal})).ok) return; } catch {} finally { clearTimeout(t); }
-  WORKER = alt;
-})();
+const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
 const direct = !window.claude;   // the Claude preview can't reach other sites
 const viaWorker = u => WORKER ? WORKER + '/img?url=' + encodeURIComponent(u) : u;
 const timeout = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('timeout')), ms))]);
@@ -804,7 +793,6 @@ let matches = [];
 $('#sform').addEventListener('submit', async e => {
   e.preventDefault();
   const q = $('#q').value.trim(); if (!q) return;
-  await workerReady;   // a search in the first moments after the page opens waits to know which address answers
   const want = $('#qkind').value, noFilms = !server && !WORKER && !TMDB && want !== 'book';
   if (!server && !direct){ sstatus('Search runs on the shelfstackd server, which this preview doesn’t have. Drop a scan below instead.', true); return; }
   if (noFilms && want === 'movie'){ sstatus('Film search needs a TMDB key. Books work without one.', true); $('#matches').hidden = true; return; }
@@ -1285,7 +1273,9 @@ function fillRecent(items){
 async function boot(){
   if (EMBED){ books = []; isSample = false; } else books = samples();   // on a profile, a new shelf starts empty
   renderList();
-  try {
+  // the old self-hosted backend: only looked for when its address is set, or when there's no Worker to use
+  // (asking for /api/health on a plain site, like shelfstackd.com, only gets a 404)
+  if (API || !WORKER) try {
     const ctl = new AbortController(); setTimeout(() => ctl.abort(), 2500);
     if (location.protocol === 'file:') throw 0;
     const h = await fetch(API + '/api/health', {signal:ctl.signal}).then(r => r.ok ? r.json() : null);
@@ -1717,7 +1707,7 @@ async function restoreDraft(d){
 }
 
 boot();
-workerReady.then(startAccounts);   // accounts load shelves and pictures from the Worker
+startAccounts();
 const faces = ['600 40px Oswald','400 40px Oswald','600 40px "Cormorant Garamond"','italic 500 40px "Cormorant Garamond"','40px "Archivo Black"','40px "Gochi Hand"','500 40px "IBM Plex Mono"','400 40px "IBM Plex Mono"','600 40px "IBM Plex Sans"','500 40px "Geist Mono"','400 40px "Geist Mono"'];
 if (document.fonts){ Promise.all(faces.map(f => document.fonts.load(f).catch(() => {}))).then(redraw); document.fonts.ready.then(redraw); }
 })();

@@ -2,7 +2,7 @@ name = "spinestack"
 main = "src/index.js"
 compatibility_date = "2026-09-01"
 # The Worker's address on the site's domain: Cloudflare makes the DNS record and the certificate when this deploys.
-# The workers.dev address stays on while the site's fallback still uses it.
+# The workers.dev address still answers too, though the site no longer uses it (workers_dev = false turns it off).
 routes = [{ pattern = "api.shelfstackd.com", custom_domain = true }]
 workers_dev = true
 

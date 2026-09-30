@@ -9,9 +9,6 @@
   /* Same Worker as index.html. The admin token is never stored here: you type it each time,
      and it stays in this tab's sessionStorage only. */
   window.SPINESTACK_WORKER = "https://api.shelfstackd.com";
-  /* The Worker's old address, for a visit when the one above doesn't answer (while the move to shelfstackd.com
-     settles; to be removed once api.shelfstackd.com is confirmed). */
-  window.SPINESTACK_WORKER_FALLBACK = "https://spinestack.spinestack-worker.workers.dev";
   /* Reports are read from Supabase by an admin signed in with Google (public keys, as in index.html; the
      admins table in the database decides who may read them). */
   window.SPINESTACK_SUPABASE_URL = "https://fiukspnovrlzlcdekcnb.supabase.co";
@@ -85,23 +82,13 @@ li img{height:220px;width:auto;display:block;background:#F2F2F2}
 </main>
 <script>
 (() => {
-const $ = s => document.querySelector(s);
-let W = String(window.SPINESTACK_WORKER || '').replace(/\/+$/, '');
-// the Worker at its new address; for this visit, at its old one if the new one doesn't answer /health in 2.5 s
-const workerReady = (async () => {
-  const alt = String(window.SPINESTACK_WORKER_FALLBACK || '').trim().replace(/\/+$/, '');
-  if (!W || !alt || alt === W) return;
-  const c = new AbortController(), t = setTimeout(() => c.abort(), 2500);
-  try { if ((await fetch(W + '/health', {signal: c.signal})).ok) return; } catch {} finally { clearTimeout(t); }
-  W = alt;
-})();
+const $ = s => document.querySelector(s), W = String(window.SPINESTACK_WORKER || '').replace(/\/+$/, '');
 const KEY = 'spinestack-admin';
 let token = '', view = 'pending', urls = [];
 try { token = sessionStorage.getItem(KEY) || ''; } catch {}
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const status = (msg, err) => { const s = $('#status'); s.textContent = msg; s.classList.toggle('err', !!err); };
 const call = async (path, method = 'GET') => {
-  await workerReady;
   const used = token, r = await fetch(W + path, {method, headers:{Authorization:'Bearer ' + used}}), j = r.headers.get('Content-Type')?.includes('json') ? await r.json() : null;
   // only forget the token this request used: a slow answer to an old, wrong token mustn't wipe a new one
   if (r.status === 401){ if (token === used) forget(); throw new Error('That token is not right.'); }

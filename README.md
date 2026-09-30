@@ -49,7 +49,7 @@ The TMDB and Brave keys live only in the Worker, as secrets.
 | `/m/img?k=` | one of those pictures |
 | `POST /m/delete?k=` | signed in: deletes one of your own pictures, once no shelf of yours and not your profile uses it |
 
-The Worker answers at `https://api.shelfstackd.com` (a custom domain, in `wrangler.toml`) and at its workers.dev address.
+The Worker answers at `https://api.shelfstackd.com` (a custom domain, in `wrangler.toml`); the site uses only that address.
 CORS is open only to `https://shelfstackd.com`, `https://www.shelfstackd.com`, `https://reflexgod.github.io` and
 `http://localhost:8080`. `/identify` and `/scans`
 are cached in Workers KV for 30 days (so each title costs one Brave search), images are cached 30 days,
@@ -66,9 +66,8 @@ In `worker/`:
 5. `npx wrangler secret put BRAVE_API_KEY` and paste the Brave Search API key (api-dashboard.search.brave.com).
    `npx wrangler secret put ADMIN_TOKEN` and paste a long random string of your own. It's the password for `admin.html`; keep it only in a password manager.
 6. `npx wrangler deploy`. It prints the Worker address, e.g. `https://spinestack.NAME.workers.dev`.
-7. In `index.html`, `u/index.html` and `admin.html`, `window.SPINESTACK_WORKER` is that address (now `https://api.shelfstackd.com`;
-   while the move settles, `window.SPINESTACK_WORKER_FALLBACK` holds the workers.dev one, used for a visit when the first
-   doesn't answer). Keep `window.SPINESTACK_TMDB` empty.
+7. In `index.html`, `u/index.html` and `admin.html`, `window.SPINESTACK_WORKER` is the Worker's address
+   (`https://api.shelfstackd.com`). Keep `window.SPINESTACK_TMDB` empty.
 
 ### Archive
 
@@ -153,7 +152,9 @@ On your laptop first:
 2. In `backend/`, copy `.env.example` to `.env`. Add your TMDB key if you have one.
 3. In `backend/searxng/settings.yml`, replace `change-me-to-a-long-random-string` with any long random text.
 4. In `backend/` run `docker compose up --build`.
-5. Open http://localhost:8000 — the backend serves the website too, with search working.
+5. Open http://localhost:8000 — the backend serves the website too. For its search to be the one the page uses, set
+   `window.SPINESTACK_API = "http://localhost:8000";` in `index.html` (while it's empty, the page uses the Worker and
+   doesn't look for a backend).
 
 Online, for free: an Oracle Cloud "Always Free" VM.
 

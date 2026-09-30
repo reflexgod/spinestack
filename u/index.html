@@ -8,9 +8,6 @@
 <script>
   /* The same public addresses as index.html (see the notes there). */
   window.SPINESTACK_WORKER = "https://api.shelfstackd.com";
-  /* The Worker's old address, for a visit when the one above doesn't answer (while the move to shelfstackd.com
-     settles; to be removed once api.shelfstackd.com is confirmed). */
-  window.SPINESTACK_WORKER_FALLBACK = "https://spinestack.spinestack-worker.workers.dev";
   window.SPINESTACK_SUPABASE_URL = "https://fiukspnovrlzlcdekcnb.supabase.co";
   window.SPINESTACK_SUPABASE_KEY = "sb_publishable_cZeUDJXk-nCbSJ4VZWn_GQ_6xNFyBo2";
 </script>
@@ -334,15 +331,7 @@ input.renamer{font:inherit;font-weight:500;line-height:inherit;height:1.55em;pad
    The Supabase library only loads for someone who's signed in on this device or signing in. */
 const $ = s => document.querySelector(s);
 const W = 1080, H = 1920;
-let WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
-// the Worker at its new address; for this visit, at its old one if the new one doesn't answer /health in 2.5 s
-const workerReady = (async () => {
-  const alt = String(window.SPINESTACK_WORKER_FALLBACK || '').trim().replace(/\/+$/, '');
-  if (!WORKER || !alt || alt === WORKER) return;
-  const c = new AbortController(), t = setTimeout(() => c.abort(), 2500);
-  try { if ((await fetch(WORKER + '/health', {signal: c.signal})).ok) return; } catch {} finally { clearTimeout(t); }
-  WORKER = alt;
-})();
+const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
 const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
 const SB_LIB = {src:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
 const {makeSpine, loadImg, posterTitle, isDark, shelfName} = Shelf;
@@ -539,7 +528,6 @@ function redrawAll(){ clearTimeout(redrawT); redrawT = setTimeout(() => { for (c
 Shelf.onTextureLoaded(() => redrawAll());
 
 async function load(){
-  await workerReady;
   await startSession();
   paintAcct();
   if (!NAME){
