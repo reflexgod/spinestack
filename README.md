@@ -1,4 +1,6 @@
-# Spinestack
+# shelfstackd
+
+Live at https://shelfstackd.com (this repository and its folders keep the old working name, spinestack).
 
 Type a film or a book, get its real spine, put it on a shelf, save the shelf as an Instagram story.
 
@@ -21,6 +23,9 @@ backend/              older self-hosted search server (not used right now)
 2. Upload everything in this folder (keep `.gitignore` and `.nojekyll`).
 3. Repository → Settings → Pages → Source: "Deploy from a branch", Branch: `main`, folder `/ (root)` → Save.
 4. After a minute the site is live at `https://YOURNAME.github.io/spinestack/`.
+5. The live site has its own domain: `CNAME` holds `shelfstackd.com`, set in Settings → Pages → Custom domain (with
+   Enforce HTTPS). Its DNS is on Cloudflare: the four GitHub Pages A records and four AAAA records on the root and `www`
+   as a CNAME to `reflexgod.github.io`, all "DNS only" so GitHub can issue the certificate. The old address redirects here.
 
 At this point uploads, spine cutting from scans, the shelf and story export all work. Search by name needs step 2.
 
@@ -44,7 +49,9 @@ The TMDB and Brave keys live only in the Worker, as secrets.
 | `/m/img?k=` | one of those pictures |
 | `POST /m/delete?k=` | signed in: deletes one of your own pictures, once no shelf of yours and not your profile uses it |
 
-CORS is open only to `https://reflexgod.github.io`, `https://shelfstackd.com` and `http://localhost:8080`. `/identify` and `/scans`
+The Worker answers at `https://api.shelfstackd.com` (a custom domain, in `wrangler.toml`) and at its workers.dev address.
+CORS is open only to `https://shelfstackd.com`, `https://www.shelfstackd.com`, `https://reflexgod.github.io` and
+`http://localhost:8080`. `/identify` and `/scans`
 are cached in Workers KV for 30 days (so each title costs one Brave search), images are cached 30 days,
 and each visitor is limited to about 30 searches and 150 images a minute.
 
@@ -59,14 +66,16 @@ In `worker/`:
 5. `npx wrangler secret put BRAVE_API_KEY` and paste the Brave Search API key (api-dashboard.search.brave.com).
    `npx wrangler secret put ADMIN_TOKEN` and paste a long random string of your own. It's the password for `admin.html`; keep it only in a password manager.
 6. `npx wrangler deploy`. It prints the Worker address, e.g. `https://spinestack.NAME.workers.dev`.
-7. In `index.html`, set `window.SPINESTACK_WORKER` to that address and keep `window.SPINESTACK_TMDB` empty.
+7. In `index.html`, `u/index.html` and `admin.html`, `window.SPINESTACK_WORKER` is that address (now `https://api.shelfstackd.com`;
+   while the move settles, `window.SPINESTACK_WORKER_FALLBACK` holds the workers.dev one, used for a visit when the first
+   doesn't answer). Keep `window.SPINESTACK_TMDB` empty.
 
 ### Archive
 
 People can share spines they cut from their own scans: after an upload gives a clean real spine
 (score 70 or more), its row on the shelf offers "Add to the archive". Nothing is public until you approve it:
 
-1. Open `https://reflexgod.github.io/spinestack/admin.html`, type the admin token (it stays in that tab only, in sessionStorage).
+1. Open `https://shelfstackd.com/admin.html`, type the admin token (it stays in that tab only, in sessionStorage).
 2. Pending spines are listed with Approve and Delete. Approved ones show up first in search, labelled "From the archive".
 3. Anyone can Report an archive spine; three reports from different visitors send it back to Pending.
 
@@ -122,8 +131,8 @@ signed-out visitors never load the Supabase library.
   With them on, an account is Pro when `profiles.is_pro` is true (set in the SQL Editor; never from the page).
 - **Admins** can read reports. Add yourself once in the SQL Editor:
   `insert into public.admins (user_id) select id from auth.users where email = '<your sign-in email>';`
-- **Sign-in addresses:** Supabase → Authentication → URL Configuration allows `https://reflexgod.github.io/spinestack/**`,
-  `https://shelfstackd.com/**` and `http://localhost:8080/**`. Google's client sends people back to
+- **Sign-in addresses:** Supabase → Authentication → URL Configuration: Site URL `https://shelfstackd.com`; it allows
+  `https://shelfstackd.com/**`, `https://reflexgod.github.io/spinestack/**` (until the move settles) and `http://localhost:8080/**`. Google's client sends people back to
   `https://fiukspnovrlzlcdekcnb.supabase.co/auth/v1/callback`.
 - **Email sign-in** is built but off (`SPINESTACK_EMAIL_LOGIN = false` in `index.html`, and the Email provider is
   off in Supabase) until email can be sent from shelfstackd.com.

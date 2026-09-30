@@ -11,7 +11,10 @@
   window.SPINESTACK_API = "";
   /* Address of the Spinestack Cloudflare Worker (worker/ folder), e.g. "https://spinestack.NAME.workers.dev".
      It looks up titles, finds DVD and book scans, and passes images through with CORS. */
-  window.SPINESTACK_WORKER = "https://spinestack.spinestack-worker.workers.dev";
+  window.SPINESTACK_WORKER = "https://api.shelfstackd.com";
+  /* The Worker's old address, for a visit when the one above doesn't answer (while the move to shelfstackd.com
+     settles; to be removed once api.shelfstackd.com is confirmed). */
+  window.SPINESTACK_WORKER_FALLBACK = "https://spinestack.spinestack-worker.workers.dev";
   /* Only for running without the Worker: a TMDB v4 "API Read Access Token" or v3 key for film search.
      Anyone who reads this page's source can see it, so keep it empty while the Worker is set. */
   window.SPINESTACK_TMDB = "";
@@ -26,7 +29,7 @@
 </script>
 </head>
 <body>
-<title>Spinestack</title>
+<title>shelfstackd</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
@@ -235,14 +238,14 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
 
 <header class="top" id="top">
   <a href="#how">Info</a>
-  <a class="mark" href="#top" aria-label="Spinestack, back to top">SPINESTACK</a>
+  <a class="mark" href="#top" aria-label="shelfstackd, back to top">SHELFSTACKD</a>
   <span class="r"><a href="#shelf">Shelf (<span id="navCount">0</span>)</a><button class="acct" id="acctBtn" type="button" hidden>Sign in</button></span>
 </header>
 
 <main>
   <section id="search" class="col">
     <h1>Find a spine</h1>
-    <p>Type a film or a book. Spinestack looks through DVD and book scans online, cuts the spine out of each one, and puts it on your shelf. When the shelf looks right, save it as a story.</p>
+    <p>Type a film or a book. shelfstackd looks through DVD and book scans online, cuts the spine out of each one, and puts it on your shelf. When the shelf looks right, save it as a story.</p>
     <p class="say">The real spine, not a mockup.</p>
     <form class="search" id="sform" autocomplete="off">
       <input type="text" id="q" placeholder="Gummo, The Waves, Kids..." aria-label="Film or book name" maxlength="120">
@@ -259,7 +262,7 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
     <select id="qkind" hidden aria-hidden="true"><option value="all">all</option><option value="movie">movie</option><option value="book">book</option></select>
     <div class="strip" id="strip" role="group" aria-label="Your shelf"></div>
     <p class="grey" id="stripEmpty" hidden style="margin-top:26px">Your shelf is empty. Search a title.</p>
-    <p class="grey" id="modeNote" style="margin-top:14px">Search needs the Spinestack server, so it's off in this preview. Uploading a scan below still works.</p>
+    <p class="grey" id="modeNote" style="margin-top:14px">Search needs the shelfstackd server, so it's off in this preview. Uploading a scan below still works.</p>
     <p class="grey" id="recent" hidden style="margin-top:14px">Recently found: <span></span></p>
     <div class="status" id="sstatus" role="status"></div>
     <div id="matches" hidden>
@@ -273,7 +276,7 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
       <p id="dupAsk" hidden><span id="dupText"></span> <button class="dash sm" id="dupAdd" type="button">Add again</button> <button class="dash sm" id="dupCancel" type="button">Cancel</button></p>
       <div class="found" id="found"></div>
       <p class="grey" id="noReal" hidden>No real spine found yet. Upload a photo of yours to add it to the archive.</p>
-      <p class="grey" id="spinesNote" hidden>Real DVD and book spines show up once the Spinestack server is connected. Until then, paste a full DVD scan below.</p>
+      <p class="grey" id="spinesNote" hidden>Real DVD and book spines show up once the shelfstackd server is connected. Until then, paste a full DVD scan below.</p>
     </div>
   </section>
 
@@ -394,7 +397,7 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
       <a class="fbtn" href="#shelf">Open shelf</a>
     </div>
   </div>
-  <div class="fbase"><span>© 2026 SPINESTACK. All rights reserved.</span><span>Not affiliated with any studio or publisher.</span></div>
+  <div class="fbase"><span>© 2026 SHELFSTACKD. All rights reserved.</span><span>Not affiliated with any studio or publisher.</span></div>
 </footer>
 
 <div class="modal" id="modal" hidden>
@@ -407,7 +410,7 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
 </div>
 <div class="toast" id="toast" hidden></div>
 
-<script src="shelf.js?v=20260930c"></script>
+<script src="shelf.js?v=20260930d"></script>
 <script>
 (() => {
 const $ = s => document.querySelector(s);
@@ -762,7 +765,15 @@ function shelve(b){
 /* ---------- search: the Spinestack server, or TMDB + Open Library straight from the browser ---------- */
 const sstatus = (msg, err) => { const s = $('#sstatus'); s.classList.toggle('err', !!err); s.innerHTML = msg; };
 const TMDB = String(window.SPINESTACK_TMDB || '').trim();
-const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
+let WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
+// the Worker at its new address; for this visit, at its old one if the new one doesn't answer /health in 2.5 s
+const workerReady = (async () => {
+  const alt = String(window.SPINESTACK_WORKER_FALLBACK || '').trim().replace(/\/+$/, '');
+  if (!WORKER || !alt || alt === WORKER) return;
+  const c = new AbortController(), t = setTimeout(() => c.abort(), 2500);
+  try { if ((await fetch(WORKER + '/health', {signal: c.signal})).ok) return; } catch {} finally { clearTimeout(t); }
+  WORKER = alt;
+})();
 const direct = !window.claude;   // the Claude preview can't reach other sites
 const viaWorker = u => WORKER ? WORKER + '/img?url=' + encodeURIComponent(u) : u;
 const timeout = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('timeout')), ms))]);
@@ -793,8 +804,9 @@ let matches = [];
 $('#sform').addEventListener('submit', async e => {
   e.preventDefault();
   const q = $('#q').value.trim(); if (!q) return;
+  await workerReady;   // a search in the first moments after the page opens waits to know which address answers
   const want = $('#qkind').value, noFilms = !server && !WORKER && !TMDB && want !== 'book';
-  if (!server && !direct){ sstatus('Search runs on the Spinestack server, which this preview doesn’t have. Drop a scan below instead.', true); return; }
+  if (!server && !direct){ sstatus('Search runs on the shelfstackd server, which this preview doesn’t have. Drop a scan below instead.', true); return; }
   if (noFilms && want === 'movie'){ sstatus('Film search needs a TMDB key. Books work without one.', true); $('#matches').hidden = true; return; }
   $('#spines').hidden = true; sstatus('Looking up “' + esc(q) + '”…');
   try {
@@ -1250,15 +1262,15 @@ $('#exportBtn').addEventListener('click', async () => {
   story.toBlob(async blob => {
     if (!blob){ toast('Couldn’t create the image. Try again.'); return; }
     if (downloads){
-      try { await downloads.save({filename:'spinestack-story.png', data:blob}); toast('Saved. Open Instagram, add a story, pick this image.'); return; }
+      try { await downloads.save({filename:'shelfstackd-story.png', data:blob}); toast('Saved. Open Instagram, add a story, pick this image.'); return; }
       catch (err){ if (err && err.code === 'declined'){ toast('Save cancelled.'); return; } if (err && err.code === 'rate_limited'){ toast('A save prompt is already open.'); return; } fallback(blob); return; }
     }
-    const file = new File([blob], 'spinestack-story.png', {type:'image/png'});
+    const file = new File([blob], 'shelfstackd-story.png', {type:'image/png'});
     const plain = server || !window.claude;
     if (plain && navigator.canShare && navigator.canShare({files:[file]}) && matchMedia('(pointer:coarse)').matches){
       try { await navigator.share({files:[file]}); return; } catch (err){ if (err && err.name === 'AbortError') return; }
     }
-    if (plain){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'spinestack-story.png'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('Downloaded spinestack-story.png.'); return; }
+    if (plain){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'shelfstackd-story.png'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('Downloaded shelfstackd-story.png.'); return; }
     fallback(blob);
   }, 'image/png');
 });
@@ -1280,7 +1292,7 @@ async function boot(){
     server = !!(h && h.ok);
   } catch { server = false; }
   $('#modeNote').hidden = server || !!WORKER;
-  if (!server && !WORKER && direct) $('#modeNote').textContent = TMDB ? 'Search works here. Real DVD and book spines need the Spinestack server.' : 'Book search works here. Films need a TMDB key, and real spines need the Spinestack server.';
+  if (!server && !WORKER && direct) $('#modeNote').textContent = TMDB ? 'Search works here. Real DVD and book spines need the shelfstackd server.' : 'Book search works here. Films need a TMDB key, and real spines need the shelfstackd server.';
   $('#exportNote').textContent = 'On a phone this opens the share sheet. Pick Instagram, then Story.';
   if (server){
     try { const r = await fetch(API + '/api/recent').then(r => r.json()); fillRecent(r.recent.map(x => x.title)); } catch {}
@@ -1705,7 +1717,7 @@ async function restoreDraft(d){
 }
 
 boot();
-startAccounts();
+workerReady.then(startAccounts);   // accounts load shelves and pictures from the Worker
 const faces = ['600 40px Oswald','400 40px Oswald','600 40px "Cormorant Garamond"','italic 500 40px "Cormorant Garamond"','40px "Archivo Black"','40px "Gochi Hand"','500 40px "IBM Plex Mono"','400 40px "IBM Plex Mono"','600 40px "IBM Plex Sans"','500 40px "Geist Mono"','400 40px "Geist Mono"'];
 if (document.fonts){ Promise.all(faces.map(f => document.fonts.load(f).catch(() => {}))).then(redraw); document.fonts.ready.then(redraw); }
 })();
