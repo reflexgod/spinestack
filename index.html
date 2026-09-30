@@ -144,6 +144,9 @@ input[type=color]::-webkit-color-swatch{border:0;border-radius:2px}
 .flt .pro{font-style:normal;font-weight:700;font-size:9px;border:1px solid currentColor;padding:0 3px;margin-left:4px;letter-spacing:.04em}
 em.pro{font-style:normal;font-weight:700;font-size:9px;border:1px solid currentColor;padding:0 3px;margin:0 4px;letter-spacing:.04em}
 .note .pro:first-child{margin-left:0}
+.wallbox{display:grid;gap:4px;margin-top:2px}
+.wallrow{display:flex;gap:6px 16px;align-items:baseline;flex-wrap:wrap;margin:0}
+.wallname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
 .range{display:flex;gap:10px;align-items:center}
 .range input{accent-color:var(--ink);flex:1;min-width:0}
 .check input{accent-color:var(--ink);margin:0}
@@ -275,7 +278,14 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
         <div class="phone"><canvas id="story" width="1080" height="1920" aria-label="Story preview"></canvas></div>
         <div class="ctl"><label class="lbl" for="caption">Caption</label><input type="text" id="caption" value="my next reads." maxlength="60"></div>
         <div class="ctl" id="themeWrap"><span class="lbl">Background</span>
-          <div class="seg" id="theme" role="group" aria-label="Background"><button type="button" data-v="paper">Paper</button><button type="button" data-v="ink">Ink</button><button type="button" data-v="blush">Blush</button><button type="button" data-v="shelf">Shelf</button><button type="button" data-v="dark">Dark</button><button type="button" data-v="forest">Forest</button></div>
+          <div class="seg" id="theme" role="group" aria-label="Background"><button type="button" data-v="paper">Paper</button><button type="button" data-v="ink">Ink</button><button type="button" data-v="blush">Blush</button><button type="button" data-v="shelf">Shelf</button><button type="button" data-v="dark">Dark</button><button type="button" data-v="forest">Forest</button><button type="button" data-v="wall">Your PNG<em class="pro">PRO</em></button></div>
+          <p class="note" id="themeNote"></p>
+          <div class="wallbox" id="wallBox" hidden>
+            <p class="wallrow"><span class="wallname" id="wallName"></span><button class="dash sm" id="wallPick" type="button">Choose picture</button><button class="dash sm" id="wallRemove" type="button">Remove</button></p>
+            <p class="note">Best size: 1080 × 1920 px (9:16, same as an Instagram story). Min 720 × 1280. PNG, JPG or WEBP, max 5 MB.</p>
+            <p class="note warn" id="wallWarn"></p>
+          </div>
+          <input type="file" id="wallFile" accept="image/png,image/jpeg,image/webp" hidden>
           <label class="check"><input type="checkbox" id="woodShelf"> Wood shelf</label>
           <label class="check"><input type="checkbox" id="plank"> Floating shelf<em class="pro">PRO</em></label>
           <p class="note" id="plankNote"></p></div>
@@ -557,11 +567,19 @@ const spineMax = () => isPro() ? SPINES_PRO : SPINES_FREE;
 const PRO_TAG = '<em class="pro">PRO</em>';
 const proNote = (el, msg) => { el.innerHTML = PRO_TAG + esc(msg); };
 function proToast(msg){ toast(msg); $('#toast').insertAdjacentHTML('afterbegin', PRO_TAG); }
-// the Pro settings a shelf keeps (in shelves.pro)
-const proSettings = () => clean0({plank: settings.plank || undefined});
-const usesPro = () => Object.keys(proSettings()).length > 0;
+/* Your own wall and PNGs (Pro). They stay in this page while you make the shelf and go to the Worker only when you
+   save it (so a story needs no account), and they're deleted from storage once no saved shelf of yours uses them. */
+const media = {wall: null, pngs: []};   // wall: {img, blob, name, small, dark, key}; pngs: step 5
+const art = () => ({wall: media.wall && media.wall.img, wallDark: !!(media.wall && media.wall.dark), pngs: media.pngs});
+const walled = () => settings.theme === 'wall' && !!media.wall;
+// the Pro settings a shelf keeps (in shelves.pro); the pictures' keys exist once they're uploaded
+const r4 = v => Math.round(v*1e4)/1e4;
+const proSettings = () => clean0({plank: settings.plank || undefined, wall_key: walled() && media.wall.key || undefined,
+  wall_items: media.pngs.length ? media.pngs.map(p => ({key: p.key, x: r4(p.x), y: r4(p.y), w: r4(p.w)})) : undefined});
+const usesPro = () => !!settings.plank || walled() || media.pngs.length > 0;
+const keysOf = pro => [pro && pro.wall_key, ...((pro && pro.wall_items) || []).map(p => p.key)].filter(Boolean);
 // this page's shelf, drawn by shelf.js
-const renderStory = (x = sctx, f = settings.filter, fast = false) => Shelf.renderStory(x, f, fast, books, settings);
+const renderStory = (x = sctx, f = settings.filter, fast = false) => Shelf.renderStory(x, f, fast, books, settings, false, art());
 const sizes = (H0, U, list = books) => Shelf.sizes(H0, U, list, settings);
 Shelf.onTextureLoaded(() => redraw());
 /* the Filter row: a live thumbnail of this shelf in each look */
@@ -982,6 +1000,68 @@ $('#theme').addEventListener('click', woodTakesOver);
 $('#caption').addEventListener('input', e => { settings.caption = e.target.value; redraw(); });
 $('#varied').addEventListener('change', e => { settings.varied = e.target.checked; redraw(); });
 
+/* ---------- Your PNG: the wall behind the shelf (Pro) ---------- */
+const MAX_PICKED = 5*1024*1024, MAX_STORED = 2*1024*1024;
+async function readPicture(file){
+  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) throw new Error('Pick a PNG, JPG or WEBP picture.');
+  if (file.size > MAX_PICKED) throw new Error('That picture is larger than 5 MB.');
+  const url = URL.createObjectURL(file);
+  try { return await loadImg(url); } catch { throw new Error('That picture couldn’t be read.'); } finally { URL.revokeObjectURL(url); }
+}
+// a picture made small enough to keep, drawn again (which drops EXIF and location): WebP where the browser can, under 2 MB
+async function under2mb(c, alpha){
+  for (const q of [.9, .82, .72, .6, .5]){
+    let b = await blobOf(c, 'image/webp', q);
+    if (!b || b.type !== 'image/webp') b = await blobOf(c, alpha ? 'image/png' : 'image/jpeg', q);   // Safari before 17 has no WebP encoder
+    if (b && b.size <= MAX_STORED) return b;
+  }
+  throw new Error('That picture couldn’t be made small enough.');
+}
+// dark pictures get light lettering (caption, watermark) and deeper shadows, as the dark backgrounds do
+function isDark(img){
+  const t = document.createElement('canvas'); t.width = 27; t.height = 48;
+  const x = t.getContext('2d', {willReadFrequently:true}); x.drawImage(img, 0, 0, 27, 48);
+  const d = x.getImageData(0, 0, 27, 48).data; let sum = 0;
+  for (let i = 0; i < d.length; i += 4) sum += .2126*d[i] + .7152*d[i+1] + .0722*d[i+2];
+  return sum/(d.length/4) < 115;
+}
+// the wall: cover-fitted to the 1080 x 1920 story, the middle kept
+async function makeWall(file){
+  const im = await readPicture(file), w = im.naturalWidth, h = im.naturalHeight, k = Math.max(W/w, H/h);
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d'); x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, H); x.imageSmoothingQuality = 'high';
+  x.drawImage(im, (W - w*k)/2, (H - h*k)/2, w*k, h*k);
+  return {img: c, blob: await under2mb(c, false), name: file.name, small: w < 720 || h < 1280, dark: isDark(c), key: null};
+}
+let wallPicking = false;
+const syncTheme = () => document.querySelectorAll('#theme button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === settings.theme)));
+function paintWall(){
+  const w = media.wall;
+  $('#wallBox').hidden = !(settings.theme === 'wall' || wallPicking);
+  $('#wallName').textContent = w ? w.name : ''; $('#wallName').hidden = !w;
+  $('#wallPick').textContent = w ? 'Replace' : 'Choose picture';
+  $('#wallRemove').hidden = !w;
+  $('#wallWarn').textContent = w && w.small ? 'This picture is smaller than 720 × 1280, so it may look soft.' : '';
+}
+// before the Background buttons do their usual thing: Your PNG is Pro, and asks for a picture the first time
+$('#theme').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  $('#themeNote').textContent = '';
+  if (b.dataset.v !== 'wall'){ wallPicking = false; return; }
+  if (!isPro()){ e.stopPropagation(); proNote($('#themeNote'), 'Your own wall comes with Pro.'); return; }
+  if (!media.wall){ e.stopPropagation(); wallPicking = true; paintWall(); $('#wallFile').click(); }
+}, true);
+$('#theme').addEventListener('click', paintWall);
+$('#wallPick').addEventListener('click', () => $('#wallFile').click());
+$('#wallFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  $('#themeNote').textContent = 'Reading the picture…';
+  try { media.wall = await makeWall(f); settings.theme = 'wall'; wallPicking = false; $('#themeNote').textContent = ''; }
+  catch (err){ $('#themeNote').textContent = err.message; }
+  syncTheme(); paintWall(); redraw();
+});
+$('#wallRemove').addEventListener('click', () => { media.wall = null; settings.theme = 'paper'; wallPicking = false; syncTheme(); paintWall(); redraw(); });
+
 /* ---------- export: Claude download, phone share sheet, or plain download ---------- */
 let downloads = null;
 if (window.claude && window.claude.use) window.claude.use('downloads').then(d => { downloads = d; }).catch(() => {});
@@ -1259,15 +1339,32 @@ async function saveShelf(asNew){
   const updating = !asNew && !!acct.shelfId, id = updating ? acct.shelfId : crypto.randomUUID(), was = acct.shelves.find(s => s.id === id);
   try {
     const items = await Promise.all(books.map(b => itemFor(b, putImage)));
+    await uploadArt();
+    const pro = proSettings();
     const pv = await workerPost('/u/preview?shelf=' + id, await previewBlob());
     const {error} = await acct.sb.rpc('save_shelf', {items, shelf:{id, caption: settings.caption.slice(0, 60), filter: settings.filter, intensity: settings.intensity,
-      background: settings.theme, wood: settings.wood, layout: settings.layout, varied: settings.varied, is_public: was ? was.is_public : true, preview_key: pv.key, pro: proSettings()}});
+      background: settings.theme === 'wall' ? 'paper' : settings.theme, wood: settings.wood, layout: settings.layout, varied: settings.varied, is_public: was ? was.is_public : true, preview_key: pv.key, pro}});
     if (error) throw error;
+    forgetArt(keysOf(was && was.pro).filter(k => !keysOf(pro).includes(k)));
     acct.shelfId = id; toast(updating ? 'Shelf updated.' : 'Saved to My shelves.');
     await loadMine();
   } catch (e){ toast(friendly(e)); }
   finally { saving = false; $('#saveShelf').disabled = false; paintAcct(); }
 }
+// the wall and PNGs this shelf needs, uploaded once (a picture keeps its key while it stays on the shelf)
+async function uploadArt(){
+  const mine = k => k && k.startsWith(acct.user.id + '/');
+  if (walled() && !mine(media.wall.key)){
+    if (!media.wall.blob) throw new Error('The wall couldn’t be saved. Pick it again.');
+    media.wall.key = (await workerPost('/m/upload?kind=wall', media.wall.blob)).key;
+  }
+  for (const p of media.pngs) if (!mine(p.key)){
+    if (!p.blob) throw new Error('A PNG couldn’t be saved. Add it again.');
+    p.key = (await workerPost('/m/upload?kind=png', p.blob)).key;
+  }
+}
+// pictures no shelf needs any more: the Worker deletes each one unless another of your shelves still uses it
+const forgetArt = keys => { for (const k of keys) workerPost('/m/delete?k=' + encodeURIComponent(k)).catch(() => {}); };
 $('#saveShelf').addEventListener('click', () => saveShelf(false));
 $('#saveNew').addEventListener('click', () => saveShelf(true));
 
@@ -1311,9 +1408,10 @@ $('#mineList').addEventListener('click', async e => {
   if (d){
     if (!d.dataset.sure){ d.dataset.sure = '1'; d.textContent = 'Sure? Delete'; setTimeout(() => { if (d.isConnected){ delete d.dataset.sure; d.textContent = 'Delete'; } }, 4000); return; }
     d.disabled = true;
-    const id = d.dataset.del, {error} = await acct.sb.from('shelves').delete().eq('id', id);
+    const id = d.dataset.del, gone = keysOf((acct.shelves.find(s => s.id === id) || {}).pro), {error} = await acct.sb.from('shelves').delete().eq('id', id);
     if (error){ toast(friendly(error)); d.disabled = false; return; }
     workerPost('/u/forget?shelf=' + id).catch(() => {});
+    forgetArt(gone);
     if (acct.shelfId === id) acct.shelfId = null;
     toast('Shelf deleted.'); paintAcct(); loadMine();
   }
@@ -1343,9 +1441,24 @@ function applySettings(s){
   $('#variedWrap').hidden = settings.layout === 'covers';
   syncFilter();
 }
-async function putOnShelf(rows, s){
+// a saved shelf's wall comes from the Worker; a draft's from this browser (see stashDraft)
+async function restoreArt(s, drafted){
+  media.wall = null; media.pngs = [];
+  const pro = s.pro || {}, w = drafted ? drafted.wall : pro.wall_key ? {key: pro.wall_key, name: 'Your saved wall'} : null;
+  if (w){
+    const url = w.blob ? URL.createObjectURL(w.blob) : `${WORKER}/m/img?k=${encodeURIComponent(w.key)}`;
+    try {
+      const img = await timeout(loadImg(url), 15000);
+      media.wall = {img, blob: w.blob || null, name: w.name, small: !!w.small, dark: 'dark' in w ? w.dark : isDark(img), key: w.key || null};
+    } catch { toast('The wall couldn’t load, so this shelf is on Paper for now.'); }
+    finally { if (w.blob) URL.revokeObjectURL(url); }
+  }
+  if (media.wall) settings.theme = 'wall'; else if (settings.theme === 'wall') settings.theme = 'paper';
+  wallPicking = false; syncTheme(); paintWall();
+}
+async function putOnShelf(rows, s, drafted){
   const got = await Promise.all(rows.map(rebuild)), ok = got.filter(Boolean);
-  books = ok; isSample = false; applySettings(s); renderList();
+  books = ok; isSample = false; applySettings(s); await restoreArt(s, drafted); renderList();
   if (ok.length < rows.length) toast(`${rows.length - ok.length} of the spines couldn’t load. The rest are on your shelf.`);
 }
 async function openShelf(id){
@@ -1360,19 +1473,29 @@ async function openShelf(id){
 
 /* Signing in with Google leaves the page and comes back to it: the shelf being made waits in this tab meanwhile */
 const DRAFT = 'spinestack-draft';
+const idb = (() => {
+  let db = null;
+  const open = () => db || (db = new Promise((res, rej) => { const r = indexedDB.open('spinestack', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }));
+  const run = async (mode, fn) => { const d = await open(); return new Promise((res, rej) => { const t = d.transaction('kv', mode), r = fn(t.objectStore('kv')); t.oncomplete = () => res(r.result); t.onerror = () => rej(t.error); }); };
+  return {put: (k, v) => run('readwrite', st => st.put(v, k)), get: k => run('readonly', st => st.get(k)), del: k => run('readwrite', st => st.delete(k))};
+})();
 async function stashDraft(){
   try {
     if (isSample || !books.length){ sessionStorage.removeItem(DRAFT); return; }
     const inline = async (src, kind) => { const b = await encode(src, kind); return await new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); }); };
     const items = await Promise.all(books.map(b => itemFor(b, inline)));
     sessionStorage.setItem(DRAFT, JSON.stringify({at: Date.now(), settings: {...settings}, shelfId: acct.shelfId, save: acct.pendingSave, items}));
+    try { await idb.put(DRAFT, {wall: media.wall && {blob: media.wall.blob, key: media.wall.key, name: media.wall.name, small: media.wall.small, dark: media.wall.dark},
+      pngs: media.pngs.map(p => ({blob: p.blob, key: p.key, x: p.x, y: p.y, w: p.w}))}); } catch {}
   } catch { try { sessionStorage.removeItem(DRAFT); } catch {} }
 }
 function takeDraft(){
   try { const d = JSON.parse(sessionStorage.getItem(DRAFT) || 'null'); sessionStorage.removeItem(DRAFT); return d && Date.now() - d.at < 3600e3 ? d : null; } catch { return null; }
 }
 async function restoreDraft(d){
-  await putOnShelf(d.items || [], d.settings || {});
+  let drafted = null;
+  try { drafted = await idb.get(DRAFT); idb.del(DRAFT).catch(() => {}); } catch {}
+  await putOnShelf(d.items || [], d.settings || {}, drafted || {});
   acct.shelfId = d.shelfId || null; acct.pendingSave = !!d.save;
 }
 

@@ -930,10 +930,19 @@ function sizes(H0, U, list, settings){
    background, with the chosen filter on the books.
    Spines stand packed like books on a shelf: 0-2px apart, a thin dark line where two meet. */
 /* bare: just the books and their shelf, on nothing (the profile page draws a shelf on its own white page): no
-   background, caption, watermark, or Flash's vignette and date stamp, which belong to the photo, not the shelf. */
-function renderStory(x, f, fast, books, settings, bare = false){
-  const k = settings.intensity/100, T = THEMES[settings.theme], shelfSeed = hashStr(books.map(b => b.id).join('|')), rnd = rngOf(shelfSeed ^ hashStr(f)), levels = wearLevels(books.length, rngOf(shelfSeed ^ 99));
-  x.clearRect(0,0,W,H); if (!bare){ x.fillStyle = T.bg; x.fillRect(0,0,W,H); }
+   background, caption, watermark, or Flash's vignette and date stamp, which belong to the photo, not the shelf.
+   art (Pro): the user's own wall, a 1080 x 1920 picture used when the background is 'wall' (with dark: whether it's a
+   dark picture, for the caption and shadows), and their PNGs, each {img, x, y, w}: the middle and the width as fractions
+   of the story. Always in this order: wall, PNGs, shelf, books. */
+const WALL_LIGHT = {bg:'#FFFFFF', ink:'#0F1419', mark:'rgba(15,20,25,.5)'}, WALL_DARK = {bg:'#000000', ink:'#F1F2F4', mark:'rgba(241,242,244,.55)'};
+function renderStory(x, f, fast, books, settings, bare = false, art = {}){
+  const wall = settings.theme === 'wall' && art.wall ? art.wall : null;
+  const k = settings.intensity/100, T = wall ? (art.wallDark ? WALL_DARK : WALL_LIGHT) : THEMES[settings.theme] || THEMES.paper, shelfSeed = hashStr(books.map(b => b.id).join('|')), rnd = rngOf(shelfSeed ^ hashStr(f)), levels = wearLevels(books.length, rngOf(shelfSeed ^ 99));
+  x.clearRect(0,0,W,H);
+  if (!bare){
+    if (wall) x.drawImage(wall, 0, 0, W, H); else { x.fillStyle = T.bg; x.fillRect(0,0,W,H); }
+    for (const p of art.pngs || []){ const w = p.w*W, h = w*p.img.height/p.img.width; x.drawImage(p.img, p.x*W - w/2, p.y*H - h/2, w, h); }
+  }
   x.fillStyle = T.ink; x.font = '500 52px "Geist Mono", ui-monospace, monospace'; x.textBaseline = 'alphabetic'; x.textAlign = 'left';
   let y = 290; if (!bare && settings.caption.trim()) for (const ln of wrapText(x, settings.caption, 900)){ x.fillText(ln, 90, y); y += 68; }
   const base = 1700;
@@ -941,7 +950,7 @@ function renderStory(x, f, fast, books, settings, bare = false){
   const twoRows = settings.layout === 'row' && books.length > 10, bases = twoRows ? [1060, 1720] : [base], H0 = twoRows ? 530 : 1160;
   if (settings.wood && settings.layout !== 'covers') for (const b0 of bases) woodShelf(x, b0);
   const floating = !!settings.plank && !settings.wood && settings.layout !== 'covers';
-  const dark = settings.theme === 'ink' || settings.theme === 'dark' || settings.theme === 'forest', shadow = dark ? 'rgba(0,0,0,.5)' : 'rgba(0,0,0,.15)', flashShadow = `rgba(0,0,0,${Math.min(.92, (dark ? .85 : .7)*k/.7)})`, seam = dark ? 'rgba(0,0,0,.7)' : 'rgba(0,0,0,.4)';
+  const dark = wall ? !!art.wallDark : settings.theme === 'ink' || settings.theme === 'dark' || settings.theme === 'forest', shadow = dark ? 'rgba(0,0,0,.5)' : 'rgba(0,0,0,.15)', flashShadow = `rgba(0,0,0,${Math.min(.92, (dark ? .85 : .7)*k/.7)})`, seam = dark ? 'rgba(0,0,0,.7)' : 'rgba(0,0,0,.4)';
   if (books.length && settings.layout === 'covers'){
     const n = books.length, cols = n === 1 ? 1 : n <= 4 ? 2 : n <= 9 ? 3 : 4, rows = Math.ceil(n/cols), gap = 30, top = Math.max(y+30, 400), bottom = 1780;
     const cellW = Math.min(n === 1 ? 760 : 900, (900 - gap*(cols-1))/cols), cellH = (bottom - top - gap*(rows-1))/rows;

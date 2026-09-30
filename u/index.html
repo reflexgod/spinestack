@@ -396,11 +396,13 @@ async function bookOf(r){
     studio: look.studio, cat: look.cat, img: img || undefined, spineImg: spine || undefined, titleImg: t ? t.img : undefined}));
 }
 const books = async rows => (await Promise.all(rows.map(bookOf))).filter(Boolean);
+// a shelf's own wall (Pro), if it has one
+const wallOf = s => (s.pro || {}).wall_key ? timeout(loadImg(`${WORKER}/m/img?k=${encodeURIComponent(s.pro.wall_key)}`), 15000).catch(() => null) : Promise.resolve(null);
 const ITEM_COLS = 'position,item_id,kind,title,author,year,spine_src,cover_src,look';
 
 /* ---------- drawing: a shelf on its own, on the white page ---------- */
 // the story drawn "bare" (no background, caption or watermark), then cut down to the books and their shelf
-function bareShelf(list, s){
+function bareShelf(list, s, wall){
   const st = {caption:'', theme:'paper', layout: s.layout || 'row', varied: s.varied !== false, wood: !!s.wood, filter: s.filter || 'clean', intensity: s.intensity == null ? 70 : s.intensity,
     plank: !!(s.pro || {}).plank};
   const c = document.createElement('canvas'); c.width = W; c.height = H;
@@ -410,9 +412,21 @@ function bareShelf(list, s){
   let x0 = W, y0 = H, x1 = -1, y1 = -1;
   for (let y = 0; y < H; y += 2) for (let X = 0; X < W; X += 2) if (d[(y*W + X)*4 + 3] > 10){ if (X < x0) x0 = X; if (X > x1) x1 = X; if (y < y0) y0 = y; if (y > y1) y1 = y; }
   if (x1 < 0) return null;
-  const m = 16; x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m); x1 = Math.min(W, x1 + m); y1 = Math.min(H, y1 + m);
+  const m = wall ? 90 : 16; x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m); x1 = Math.min(W, x1 + m); y1 = Math.min(H, y1 + m);
   const out = document.createElement('canvas'); out.width = x1 - x0; out.height = y1 - y0;
-  out.getContext('2d').drawImage(c, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
+  const ox = out.getContext('2d');
+  if (wall){
+    // the shelf's own wall, very faint, its edges fading into the page
+    const t = document.createElement('canvas'); t.width = out.width; t.height = out.height;
+    const tx = t.getContext('2d'); tx.drawImage(wall, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
+    tx.globalCompositeOperation = 'destination-in';
+    for (const [a, b, c2, d] of [[0, 0, t.width, 0], [0, 0, 0, t.height]]){
+      const g = tx.createLinearGradient(a, b, c2, d); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(.12, '#000'); g.addColorStop(.88, '#000'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      tx.fillStyle = g; tx.fillRect(0, 0, t.width, t.height);
+    }
+    ox.globalAlpha = .17; ox.drawImage(t, 0, 0); ox.globalAlpha = 1;
+  }
+  ox.drawImage(c, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
   out.setAttribute('role', 'img');
   out.setAttribute('aria-label', (s.caption || 'A shelf') + ': ' + list.map(b => b.title).filter(Boolean).join(', '));
   return out;
@@ -499,8 +513,9 @@ async function paintFeatured(){
   $('#featCap').textContent = s.caption.trim() || 'Untitled shelf';
   $('#featMeta').textContent = `${spines(countOf(s))} · ${fmtDate(s.updated_at)}`;
   let list;
-  try { list = await books(await api(`shelf_items?select=${ITEM_COLS}&shelf_id=eq.${s.id}&order=position`)); } catch { list = []; }
-  const draw = () => { const c = list.length && bareShelf(list, s); $('#featLink').replaceChildren(...(c ? [c] : [])); };
+  let wall = null;
+  try { [list, wall] = await Promise.all([books(await api(`shelf_items?select=${ITEM_COLS}&shelf_id=eq.${s.id}&order=position`)), wallOf(s)]); } catch { list = []; }
+  const draw = () => { const c = list.length && bareShelf(list, s, wall); $('#featLink').replaceChildren(...(c ? [c] : [])); };
   draw(); view.drawn.push(draw);
 }
 async function paintMost(){
@@ -524,8 +539,9 @@ async function showShelf(id){
   document.title = (s.caption.trim() || 'A shelf') + ' · @' + p.username + ' · Spinestack';
   await fontsReady;
   let list;
-  try { list = await books(await api(`shelf_items?select=${ITEM_COLS}&shelf_id=eq.${s.id}&order=position`)); } catch { list = []; }
-  const draw = () => { const c = list.length && bareShelf(list, s); $('#oneShelf').replaceChildren(...(c ? [c] : [])); };
+  let wall = null;
+  try { [list, wall] = await Promise.all([books(await api(`shelf_items?select=${ITEM_COLS}&shelf_id=eq.${s.id}&order=position`)), wallOf(s)]); } catch { list = []; }
+  const draw = () => { const c = list.length && bareShelf(list, s, wall); $('#oneShelf').replaceChildren(...(c ? [c] : [])); };
   draw(); view.drawn.push(draw);
 }
 
