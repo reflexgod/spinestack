@@ -5,8 +5,9 @@ Live at https://shelfstackd.com (this repository and its folders keep the old wo
 Type a film or a book, get its real spine, put it on a shelf, save the shelf as an Instagram story.
 
 ```
-index.html            the website (GitHub Pages serves this): search, the shelf, the story
-shelf.js              draws the spines and the story; index.html and u/ both use it, so a shelf looks the same everywhere
+index.html            the home page (GitHub Pages serves this); links to the old builder here (/?open=, /#shelf) go on to build/
+build/index.html      the shelf builder: search, the shelf, the story
+shelf.js              draws the spines and the story; build/ and u/ both use it, so a shelf looks the same everywhere
 u/index.html          profiles: /u/?username, and one shelf: /u/?username&shelf=<id>
 feed/index.html       the feed: /feed/, FOLLOWING and EVERYONE, newest saved shelves first
 worker-address.js     sends Worker requests to its workers.dev address on networks that block api.shelfstackd.com
@@ -35,7 +36,7 @@ At this point uploads, spine cutting from scans, the shelf and story export all 
 
 A free Cloudflare Worker in `worker/` does the parts a static page can't: it looks titles up on TMDB and
 Open Library, finds DVD and book scans with the Brave Image Search API, and passes scan images through with
-CORS so the page can cut the spine out of them in the browser (`findSpine()` in `index.html`).
+CORS so the page can cut the spine out of them in the browser (`findSpine()` in `build/index.html`).
 The TMDB and Brave keys live only in the Worker, as secrets.
 
 | Endpoint | What it returns |
@@ -71,7 +72,7 @@ In `worker/`:
 5. `npx wrangler secret put BRAVE_API_KEY` and paste the Brave Search API key (api-dashboard.search.brave.com).
    `npx wrangler secret put ADMIN_TOKEN` and paste a long random string of your own. It's the password for `admin.html`; keep it only in a password manager.
 6. `npx wrangler deploy`. It prints the Worker address, e.g. `https://spinestack.NAME.workers.dev`.
-7. In `index.html`, `u/index.html` and `admin.html`, `window.SPINESTACK_WORKER` is the Worker's address
+7. In `build/index.html`, `u/index.html`, `feed/index.html` and `admin.html`, `window.SPINESTACK_WORKER` is the Worker's address
    (`https://api.shelfstackd.com`) and `window.SPINESTACK_WORKER_FALLBACK` its workers.dev address. Keep
    `window.SPINESTACK_TMDB` empty.
 
@@ -109,7 +110,7 @@ filters results, bump the `sc…:` cache key prefix in `src/index.js` so old cac
 `/u/?username` (a real file, so GitHub Pages answers 200 and link previews work): photo, name, @username, the numbers,
 the featured shelf drawn on its own, recent shelves, bio, most shelved. `/u/?username&shelf=<id>` shows one shelf. The
 owner gets Edit profile (photo, name, bio, featured shelf, Private profile). The header's @username and the Profile link
-in My shelves lead there; "Open in builder" on your own shelf opens `index.html?open=<id>`.
+in My shelves lead there; "Open in builder" on your own shelf opens `build/?embed&open=<id>` over the profile.
 Private shelves (the tick in My shelves) show only to their owner. A private profile shows others only its photo,
 display name and @username; its public shelves show to its owner and the followers it accepted.
 
@@ -133,14 +134,14 @@ signed-out visitors never load the Supabase library.
 - **Where things live:** text rows (profiles, shelves, shelf items) in the Supabase project "shelfstackd"
   (Mumbai, free plan). Images a saved shelf needs, and each shelf's small preview, in the Worker's KV
   (`ub:<user id>/...`); archive spines and TMDB / Open Library covers are pointed at, not copied.
-- **Keys:** only the Project URL and the *publishable* key are used, in `index.html` and in `worker/wrangler.toml`
+- **Keys:** only the Project URL and the *publishable* key are used, in `build/index.html`, `u/index.html`, `feed/index.html` and in `worker/wrangler.toml`
   `[vars]`. Both are public; Row Level Security protects every table. The secret / service_role key isn't used
   anywhere and must never be added to the page, the repo or the Worker.
 - **Database:** run each file in `supabase/migrations/` once, in order, in the dashboard's SQL Editor. Then run the
   test for the newest one (`supabase/tests/rls_phase3.sql` after `0006`): it plays two users and a signed-out visitor,
   undoes everything, and ends with `ALL ... CHECKS PASSED` (or stops at the first `FAIL:`). `rls_phase1.sql` is for a
   database with `0001` only.
-- **Pro:** two switches that must agree: `SHELFSTACKD_PRO_REQUIRED` in `index.html` (what the page offers) and
+- **Pro:** two switches that must agree: `SHELFSTACKD_PRO_REQUIRED` in `build/index.html` (what the page offers) and
   `app_config.pro_required` in the database (what the database and the Worker allow). Both are off, so everyone gets Pro.
   With them on, an account is Pro when `profiles.is_pro` is true (set in the SQL Editor; never from the page).
 - **Admins** can read reports. Add yourself once in the SQL Editor:
@@ -148,7 +149,7 @@ signed-out visitors never load the Supabase library.
 - **Sign-in addresses:** Supabase → Authentication → URL Configuration: Site URL `https://shelfstackd.com`; it allows
   `https://shelfstackd.com/**`, `https://reflexgod.github.io/spinestack/**` (until the move settles) and `http://localhost:8080/**`. Google's client sends people back to
   `https://fiukspnovrlzlcdekcnb.supabase.co/auth/v1/callback`.
-- **Email sign-in** is built but off (`SPINESTACK_EMAIL_LOGIN = false` in `index.html`, and the Email provider is
+- **Email sign-in** is built but off (`SPINESTACK_EMAIL_LOGIN = false` in `build/index.html`, and the Email provider is
   off in Supabase) until email can be sent from shelfstackd.com.
 - **Limits:** 6 spines a shelf (20 with Pro; over 10 they stand in two rows), 200 shelves an account; the Worker saves at most 150 images a day per account and
   600 a day in all (KV's free plan allows 1,000 writes a day). To move images to R2 later, create a bucket and
@@ -168,7 +169,7 @@ On your laptop first:
 3. In `backend/searxng/settings.yml`, replace `change-me-to-a-long-random-string` with any long random text.
 4. In `backend/` run `docker compose up --build`.
 5. Open http://localhost:8000 — the backend serves the website too. For its search to be the one the page uses, set
-   `window.SPINESTACK_API = "http://localhost:8000";` in `index.html` (while it's empty, the page uses the Worker and
+   `window.SPINESTACK_API = "http://localhost:8000";` in `build/index.html` (while it's empty, the page uses the Worker and
    doesn't look for a backend).
 
 Online, for free: an Oracle Cloud "Always Free" VM.
@@ -176,7 +177,7 @@ Online, for free: an Oracle Cloud "Always Free" VM.
 1. Create the VM (Ubuntu), install Docker, copy this repo onto it.
 2. Do steps 2–4 above. In `.env` set `ALLOWED_ORIGINS=https://YOURNAME.github.io`.
 3. The GitHub Pages site is HTTPS, so the backend must be HTTPS too. Point a domain or free subdomain at the VM and put Caddy in front of port 8000 (Caddy gets the certificate automatically).
-4. In `index.html`, set `window.SPINESTACK_API = "https://your-backend-address";`, commit, and GitHub Pages picks it up.
+4. In `build/index.html`, set `window.SPINESTACK_API = "https://your-backend-address";`, commit, and GitHub Pages picks it up.
 
 ## Keys
 

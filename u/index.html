@@ -201,9 +201,9 @@ input.renamer{font:inherit;font-weight:500;line-height:inherit;height:1.55em;pad
 </head>
 <body>
 <header class="top" id="top">
-  <a href="../#how">Info</a>
-  <a class="mark" href="../" aria-label="shelfstackd, the shelf builder">SHELFSTACKD</a>
-  <span class="r"><a href="../#shelf">Shelf</a><a href="../feed/">Feed</a><a class="acct" id="acctBtn" href="#" hidden>Sign in</a></span>
+  <a href="../build/#how">Info</a>
+  <a class="mark" href="../" aria-label="shelfstackd, home">SHELFSTACKD</a>
+  <span class="r"><a href="../build/#shelf">Shelf</a><a href="../feed/">Feed</a><a class="acct" id="acctBtn" href="#" hidden>Sign in</a></span>
 </header>
 
 <main class="prof">
@@ -359,7 +359,7 @@ input.renamer{font:inherit;font-weight:500;line-height:inherit;height:1.55em;pad
     <div>
       <h3>Shelf</h3>
       <p>Build it, then post it.</p>
-      <a class="fbtn" href="../#shelf">Open shelf</a>
+      <a class="fbtn" href="../build/#shelf">Open shelf</a>
     </div>
   </div>
   <div class="fbase"><span>© 2026 SHELFSTACKD. All rights reserved.</span><span>Not affiliated with any studio or publisher.</span></div>
@@ -452,7 +452,7 @@ async function startSession(){
 function paintAcct(){
   const b = $('#acctBtn'); b.hidden = false; b.classList.toggle('named', !!me.profile);
   if (me.profile){ b.textContent = '@' + me.profile.username; b.href = pageUrl(me.profile.username); }
-  else if (me.user){ b.textContent = 'Finish sign-up'; b.href = '../'; }
+  else if (me.user){ b.textContent = 'Finish sign-up'; b.href = '../build/'; }
   else { b.textContent = 'Sign in'; b.href = '#'; }
 }
 $('#acctBtn').addEventListener('click', e => { if (!me.user){ e.preventDefault(); openSheet('#signSheet', '#googleBtn'); } });
@@ -577,7 +577,7 @@ async function load(){
   paintAcct();
   if (!NAME){
     if (me.profile){ location.replace(pageUrl(me.profile.username)); return; }
-    $('#state').innerHTML = 'Whose shelves? <a href="../">Build your own</a>.'; return;
+    $('#state').innerHTML = 'Whose shelves? <a href="../build/">Build your own</a>.'; return;
   }
   let p;
   try { p = (await api(`profiles?select=${PROFILE_COLS}&username=eq.${NAME}`))[0]; }
@@ -586,7 +586,7 @@ async function load(){
     // a private profile you don't follow: only its card
     const card = (await rpc('profile_card', {p_username: NAME}).catch(() => []))[0];
     if (card && card.is_private) return showPrivate(card);
-    $('#state').innerHTML = `No one here. The name may have changed. <a href="../">Build your own shelf</a>.`; return;
+    $('#state').innerHTML = `No one here. The name may have changed. <a href="../build/">Build your own shelf</a>.`; return;
   }
   view.profile = p; view.mine = !!(me.user && me.user.id === p.id);
   document.title = (p.display_name || '@' + p.username) + ' · shelfstackd';
@@ -684,12 +684,12 @@ async function showShelf(id){
 }
 
 /* ---------- your own shelves, from here: the builder over this page, and each card's links ---------- */
-// the same builder as the home page (index.html, in its embed mode), in a frame over the profile; it says when it saved
+// the same builder as build/ (in its embed mode), in a frame over the profile; it says when it saved
 function openBuilder(id){
   if (!view.mine) return;
   const b = $('#bClose'); delete b.dataset.sure; b.textContent = 'Close';
   $('#bTitle').textContent = id ? 'Edit shelf' : 'New shelf';
-  $('#bFrame').src = '../?embed' + (id ? '&open=' + encodeURIComponent(id) : '&new');
+  $('#bFrame').src = '../build/?embed' + (id ? '&open=' + encodeURIComponent(id) : '&new');
   $('#builder').hidden = false; document.body.style.overflow = 'hidden'; b.focus();
 }
 function closeBuilder(){ $('#builder').hidden = true; $('#bFrame').src = 'about:blank'; document.body.style.overflow = ''; }
@@ -776,7 +776,7 @@ $('#featLink').addEventListener('click', e => { const s = featured(); if (view.m
 $('#openBuilder').addEventListener('click', e => { e.preventDefault(); openBuilder(e.currentTarget.dataset.id); });
 
 /* ---------- following: the FOLLOW button, the numbers, the lists, requests to a private profile ---------- */
-// FOLLOW pressed while signed out, or before picking a username, waits here (index.html sends you back once you have one)
+// FOLLOW pressed while signed out, or before picking a username, waits here (build/ sends you back once you have one)
 const PENDING = 'shelfstackd-follow';
 const pendingFollow = () => { try { const v = JSON.parse(sessionStorage.getItem(PENDING) || 'null'); return v && Date.now() - v.at < 30*60e3 ? v : null; } catch { return null; } };
 const keepFollow = x => { try { sessionStorage.setItem(PENDING, JSON.stringify({id: x.id, username: x.username, at: Date.now()})); } catch {} };
@@ -795,7 +795,7 @@ function followButton(btn, person, changed){
   btn.onmouseleave = () => { if (!sure) paint(false); };
   btn.onclick = async () => {
     if (!me.user){ keepFollow(person); openSheet('#signSheet', '#googleBtn'); toast('Sign in to follow @' + person.username + '.'); return; }
-    if (!me.profile){ keepFollow(person); toast('Pick a username first.'); setTimeout(() => { location.href = '../'; }, 900); return; }
+    if (!me.profile){ keepFollow(person); toast('Pick a username first.'); setTimeout(() => { location.href = '../build/'; }, 900); return; }
     if (state !== 'none' && touch && !sure){ sure = setTimeout(() => { sure = 0; paint(false); }, 3000); paint(true); return; }
     clearTimeout(sure); sure = 0; btn.disabled = true;
     try {
@@ -811,7 +811,7 @@ function followButton(btn, person, changed){
 async function finishFollow(){
   const pf = pendingFollow();
   if (!pf || !view.profile || pf.id !== view.profile.id || view.mine || !me.user) return false;
-  if (!me.profile){ toast('Pick a username first.'); setTimeout(() => { location.href = '../'; }, 900); return false; }
+  if (!me.profile){ toast('Pick a username first.'); setTimeout(() => { location.href = '../build/'; }, 900); return false; }
   dropFollow();
   try {
     const st = await rpc('follow', {target: pf.id});

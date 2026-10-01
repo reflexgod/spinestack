@@ -105,9 +105,9 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
 </head>
 <body>
 <header class="top" id="top">
-  <a href="../#how">Info</a>
-  <a class="mark" href="../" aria-label="shelfstackd, the shelf builder">SHELFSTACKD</a>
-  <span class="r"><a href="../#shelf">Shelf</a><a href="./" aria-current="page">Feed</a><a class="acct" id="acctBtn" href="#" hidden>Sign in</a></span>
+  <a href="../build/#how">Info</a>
+  <a class="mark" href="../" aria-label="shelfstackd, home">SHELFSTACKD</a>
+  <span class="r"><a href="../build/#shelf">Shelf</a><a href="./" aria-current="page">Feed</a><a class="acct" id="acctBtn" href="#" hidden>Sign in</a></span>
 </header>
 
 <main class="feed">
@@ -153,7 +153,7 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
     <div>
       <h3>Shelf</h3>
       <p>Build it, then post it.</p>
-      <a class="fbtn" href="../#shelf">Open shelf</a>
+      <a class="fbtn" href="../build/#shelf">Open shelf</a>
     </div>
   </div>
   <div class="fbase"><span>© 2026 SHELFSTACKD. All rights reserved.</span><span>Not affiliated with any studio or publisher.</span></div>
@@ -240,7 +240,7 @@ async function startSession(){
 function paintAcct(){
   const b = $('#acctBtn'); b.hidden = false; b.classList.toggle('named', !!me.profile);
   if (me.profile){ b.textContent = '@' + me.profile.username; b.href = profileUrl(me.profile.username); }
-  else if (me.user){ b.textContent = 'Finish sign-up'; b.href = '../'; }
+  else if (me.user){ b.textContent = 'Finish sign-up'; b.href = '../build/'; }
   else { b.textContent = 'Sign in'; b.href = '#'; }
 }
 const signIn = () => openSheet('#signSheet', '#googleBtn');
