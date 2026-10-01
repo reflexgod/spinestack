@@ -102,6 +102,7 @@ input[type=color]::-webkit-color-swatch{border:0;border-radius:2px}
 .ib:hover{background:var(--wash)}
 .ib:disabled{opacity:.25;cursor:default;background:var(--paper)}
 .empty{padding:var(--s4) 0;color:var(--grey)}
+#dragNote{margin:var(--s2) 0 0}
 
 /* Style: every look of the shelf in one panel, shut until asked for, with what's picked on its one line */
 details.style summary{display:flex;gap:var(--s3);align-items:baseline;padding-bottom:var(--s1);border-bottom:1px solid var(--hair);cursor:pointer;list-style:none}
@@ -142,6 +143,10 @@ em.pro{margin:0 var(--s1)}
 .mkside .note{margin:0;text-align:center}
 #story{display:block;width:100%;aspect-ratio:9/16;border-radius:20px;background:#fff}
 .stage{position:relative}
+/* a spine can be dragged on the preview to another place on the shelf; the one being dragged is outlined */
+.stage.canpull canvas{cursor:grab}
+.stage.pulling canvas{cursor:grabbing}
+.spinebox{position:absolute;border:2px solid var(--ink);border-radius:2px;box-shadow:0 0 0 1px rgba(255,255,255,.85);pointer-events:none}
 .stage.arranging{touch-action:none}
 .stage.arranging canvas{cursor:grab}
 .pngbox{position:absolute;border:1px dashed var(--ink);box-shadow:0 0 0 1px rgba(255,255,255,.85);pointer-events:none}
@@ -217,6 +222,7 @@ footer{margin-top:0}
         <h2>Spines <small id="count"></small> <button class="more" id="clear" type="button">Clear</button></h2>
         <p class="grey" id="sampleNote">This is a sample shelf. It clears when you add your first title.</p>
         <ol class="books" id="books"></ol>
+        <p class="note" id="dragNote" hidden>To move a spine, drag it by its dots, or drag it on the preview (on a phone, hold it first).</p>
       </section>
 
       <details class="style" id="stylePanel">
@@ -262,6 +268,7 @@ footer{margin-top:0}
 
     <div class="mkside">
       <div class="phone"><div class="stage" id="stage"><canvas id="story" width="1080" height="1920" role="img" aria-label="Story preview"></canvas>
+        <div class="spinebox" id="spineBox" hidden></div>
         <div class="pngbox" id="pngBox" hidden><button class="pngx" id="pngX" type="button" aria-label="Remove this PNG">✕</button><span class="pngh" id="pngH" aria-hidden="true"></span><span class="pngr" id="pngR" aria-hidden="true"></span></div></div></div>
       <p class="note" id="exportNote"></p>
     </div>
@@ -339,7 +346,7 @@ footer{margin-top:0}
 </div>
 <div class="toast" id="toast" hidden></div>
 
-<script src="../shelf.js?v=20260930d"></script>
+<script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../nav.js?v=20261001e"></script>
 <script src="../add.js?v=20261001d"></script>
@@ -422,7 +429,7 @@ const proSettings = () => clean0({plank: settings.plank || undefined, shelf_colo
 const usesPro = () => !!settings.plank || walled() || media.pngs.length > 0;
 const keysOf = pro => [pro && pro.wall_key, ...((pro && pro.wall_items) || []).map(p => p.key)].filter(Boolean);
 // this page's shelf, drawn by shelf.js
-let layout = {captionBottom: 150, booksTop: null};   // where the preview's caption ends and its books begin
+let layout = {captionBottom: 150, booksTop: null, spots: []};   // where the preview's caption ends, its books begin, and each book is
 const renderStory = (x = sctx, f = settings.filter, fast = false) => { const r = Shelf.renderStory(x, f, fast, books, settings, false, art()); if (x === sctx) layout = r; return r; };
 const sizes = (H0, U, list = books) => Shelf.sizes(H0, U, list, settings);
 Shelf.onTextureLoaded(() => redraw());
@@ -455,6 +462,7 @@ let openId = null;   // the spine whose controls show: press a row to open it, a
 const byLine = b => [b.author, b.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · ');
 function renderList(){
   paintLimit();
+  $('#dragNote').hidden = books.length < 2; stage.classList.toggle('canpull', books.length > 1);
   $('#sampleNote').hidden = !isSample || !books.length;
   $('#clear').hidden = !books.length;
   const ol = $('#books');
@@ -857,6 +865,72 @@ addEventListener('keydown', e => {
 // on the preview, the handler above picks what's under it. Its Opacity slider is one of its tools.
 // On click, not pointerdown: hiding the slider moves what's below it, and a button that moves mid-press never gets its click.
 document.addEventListener('click', e => { if (sel >= 0 && !e.target.closest('#stage, #pngOpWrap')){ sel = -1; paintPngs(); } });
+
+/* ---------- dragging a spine on the preview moves it on the shelf ----------
+   shelf.js says where it drew each book (layout.spots, in story pixels). With a mouse, press a spine and drag. With a
+   finger, hold it for a moment first, so a finger passing over the preview still scrolls the page. As the spine
+   passes the others the shelf is drawn again in the new order, and the list follows. A spine is in front of any PNG
+   behind it, so pressing one never picks the PNG. */
+const HOLD = 250, SLOP = 6;
+let pull = null;   // the spine being pressed or dragged: {id, pid, x0, y0, active, touch, timer}
+const spotAt = pt => { const sp = layout.spots || []; for (let i = sp.length - 1; i >= 0; i--){ const s = sp[i]; if (pt.x >= s.x && pt.x <= s.x + s.w && pt.y >= s.y && pt.y <= s.y + s.h) return s; } return null; };
+function paintPull(){
+  const box = $('#spineBox'), at = pull && pull.active ? books.findIndex(b => b.id === pull.id) : -1, s = (layout.spots || []).find(x => x.i === at);
+  stage.classList.toggle('pulling', !!(pull && pull.active));
+  if (!s){ box.hidden = true; return; }
+  const k = story.clientWidth/W;
+  box.hidden = false; Object.assign(box.style, {left: s.x*k - 2 + 'px', top: s.y*k - 2 + 'px', width: s.w*k + 4 + 'px', height: s.h*k + 4 + 'px'});
+}
+function startPull(){ if (!pull) return; pull.active = true; if (navigator.vibrate) try { navigator.vibrate(8); } catch {} paintPull(); }
+function endPull(){
+  if (!pull) return;
+  clearTimeout(pull.timer); try { stage.releasePointerCapture(pull.pid); } catch {}
+  pull = null; paintPull();
+}
+// where the dragged spine goes: its place among the others, from where the pointer is
+function movePull(pt){
+  const spots = layout.spots || [], from = books.findIndex(b => b.id === pull.id); if (from < 0) return;
+  const others = spots.filter(s => s.i !== from);
+  let to;
+  if (settings.layout === 'stack') to = others.filter(s => s.y + s.h/2 > pt.y).length;   // a pile: the first book is at the bottom
+  else {
+    // spines in one row or two, or covers in a grid: the row the pointer is nearest (books in a row stand on one line),
+    // then how many of that row's others it has passed
+    const foot = s => Math.round(s.y + s.h);
+    const rows = [...new Set(spots.map(foot))].map(bot => ({bot, top: Math.min(...spots.filter(s => foot(s) === bot).map(s => s.y))}));
+    const row = rows.reduce((best, r) => Math.abs(pt.y - (r.top + r.bot)/2) < Math.abs(pt.y - (best.top + best.bot)/2) ? r : best);
+    to = others.filter(s => foot(s) < row.bot || (foot(s) === row.bot && s.x + s.w/2 < pt.x)).length;
+  }
+  if (to === from) return;
+  const [b] = books.splice(from, 1); books.splice(to, 0, b);
+  renderStory();   // at once: the next move reads where everything is now
+  renderList();
+  paintPull();
+}
+stage.addEventListener('pointerdown', e => {
+  if (e.button || pull || books.length < 2 || e.target.closest('#pngBox')) return;
+  const s = spotAt(atStory(e)), b = s && books[s.i]; if (!b) return;
+  e.stopPropagation();   // the PNG editor's own pointerdown, below this one, doesn't see it
+  if (sel >= 0){ sel = -1; paintPngs(); }
+  pull = {id: b.id, pid: e.pointerId, x0: e.clientX, y0: e.clientY, active: false, touch: e.pointerType === 'touch', timer: 0};
+  if (pull.touch) pull.timer = setTimeout(startPull, HOLD);
+  try { stage.setPointerCapture(e.pointerId); } catch {}
+}, true);
+stage.addEventListener('pointermove', e => {
+  if (!pull || e.pointerId !== pull.pid) return;
+  if (!pull.active){
+    const far = Math.hypot(e.clientX - pull.x0, e.clientY - pull.y0) > SLOP;
+    if (pull.touch){ if (far) endPull(); return; }   // moved before the hold was up: that's the page being scrolled
+    if (!far) return;
+    startPull();
+  }
+  e.preventDefault();
+  movePull(atStory(e));
+});
+stage.addEventListener('touchmove', e => { if (pull && pull.active) e.preventDefault(); }, {passive: false});   // the page stays still while a spine is dragged
+stage.addEventListener('pointerup', e => { if (pull && e.pointerId === pull.pid) endPull(); });
+stage.addEventListener('pointercancel', e => { if (pull && e.pointerId === pull.pid) endPull(); });
+addEventListener('resize', paintPull);
 
 /* ---------- export: Claude download, phone share sheet, or plain download ---------- */
 let downloads = null;

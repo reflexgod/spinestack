@@ -357,3 +357,59 @@ test('the order: Add, the spines, Style; then Name and Who can view right above 
   } else expect(preview.x).toBeGreaterThan((await page.locator('#shelf').boundingBox()).x + 300);
 });
 
+/* ---------- dragging a spine on the preview ---------- */
+// a point on the preview, as fractions of its width and height (the sample shelf's four spines stand across the
+// middle: the first at about a quarter of the way across, the last at about three quarters)
+const onPreview = async (page, fx, fy) => { const b = await page.locator('#story').boundingBox(); return { x: b.x + b.width * fx, y: b.y + b.height * fy }; };
+
+test('dragging a spine on the preview with a mouse moves it, and the list follows', async ({ page }) => {
+  test.skip(isPhone(), 'a mouse');
+  const errors = watchErrors(page);
+  await mockNetwork(page);
+  await open(page, '/build/');
+  const before = await titles(page);
+  const from = await onPreview(page, .26, .6), to = await onPreview(page, .9, .6);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(from.x + 20, from.y, { steps: 3 });
+  await expect(page.locator('#spineBox')).toBeVisible();   // the spine being dragged is outlined
+  await page.mouse.move(to.x, to.y, { steps: 15 });
+  await page.mouse.up();
+  await expect(page.locator('#spineBox')).toBeHidden();
+  expect(await titles(page)).toEqual([before[1], before[2], before[3], before[0]]);   // the first spine is now the last
+  // and back one place, from the right end
+  const end = await onPreview(page, .74, .6), mid = await onPreview(page, .5, .6);
+  await page.mouse.move(end.x, end.y);
+  await page.mouse.down();
+  await page.mouse.move(mid.x, mid.y, { steps: 15 });
+  await page.mouse.up();
+  const after = await titles(page);
+  expect(after.indexOf(before[0])).toBeLessThan(3);
+  expect(after.slice().sort()).toEqual(before.slice().sort());   // the same four, in another order
+  expect(errors).toEqual([]);
+});
+
+test('with a finger: holding a spine and then dragging moves it; a quick swipe across the preview does not', async ({ page }) => {
+  test.skip(!isPhone(), 'a finger');
+  await mockNetwork(page);
+  await open(page, '/build/');
+  await page.locator('#story').scrollIntoViewIfNeeded();
+  const before = await titles(page), stage = page.locator('#stage');
+  const touch = (type, pt) => stage.dispatchEvent(type, { pointerId: 7, pointerType: 'touch', isPrimary: true, bubbles: true, cancelable: true, clientX: pt.x, clientY: pt.y, button: 0, buttons: type === 'pointerup' ? 0 : 1 });
+  const from = await onPreview(page, .26, .6), to = await onPreview(page, .9, .6);
+  // a swipe: down and straight away moving
+  await page.locator('#story').dispatchEvent('pointerdown', { pointerId: 7, pointerType: 'touch', isPrimary: true, bubbles: true, cancelable: true, clientX: from.x, clientY: from.y, button: 0, buttons: 1 });
+  await touch('pointermove', { x: from.x + 40, y: from.y });
+  await touch('pointermove', to);
+  await touch('pointerup', to);
+  expect(await titles(page)).toEqual(before);
+  // held first, then dragged
+  await page.locator('#story').dispatchEvent('pointerdown', { pointerId: 7, pointerType: 'touch', isPrimary: true, bubbles: true, cancelable: true, clientX: from.x, clientY: from.y, button: 0, buttons: 1 });
+  await page.waitForTimeout(350);
+  await expect(page.locator('#spineBox')).toBeVisible();
+  await touch('pointermove', { x: (from.x + to.x) / 2, y: from.y });
+  await touch('pointermove', to);
+  await touch('pointerup', to);
+  expect(await titles(page)).toEqual([before[1], before[2], before[3], before[0]]);
+});
+
