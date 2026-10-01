@@ -6,7 +6,8 @@ const { ROOT } = require('../site');
 
 const pages = [...fs.readdirSync(ROOT).filter(f => f.endsWith('.html')).map(f => path.join(ROOT, f)),
   ...fs.readdirSync(ROOT, { withFileTypes: true }).filter(d => d.isDirectory() && !['tests', 'worker', 'backend', 'node_modules'].includes(d.name) && !d.name.startsWith('.'))
-    .map(d => path.join(ROOT, d.name, 'index.html')).filter(f => fs.existsSync(f))];
+    .map(d => path.join(ROOT, d.name, 'index.html')).filter(f => fs.existsSync(f)),
+  ...fs.readdirSync(ROOT).filter(f => f.endsWith('.js')).map(f => path.join(ROOT, f))];   // nav.js loads libraries too
 
 test('libraries come from jsDelivr, pinned, with a matching integrity hash', () => {
   test.skip(test.info().project.name !== 'desktop-1280', 'reads files, no browser: once is enough');

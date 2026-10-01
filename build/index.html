@@ -40,40 +40,48 @@ body{margin:0;background:var(--paper);color:var(--ink);font:400 12px/1.55 var(--
 a{color:inherit}
 :focus-visible{outline:2px solid var(--ink);outline-offset:3px}
 
-/* the top bar, the same on every page (each page keeps its own copy): the logo, the three places, then you and + SHELF */
-.top{--pad:24px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);display:grid;grid-template-columns:auto minmax(0,1fr) auto;column-gap:40px;align-items:center;padding:12px var(--pad)}
+/* the top bar, the same on every page (each page keeps its own copy; nav.js runs it). Signed in: the logo, you, ⚡,
+   the places, search and + SHELF. Signed out: the logo, the places, ⚡, SIGN IN and + SHELF */
+.top{--pad:24px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);display:flex;align-items:center;gap:6px 22px;padding:12px var(--pad)}
 .top a{text-decoration:none;font-size:13px;text-transform:uppercase;white-space:nowrap}
-.mark{font-weight:800;font-size:22px!important;letter-spacing:.34em;margin-right:-.34em;line-height:1}
-.links{display:flex;gap:22px;align-items:center;min-width:0}
-.links a[aria-current],.acct[aria-current]{font-weight:700;text-decoration:underline dashed;text-decoration-thickness:2px;text-underline-offset:6px}
-.links .count{margin-left:auto}   /* this page only: how many spines are on the shelf, next to you */
-.top .r{display:flex;gap:18px;align-items:center;min-width:0}
-.acct{font:400 13px var(--mono);text-transform:uppercase;background:none;border:0;padding:0;color:var(--ink);cursor:pointer;text-decoration:none;white-space:nowrap}
-.acct.named{text-transform:none}   /* usernames are lowercase: show them as they are */
-.top .add{padding:7px 14px;font-size:12px;flex:none;display:inline-block}
-.top .add[aria-current]{box-shadow:0 0 0 2px var(--paper),0 0 0 3px var(--ink)}
-@media (max-width:960px){
-  .top{column-gap:22px}
-  .mark{font-size:17px!important;letter-spacing:.22em;margin-right:-.22em}
-  .links{gap:16px}
+.top svg{width:17px;height:17px;display:block;flex:none}
+.mark{font-weight:800;font-size:22px!important;letter-spacing:.34em;line-height:1;margin-right:auto;flex:none}
+.acct{display:flex;align-items:center;gap:8px;min-width:0;font:400 13px var(--mono);background:none;border:0;padding:0;color:var(--ink);cursor:pointer}
+.acct .ava{width:26px;height:26px;border-radius:50%;border:1px solid var(--ink);background:#F2F2F2;overflow:hidden;display:grid;place-items:center;font-size:12px;text-transform:uppercase;flex:none}
+.acct .ava img{width:100%;height:100%;object-fit:cover;display:block}
+.acct .who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}   /* usernames are lowercase: shown as they are; a long one ends in … */
+.acct > svg{width:14px;height:14px}
+.links{display:flex;gap:22px;align-items:center;flex:none}
+.links a{display:flex;align-items:center;padding:4px 0 2px;border-bottom:2px dashed transparent}
+.links a[aria-current]{font-weight:700;border-bottom-color:var(--ink)}
+.links .count{margin-left:6px}   /* this page only: how many spines are on the shelf */
+.signin{flex:none}
+.addwrap{display:flex;flex:none;border-radius:8px}
+.addwrap.here{box-shadow:0 0 0 2px var(--paper),0 0 0 3px var(--ink)}   /* this is the builder */
+.top .add{display:flex;align-items:center;gap:5px;padding:7px 13px;font-size:12px}
+.top .addmore{display:flex;align-items:center;padding:7px;border-radius:0 8px 8px 0;border-left-color:#5A5A5A}
+.top .add svg,.top .addmore svg{width:14px;height:14px}
+.addwrap.split .add{border-radius:8px 0 0 8px}
+@media (max-width:1040px){
+  .top{column-gap:18px}
+  .mark{font-size:17px!important;letter-spacing:.22em}
+  .links{gap:18px}
 }
 /* narrow windows and phones: the logo, you and + on the first row; the places on a second row that scrolls sideways
    inside the bar */
 @media (max-width:820px){
-  .top{grid-template-columns:auto minmax(0,1fr);row-gap:6px;padding-bottom:0}
-  .mark{grid-area:1/1}
-  .top .r{grid-area:1/2;justify-self:end;max-width:100%}
-  .links{grid-area:2/1/3/3;overflow-x:auto;scrollbar-width:none;margin-inline:calc(-1*var(--pad));padding:4px var(--pad) 12px}
+  .top{flex-wrap:wrap;padding-bottom:0}
+  .links{order:9;flex:0 0 calc(100% + 2*var(--pad));overflow-x:auto;scrollbar-width:none;margin-inline:calc(-1*var(--pad));padding:0 var(--pad) 10px}
   .links::-webkit-scrollbar{display:none}
-  .acct{min-width:0;overflow:hidden;text-overflow:ellipsis}   /* a long username ends in … rather than pushing the logo */
   html{scroll-padding-top:40px}   /* a section the bar jumps to starts below the two rows */
 }
 @media (max-width:640px){ .top{--pad:16px} }
 @media (max-width:520px){
-  .top a,.acct{font-size:11.5px}
-  .top .r{gap:12px}
-  .top .add{padding:6px 12px;font-size:13px}
-  .top .add span{display:none}   /* + SHELF is just + */
+  .top{column-gap:14px}
+  .top a{font-size:11.5px}
+  .acct .who,.acct > svg{display:none}   /* you are just your photo */
+  .top .add span{display:none}           /* + SHELF is just + */
+  .top .add{padding:7px 9px}
 }
 
 .col{max-width:600px;margin:0 auto;padding:0 16px}
@@ -260,9 +268,16 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
 </head>
 <body>
 <header class="top" id="top">
+  <!-- icons: Lucide 1.49.0 (ISC), pasted in -->
   <a class="mark" href="../" aria-label="shelfstackd, home">SHELFSTACKD</a>
-  <nav class="links" aria-label="shelfstackd"><a href="../shelves/">Shelves</a><a href="../members/">Members</a><a href="../feed/">Feed</a><a class="count" href="#shelf">Shelf (<span id="navCount">0</span>)</a></nav>
-  <span class="r"><button class="acct" id="acctBtn" type="button" hidden>Sign in</button><a class="btn add" href="#search" aria-current="page" aria-label="New shelf">+<span> Shelf</span></a></span>
+  <button class="acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false" hidden><span class="ava" aria-hidden="true"></span><span class="who"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+  <nav class="links" aria-label="shelfstackd">
+    <a href="../shelves/">Shelves</a><a href="../members/">Members</a>
+    <a class="zap" href="../feed/" aria-label="Activity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z"/></svg></a>
+    <a class="find" href="../members/" aria-label="Search" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a><a class="count" href="#shelf">Shelf (<span id="navCount">0</span>)</a>
+  </nav>
+  <a class="signin" id="signInBtn" href="#" hidden>Sign in</a>
+  <span class="addwrap here"><a class="btn add" href="#search" aria-current="page" aria-label="New shelf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Shelf</span></a><button class="btn addmore" id="addMore" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More ways to add" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></span>
 </header>
 
 <main>
@@ -366,7 +381,7 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
   </section>
 
   <section id="mine" class="wide" hidden>
-    <h2>My shelves <small id="mineCount"></small> <a class="dash sm" id="profileLink" href="../u/" style="margin-left:auto">Profile</a> <button class="dash sm" id="signOut" type="button">Sign out</button></h2>
+    <h2>My shelves <small id="mineCount"></small></h2>
     <p class="grey" id="mineEmpty" hidden>No saved shelves yet. Make one above and press Save shelf.</p>
     <ol class="mine" id="mineList"></ol>
   </section>
@@ -435,6 +450,7 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
 
 <script src="../shelf.js?v=20260930d"></script>
 <script src="../worker-address.js?v=20261001a"></script>
+<script src="../nav.js?v=20261001a"></script>
 <script>
 (() => {
 const $ = s => document.querySelector(s);
@@ -1351,7 +1367,7 @@ function friendly(e){
 /* the account, and what the page shows for it */
 async function startAccounts(){
   if (!accounts) return;
-  $('#acctBtn').hidden = false; $('#saveWrap').hidden = false; paintAcct();
+  $('#saveWrap').hidden = false; paintAcct();
   const draft = EMBED ? null : takeDraft();           // a draft waits for the builder page itself, not a profile's
   if (draft) await restoreDraft(draft);
   if (!hasSession() && !returning()){ embedReady(); return; }          // signed out: nothing more loads
@@ -1385,7 +1401,7 @@ async function setUser(user){
   if (same && (acct.profile || !user)) return;
   acct.user = user || null; acct.profile = null;
   if (!user){ acct.shelfId = null; acct.shelves = []; acct.pendingSave = false; proAccount = false; paintAcct(); paintMine(); return; }
-  const {data, error} = await acct.sb.from('profiles').select('id,username,is_private').eq('id', user.id).maybeSingle();
+  const {data, error} = await acct.sb.from('profiles').select('id,username,is_private,display_name,avatar_key').eq('id', user.id).maybeSingle();
   if (error){ toast('Couldn’t load your account. Try again in a moment.'); paintAcct(); return; }
   acct.profile = data;
   if (SHELFSTACKD_PRO_REQUIRED && data){ const r = await acct.sb.rpc('am_i_pro'); proAccount = r.data === true; }
@@ -1396,18 +1412,15 @@ async function setUser(user){
 }
 function paintAcct(){
   if (!accounts) return;
-  const p = acct.profile, b = $('#acctBtn');
-  b.textContent = p ? '@' + p.username : acct.user ? 'Finish sign-up' : 'Sign in'; b.classList.toggle('named', !!p);
+  const p = acct.profile;
+  if (!EMBED) Nav.paint({user: acct.user, profile: p});   // the bar (nav.js): Sign in, Finish sign-up, or you and the account menu
   $('#saveShelf').textContent = acct.shelfId ? 'Update shelf' : 'Save shelf';
   $('#saveNew').hidden = !acct.shelfId;
   $('#saveNote').textContent = acct.user ? '' : 'Sign in to keep this shelf and open it again later.';
   $('#mine').hidden = !p;
-  if (p) $('#profileLink').href = '../u/?' +p.username;
 }
-$('#acctBtn').addEventListener('click', () => {
-  if (acct.profile) location.href = '../u/?' +acct.profile.username;
-  else openSheet(acct.user ? 'name' : 'signin');
-});
+Nav.onSignIn(() => openSheet('signin'));
+Nav.onFinish(() => openSheet('name'));
 
 /* the sign-in and username sheet */
 let sheetFrom = null;
@@ -1470,7 +1483,7 @@ $('#nameBtn').addEventListener('click', async () => {
   const v = $('#uname').value, btn = $('#nameBtn');
   if (!nameFree || !$('#adult').checked || !acct.user) return;
   btn.disabled = true;
-  const {data, error} = await acct.sb.from('profiles').insert({id: acct.user.id, username: v}).select('id,username,is_private').single();
+  const {data, error} = await acct.sb.from('profiles').insert({id: acct.user.id, username: v}).select('id,username,is_private,display_name,avatar_key').single();
   if (error){ nameFree = false; paintName(friendly(error), false); return; }
   acct.profile = data; closeSheet(); paintAcct(); toast('Welcome, @' + data.username + '.');
   // FOLLOW was pressed on a profile before there was a username: back to that profile, which finishes it
@@ -1485,8 +1498,8 @@ async function signOut(){
   try { await (await supa()).auth.signOut(); } catch {}
   await setUser(null); closeSheet(); toast('Signed out.');
 }
-$('#nameOut').addEventListener('click', signOut);
-$('#signOut').addEventListener('click', signOut);
+$('#nameOut').addEventListener('click', signOut);   // no username yet, so no account menu: the way out is here
+Nav.onSignOut(signOut);
 
 /* a shelf as rows: each spine points at its images (a:archive id, u:saved image, url:TMDB / Open Library cover) */
 const COVER_HOSTS = /^https:\/\/(image\.tmdb\.org|covers\.openlibrary\.org)\/\S+$/;

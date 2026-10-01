@@ -49,7 +49,7 @@ const feedRow = s => { const p = PEOPLE.find(x => x.id === s.owner);
 const card = (p, me) => ({ id: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key, is_private: p.is_private, i_follow: !!me && p.username === 'mira', i_requested: false });
 
 /* ---------- Supabase's REST API, answered from the data above ---------- */
-function rest(url, method, body, signedIn){
+function rest(url, method, body, signedIn, named){
   const what = url.pathname.replace(/^\/rest\/v1\//, ''), q = url.searchParams, eq = k => (q.get(k) || '').replace(/^eq\./, '');
   if (what === 'rpc/feed'){
     const rows = SHELVES.filter(s => body.scope !== 'following' || (signedIn && PEOPLE.find(p => p.id === s.owner).username === 'mira')).map(feedRow);
@@ -66,7 +66,7 @@ function rest(url, method, body, signedIn){
   if (what === 'rpc/username_available') return true;
   if (what === 'rpc/am_i_pro') return false;
   if (what.startsWith('rpc/')) return [];
-  if (what === 'profiles') return PEOPLE.filter(p => (!q.has('id') || p.id === eq('id')) && (!q.has('username') || p.username === eq('username')));
+  if (what === 'profiles') return PEOPLE.filter(p => (named || p.id !== ME.id) && (!q.has('id') || p.id === eq('id')) && (!q.has('username') || p.username === eq('username')));
   if (what === 'shelves') return SHELVES.filter(s => (!q.has('owner') || s.owner === eq('owner')) && (!q.has('id') || s.id === eq('id')));
   if (what === 'shelf_items') return ITEMS;
   return method === 'GET' ? [] : null;
@@ -76,21 +76,24 @@ const PIXEL = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQ
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' };
 
 /* Answers everything that isn't the site itself. Returns {unknown}: requests nothing here knew how to answer. */
-async function mockNetwork(page, { signedIn = false } = {}){
+/* signedIn: a session for the made-up account; named: false leaves that account without a username yet */
+async function mockNetwork(page, { signedIn = false, named = true } = {}){
   const unknown = [];
   if (signedIn){
     const exp = Math.floor(Date.now() / 1000) + 3600, b64 = o => Buffer.from(JSON.stringify(o)).toString('base64url');
     const token = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: ME.id, role: 'authenticated', aud: 'authenticated', exp })}.test`;
     const session = { access_token: token, token_type: 'bearer', expires_in: 3600, expires_at: exp, refresh_token: 'test-refresh',
       user: { id: ME.id, aud: 'authenticated', role: 'authenticated', email: 'tester@example.com', app_metadata: { provider: 'google' }, user_metadata: { name: 'Test Person' }, created_at: day(60) } };
-    await page.addInitScript(([k, v]) => { try { localStorage.setItem(k, v); } catch {} }, [SESSION_KEY, JSON.stringify(session)]);
+    // once per tab, so a page that signs out stays signed out when it loads again
+    await page.addInitScript(([k, v]) => { try { if (!sessionStorage.getItem('test-signed-in')){ sessionStorage.setItem('test-signed-in', '1'); localStorage.setItem(k, v); } } catch {} },
+      [SESSION_KEY, JSON.stringify(session)]);
   }
   await page.route(u => !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(u.href), async route => {
     const req = route.request(), url = new URL(req.url()), method = req.method();
     if (method === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
     if (url.origin === SB_URL && url.pathname.startsWith('/rest/v1/')){
       let body = {}; try { body = JSON.parse(req.postData() || '{}'); } catch {}
-      let data = rest(url, method, body, signedIn);
+      let data = rest(url, method, body, signedIn, named);
       if (/vnd\.pgrst\.object/.test(req.headers().accept || '')) data = Array.isArray(data) ? data[0] || null : data;   // .single()
       return route.fulfill({ status: data === null ? 204 : 200, headers: CORS, contentType: 'application/json', body: data === null ? '' : JSON.stringify(data) });
     }

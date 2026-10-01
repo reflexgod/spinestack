@@ -11,6 +11,7 @@ shelf.js              draws the spines and the story; build/ and u/ both use it,
 u/index.html          profiles: /u/?username, and one shelf: /u/?username&shelf=<id>
 feed/index.html       the feed: /feed/, FOLLOWING and EVERYONE, newest saved shelves first
 worker-address.js     sends Worker requests to its workers.dev address on networks that block api.shelfstackd.com
+nav.js                the top bar on every page: who is signed in, the account menu (Sign out is its last item), the ▾ next to + SHELF
 admin.html            approve or delete archive uploads (needs the admin token); read reports (Google sign-in, admins only)
 tests/                checks for the pages: Playwright, axe, html-validate (see Tests). The site never loads anything from here
 worker/               Cloudflare Worker: name lookup, scan search, image proxy (what the live site uses)
@@ -176,7 +177,8 @@ the browser's own `<dialog>` and `popover`; relative times use `Intl.RelativeTim
 | browser-image-compression 2.0.2 | shrinks the photo before upload (the Worker takes 2 MB at most) | `browser-image-compression@2.0.2/dist/browser-image-compression.js` | `sha384-dHP9fwqd9BAiDh9uJ0p10khgbbcFMh34bVEiCnJ1Ah/AT2T2k4t572VEo3WXzxXp` |
 | Lucide 1.49.0 | icons (zap, search, chevron-down, x, plus) | pasted into the pages as inline SVG, not loaded | |
 
-Only Supabase is loaded so far; each of the others is added to a page when the page starts using it. To change a
+Loaded so far: Supabase, and Floating UI (by `nav.js`, only for someone signed in, who has the menus). Each of the
+others is added to a page when the page starts using it. To change a
 version: `curl -s <file's address> | openssl dgst -sha384 -binary | openssl base64 -A` gives the new hash.
 
 ## Tests
@@ -193,8 +195,9 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 
 - **Playwright** (`specs/site.spec.js`) opens every page at 1280 px and at 390 px, signed out and signed in: the top
   bar is there, the page doesn't scroll sideways, nothing is logged as an error, signed-out home loads its shelves, and
-  old builder links at the root go on to `/build/`. Two checks wait for their stage (marked `test.fixme`): Sign out as
-  the account menu's last item, and the + SHELF dialog closing with Esc.
+  old builder links at the root go on to `/build/`. The account menu: its seven items with Sign out last, open by tap,
+  by mouse and by keyboard, closed by Esc and by a click outside, always inside the window; Sign out signs out. One
+  check waits for its stage (marked `test.fixme`): the + SHELF dialog closing with Esc.
 - **axe** (`specs/a11y.spec.js`) runs on every page, `privacy.html` and `admin.html` too: nothing serious or critical.
 - **html-validate** reads every HTML file with its recommended rules, except that inline `style` is allowed and the
   doctype is lowercase (`tests/.htmlvalidate.json`).

@@ -24,39 +24,47 @@ html{background:var(--paper)}
 body{margin:0;background:var(--paper);color:var(--ink);font:400 12px/1.55 var(--mono)}
 a{color:inherit}
 :focus-visible{outline:2px solid var(--ink);outline-offset:3px}
-/* the top bar, the same on every page (each page keeps its own copy): the logo, the three places, then you and + SHELF */
-.top{--pad:24px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);display:grid;grid-template-columns:auto minmax(0,1fr) auto;column-gap:40px;align-items:center;padding:12px var(--pad)}
+/* the top bar, the same on every page (each page keeps its own copy; nav.js runs it). Signed in: the logo, you, ⚡,
+   the places, search and + SHELF. Signed out: the logo, the places, ⚡, SIGN IN and + SHELF */
+.top{--pad:24px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);display:flex;align-items:center;gap:6px 22px;padding:12px var(--pad)}
 .top a{text-decoration:none;font-size:13px;text-transform:uppercase;white-space:nowrap}
-.mark{font-weight:800;font-size:22px!important;letter-spacing:.34em;margin-right:-.34em;line-height:1}
-.links{display:flex;gap:22px;align-items:center;min-width:0}
-.links a[aria-current],.acct[aria-current]{font-weight:700;text-decoration:underline dashed;text-decoration-thickness:2px;text-underline-offset:6px}
-.top .r{display:flex;gap:18px;align-items:center;min-width:0}
-.top .add{padding:7px 14px;font-size:12px;flex:none;display:inline-block}
-.top .add[aria-current]{box-shadow:0 0 0 2px var(--paper),0 0 0 3px var(--ink)}
-@media (max-width:960px){
-  .top{column-gap:22px}
-  .mark{font-size:17px!important;letter-spacing:.22em;margin-right:-.22em}
-  .links{gap:16px}
+.top svg{width:17px;height:17px;display:block;flex:none}
+.mark{font-weight:800;font-size:22px!important;letter-spacing:.34em;line-height:1;margin-right:auto;flex:none}
+.acct{display:flex;align-items:center;gap:8px;min-width:0;font:400 13px var(--mono);background:none;border:0;padding:0;color:var(--ink);cursor:pointer}
+.acct .ava{width:26px;height:26px;border-radius:50%;border:1px solid var(--ink);background:#F2F2F2;overflow:hidden;display:grid;place-items:center;font-size:12px;text-transform:uppercase;flex:none}
+.acct .ava img{width:100%;height:100%;object-fit:cover;display:block}
+.acct .who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}   /* usernames are lowercase: shown as they are; a long one ends in … */
+.acct > svg{width:14px;height:14px}
+.links{display:flex;gap:22px;align-items:center;flex:none}
+.links a{display:flex;align-items:center;padding:4px 0 2px;border-bottom:2px dashed transparent}
+.links a[aria-current]{font-weight:700;border-bottom-color:var(--ink)}
+.signin{flex:none}
+.addwrap{display:flex;flex:none;border-radius:8px}
+.addwrap.here{box-shadow:0 0 0 2px var(--paper),0 0 0 3px var(--ink)}   /* this is the builder */
+.top .add{display:flex;align-items:center;gap:5px;padding:7px 13px;font-size:12px}
+.top .addmore{display:flex;align-items:center;padding:7px;border-radius:0 8px 8px 0;border-left-color:#5A5A5A}
+.top .add svg,.top .addmore svg{width:14px;height:14px}
+.addwrap.split .add{border-radius:8px 0 0 8px}
+@media (max-width:1040px){
+  .top{column-gap:18px}
+  .mark{font-size:17px!important;letter-spacing:.22em}
+  .links{gap:18px}
 }
 /* narrow windows and phones: the logo, you and + on the first row; the places on a second row that scrolls sideways
    inside the bar */
 @media (max-width:820px){
-  .top{grid-template-columns:auto minmax(0,1fr);row-gap:6px;padding-bottom:0}
-  .mark{grid-area:1/1}
-  .top .r{grid-area:1/2;justify-self:end;max-width:100%}
-  .links{grid-area:2/1/3/3;overflow-x:auto;scrollbar-width:none;margin-inline:calc(-1*var(--pad));padding:4px var(--pad) 12px}
+  .top{flex-wrap:wrap;padding-bottom:0}
+  .links{order:9;flex:0 0 calc(100% + 2*var(--pad));overflow-x:auto;scrollbar-width:none;margin-inline:calc(-1*var(--pad));padding:0 var(--pad) 10px}
   .links::-webkit-scrollbar{display:none}
-  .acct{min-width:0;overflow:hidden;text-overflow:ellipsis}   /* a long username ends in … rather than pushing the logo */
 }
 @media (max-width:640px){ .top{--pad:16px} }
 @media (max-width:520px){
-  .top a,.acct{font-size:11.5px}
-  .top .r{gap:12px}
-  .top .add{padding:6px 12px;font-size:13px}
-  .top .add span{display:none}   /* + SHELF is just + */
+  .top{column-gap:14px}
+  .top a{font-size:11.5px}
+  .acct .who,.acct > svg{display:none}   /* you are just your photo */
+  .top .add span{display:none}           /* + SHELF is just + */
+  .top .add{padding:7px 9px}
 }
-.acct{font:400 13px var(--mono);text-transform:uppercase;background:none;border:0;padding:0;color:var(--ink);cursor:pointer;text-decoration:none}
-.acct.named{text-transform:none}
 p{margin:0 0 12px}
 .grey{color:var(--grey)}
 .dash{display:inline-block;background:none;border:0;padding:0 0 9px;font:500 16px var(--mono);text-transform:uppercase;color:var(--ink);cursor:pointer;text-decoration:none;
@@ -215,9 +223,16 @@ input.renamer{font:inherit;font-weight:500;line-height:inherit;height:1.55em;pad
 </head>
 <body>
 <header class="top" id="top">
+  <!-- icons: Lucide 1.49.0 (ISC), pasted in -->
   <a class="mark" href="../" aria-label="shelfstackd, home">SHELFSTACKD</a>
-  <nav class="links" aria-label="shelfstackd"><a href="../shelves/">Shelves</a><a href="../members/">Members</a><a href="../feed/">Feed</a></nav>
-  <span class="r"><a class="acct" id="acctBtn" href="#" hidden>Sign in</a><a class="btn add" href="../build/" aria-label="New shelf">+<span> Shelf</span></a></span>
+  <button class="acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false" hidden><span class="ava" aria-hidden="true"></span><span class="who"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+  <nav class="links" aria-label="shelfstackd">
+    <a href="../shelves/">Shelves</a><a href="../members/">Members</a>
+    <a class="zap" href="../feed/" aria-label="Activity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z"/></svg></a>
+    <a class="find" href="../members/" aria-label="Search" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
+  </nav>
+  <a class="signin" id="signInBtn" href="#" hidden>Sign in</a>
+  <span class="addwrap"><a class="btn add" href="../build/" aria-label="New shelf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Shelf</span></a><button class="btn addmore" id="addMore" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More ways to add" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></span>
 </header>
 
 <main class="prof">
@@ -383,6 +398,7 @@ input.renamer{font:inherit;font-weight:500;line-height:inherit;height:1.55em;pad
 
 <script src="../shelf.js?v=20260930d"></script>
 <script src="../worker-address.js?v=20261001a"></script>
+<script src="../nav.js?v=20261001a"></script>
 <script>
 (() => {
 /* A profile: /u/?username, and one of its shelves: /u/?username&shelf=<id>.
@@ -458,20 +474,17 @@ async function startSession(){
     if (err) toast('Sign-in didn’t finish: ' + err);
     me.user = session && session.user;
     if (me.user){
-      const rows = await api(`profiles?select=id,username&id=eq.${me.user.id}`);
+      const rows = await api(`profiles?select=id,username,display_name,avatar_key&id=eq.${me.user.id}`);
       me.profile = rows[0] || null;
     }
     sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') location.reload(); });
   } catch (e){ toast(friendly(e)); }
 }
-function paintAcct(){
-  const b = $('#acctBtn'); b.hidden = false; b.classList.toggle('named', !!me.profile);
-  if (me.profile){ b.textContent = '@' + me.profile.username; b.href = pageUrl(me.profile.username); }
-  else if (me.user){ b.textContent = 'Finish sign-up'; b.href = '../build/'; }
-  else { b.textContent = 'Sign in'; b.href = '#'; }
-  if (me.profile && me.profile.username === NAME && !SHELF) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');   // on your own profile
-}
-$('#acctBtn').addEventListener('click', e => { if (!me.user){ e.preventDefault(); openSheet('#signSheet', '#googleBtn'); } });
+// the bar (nav.js) shows who is signed in
+const paintAcct = () => Nav.paint(me);
+Nav.onSignIn(() => openSheet('#signSheet', '#googleBtn'));
+// Sign out, from the account menu (nav.js): the page starts again signed out
+Nav.onSignOut(async () => { try { const {error} = await (await supa()).auth.signOut(); if (error) throw error; } catch (e){ toast(friendly(e)); } });
 $('#googleBtn').addEventListener('click', async () => {
   const btn = $('#googleBtn'); btn.disabled = true;
   try {
@@ -1037,6 +1050,7 @@ $('#saveBtn').addEventListener('click', async () => {
     if (old && old !== view.profile.avatar_key) workerPost('/m/delete?k=' + encodeURIComponent(old)).catch(() => {});   // the old photo goes for good
     closeSheets(); toast('Profile saved.');
     paintHead();
+    if (me.profile){ me.profile.display_name = view.profile.display_name; me.profile.avatar_key = view.profile.avatar_key; paintAcct(); }   // the bar's photo too
     if (patch.pinned_shelf_id !== (p.pinned_shelf_id || null)){ view.drawn = []; paintLists(); paintFeatured(); paintMost(); }
   } catch (err){
     if (added) workerPost('/m/delete?k=' + encodeURIComponent(added)).catch(() => {});   // the new photo isn't used after all

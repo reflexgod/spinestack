@@ -20,3 +20,16 @@ for (const run of runs) {
     expect(bad, bad.join('\n')).toEqual([]);
   });
 }
+
+for (const [name, button] of [['the account menu', '#acctBtn'], ['the ▾ menu', '#addMore']]) {
+  test(`axe: home with ${name} open`, async ({ page }) => {
+    await mockNetwork(page, { signedIn: true });
+    await open(page, '/');
+    await page.locator(button).click();
+    await expect(page.getByRole('menu')).toBeVisible();
+    const { violations } = await new AxeBuilder({ page }).analyze();
+    const bad = violations.filter(v => v.impact === 'serious' || v.impact === 'critical')
+      .map(v => `${v.impact} ${v.id}: ${v.help}\n` + v.nodes.map(n => `    ${n.target.join(' ')}  ${n.failureSummary.replace(/\s+/g, ' ')}`).join('\n'));
+    expect(bad, bad.join('\n')).toEqual([]);
+  });
+}

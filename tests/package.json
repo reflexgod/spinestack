@@ -11,6 +11,8 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
+    "@floating-ui/core": "1.8.0",
+    "@floating-ui/dom": "1.8.0",
     "@playwright/test": "1.63.0",
     "@supabase/supabase-js": "2.117.2",
     "html-validate": "11.16.1"
