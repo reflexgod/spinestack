@@ -209,6 +209,7 @@ test('signed-in home: a welcome by name and the two shelf sections', async ({ pa
   await mockNetwork(page, { signedIn: true });
   await open(page, '/');
   await expect(page.locator('#hello')).toHaveText('Welcome back, @tester.');
+  await expect(page.locator('main').getByRole('link', { name: /new shelf/i })).toHaveCount(0);   // + SHELF in the bar is the way to a new shelf
   await expect(page.locator('#folRow li')).toHaveCount(6);
   await expect(page.locator('#inGrid li')).toHaveCount(12);
 });
