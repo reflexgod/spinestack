@@ -290,3 +290,26 @@ test('upload a scan: the link and the ▾ menu both open the file picker, and th
   expect(await titles(page)).toEqual(['Kids']);
   expect(errors).toEqual([]);
 });
+
+test('the order: Add, the spines, Style; then Name and Who can view right above Cancel · Save · Save story', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/build/');
+  const top = async sel => (await page.locator(sel).boundingBox()).y, bottom = async sel => { const b = await page.locator(sel).boundingBox(); return b.y + b.height; };
+  expect(await top('#search')).toBeLessThan(await top('#shelf'));
+  expect(await bottom('#shelf')).toBeLessThanOrEqual(await top('#stylePanel'));
+  // the name and who can view it come after everything else in the page, with the bar right after them
+  const order = await page.evaluate(() => ['#stylePanel', '#shelfName', 'input[name=vis]', '#cancelBtn', '#saveShelf', '#exportBtn'].map(s => document.querySelector(s))
+    .map((el, i, all) => i === 0 || (all[i - 1].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) > 0));
+  expect(order).toEqual([true, true, true, true, true, true]);
+  await page.locator('#shelfName').scrollIntoViewIfNeeded();
+  const name = await page.locator('#shelfName').boundingBox(), who = await page.locator('fieldset.who').boundingBox(), bar = await page.locator('.mkbar').boundingBox();
+  expect(name.y + name.height).toBeLessThanOrEqual(bar.y + 1);
+  if (!isPhone()) expect(Math.abs((name.y + name.height) - (who.y + who.height))).toBeLessThanOrEqual(2);   // side by side
+  // the preview: beside the form on a wide window; on a phone, after the spines and before Style
+  const preview = await page.locator('.phone').boundingBox();
+  if (isPhone()) {
+    expect(preview.y).toBeGreaterThanOrEqual(await bottom('#shelf'));
+    expect(preview.y + preview.height).toBeLessThanOrEqual(await top('#stylePanel'));
+  } else expect(preview.x).toBeGreaterThan((await page.locator('#shelf').boundingBox()).x + 300);
+});
+

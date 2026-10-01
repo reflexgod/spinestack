@@ -33,11 +33,12 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
 <link rel="stylesheet" href="../site.css?v=20261001a">
 <style>
-/* the builder, laid out like a new-list page: the name and who can view it, Add, the spines as a list, Style, and the
-   live preview beside them; Cancel, Save and Save story stay at the bottom (site.css has everything shared) */
+/* the builder, laid out like a new-list page: Add, the spines as a list, Style, and the live preview beside them;
+   then the shelf's name and who can view it, right above Cancel · Save · Save story, which stay at the bottom of the
+   window (site.css has everything shared) */
 .mkgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:var(--s5) var(--s6);align-items:start}
 .mkform{display:grid;gap:var(--s5);min-width:0}
-.fieldrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--s4) var(--s5);align-items:end}
+.fieldrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--s4) var(--s5);align-items:end;margin-top:var(--s6)}
 .field legend{padding:0;margin-bottom:var(--s1)}
 /* who can view: two halves of one outlined button, the picked one underlined (the black button here is Save) */
 .who .seg2{display:flex;border:1px solid var(--ink);border-radius:var(--radius);overflow:hidden}
@@ -143,7 +144,7 @@ em.pro{margin:0 var(--s1)}
 
 /* Cancel, Save and Save story: always at the bottom of the window */
 .mkbar{position:sticky;bottom:0;z-index:4;display:flex;flex-wrap:wrap;gap:var(--s2) var(--s4);align-items:center;justify-content:flex-end;background:var(--paper);border-top:1px solid var(--hair);
-  margin-top:var(--s6);padding:var(--s3) 0 calc(var(--s3) + env(safe-area-inset-bottom,0px))}
+  margin-top:var(--s4);padding:var(--s3) 0 calc(var(--s3) + env(safe-area-inset-bottom,0px))}
 .barleft{margin-right:auto;display:flex;flex-wrap:wrap;gap:var(--s1) var(--s4);align-items:baseline;min-width:0}
 .mkbar .note{margin:0}
 footer{margin-top:0}
@@ -159,12 +160,12 @@ footer{margin-top:0}
 .modal-card{background:var(--paper);border:1px solid var(--ink);border-radius:var(--radius);padding:var(--s4);max-width:380px;width:100%;display:grid;gap:var(--s3);max-height:calc(100% - 2*var(--s4));overflow:auto}
 .modal-card img{width:100%;max-width:230px;margin:0 auto;display:block}
 
-/* narrower: one column, in this order: name and who can view, Add, the preview, the spines, Style */
+/* narrower: one column, in this order: Add, the spines, the preview, Style */
 @media (max-width:900px){
   .mkgrid{display:flex;flex-direction:column;align-items:stretch;gap:var(--s5)}
   .mkform{display:contents}
   .mkside{position:static;order:3;width:100%}
-  .fieldrow{order:1} .addrow{order:2} #shelf{order:4} details.style{order:5}
+  .addrow{order:1} #shelf{order:2} details.style{order:4}
   .phone{width:min(100%, 300px)}
 }
 @media (max-width:520px){
@@ -192,13 +193,6 @@ footer{margin-top:0}
   <h1 id="pageTitle">New shelf</h1>
   <div class="mkgrid">
     <div class="mkform">
-      <div class="fieldrow">
-        <label class="field"><span class="lbl">Name</span><input type="text" id="shelfName" placeholder="e.g. 2am films" maxlength="60" autocomplete="off" spellcheck="false"></label>
-        <fieldset class="field who"><legend class="lbl">Who can view</legend>
-          <div class="seg2"><label><input type="radio" name="vis" value="public" checked>Public</label><label><input type="radio" name="vis" value="private">Private</label></div>
-        </fieldset>
-      </div>
-
       <div class="addrow" id="search">
         <form class="addform" id="findForm" autocomplete="off">
           <label class="lbl" for="findQ">Add</label>
@@ -263,6 +257,13 @@ footer{margin-top:0}
     </div>
   </div>
 
+  <!-- the bottom of the page: what the shelf is called and who can view it, right above Cancel · Save · Save story -->
+  <div class="fieldrow">
+    <label class="field"><span class="lbl">Name</span><input type="text" id="shelfName" placeholder="e.g. 2am films" maxlength="60" autocomplete="off" spellcheck="false"></label>
+    <fieldset class="field who"><legend class="lbl">Who can view</legend>
+      <div class="seg2"><label><input type="radio" name="vis" value="public" checked>Public</label><label><input type="radio" name="vis" value="private">Private</label></div>
+    </fieldset>
+  </div>
   <div class="mkbar">
     <span class="barleft"><button class="dash sm" id="saveNew" type="button" hidden>Save as a new shelf</button><span class="note" id="saveNote" role="status"></span></span>
     <button class="dash sm" id="cancelBtn" type="button">Cancel</button>
