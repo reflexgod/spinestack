@@ -19,7 +19,7 @@ function sizeOf(file){
 
 test('every page has its own title and description, the icons and the share picture', () => {
   test.skip(isPhone(), 'reads files, no browser: once is enough');
-  expect(files.length).toBeGreaterThanOrEqual(9);
+  expect(files.length).toBeGreaterThanOrEqual(10);
   const titles = new Set();
   for (const f of files) {
     const html = fs.readFileSync(path.join(ROOT, f), 'utf8'), up = f.includes('/') ? '../' : '';

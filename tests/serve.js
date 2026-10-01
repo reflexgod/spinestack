@@ -1,4 +1,5 @@
-/* The site as GitHub Pages serves it, for the tests: plain files from the repo root, index.html for a folder.
+/* The site as GitHub Pages serves it, for the tests: plain files from the repo root, index.html for a folder, and
+   404.html (with the status 404) for anything that isn't there.
    node serve.js [port] (8181 unless given). */
 const http = require('http'), fs = require('fs'), path = require('path');
 const ROOT = path.resolve(__dirname, '..'), PORT = +process.argv[2] || 8181;
@@ -16,7 +17,10 @@ http.createServer((req, res) => {
       file = path.join(file, 'index.html');
     }
     fs.readFile(file, (e, data) => {
-      if (e){ res.writeHead(404, {'Content-Type':'text/plain'}).end('Not found'); return; }
+      if (e){   // not there: the site's own page for that, as GitHub Pages sends it
+        fs.readFile(path.join(ROOT, '404.html'), (e2, lost) => res.writeHead(404, {'Content-Type': e2 ? 'text/plain' : TYPES['.html'], 'Cache-Control':'no-store'}).end(e2 ? 'Not found' : lost));
+        return;
+      }
       res.writeHead(200, {'Content-Type': TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream', 'Cache-Control':'no-store'}).end(data);
     });
   });

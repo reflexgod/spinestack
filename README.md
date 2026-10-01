@@ -21,6 +21,7 @@ sample-shelf.jpg      the builder's sample shelf as a picture; home shows it ("a
 cards.js              shelf cards: finds the books in a shelf's preview picture and cuts the 2:3 card round them (home, the feed, profiles), keeping what it found per preview key
 site.css              the look every page shares: one :root block of variables (the 950px column, the type scale, the 4/8/12/16/24/40 spacing, the 3px radius) and what uses them everywhere (the top bar, headings, buttons, fields, shelf cards, tabs, sheets, the footer). A page's own <style> holds only what that page alone needs
 nav.js                the top bar on every page: who is signed in, the account menu (Sign out is its last item), + SHELF and the ▾ next to it
+404.html              what GitHub Pages sends for an address that isn't there: a line and the way home. Its links start at the root (/), since it's served at any depth
 admin.html            approve or delete archive uploads (needs the admin token); read reports (Google sign-in, admins only)
 tests/                checks for the pages: Playwright, axe, html-validate (see Tests). The site never loads anything from here
 worker/               Cloudflare Worker: name lookup, scan search, image proxy (what the live site uses)
@@ -260,6 +261,8 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **Titles and icons** (`specs/meta.spec.js`): every page has its own title and a description of a sensible length,
   links the three icons (which exist, at the right sizes) and names the share picture (1200 x 630); a profile's and a
   shelf's title carry the person's name.
+- **A page that isn't there** (`specs/notfound.spec.js`): any missing address, however deep, gets `404.html` with the
+  status 404 (`tests/serve.js` does what GitHub Pages does), styled, with a link home that works from there.
 - **An empty site** (`specs/empty.spec.js`): with no public shelves, home shows the sample shelf under the hero, and
   shelves, members and the feed each say so in a line.
 - **The feed** (`specs/feed.spec.js`): the three tabs and which one opens, what a line says (with the clock held still,

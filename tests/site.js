@@ -23,6 +23,7 @@ const PAGES = [
 const OTHER_PAGES = [
   { name: 'privacy', path: '/privacy.html' },
   { name: 'admin', path: '/admin.html' },
+  { name: 'not found', path: '/404.html' },
 ];
 
 /* ---------- made-up data ---------- */
