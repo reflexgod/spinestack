@@ -2,7 +2,8 @@
    moderated archive of spines people cut from their own scans. Keys live in Worker secrets
    (TMDB_TOKEN, BRAVE_API_KEY, ADMIN_TOKEN), never in the page.
 
-   GET  /identify?q=&want=all|movie|book  -> {results:[{kind,title,year,creator,cover}]}
+   GET  /identify?q=&want=all|movie|book[&suggest=1]  -> {results:[{kind,title,year,creator,cover}]}
+        suggest=1 is a half-typed title (the page suggests as you type): answered the same, but not kept in KV.
    GET  /scans?title=&year=&kind=movie|book&creator=&round=0-3
         -> {results:[{img,source,title,width,height, archive?,id?}], round, more}
         One Brave query per round, so the page asks for the next round only when it still needs spines.
@@ -140,9 +141,15 @@ async function tmdbFilms(q, token) {
     return {kind: 'movie', title: m.title || '', year: (m.release_date || '').slice(0, 4), creator, cover: m.poster_path ? 'https://image.tmdb.org/t/p/w500' + m.poster_path : ''};
   }));
 }
+/* Open Library also files government reports and the like as books ("John W. Gummo", 1888, by "United States.
+   Congress. House..."). A record with no cover is dropped when its author reads like an organisation, or when it has
+   one edition and is on nobody's reading list. The rest go most-read first, then by how many editions there are. */
+const ORG_AUTHOR = /\b(congress|committee|department|office|list|directory)\b/i;
+const notABook = d => !d.cover_i && (ORG_AUTHOR.test((d.author_name || []).join(' ')) || ((d.edition_count || 0) <= 1 && !d.readinglog_count));
 async function olBooks(q) {
-  const r = await getJSON('https://openlibrary.org/search.json?limit=5&fields=title,author_name,first_publish_year,publish_year,cover_i&q=' + encodeURIComponent(q), {headers: {'User-Agent': UA}});
-  const docs = r.docs || [];
+  const r = await getJSON('https://openlibrary.org/search.json?limit=20&fields=title,author_name,first_publish_year,publish_year,cover_i,edition_count,readinglog_count&q=' + encodeURIComponent(q), {headers: {'User-Agent': UA}});
+  const docs = (r.docs || []).filter(d => !notABook(d))
+    .sort((a, b) => (b.readinglog_count || 0) - (a.readinglog_count || 0) || (b.edition_count || 0) - (a.edition_count || 0)).slice(0, 5);
   // Open Library's first year is sometimes a stray record (It Ends With Us: 2012, The Bell Jar: 1948).
   // Wikidata's publication date is right for known books; without it, a lone early year with a gap after it is dropped.
   const years = await Promise.all(docs.map(d => wikidataYear(d.title, (d.author_name || [''])[0]).then(y => y ? String(y) : olYear(d))));
@@ -170,11 +177,25 @@ async function wikidataYear(title, author) {
 async function identify(p, env, cors, ctx) {
   const q = clean(p.get('q'), 120), want = ['movie', 'book'].includes(p.get('want')) ? p.get('want') : 'all';
   if (!q) return json({error: 'Type a title to search.'}, 400, cors);
-  const {body, hit} = await cached(env, ctx, `id2:${want}:${q.toLowerCase()}`, MONTH, async () => {
+  // id3: books without the government reports, most-read first (id2 answers had them)
+  const key = `id3:${want}:${q.toLowerCase()}`, make = async () => {
     const [f, b] = await Promise.allSettled([want !== 'book' ? tmdbFilms(q, env.TMDB_TOKEN) : [], want !== 'movie' ? olBooks(q) : []]);
     if (f.status === 'rejected' && b.status === 'rejected') throw new Error('TMDB and Open Library did not answer');
     return {results: [...(f.value || []), ...(b.value || [])]};
-  });
+  };
+  if (p.get('suggest') === '1') {
+    // a half-typed title, from the suggestions: a kept answer is used when there is one, but this one isn't kept in
+    // KV (its free plan allows 1,000 writes a day, and every few letters would be one). The edge holds it for a day.
+    const kept = env.SPINE_CACHE ? await env.SPINE_CACHE.get(key, 'json') : null;
+    if (kept) return json(kept, 200, cors, {'X-Cache': 'HIT'});
+    const edge = caches.default, ekey = new Request('https://identify.cache/' + encodeURIComponent(key));
+    const held = await edge.match(ekey);
+    if (held) return json(await held.json(), 200, cors, {'X-Cache': 'EDGE'});
+    const body = await make();
+    ctx.waitUntil(edge.put(ekey, new Response(JSON.stringify(body), {headers: {'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${body.results.length ? DAY : 3600}`}})));
+    return json(body, 200, cors, {'X-Cache': 'MISS'});
+  }
+  const {body, hit} = await cached(env, ctx, key, MONTH, make);
   return json(body, 200, cors, {'X-Cache': hit ? 'HIT' : 'MISS'});
 }
 
