@@ -20,6 +20,8 @@ const SHOTS = [
   { name: 'shelves', path: '/shelves/', signedIn: true },
   { name: 'members', path: '/members/?q=m', signedIn: true },
   { name: 'settings', path: '/settings/', signedIn: true },
+  { name: 'privacy', path: '/privacy.html', signedIn: false },
+  { name: 'not-found', path: '/no/such/page', signedIn: false },
   { name: 'settings-photo', path: '/settings/#photo', signedIn: true, photo: true },
   { name: 'settings-account', path: '/settings/#account', signedIn: true },
 ];

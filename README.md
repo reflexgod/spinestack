@@ -16,6 +16,8 @@ settings/index.html   your settings (signed in only): PROFILE (display name, bio
 feed/index.html       the feed: /feed/, FOLLOWING · YOU · EVERYONE, a line for each shelf saved ("@abc shelved my films · 2h") with its card, newest first
 worker-address.js     sends Worker requests to its workers.dev address on networks that block api.shelfstackd.com
 favicon.svg           the mark: three spines on a shelf. favicon-32.png, favicon.ico and apple-touch-icon.png are made from it (tests/art.js); every page links them
+favicon.ico           the same mark for a browser that asks for /favicon.ico whatever the page says (without it, that request is a 404 on every page)
+.well-known/appspecific/com.chrome.devtools.json   an empty answer for Chrome, which asks every localhost site for this file while its DevTools are open (the other 404 in the network panel). Nothing reads it
 og.jpg                the picture a shared link shows (1200 x 630: the logo and a shelf); every page names it in its og: and twitter: tags
 sample-shelf.jpg      the builder's sample shelf as a picture; home shows it ("a shelf, for example") while there are no public shelves. Made by tests/art.js
 cards.js              shelf cards: finds the books in a shelf's preview picture and cuts the 2:3 card round them (home, the feed, profiles), keeping what it found per preview key
@@ -265,12 +267,16 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   status 404 (`tests/serve.js` does what GitHub Pages does), styled, with a link home that works from there.
 - **Privacy** (`specs/privacy.spec.js`): the page's sections, and that it says what the site does now (the feed, being
   found, follows, private shelves and profiles, Settings, the photo).
+- **Nothing missing** (`specs/requests.spec.js`): every page, signed out and signed in, gets an answer for everything
+  it asks this site for; and the two things a browser asks for by itself (`/favicon.ico`, and Chrome's DevTools file)
+  are there.
 - **An empty site** (`specs/empty.spec.js`): with no public shelves, home shows the sample shelf under the hero, and
   shelves, members and the feed each say so in a line.
 - **The feed** (`specs/feed.spec.js`): the three tabs and which one opens, what a line says (with the clock held still,
   so "2h" and "1w" are known), You, signed out, and ← → between the tabs.
 
-`npm run shots` (in `tests/`) saves screenshots of home, the builder, a profile's tabs, the feed, shelves, members and settings at 1280px and 390px into
+`npm run shots` (in `tests/`) saves screenshots of home (and home with no shelves yet), the builder, a profile's tabs, the feed, shelves, members, settings,
+privacy and the not-found page at 1280px and 390px into
 `tests/shots/`, with the tests' made-up data and the real fonts.
 - **axe** (`specs/a11y.spec.js`) runs on every page, `privacy.html` and `admin.html` too: nothing serious or critical.
 - **html-validate** reads every HTML file with its recommended rules, except that inline `style` is allowed and the
