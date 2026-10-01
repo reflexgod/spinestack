@@ -301,10 +301,15 @@ test('the order: Add, the spines, Style; then Name and Who can view right above 
   const order = await page.evaluate(() => ['#stylePanel', '#shelfName', 'input[name=vis]', '#cancelBtn', '#saveShelf', '#exportBtn'].map(s => document.querySelector(s))
     .map((el, i, all) => i === 0 || (all[i - 1].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) > 0));
   expect(order).toEqual([true, true, true, true, true, true]);
-  await page.locator('#shelfName').scrollIntoViewIfNeeded();
-  const name = await page.locator('#shelfName').boundingBox(), who = await page.locator('fieldset.who').boundingBox(), bar = await page.locator('.mkbar').boundingBox();
-  expect(name.y + name.height).toBeLessThanOrEqual(bar.y + 1);
-  if (!isPhone()) expect(Math.abs((name.y + name.height) - (who.y + who.height))).toBeLessThanOrEqual(2);   // side by side
+  // they're in the bottom area, which stays in view: side by side, the buttons beside them (under them on a phone)
+  await expect(page.locator('.mkbar #shelfName')).toBeInViewport();
+  await expect(page.locator('.mkbar fieldset.who')).toBeInViewport();
+  const name = await page.locator('#shelfName').boundingBox(), who = await page.locator('fieldset.who').boundingBox(), save = await page.locator('#saveShelf').boundingBox();
+  expect(Math.abs((name.y + name.height) - (who.y + who.height))).toBeLessThanOrEqual(2);
+  expect(who.x).toBeGreaterThan(name.x + name.width);
+  if (isPhone()) expect(save.y).toBeGreaterThanOrEqual(name.y + name.height); else expect(save.x).toBeGreaterThan(who.x + who.width);
+  const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(sideways).toBeLessThanOrEqual(0);
   // the preview: beside the form on a wide window; on a phone, after the spines and before Style
   const preview = await page.locator('.phone').boundingBox();
   if (isPhone()) {

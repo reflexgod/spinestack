@@ -33,14 +33,14 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
 <link rel="stylesheet" href="../site.css?v=20261001a">
 <style>
-/* the builder, laid out like a new-list page: Add, the spines as a list, Style, and the live preview beside them;
-   then the shelf's name and who can view it, right above Cancel · Save · Save story, which stay at the bottom of the
-   window (site.css has everything shared) */
+/* the builder, laid out like a new-list page: Add, the spines as a list, Style, and the live preview beside them.
+   The bottom area stays in view: the shelf's name and who can view it, with Cancel · Save · Save story (beside them
+   on a wide window, under them on a phone). site.css has everything shared */
 .mkgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:var(--s5) var(--s6);align-items:start}
 .mkform{display:grid;gap:var(--s5);min-width:0}
-.fieldrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--s4) var(--s5);align-items:end;margin-top:var(--s6)}
 .field legend{padding:0;margin-bottom:var(--s1)}
 /* who can view: two halves of one outlined button, the picked one underlined (the black button here is Save) */
+.who{margin-right:auto}
 .who .seg2{display:flex;border:1px solid var(--ink);border-radius:var(--radius);overflow:hidden}
 .who label{font:600 var(--fs-btn)/1.35 var(--mono);text-transform:uppercase;letter-spacing:.04em;padding:var(--s2) var(--s3);cursor:pointer;color:var(--grey)}
 .who label + label{border-left:1px solid var(--ink)}
@@ -130,7 +130,7 @@ em.pro{margin:0 var(--s1)}
 /* the live preview: beside the form, and it stays in view while the form scrolls. Its height leaves room for the
    top bar above it and, below it, its note and the Cancel · Save · Save story bar */
 .mkside{position:sticky;top:64px;display:grid;gap:var(--s2);justify-items:center}
-.phone{border:1px solid var(--ink);border-radius:var(--s5);padding:var(--s1);width:min(100%, 300px, calc((100vh - 240px)*9/16));min-width:200px;margin:0 auto}
+.phone{border:1px solid var(--ink);border-radius:var(--s5);padding:var(--s1);width:min(100%, 300px, calc((100vh - 264px)*9/16));min-width:200px;margin:0 auto}
 .mkside .note{margin:0;text-align:center}
 #story{display:block;width:100%;aspect-ratio:9/16;border-radius:20px;background:#fff}
 .stage{position:relative}
@@ -142,10 +142,13 @@ em.pro{margin:0 var(--s1)}
 .pngr{pointer-events:auto;position:absolute;left:50%;top:-34px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:var(--paper);border:1px solid var(--ink);cursor:grab;touch-action:none}
 .pngr::after{content:"";position:absolute;left:6px;top:13px;width:1px;height:20px;background:var(--ink)}
 
-/* Cancel, Save and Save story: always at the bottom of the window */
-.mkbar{position:sticky;bottom:0;z-index:4;display:flex;flex-wrap:wrap;gap:var(--s2) var(--s4);align-items:center;justify-content:flex-end;background:var(--paper);border-top:1px solid var(--hair);
-  margin-top:var(--s4);padding:var(--s3) 0 calc(var(--s3) + env(safe-area-inset-bottom,0px))}
-.barleft{margin-right:auto;display:flex;flex-wrap:wrap;gap:var(--s1) var(--s4);align-items:baseline;min-width:0}
+/* the bottom area: Name and Who can view, then Cancel, Save and Save story; always at the bottom of the window */
+.mkbar{position:sticky;bottom:0;z-index:4;display:flex;flex-wrap:wrap;gap:var(--s2) var(--s4);align-items:flex-end;justify-content:flex-end;background:var(--paper);border-top:1px solid var(--hair);
+  margin-top:var(--s6);padding:var(--s3) 0 calc(var(--s3) + env(safe-area-inset-bottom,0px))}
+.barname{flex:0 1 300px;min-width:150px}
+.barname input[type=text]{height:32px;padding-block:0}
+.barleft{flex:1 1 0;display:flex;flex-wrap:wrap;gap:var(--s1) var(--s4);align-items:baseline;justify-content:flex-end;min-width:0;padding-bottom:var(--s1)}   /* a note takes the room that's left, and wraps in it */
+.barleft:has(#saveNew[hidden]):has(#saveNote:empty){display:none}
 .mkbar .note{margin:0}
 footer{margin-top:0}
 /* the builder inside a profile page */
@@ -155,7 +158,7 @@ footer{margin-top:0}
 .uname input[type=text]{border:0;padding-left:0}
 .uname input[type=text]:focus{outline:none}
 .uname:focus-within{outline:2px solid var(--ink);outline-offset:2px}
-.toast{bottom:calc(env(safe-area-inset-bottom,0px) + 72px);z-index:20}   /* above the bar */
+.toast{bottom:calc(env(safe-area-inset-bottom,0px) + 96px);z-index:20}   /* above the bottom area */
 .modal{position:fixed;inset:0;background:rgba(255,255,255,.92);display:grid;place-items:center;padding:var(--s4);z-index:30}
 .modal-card{background:var(--paper);border:1px solid var(--ink);border-radius:var(--radius);padding:var(--s4);max-width:380px;width:100%;display:grid;gap:var(--s3);max-height:calc(100% - 2*var(--s4));overflow:auto}
 .modal-card img{width:100%;max-width:230px;margin:0 auto;display:block}
@@ -168,11 +171,13 @@ footer{margin-top:0}
   .addrow{order:1} #shelf{order:2} details.style{order:4}
   .phone{width:min(100%, 300px)}
 }
-@media (max-width:520px){
-  .fieldrow{grid-template-columns:minmax(0,1fr)}
-  .who .seg2{width:max-content}
-  .row2{grid-template-columns:1fr}
+/* a phone: the name and who can view it on one line, the buttons on the next */
+@media (max-width:640px){
+  .barname{flex:1 1 150px}
+  .barleft{flex:1 1 100%;justify-content:flex-start;padding-bottom:0}
+  .toast{bottom:calc(env(safe-area-inset-bottom,0px) + 144px)}
 }
+@media (max-width:520px){ .row2{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
@@ -257,14 +262,12 @@ footer{margin-top:0}
     </div>
   </div>
 
-  <!-- the bottom of the page: what the shelf is called and who can view it, right above Cancel · Save · Save story -->
-  <div class="fieldrow">
-    <label class="field"><span class="lbl">Name</span><input type="text" id="shelfName" placeholder="e.g. 2am films" maxlength="60" autocomplete="off" spellcheck="false"></label>
+  <!-- the bottom area, always in view: what the shelf is called and who can view it, with Cancel · Save · Save story -->
+  <div class="mkbar">
+    <label class="field barname"><span class="lbl">Name</span><input type="text" id="shelfName" placeholder="e.g. 2am films" maxlength="60" autocomplete="off" spellcheck="false"></label>
     <fieldset class="field who"><legend class="lbl">Who can view</legend>
       <div class="seg2"><label><input type="radio" name="vis" value="public" checked>Public</label><label><input type="radio" name="vis" value="private">Private</label></div>
     </fieldset>
-  </div>
-  <div class="mkbar">
     <span class="barleft"><button class="dash sm" id="saveNew" type="button" hidden>Save as a new shelf</button><span class="note" id="saveNote" role="status"></span></span>
     <button class="dash sm" id="cancelBtn" type="button">Cancel</button>
     <button class="btn primary" id="saveShelf" type="button" hidden>Save</button>
