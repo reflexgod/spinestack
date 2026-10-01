@@ -52,9 +52,10 @@ const feedRow = s => { const p = PEOPLE.find(x => x.id === s.owner);
 const card = (p, me) => ({ id: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key, is_private: p.is_private, i_follow: !!me && p.username === 'mira', i_requested: false });
 
 /* ---------- Supabase's REST API, answered from the data above ---------- */
-function rest(url, method, body, signedIn, named){
+function rest(url, method, body, signedIn, named, empty){
   const what = url.pathname.replace(/^\/rest\/v1\//, ''), q = url.searchParams, eq = k => (q.get(k) || '').replace(/^eq\./, '');
   if (what === 'rpc/feed'){
+    if (empty) return [];
     const rows = SHELVES.filter(s => body.scope !== 'following' || (signedIn && PEOPLE.find(p => p.id === s.owner).username === 'mira')).map(feedRow);
     const from = body.before_id ? rows.findIndex(r => r.shelf_id === body.before_id) + 1 : 0;
     return rows.slice(from, from + (body.n || 20));
@@ -128,9 +129,10 @@ const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers
 /* Answers everything that isn't the site itself. Returns {unknown}: requests nothing here knew how to answer. */
 /* signedIn: a session for the made-up account; named: false leaves that account without a username yet;
    slow: how long /identify takes to answer, in ms; capped: the Worker's Brave searches for today are used up;
-   realFonts: the fonts come from Google Fonts as they do on the site (for screenshots; the tests go without).
+   realFonts: the fonts come from Google Fonts as they do on the site (for screenshots; the tests go without);
+   empty: no one has shelved anything yet, so the feed has nothing in it.
    Returns {unknown, asked}: requests nothing here could answer, and every search /identify was asked for. */
-async function mockNetwork(page, { signedIn = false, named = true, slow = 0, capped = false, realFonts = false } = {}){
+async function mockNetwork(page, { signedIn = false, named = true, slow = 0, capped = false, realFonts = false, empty = false } = {}){
   const unknown = [], asked = [];
   if (signedIn){
     const exp = Math.floor(Date.now() / 1000) + 3600, b64 = o => Buffer.from(JSON.stringify(o)).toString('base64url');
@@ -146,7 +148,7 @@ async function mockNetwork(page, { signedIn = false, named = true, slow = 0, cap
     if (method === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
     if (url.origin === SB_URL && url.pathname.startsWith('/rest/v1/')){
       let body = {}; try { body = JSON.parse(req.postData() || '{}'); } catch {}
-      let data = rest(url, method, body, signedIn, named);
+      let data = rest(url, method, body, signedIn, named, empty);
       if (/vnd\.pgrst\.object/.test(req.headers().accept || '')) data = Array.isArray(data) ? data[0] || null : data;   // .single()
       return route.fulfill({ status: data === null ? 204 : 200, headers: CORS, contentType: 'application/json', body: data === null ? '' : JSON.stringify(data) });
     }

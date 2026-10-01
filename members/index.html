@@ -273,7 +273,7 @@ async function showActive(){
   catch (e){ $('#activeState').textContent = friendly(e); return; }
   const seen = new Set(), who = rows.filter(x => !seen.has(x.owner) && seen.add(x.owner));
   $('#active').replaceChildren(...who.map(person));
-  $('#activeState').textContent = 'No one has shelved anything yet.'; $('#activeState').hidden = !!who.length;
+  $('#activeState').textContent = 'It’s quiet in here. Shelve something and yours is the first face on this page.'; $('#activeState').hidden = !!who.length;
 }
 
 showActive();   // doesn't wait on the account

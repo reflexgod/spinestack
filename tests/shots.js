@@ -9,6 +9,7 @@ const PORT = 8183, BASE = `http://127.0.0.1:${PORT}`, OUT = path.resolve(process
 const SHOTS = [
   { name: 'home', path: '/', signedIn: true },
   { name: 'home-signed-out', path: '/', signedIn: false },
+  { name: 'home-empty', path: '/', signedIn: false, empty: true },
   { name: 'build', path: '/build/', signedIn: true },
   { name: 'profile', path: '/u/?mira', signedIn: true },
   { name: 'profile-activity', path: '/u/?mira#activity', signedIn: true },
@@ -63,7 +64,7 @@ async function drawPreviews(page) {
     for (const [w, h] of [[1280, 900], [390, 844]]) {
       for (const shot of SHOTS) {
         const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: w < 500 ? 2 : 1 });
-        await mockNetwork(page, { signedIn: shot.signedIn, realFonts: true });
+        await mockNetwork(page, { signedIn: shot.signedIn, realFonts: true, empty: !!shot.empty });
         await page.goto(BASE + shot.path); await page.waitForLoadState('networkidle');
         await page.evaluate(() => document.fonts.ready);
         await drawPreviews(page);

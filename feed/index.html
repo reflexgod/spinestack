@@ -221,7 +221,7 @@ function none(kind){
   if (kind === 'signin') box.innerHTML = `<p><button class="linkish" type="button" data-signin>Sign in</button> to see ${feed.scope === 'you' ? 'your own shelves here' : 'shelves from people you follow'}.</p>`;
   else if (kind === 'you') box.innerHTML = '<p>You haven’t saved a shelf yet.</p><a class="dash sm" href="../build/?new">Start a new shelf</a>';
   else if (kind === 'following') box.innerHTML = '<p>Follow people to see their shelves here.</p><button class="dash sm" type="button" data-scope="everyone">Everyone</button>';
-  else box.innerHTML = '<p>No shelves yet.</p>';
+  else box.innerHTML = '<p>Nothing shelved yet. The first shelf here could be yours.</p>';
   box.hidden = false;
 }
 $('#none').addEventListener('click', e => {

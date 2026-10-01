@@ -36,6 +36,10 @@
 .hero h1{font-size:24px;margin:0 0 var(--s2)}
 .hero .note{margin:0 0 var(--s5)}
 .hero .thumbs{margin-top:var(--s6);text-align:left}
+/* no public shelves yet: one picture of a shelf, so the page still shows what one is */
+.sample{margin:var(--s6) 0 0;display:grid;justify-items:center;gap:var(--s2)}
+.sample img{display:block;width:220px;max-width:60%;height:auto}
+.sample figcaption{font-size:var(--fs-small);color:var(--grey)}
 .welcome h1{margin:0}
 /* ⚡ All activity, at the right of the row's heading */
 h2 .more.zapped{display:inline-flex;align-items:center;gap:var(--s1)}
@@ -77,6 +81,11 @@ h2 .more.zapped svg{width:12px;height:12px;flex:none}
       <p class="note">Search a film or a book and its real spine goes on your shelf.</p>
       <a class="btn" id="start" href="build/">Make a shelf</a>
       <ul class="thumbs row" id="heroRow" aria-label="Recent shelves"></ul>
+      <!-- the builder's sample shelf (tests/art.js makes the picture), shown only while there are no public shelves -->
+      <figure class="sample" id="sample" hidden>
+        <img src="sample-shelf.jpg" alt="Four book spines standing side by side: The Waves, Delta of Venus, Journey by Moonlight and Kuasa Rahim." width="440" height="733">
+        <figcaption>a shelf, for example</figcaption>
+      </figure>
     </section>
     <section id="outJust">
       <h2>Just shelved <a class="more" href="shelves/">More</a></h2>
@@ -258,6 +267,7 @@ async function showOut(){
   try { rows = await everyone(ROW + GRID); }
   catch (e){ $('#outState').textContent = friendly(e); return; }
   $('#heroRow').replaceChildren(...rows.slice(0, ROW).map(x => tile(x, false)));
+  $('#sample').hidden = !!rows.length;   // an empty site: a shelf, for example
   const rest = rows.slice(ROW);
   $('#outGrid').replaceChildren(...rest.map(x => tile(x, true)));
   $('#outState').hidden = true; $('#outJust').hidden = !rest.length;   // few shelves so far: they're all in the row above
@@ -277,7 +287,7 @@ async function showIn(){
   };
   await Promise.all([
     fill(() => rpc('feed', {scope: 'following', before: null, before_id: null, n: ROW}), '#folState', '#folRow', false, () => { $('#folNone').hidden = false; }),
-    fill(() => everyone(GRID), '#inState', '#inGrid', true, () => { $('#inState').textContent = 'No shelves yet.'; $('#inState').hidden = false; }),
+    fill(() => everyone(GRID), '#inState', '#inGrid', true, () => { $('#inState').textContent = 'Nothing shelved yet. The first shelf here could be yours.'; $('#inState').hidden = false; }),
   ]);
 }
 
