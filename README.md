@@ -5,7 +5,7 @@ Live at https://shelfstackd.com (this repository and its folders keep the old wo
 Type a film or a book, get its real spine, put it on a shelf, save the shelf as an Instagram story.
 
 ```
-index.html            the home page (GitHub Pages serves this); links to the old builder here (/?open=, /#shelf) go on to build/
+index.html            the home page (GitHub Pages serves this). Signed out: a welcome and the newest public shelves; signed in: new shelves from people you follow. Links to the old builder here (/?open=, /#shelf) go on to build/
 build/index.html      the shelf builder: search, the shelf, the story
 shelf.js              draws the spines and the story; build/ and u/ both use it, so a shelf looks the same everywhere
 u/index.html          profiles: /u/?username, and one shelf: /u/?username&shelf=<id>
@@ -72,7 +72,7 @@ In `worker/`:
 5. `npx wrangler secret put BRAVE_API_KEY` and paste the Brave Search API key (api-dashboard.search.brave.com).
    `npx wrangler secret put ADMIN_TOKEN` and paste a long random string of your own. It's the password for `admin.html`; keep it only in a password manager.
 6. `npx wrangler deploy`. It prints the Worker address, e.g. `https://spinestack.NAME.workers.dev`.
-7. In `build/index.html`, `u/index.html`, `feed/index.html` and `admin.html`, `window.SPINESTACK_WORKER` is the Worker's address
+7. In `index.html`, `build/index.html`, `u/index.html`, `feed/index.html` and `admin.html`, `window.SPINESTACK_WORKER` is the Worker's address
    (`https://api.shelfstackd.com`) and `window.SPINESTACK_WORKER_FALLBACK` its workers.dev address. Keep
    `window.SPINESTACK_TMDB` empty.
 
@@ -134,7 +134,7 @@ signed-out visitors never load the Supabase library.
 - **Where things live:** text rows (profiles, shelves, shelf items) in the Supabase project "shelfstackd"
   (Mumbai, free plan). Images a saved shelf needs, and each shelf's small preview, in the Worker's KV
   (`ub:<user id>/...`); archive spines and TMDB / Open Library covers are pointed at, not copied.
-- **Keys:** only the Project URL and the *publishable* key are used, in `build/index.html`, `u/index.html`, `feed/index.html` and in `worker/wrangler.toml`
+- **Keys:** only the Project URL and the *publishable* key are used, in `index.html`, `build/index.html`, `u/index.html`, `feed/index.html` and in `worker/wrangler.toml`
   `[vars]`. Both are public; Row Level Security protects every table. The secret / service_role key isn't used
   anywhere and must never be added to the page, the repo or the Worker.
 - **Database:** run each file in `supabase/migrations/` once, in order, in the dashboard's SQL Editor. Then run the

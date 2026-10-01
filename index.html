@@ -4,19 +4,25 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="Find the real spine of any film or book, stack your shelf, see what friends are stacking.">
+<title>shelfstackd</title>
 <script>
   /* The shelf builder used to be this page; it's in build/ now. Links made before the move keep working: a saved
-     shelf (?open=<id>), the builder inside a profile (?embed, ?new), a Google sign-in on its way back (?code=, ?error=)
-     and the builder's sections (#shelf #search #upload #mine #how) go on to build/ with the same query and hash. */
+     shelf (?open=<id>), the builder inside a profile (?embed, ?new) and the builder's sections (#shelf #search #upload
+     #mine #how) go on to build/ with the same query and hash. A Google sign-in on its way back (?code=) stays: this
+     page finishes it. */
   (function(){
     var q = location.search, h = location.hash;
-    if (/[?&](open|embed|new|code|error|error_description)(=|&|$)/.test(q) || /^#(shelf|search|upload|mine|how)$/.test(h)){
+    if (/[?&](open|embed|new)(=|&|$)/.test(q) || /^#(shelf|search|upload|mine|how)$/.test(h)){
       document.documentElement.hidden = true;
       location.replace('build/' + q + h);
     }
   })();
+  /* The same public addresses as build/ (see the notes there). */
+  window.SPINESTACK_WORKER = "https://api.shelfstackd.com";
+  window.SPINESTACK_WORKER_FALLBACK = "https://spinestack.spinestack-worker.workers.dev";
+  window.SPINESTACK_SUPABASE_URL = "https://fiukspnovrlzlcdekcnb.supabase.co";
+  window.SPINESTACK_SUPABASE_KEY = "sb_publishable_cZeUDJXk-nCbSJ4VZWn_GQ_6xNFyBo2";
 </script>
-<title>shelfstackd</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&display=swap">
@@ -29,27 +35,352 @@ html{background:var(--paper)}
 body{margin:0;background:var(--paper);color:var(--ink);font:400 12px/1.55 var(--mono)}
 a{color:inherit}
 :focus-visible{outline:2px solid var(--ink);outline-offset:3px}
-.top{display:flex;justify-content:center;padding:14px 24px}
-.mark{font-weight:800;font-size:22px;letter-spacing:.34em;margin-right:-.34em;line-height:1;text-decoration:none;text-transform:uppercase}
-.col{max-width:600px;margin:0 auto;padding:56px 16px;text-align:center}
-h1{font-size:24px;line-height:1.3;font-weight:700;text-transform:uppercase;margin:0 0 26px}
-.btn{display:inline-block;font:500 13px var(--mono);text-transform:uppercase;text-decoration:none;background:var(--ink);color:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 22px;cursor:pointer}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 24px}
+.top a{text-decoration:none;font-size:13px;text-transform:uppercase}
+.top .r{justify-self:end;display:flex;gap:18px;align-items:center}
+.mark{font-weight:800;font-size:22px!important;letter-spacing:.34em;margin-right:-.34em;line-height:1}
+.acct{font:400 13px var(--mono);text-transform:uppercase;background:none;border:0;padding:0;color:var(--ink);cursor:pointer;text-decoration:none}
+.acct.named{text-transform:none}
+p{margin:0 0 12px}
+.grey{color:var(--grey)}
+.dash{display:inline-block;background:none;border:0;padding:0 0 9px;font:500 16px var(--mono);text-transform:uppercase;color:var(--ink);cursor:pointer;text-decoration:none;
+  background-image:repeating-linear-gradient(90deg,var(--ink) 0 11px,transparent 11px 14px);background-size:100% 4px;background-repeat:no-repeat;background-position:left bottom}
+.dash.sm{font-size:12px;padding-bottom:6px;background-size:100% 3px;background-image:repeating-linear-gradient(90deg,var(--ink) 0 8px,transparent 8px 11px)}
+.btn{font:500 13px var(--mono);text-transform:uppercase;background:var(--ink);color:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 22px;cursor:pointer;text-decoration:none;display:inline-block}
 .btn:hover{background:#222}
-.dash{display:inline-block;padding:0 0 6px;font:500 12px var(--mono);text-transform:uppercase;color:var(--ink);text-decoration:none;
-  background-image:repeating-linear-gradient(90deg,var(--ink) 0 8px,transparent 8px 11px);background-size:100% 3px;background-repeat:no-repeat;background-position:left bottom}
-.more{margin-top:26px}
+.btn.full{width:100%}
+.btn:disabled{opacity:.5;cursor:default}
+.note{font-size:11px;color:var(--grey)}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.35);display:grid;place-items:center;z-index:30;padding:16px}
+.sheetbox{background:var(--paper);border:1px solid var(--ink);border-radius:12px;width:100%;max-width:380px;padding:26px 24px 22px;position:relative;max-height:calc(100% - 16px);overflow:auto}
+.sheetbox > div{display:grid;gap:14px}
+.sheetbox h2{margin:0;font-size:16px;font-weight:700;text-transform:uppercase}
+.sheetbox p{margin:0}
+.x{position:absolute;top:8px;right:12px;background:none;border:0;font:400 22px var(--mono);cursor:pointer;color:var(--ink);padding:4px}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);background:var(--ink);color:var(--paper);border-radius:8px;padding:10px 16px;font-size:12px;max-width:calc(100% - 32px);z-index:40}
+footer{background:var(--ink);color:var(--paper);padding:36px 24px 22px;margin-top:72px}
+.fgrid{display:grid;grid-template-columns:1.1fr 1.3fr 1fr;gap:36px;max-width:1200px;margin:0 auto}
+footer h3{font-size:16px;font-weight:700;text-transform:uppercase;margin:0 0 10px}
+footer p,footer li{font-size:13px;letter-spacing:.02em}
+footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
+.fbtn{display:inline-block;background:var(--paper);color:var(--ink);border-radius:8px;padding:12px 28px;text-transform:uppercase;text-decoration:none;font-size:14px;margin-top:4px}
+.fbase{max-width:1200px;margin:34px auto 0;border-top:1px solid #8A8A8A;padding-top:12px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:11.5px}
+
+/* home: a welcome, then rows and grids of shelves in the profile cards' frame */
+.home{max-width:1120px;margin:0 auto;padding:36px 24px 0}
+.home section{margin-top:64px}
+.home section:first-child{margin-top:0}
+.home h2{font-size:16px;font-weight:700;text-transform:uppercase;margin:0 0 18px;display:flex;gap:10px;align-items:baseline}
+.home h2 .dash{margin-left:auto}
+.hero{text-align:center;padding-top:28px}
+.hero h1{font-size:clamp(20px,3.4vw,34px);line-height:1.3;font-weight:700;text-transform:uppercase;margin:0 auto 28px;max-width:900px}
+.hero h1 span{display:block}
+.hero .thumbs{margin-top:48px;text-align:left}
+.welcome{display:flex;gap:16px 24px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.welcome h1{font-size:24px;line-height:1.3;font-weight:700;margin:0;overflow-wrap:anywhere}
+.welcome h1 a{text-decoration:none}
+.welcome h1 a:hover,.welcome h1 a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:2px;text-underline-offset:5px}
+.thumbs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:26px 18px}
+.thumbs:empty{display:none}
+.thumbs a{display:grid;gap:2px;text-decoration:none;align-content:start;min-width:0}
+/* a card shows the shelf, not the whole 9:16 story: the spines stand between 28% and 89% of the story's height (one
+   row or two, a wood shelf to 92%), so a 4:5 window placed 78% of the way down has them in its middle; the caption
+   above them is cut off, and the shelf's name is under the card */
+.thumbs .pic{display:block;background:#F3F3F3;border:1px solid var(--hair);border-radius:8px;aspect-ratio:4/5;overflow:hidden}
+.thumbs img{width:100%;height:100%;object-fit:cover;object-position:center 78%;display:block}
+.thumbs .cap{font-weight:500;margin-top:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.thumbs .by{color:var(--grey);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lets{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.lets li{border:1px solid var(--ink);border-radius:8px;padding:18px 18px 16px;display:grid;gap:6px;align-content:start}
+.lets b{font-size:13px;font-weight:700;text-transform:uppercase}
+.lets span{font-size:13px}
+.stackers{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:22px 26px}
+.stackers a{display:grid;justify-items:center;gap:8px;width:84px;text-decoration:none}
+.stackers .fa{width:64px;height:64px;border-radius:50%;border:1px solid var(--ink);background:#F2F2F2;overflow:hidden;display:grid;place-items:center;font:400 24px var(--mono);text-transform:uppercase}
+.stackers .fa img{width:100%;height:100%;object-fit:cover;display:block}
+.stackers span:last-child{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.none{font-size:14px;margin:0}
+.none a{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
+
+@media (max-width:900px){ .thumbs{grid-template-columns:repeat(4,minmax(0,1fr))} .lets{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width:820px){ .fgrid{grid-template-columns:1fr;gap:26px} }
+/* a row stays one row: it scrolls sideways inside the page, and the page itself never does */
+@media (max-width:900px){
+  .thumbs.row{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x proximity;margin-inline:-24px;padding-inline:24px;scroll-padding-inline:24px;scrollbar-width:none}
+  .thumbs.row::-webkit-scrollbar{display:none}
+  .thumbs.row li{flex:0 0 22%;min-width:0;scroll-snap-align:start}
+}
+@media (max-width:640px){
+  .home{padding:22px 16px 0}
+  .home section{margin-top:48px}
+  .thumbs{grid-template-columns:repeat(3,minmax(0,1fr));gap:20px 10px}
+  .thumbs.row{gap:10px;margin-inline:-16px;padding-inline:16px;scroll-padding-inline:16px}
+  .thumbs.row li{flex-basis:36%}
+  .hero{padding-top:12px}
+  .hero .thumbs{margin-top:36px}
+  .welcome h1{font-size:20px}
+  .stackers{gap:18px 12px}
+  .stackers a{width:72px}
+  .stackers .fa{width:56px;height:56px;font-size:20px}
+}
+@media (max-width:520px){
+  .top{padding:12px 16px;column-gap:12px}
+  .mark{font-size:17px!important;letter-spacing:.22em;margin-right:-.22em}
+  .top a,.acct{font-size:11.5px;white-space:nowrap}
+  .top .r{gap:12px}
+  .acct{max-width:14ch;overflow:hidden;text-overflow:ellipsis}   /* a long username ends in … rather than pushing the logo */
+  .lets{grid-template-columns:1fr}
+}
+/* narrow phones: no room for Info as well (How it works is in the footer), so the logo goes left and the links right,
+   and the username shortens only if it has to */
+@media (max-width:430px){
+  .top{grid-template-columns:auto minmax(0,1fr)}
+  .top > a:first-child{display:none}
+  .top .r{min-width:0;gap:10px;justify-self:stretch;justify-content:flex-end}
+  .acct{min-width:0;max-width:none}
+}
 </style>
 </head>
 <body>
-<header class="top">
+<header class="top" id="top">
+  <a href="build/#how">Info</a>
   <a class="mark" href="./" aria-label="shelfstackd, home">SHELFSTACKD</a>
+  <span class="r"><a href="build/#shelf">Shelf</a><a href="feed/">Feed</a><a class="acct" id="acctBtn" href="#" hidden>Sign in</a></span>
 </header>
 
-<!-- Step 1 only: this stands in until the real home page (step 2) replaces it. -->
-<main class="col">
-  <h1>Find the real spine of any film or book.</h1>
-  <a class="btn" href="build/">Start a shelf</a>
-  <p class="more"><a class="dash" href="feed/">Feed</a></p>
+<main class="home">
+  <p class="grey" id="state" role="status">Loading…</p>
+
+  <!-- signed out -->
+  <div id="out" hidden>
+    <section class="hero">
+      <h1><span>Find the real spine of any film or book.</span><span>Stack your shelf.</span><span>See what friends are stacking.</span></h1>
+      <button class="btn" id="start" type="button">Get started — it’s free</button>
+      <ul class="thumbs row" id="heroRow" aria-label="Recent shelves"></ul>
+    </section>
+    <section>
+      <h2>shelfstackd lets you…</h2>
+      <ul class="lets">
+        <li><b>Find the real spine</b><span>Real DVD and book spines, cut from scans.</span></li>
+        <li><b>Build a shelf</b><span>Up to 6 spines on a shelf (20 with Pro).</span></li>
+        <li><b>Post it</b><span>Save your shelf as an Instagram story.</span></li>
+        <li><b>Have a profile</b><span>Your own page, with your main shelf on it.</span></li>
+        <li><b>Follow people</b><span>See the shelves of the people you follow.</span></li>
+        <li><b>Keep shelves private</b><span>A private shelf shows only to you.</span></li>
+      </ul>
+    </section>
+    <section id="outJust">
+      <h2>Just shelved <a class="dash sm" href="shelves/">More</a></h2>
+      <p class="grey" id="outState" role="status">Loading…</p>
+      <ul class="thumbs" id="outGrid"></ul>
+    </section>
+    <section id="stackersSec" hidden>
+      <h2>Popular stackers</h2>
+      <ul class="stackers" id="stackers"></ul>
+    </section>
+  </div>
+
+  <!-- signed in -->
+  <div id="in" hidden>
+    <section class="welcome">
+      <h1 id="hello">Welcome back.</h1>
+      <a class="btn" href="build/">+ New shelf</a>
+    </section>
+    <section>
+      <h2>New from people you follow <a class="dash sm" href="feed/?following">More</a></h2>
+      <p class="grey" id="folState" role="status">Loading…</p>
+      <ul class="thumbs row" id="folRow"></ul>
+      <p class="none" id="folNone" hidden>Follow people to see their shelves here. <a href="members/">Find members</a></p>
+    </section>
+    <section>
+      <h2>Just shelved <a class="dash sm" href="shelves/">More</a></h2>
+      <p class="grey" id="inState" role="status">Loading…</p>
+      <ul class="thumbs" id="inGrid"></ul>
+    </section>
+  </div>
 </main>
+
+<div class="sheet" id="signSheet" hidden role="dialog" aria-modal="true" aria-label="Sign in">
+  <div class="sheetbox">
+    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <div>
+      <h2>Sign in</h2>
+      <p>Save your shelves to your account and open them again on any device.</p>
+      <button class="btn full" id="googleBtn" type="button">Continue with Google</button>
+      <p class="note">Accounts are for people 18 or older. <a href="privacy.html">Privacy</a></p>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="fgrid">
+    <div id="how">
+      <h3>How it works</h3>
+      <ol>
+        <li>You type a name. Films come from TMDB, books from Open Library.</li>
+        <li>We look for full DVD and book scans of that title.</li>
+        <li>The strip between back and front is the spine. We cut it out.</li>
+        <li>No clean scan? You get a spine made from the poster or cover.</li>
+      </ol>
+    </div>
+    <div id="sources">
+      <h3>Sources</h3>
+      <p>Film data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB. Book data from Open Library. Scans belong to their studios and publishers, and every spine links back to where it was found.</p>
+    </div>
+    <div>
+      <h3>Shelf</h3>
+      <p>Build it, then post it.</p>
+      <a class="fbtn" href="build/#shelf">Open shelf</a>
+    </div>
+  </div>
+  <div class="fbase"><span>© 2026 SHELFSTACKD. All rights reserved.</span><span>Not affiliated with any studio or publisher.</span></div>
+</footer>
+<div class="toast" id="toast" hidden></div>
+
+<script src="shelf.js?v=20260930d"></script>
+<script src="worker-address.js?v=20261001a"></script>
+<script>
+(() => {
+/* Home. Signed out: a welcome, then the newest public shelves and the people who made them. Signed in: the newest
+   shelves of the people you follow, then everyone's. The shelves come from feed() (0006), as on feed/. */
+const $ = s => document.querySelector(s);
+const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
+const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
+const SB_LIB = {src:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
+const ROW = 6, GRID = 12;
+
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const profileUrl = (name, shelf) => 'u/?' + name + (shelf ? '&shelf=' + shelf : '');
+let toastT = 0; function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 4200); }
+function friendly(e){
+  const m = (e && e.message) || '';
+  if (/fetch|network/i.test(m)) return 'Couldn’t reach shelfstackd. Check your connection and try again.';
+  return m || 'Something went wrong. Try again in a moment.';
+}
+
+/* ---------- signing in (the same Supabase client and settings as feed/ and u/) ---------- */
+const me = {sb:null, user:null, profile:null, unnamed:false};
+let sbLoading = null;
+function supa(){
+  return sbLoading || (sbLoading = new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = SB_LIB.src; s.integrity = SB_LIB.integrity; s.crossOrigin = 'anonymous';
+    s.onload = () => { me.sb = window.supabase.createClient(SB_URL, SB_KEY, {auth:{flowType:'pkce', persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}}); res(me.sb); };
+    s.onerror = () => { sbLoading = null; s.remove(); rej(new Error('Sign-in couldn’t load. Check your connection and try again.')); };
+    document.head.appendChild(s);
+  }));
+}
+const hasSession = () => { try { return Object.keys(localStorage).some(k => /^sb-.+-auth-token$/.test(k)); } catch { return false; } };
+const returning = () => /[?&](code|error|error_description)=/.test(location.search);
+async function token(){
+  if (!me.sb) return null;
+  const {data:{session}} = await me.sb.auth.getSession();
+  return session ? session.access_token : null;
+}
+// Supabase's REST API: as the signed-in person when there is one, otherwise as a visitor
+async function api(path, opt = {}){
+  const t = await token(), r = await fetch(`${SB_URL}/rest/v1/${path}`, {...opt,
+    headers: {apikey: SB_KEY, 'Content-Type': 'application/json', ...(t ? {Authorization: 'Bearer ' + t} : {}), ...(opt.headers || {})}});
+  const j = r.status === 204 ? null : await r.json().catch(() => null);
+  if (!r.ok) throw new Error((j && j.message) || 'Couldn’t load the shelves. Try again in a moment.');
+  return j;
+}
+const rpc = (fn, args) => api('rpc/' + fn, {method:'POST', body: JSON.stringify(args)});
+async function startSession(){
+  const back = returning();   // asked before Supabase takes ?code= off
+  if (!hasSession() && !back) return;
+  try {
+    const err = new URLSearchParams(location.search).get('error_description');
+    const sb = await supa(), {data:{session}} = await sb.auth.getSession();   // finishes a Google sign-in coming back with ?code=
+    if (back) history.replaceState(null, '', location.pathname + location.hash);
+    if (err) toast('Sign-in didn’t finish: ' + err);
+    me.user = session && session.user;
+    if (me.user){
+      const rows = await api(`profiles?select=id,username&id=eq.${me.user.id}`);
+      me.profile = rows[0] || null; me.unnamed = !rows[0];
+    }
+    sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') location.reload(); });
+  } catch (e){ toast(friendly(e)); }
+}
+function paintAcct(){
+  const b = $('#acctBtn'); b.hidden = false; b.classList.toggle('named', !!me.profile);
+  if (me.profile){ b.textContent = '@' + me.profile.username; b.href = profileUrl(me.profile.username); }
+  else if (me.user){ b.textContent = 'Finish sign-up'; b.href = 'build/'; }
+  else { b.textContent = 'Sign in'; b.href = '#'; }
+}
+const signIn = () => openSheet('#signSheet', '#googleBtn');
+$('#acctBtn').addEventListener('click', e => { if (!me.user){ e.preventDefault(); signIn(); } });
+$('#start').addEventListener('click', signIn);
+$('#googleBtn').addEventListener('click', async () => {
+  const btn = $('#googleBtn'); btn.disabled = true;
+  try {
+    const sb = await supa();
+    const {error} = await sb.auth.signInWithOAuth({provider:'google', options:{redirectTo: location.origin + location.pathname}});   // back to this page
+    if (error) throw error;
+  } catch (e){ btn.disabled = false; toast(friendly(e)); }
+});
+
+/* sheets */
+let sheetFrom = null;
+function openSheet(id, focus){ sheetFrom = document.activeElement; $(id).hidden = false; const f = $(focus); if (f) f.focus(); }
+function closeSheets(){ document.querySelectorAll('.sheet').forEach(s => s.hidden = true); if (sheetFrom && sheetFrom.focus) sheetFrom.focus(); }
+document.querySelectorAll('.sheet').forEach(s => s.addEventListener('click', e => { if (e.target === s || e.target.closest('[data-close]')) closeSheets(); }));
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.querySelector('.sheet:not([hidden])')) closeSheets(); });
+
+/* ---------- shelves and people ---------- */
+// one shelf: its preview, its name, who made it
+function tile(x, lazy){
+  const li = document.createElement('li'), shelf = Shelf.shelfName({name: x.name, caption: x.caption});
+  const pic = x.preview_key ? `<img src="${esc(`${WORKER}/u/preview?k=${encodeURIComponent(x.preview_key)}&v=${encodeURIComponent(x.updated_at)}`)}" alt=""${lazy ? ' loading="lazy"' : ''} width="360" height="640">` : '';
+  li.innerHTML = `<a href="${esc(profileUrl(x.username, x.shelf_id))}" aria-label="${esc(shelf)} by @${esc(x.username)}">
+      <span class="pic">${pic}</span><span class="cap">${esc(shelf)}</span><span class="by">@${esc(x.username)}</span></a>`;
+  return li;
+}
+function person(x){
+  const li = document.createElement('li'), name = (x.display_name || '').trim();
+  li.innerHTML = `<a href="${esc(profileUrl(x.username))}"><span class="fa" aria-hidden="true">${x.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(x.avatar_key)}`)}" alt="" loading="lazy">` : esc((name || x.username).trim()[0] || '·')}</span><span>@${esc(x.username)}</span></a>`;
+  return li;
+}
+const everyone = n => rpc('feed', {scope: 'everyone', before: null, before_id: null, n});
+
+let outShown = false;
+async function showOut(){
+  if (outShown) return; outShown = true;
+  $('#state').hidden = true; $('#in').hidden = true; $('#out').hidden = false;
+  let rows;
+  try { rows = await everyone(ROW + GRID); }
+  catch (e){ $('#outState').textContent = friendly(e); return; }
+  $('#heroRow').replaceChildren(...rows.slice(0, ROW).map(x => tile(x, false)));
+  const rest = rows.slice(ROW);
+  $('#outGrid').replaceChildren(...rest.map(x => tile(x, true)));
+  $('#outState').hidden = true; $('#outJust').hidden = !rest.length;   // few shelves so far: they're all in the row above
+  // the people behind the newest shelves, each once
+  const seen = new Set(), who = rows.filter(x => !seen.has(x.owner) && seen.add(x.owner));
+  $('#stackers').replaceChildren(...who.map(person)); $('#stackersSec').hidden = !who.length;
+}
+async function showIn(){
+  $('#state').hidden = true; $('#out').hidden = true; $('#in').hidden = false;
+  if (me.profile) $('#hello').innerHTML = `Welcome back, <a href="${esc(profileUrl(me.profile.username))}">@${esc(me.profile.username)}</a>.`;
+  const fill = async (get, state, list, lazy, empty) => {
+    try {
+      const rows = await get();
+      $(list).replaceChildren(...rows.map(x => tile(x, lazy)));
+      $(state).hidden = true; if (!rows.length) empty();
+    } catch (e){ $(state).textContent = friendly(e); }
+  };
+  await Promise.all([
+    fill(() => rpc('feed', {scope: 'following', before: null, before_id: null, n: ROW}), '#folState', '#folRow', false, () => { $('#folNone').hidden = false; }),
+    fill(() => everyone(GRID), '#inState', '#inGrid', true, () => { $('#inState').textContent = 'No shelves yet.'; $('#inState').hidden = false; }),
+  ]);
+}
+
+(async () => {
+  if (!hasSession() && !returning()) showOut();   // signed out: nothing waits on the account
+  await startSession();
+  if (me.unnamed){ location.replace('build/'); return; }   // signed in, no username yet: the builder asks for one
+  paintAcct();
+  if (me.user) showIn(); else showOut();
+})();
+})();
+</script>
 </body>
 </html>
