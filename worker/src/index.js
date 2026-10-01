@@ -146,13 +146,19 @@ async function tmdbFilms(q, token) {
 }
 /* Open Library also files government reports and the like as books ("John W. Gummo", 1888, by "United States.
    Congress. House..."). A record with no cover is dropped when its author reads like an organisation, or when it has
-   one edition and is on nobody's reading list. The rest go most-read first, then by how many editions there are. */
+   one edition and is on nobody's reading list. Open Library also searches everything it knows about a book, so
+   "gummo" finds books on the Marx Brothers: what was typed has to be in the title or an author's name (a year after
+   a title isn't part of it). The rest go most-read first, then by how many editions there are, and a title that
+   comes more than once by the same author (other printings, other languages) is kept once. */
 const ORG_AUTHOR = /\b(congress|committee|department|office|list|directory)\b/i;
 const notABook = d => !d.cover_i && (ORG_AUTHOR.test((d.author_name || []).join(' ')) || ((d.edition_count || 0) <= 1 && !d.readinglog_count));
 async function olBooks(q) {
-  const r = await getJSON('https://openlibrary.org/search.json?limit=20&fields=title,author_name,first_publish_year,publish_year,cover_i,edition_count,readinglog_count&q=' + encodeURIComponent(q), {headers: {'User-Agent': UA}});
-  const docs = (r.docs || []).filter(d => !notABook(d))
-    .sort((a, b) => (b.readinglog_count || 0) - (a.readinglog_count || 0) || (b.edition_count || 0) - (a.edition_count || 0)).slice(0, 5);
+  const r = await getJSON('https://openlibrary.org/search.json?limit=50&fields=title,author_name,first_publish_year,publish_year,cover_i,edition_count,readinglog_count&q=' + encodeURIComponent(q), {headers: {'User-Agent': UA}});
+  const want = words(q.replace(/[\s,(]+(?:19|20)\d\d\)?$/, ''));
+  const says = d => { const hay = words([d.title, ...(d.author_name || [])].join(' ')).join(' '); return want.length > 0 && want.every(w => hay.includes(w)); };
+  const seen = new Set(), once = d => { const k = words(d.title).join(' ').replace(/^(the|a|an) /, '') + '|' + words((d.author_name || [''])[0]).join(' '); return !seen.has(k) && !!seen.add(k); };
+  const docs = (r.docs || []).filter(d => !notABook(d) && says(d))
+    .sort((a, b) => (b.readinglog_count || 0) - (a.readinglog_count || 0) || (b.edition_count || 0) - (a.edition_count || 0)).filter(once).slice(0, 5);
   // Open Library's first year is sometimes a stray record (It Ends With Us: 2012, The Bell Jar: 1948).
   // Wikidata's publication date is right for known books; without it, a lone early year with a gap after it is dropped.
   const years = await Promise.all(docs.map(d => wikidataYear(d.title, (d.author_name || [''])[0]).then(y => y ? String(y) : olYear(d))));
@@ -180,8 +186,8 @@ async function wikidataYear(title, author) {
 async function identify(p, env, cors, ctx) {
   const q = clean(p.get('q'), 120), want = ['movie', 'book'].includes(p.get('want')) ? p.get('want') : 'all';
   if (!q) return json({error: 'Type a title to search.'}, 400, cors);
-  // id3: books without the government reports, most-read first (id2 answers had them)
-  const key = `id3:${want}:${q.toLowerCase()}`, make = async () => {
+  // id4: books only when the title or author has what was typed, each once (id3 answers had the rest; id2 the reports)
+  const key = `id4:${want}:${q.toLowerCase()}`, make = async () => {
     const [f, b] = await Promise.allSettled([want !== 'book' ? tmdbFilms(q, env.TMDB_TOKEN) : [], want !== 'movie' ? olBooks(q) : []]);
     if (f.status === 'rejected' && b.status === 'rejected') throw new Error('TMDB and Open Library did not answer');
     return {results: [...(f.value || []), ...(b.value || [])]};

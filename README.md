@@ -45,7 +45,7 @@ The TMDB and Brave keys live only in the Worker, as secrets.
 
 | Endpoint | What it returns |
 |---|---|
-| `/identify?q=&want=all\|movie\|book[&suggest=1]` | `{results:[{kind,title,year,creator,cover}]}`: up to 5 films (TMDB) and 5 books (Open Library, most-read first, without the government reports it files as books). `suggest=1` is a half-typed title: answered the same, but not kept in KV |
+| `/identify?q=&want=all\|movie\|book[&suggest=1]` | `{results:[{kind,title,year,creator,cover}]}`: up to 5 films (TMDB) and 5 books (Open Library: only those whose title or author has what was typed, each title once, most-read first, without the government reports it files as books). `suggest=1` is a half-typed title: answered the same, but not kept in KV |
 | `/scans?title=&year=&kind=movie\|book&creator=&round=0-3` | one Brave search per round: up to 10 wrap-shaped (or single-spine) scans whose page names the title, plus approved archive spines first in round 0: `{results:[...], round, more}`, with `capped: true` once the day's Brave searches are used up (see The Brave cap) |
 | `/img?url=` | the image, with CORS. http(s) and `image/*` only, 8 MB max, private addresses blocked, 3 redirects max |
 | `POST /archive?kind=&title=&year=&author=` | a PNG of one spine (300 KB max, at least 3 times taller than wide), re-encoded and kept as *pending* |
@@ -108,7 +108,7 @@ minute stale. Both fit the Workers Free plan and need no card.
 `cd worker && npx wrangler deploy`. Secrets and the KV cache stay as they are. To try a change first without deploying:
 `cd worker && npx wrangler dev` runs the Worker on this machine (`http://127.0.0.1:8787`, with its own empty KV and
 Durable Object; films need `TMDB_TOKEN` in `worker/.dev.vars`).
-If you change what `/identify` answers, bump its cache key prefix in `src/index.js` (`id3:` now) so answers kept
+If you change what `/identify` answers, bump its cache key prefix in `src/index.js` (`id4:` now) so answers kept
 before the change aren't reused. `/scans` keeps what Brave said as it came (`raw1:`), and its filters run again on that.
 
 ### How a real spine is found
