@@ -156,10 +156,11 @@ test('reordering: ↑ ↓ from the keyboard, and dragging a row by its dots', as
   const from = await rows(page).nth(3).locator('.grip').boundingBox(), to = await rows(page).nth(0).locator('.grip').boundingBox();
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
-  await page.mouse.move(from.x + from.width / 2, from.y - 20, { steps: 5 });
-  await page.mouse.move(to.x + to.width / 2, to.y + 2, { steps: 12 });
+  await page.mouse.move(from.x + from.width / 2, from.y - 20, { steps: 6 });
+  await page.mouse.move(to.x + to.width / 2, to.y + 2, { steps: 20 });
+  await page.waitForTimeout(250);   // the rows finish sliding before the drop
   await page.mouse.up();
-  expect(await titles(page)).toEqual([before[3], before[1], before[0], before[2]]);
+  await expect.poll(() => titles(page)).toEqual([before[3], before[1], before[0], before[2]]);
 });
 
 test('Save, signed out, asks you to sign in', async ({ page }) => {
