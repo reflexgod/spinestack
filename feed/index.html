@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="New shelves on shelfstackd.">
+<title>Feed · shelfstackd</title>
+<script>
+  /* The same public addresses as index.html (see the notes there). */
+  window.SPINESTACK_WORKER = "https://api.shelfstackd.com";
+  window.SPINESTACK_WORKER_FALLBACK = "https://spinestack.spinestack-worker.workers.dev";
+  window.SPINESTACK_SUPABASE_URL = "https://fiukspnovrlzlcdekcnb.supabase.co";
+  window.SPINESTACK_SUPABASE_KEY = "sb_publishable_cZeUDJXk-nCbSJ4VZWn_GQ_6xNFyBo2";
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&display=swap">
+<style>
+/* the site's own look, as in index.html and u/ */
+:root{--paper:#FFFFFF;--ink:#000000;--grey:#6B6B6B;--hair:#D9D9D9;--mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--paper)}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 12px/1.55 var(--mono)}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 24px}
+.top a{text-decoration:none;font-size:13px;text-transform:uppercase}
+.top .r{justify-self:end;display:flex;gap:18px;align-items:center}
+.mark{font-weight:800;font-size:22px!important;letter-spacing:.34em;margin-right:-.34em;line-height:1}
+.acct{font:400 13px var(--mono);text-transform:uppercase;background:none;border:0;padding:0;color:var(--ink);cursor:pointer;text-decoration:none}
+.acct.named{text-transform:none}
+p{margin:0 0 12px}
+.grey{color:var(--grey)}
+.dash{display:inline-block;background:none;border:0;padding:0 0 9px;font:500 16px var(--mono);text-transform:uppercase;color:var(--ink);cursor:pointer;text-decoration:none;
+  background-image:repeating-linear-gradient(90deg,var(--ink) 0 11px,transparent 11px 14px);background-size:100% 4px;background-repeat:no-repeat;background-position:left bottom}
+.dash.sm{font-size:12px;padding-bottom:6px;background-size:100% 3px;background-image:repeating-linear-gradient(90deg,var(--ink) 0 8px,transparent 8px 11px)}
+.dash:disabled{opacity:.5;cursor:default}
+.btn{font:500 13px var(--mono);text-transform:uppercase;background:var(--ink);color:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 22px;cursor:pointer;text-decoration:none;display:inline-block}
+.btn:hover{background:#222}
+.btn.full{width:100%}
+.btn:disabled{opacity:.5;cursor:default}
+.note{font-size:11px;color:var(--grey)}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.35);display:grid;place-items:center;z-index:30;padding:16px}
+.sheetbox{background:var(--paper);border:1px solid var(--ink);border-radius:12px;width:100%;max-width:380px;padding:26px 24px 22px;position:relative;max-height:calc(100% - 16px);overflow:auto}
+.sheetbox > div{display:grid;gap:14px}
+.sheetbox h2{margin:0;font-size:16px;font-weight:700;text-transform:uppercase}
+.sheetbox p{margin:0}
+.x{position:absolute;top:8px;right:12px;background:none;border:0;font:400 22px var(--mono);cursor:pointer;color:var(--ink);padding:4px}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);background:var(--ink);color:var(--paper);border-radius:8px;padding:10px 16px;font-size:12px;max-width:calc(100% - 32px);z-index:40}
+footer{background:var(--ink);color:var(--paper);padding:36px 24px 22px;margin-top:72px}
+.fgrid{display:grid;grid-template-columns:1.1fr 1.3fr 1fr;gap:36px;max-width:1200px;margin:0 auto}
+footer h3{font-size:16px;font-weight:700;text-transform:uppercase;margin:0 0 10px}
+footer p,footer li{font-size:13px;letter-spacing:.02em}
+footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
+.fbtn{display:inline-block;background:var(--paper);color:var(--ink);border-radius:8px;padding:12px 28px;text-transform:uppercase;text-decoration:none;font-size:14px;margin-top:4px}
+.fbase{max-width:1200px;margin:34px auto 0;border-top:1px solid #8A8A8A;padding-top:12px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:11.5px}
+
+/* the feed: one column, the profile's tabs, each shelf in the profile cards' frame */
+.feed{max-width:640px;margin:0 auto;padding:36px 24px 0}
+.tabs{display:flex;gap:30px;border-bottom:1px solid var(--ink)}
+.tabs button{font:400 12px var(--mono);text-transform:uppercase;letter-spacing:.06em;background:none;border:0;padding:0 0 10px;margin-bottom:-1px;color:var(--grey);cursor:pointer;border-bottom:2px solid transparent}
+.tabs button[aria-selected="true"]{color:var(--ink);font-weight:700;border-bottom-color:var(--ink)}
+.items{list-style:none;margin:28px 0 0;padding:0;display:grid;gap:40px}
+.item{display:grid;gap:12px;min-width:0}
+.ihead{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:12px;align-items:center}
+.fa{width:32px;height:32px;border-radius:50%;border:1px solid var(--ink);background:#F2F2F2;overflow:hidden;display:grid;place-items:center;font:400 13px var(--mono);text-transform:uppercase;text-decoration:none;color:var(--ink)}
+.fa img{width:100%;height:100%;object-fit:cover;display:block}
+.line{margin:0;min-width:0;font-size:13px;overflow-wrap:anywhere}
+.line a,.line b{font-weight:500;text-decoration:none}
+.line a:hover,.line a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
+.ago{color:var(--grey);font-size:11.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* under the text, as wide as a profile card can get */
+.pic{display:block;margin-left:44px;width:min(360px, calc(100% - 44px));background:#F3F3F3;border:1px solid var(--hair);border-radius:8px;aspect-ratio:9/16;overflow:hidden}
+.pic img{width:100%;height:100%;object-fit:cover;display:block}
+.fnone{display:grid;justify-items:start;gap:14px;margin:28px 0 0;font-size:14px}
+.fnone p{margin:0}
+.linkish{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
+#state{margin:28px 0 0}
+#more{margin-top:36px}
+
+@media (max-width:820px){ .fgrid{grid-template-columns:1fr;gap:26px} }
+@media (max-width:640px){
+  .feed{padding:22px 16px 0}
+  .ihead{grid-template-columns:28px minmax(0,1fr) auto;gap:10px}
+  .fa{width:28px;height:28px;font-size:12px}
+  .pic{margin-left:38px;width:min(360px, calc(100% - 38px))}
+}
+@media (max-width:520px){
+  .top{padding:12px 16px;column-gap:12px}
+  .mark{font-size:17px!important;letter-spacing:.22em;margin-right:-.22em}
+  .top a,.acct{font-size:11.5px;white-space:nowrap}
+  .top .r{gap:12px}
+  .acct{max-width:14ch;overflow:hidden;text-overflow:ellipsis}   /* a long username ends in … rather than pushing the logo */
+}
+/* narrow phones: no room for Info as well (How it works is in the footer), so the logo goes left and the links right,
+   and the username shortens only if it has to */
+@media (max-width:430px){
+  .top{grid-template-columns:auto minmax(0,1fr)}
+  .top > a:first-child{display:none}
+  .top .r{min-width:0;gap:10px;justify-self:stretch;justify-content:flex-end}
+  .acct{min-width:0;max-width:none}
+}
+</style>
+</head>
+<body>
+<header class="top" id="top">
+  <a href="../#how">Info</a>
+  <a class="mark" href="../" aria-label="shelfstackd, the shelf builder">SHELFSTACKD</a>
+  <span class="r"><a href="../#shelf">Shelf</a><a href="./" aria-current="page">Feed</a><a class="acct" id="acctBtn" href="#" hidden>Sign in</a></span>
+</header>
+
+<main class="feed">
+  <nav class="tabs" role="tablist" aria-label="Feed">
+    <button type="button" role="tab" id="tabF" data-scope="following" aria-selected="false" aria-controls="panel">Following</button>
+    <button type="button" role="tab" id="tabE" data-scope="everyone" aria-selected="false" aria-controls="panel">Everyone</button>
+  </nav>
+  <div id="panel" role="tabpanel">
+    <p class="grey" id="state" role="status">Loading…</p>
+    <ol class="items" id="items"></ol>
+    <div class="fnone" id="none" hidden></div>
+    <button class="dash sm" id="more" type="button" hidden>Load more</button>
+  </div>
+</main>
+
+<div class="sheet" id="signSheet" hidden role="dialog" aria-modal="true" aria-label="Sign in">
+  <div class="sheetbox">
+    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <div>
+      <h2>Sign in</h2>
+      <p>Save your shelves to your account and open them again on any device.</p>
+      <button class="btn full" id="googleBtn" type="button">Continue with Google</button>
+      <p class="note">Accounts are for people 18 or older. <a href="../privacy.html">Privacy</a></p>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="fgrid">
+    <div id="how">
+      <h3>How it works</h3>
+      <ol>
+        <li>You type a name. Films come from TMDB, books from Open Library.</li>
+        <li>We look for full DVD and book scans of that title.</li>
+        <li>The strip between back and front is the spine. We cut it out.</li>
+        <li>No clean scan? You get a spine made from the poster or cover.</li>
+      </ol>
+    </div>
+    <div id="sources">
+      <h3>Sources</h3>
+      <p>Film data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB. Book data from Open Library. Scans belong to their studios and publishers, and every spine links back to where it was found.</p>
+    </div>
+    <div>
+      <h3>Shelf</h3>
+      <p>Build it, then post it.</p>
+      <a class="fbtn" href="../#shelf">Open shelf</a>
+    </div>
+  </div>
+  <div class="fbase"><span>© 2026 SHELFSTACKD. All rights reserved.</span><span>Not affiliated with any studio or publisher.</span></div>
+</footer>
+<div class="toast" id="toast" hidden></div>
+
+<script src="../shelf.js?v=20260930d"></script>
+<script src="../worker-address.js?v=20261001a"></script>
+<script>
+(() => {
+/* The feed: /feed/ (?following or ?everyone picks the tab). Public shelves, newest saved first, 20 at a time.
+   The database decides what shows (feed() in 0006): EVERYONE is public shelves of public profiles, FOLLOWING is public
+   shelves of the people you follow. Only saving a shelf in the builder moves it up; renaming it or making it main doesn't. */
+const $ = s => document.querySelector(s);
+const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
+const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
+const SB_LIB = {src:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
+const PAGE = 20;
+const params = new URLSearchParams(location.search);
+const asked = params.has('everyone') ? 'everyone' : params.has('following') ? 'following' : '';
+
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const profileUrl = (name, shelf) => '../u/?' + name + (shelf ? '&shelf=' + shelf : '');
+let toastT = 0; function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 4200); }
+function friendly(e){
+  const m = (e && e.message) || '';
+  if (/fetch|network/i.test(m)) return 'Couldn’t reach shelfstackd. Check your connection and try again.';
+  return m || 'Something went wrong. Try again in a moment.';
+}
+// 2h, 3d: how long ago a shelf was saved
+function ago(t){
+  const m = Math.max(0, (Date.now() - new Date(t)) / 60000);
+  if (m < 1) return 'now';
+  if (m < 60) return Math.floor(m) + 'm';
+  if (m < 1440) return Math.floor(m / 60) + 'h';
+  const d = m / 1440;
+  return d < 7 ? Math.floor(d) + 'd' : d < 365 ? Math.floor(d / 7) + 'w' : Math.floor(d / 365) + 'y';
+}
+
+/* ---------- signing in (the same Supabase client and settings as u/) ---------- */
+const me = {sb:null, user:null, profile:null};
+let sbLoading = null;
+function supa(){
+  return sbLoading || (sbLoading = new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = SB_LIB.src; s.integrity = SB_LIB.integrity; s.crossOrigin = 'anonymous';
+    s.onload = () => { me.sb = window.supabase.createClient(SB_URL, SB_KEY, {auth:{flowType:'pkce', persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}}); res(me.sb); };
+    s.onerror = () => { sbLoading = null; s.remove(); rej(new Error('Sign-in couldn’t load. Check your connection and try again.')); };
+    document.head.appendChild(s);
+  }));
+}
+const hasSession = () => { try { return Object.keys(localStorage).some(k => /^sb-.+-auth-token$/.test(k)); } catch { return false; } };
+const returning = () => /[?&](code|error|error_description)=/.test(location.search);
+const here = () => location.pathname + (asked ? '?' + asked : '');
+async function token(){
+  if (!me.sb) return null;
+  const {data:{session}} = await me.sb.auth.getSession();
+  return session ? session.access_token : null;
+}
+// Supabase's REST API: as the signed-in person when there is one, otherwise as a visitor
+async function api(path, opt = {}){
+  const t = await token(), r = await fetch(`${SB_URL}/rest/v1/${path}`, {...opt,
+    headers: {apikey: SB_KEY, 'Content-Type': 'application/json', ...(t ? {Authorization: 'Bearer ' + t} : {}), ...(opt.headers || {})}});
+  const j = r.status === 204 ? null : await r.json().catch(() => null);
+  if (!r.ok) throw new Error((j && j.message) || 'Couldn’t load the feed. Try again in a moment.');
+  return j;
+}
+const rpc = (fn, args) => api('rpc/' + fn, {method:'POST', body: JSON.stringify(args)});
+async function startSession(){
+  const back = returning();   // asked before Supabase takes ?code= off
+  if (!hasSession() && !back) return;
+  try {
+    const err = new URLSearchParams(location.search).get('error_description');
+    const sb = await supa(), {data:{session}} = await sb.auth.getSession();   // finishes a Google sign-in coming back with ?code=
+    if (back) history.replaceState(null, '', here() + location.hash);
+    if (err) toast('Sign-in didn’t finish: ' + err);
+    me.user = session && session.user;
+    if (me.user){
+      const rows = await api(`profiles?select=id,username&id=eq.${me.user.id}`);
+      me.profile = rows[0] || null;
+    }
+    sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') location.reload(); });
+  } catch (e){ toast(friendly(e)); }
+}
+function paintAcct(){
+  const b = $('#acctBtn'); b.hidden = false; b.classList.toggle('named', !!me.profile);
+  if (me.profile){ b.textContent = '@' + me.profile.username; b.href = profileUrl(me.profile.username); }
+  else if (me.user){ b.textContent = 'Finish sign-up'; b.href = '../'; }
+  else { b.textContent = 'Sign in'; b.href = '#'; }
+}
+const signIn = () => openSheet('#signSheet', '#googleBtn');
+$('#acctBtn').addEventListener('click', e => { if (!me.user){ e.preventDefault(); signIn(); } });
+$('#googleBtn').addEventListener('click', async () => {
+  const btn = $('#googleBtn'); btn.disabled = true;
+  try {
+    const sb = await supa(), back = location.origin + location.pathname + '?' + (feed.scope || 'following');
+    const {error} = await sb.auth.signInWithOAuth({provider:'google', options:{redirectTo: back}});
+    if (error) throw error;
+  } catch (e){ btn.disabled = false; toast(friendly(e)); }
+});
+
+/* sheets */
+let sheetFrom = null;
+function openSheet(id, focus){ sheetFrom = document.activeElement; $(id).hidden = false; const f = $(focus); if (f) f.focus(); }
+function closeSheets(){ document.querySelectorAll('.sheet').forEach(s => s.hidden = true); if (sheetFrom && sheetFrom.focus) sheetFrom.focus(); }
+document.querySelectorAll('.sheet').forEach(s => s.addEventListener('click', e => { if (e.target === s || e.target.closest('[data-close]')) closeSheets(); }));
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.querySelector('.sheet:not([hidden])')) closeSheets(); });
+
+/* ---------- the feed ---------- */
+const feed = {scope:'', last:null, run:0};
+function item(x){
+  const li = document.createElement('li'), name = (x.display_name || '').trim(), who = esc(profileUrl(x.username));
+  const shelf = Shelf.shelfName({name: x.name, caption: x.caption});
+  const pic = x.preview_key ? `<img src="${esc(`${WORKER}/u/preview?k=${encodeURIComponent(x.preview_key)}&v=${encodeURIComponent(x.updated_at)}`)}" alt="" loading="lazy" width="360" height="640">` : '';
+  li.className = 'item';
+  li.innerHTML = `<div class="ihead">
+      <a class="fa" href="${who}" tabindex="-1" aria-hidden="true">${x.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(x.avatar_key)}`)}" alt="" loading="lazy">` : esc((name || x.username).trim()[0] || '·')}</a>
+      <p class="line"><a href="${who}">@${esc(x.username)}</a> ${x.updated ? 'updated' : 'shelved'} <b>${esc(shelf)}</b></p>
+      <time class="ago" datetime="${esc(x.saved_at)}" title="${esc(new Date(x.saved_at).toLocaleString())}">${ago(x.saved_at)}</time>
+    </div>
+    <a class="pic" href="${esc(profileUrl(x.username, x.shelf_id))}" aria-label="Open ${esc(shelf)} by @${esc(x.username)}">${pic}</a>`;
+  return li;
+}
+function none(kind){
+  const box = $('#none');
+  if (kind === 'signin') box.innerHTML = '<p><button class="linkish" type="button" data-signin>Sign in</button> to see shelves from people you follow.</p>';
+  else if (kind === 'following') box.innerHTML = '<p>Follow people to see their shelves here.</p><button class="dash sm" type="button" data-scope="everyone">Everyone</button>';
+  else box.innerHTML = '<p>No shelves yet.</p>';
+  box.hidden = false;
+}
+$('#none').addEventListener('click', e => {
+  if (e.target.closest('[data-signin]')) signIn();
+  const b = e.target.closest('[data-scope]'); if (b) show(b.dataset.scope);
+});
+async function show(scope){
+  const run = ++feed.run;
+  feed.scope = scope; feed.last = null;
+  document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.scope === scope)));
+  history.replaceState(null, '', location.pathname + '?' + scope + location.hash);   // back from a shelf lands on the same tab
+  $('#items').replaceChildren(); $('#none').hidden = true; $('#more').hidden = true;
+  if (scope === 'following' && !me.user){ $('#state').hidden = true; none('signin'); return; }
+  $('#state').textContent = 'Loading…'; $('#state').hidden = false;
+  await more(run);
+}
+async function more(run = feed.run){
+  const btn = $('#more'), last = feed.last;
+  btn.disabled = true;
+  let rows;
+  try { rows = await rpc('feed', {scope: feed.scope, before: last ? last.at : null, before_id: last ? last.id : null, n: PAGE}); }
+  catch (e){
+    if (run !== feed.run) return;
+    btn.disabled = false;
+    if ($('#items').children.length) toast(friendly(e)); else $('#state').textContent = friendly(e);
+    return;
+  }
+  if (run !== feed.run) return;   // another tab was picked meanwhile
+  btn.disabled = false; $('#state').hidden = true;
+  for (const x of rows) $('#items').append(item(x));
+  const end = rows[rows.length - 1];
+  if (end) feed.last = {at: end.saved_at, id: end.shelf_id};
+  btn.hidden = rows.length < PAGE;
+  if (!$('#items').children.length) none(feed.scope);
+}
+$('#more').addEventListener('click', () => more());
+document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => { if (b.dataset.scope !== feed.scope) show(b.dataset.scope); }));
+
+(async () => {
+  await startSession();
+  paintAcct();
+  show(asked || (me.user ? 'following' : 'everyone'));
+})();
+})();
+</script>
+</body>
+</html>

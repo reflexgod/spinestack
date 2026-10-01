@@ -16,6 +16,7 @@ main{max-width:680px;margin:0 auto;padding:28px 24px 64px}
 a{color:var(--ink)}
 .top{display:flex;justify-content:space-between;align-items:center;text-transform:uppercase;margin-bottom:40px}
 .top a{text-decoration:none}
+.top .r{display:flex;gap:18px}
 h1{font-size:22px;font-weight:700;text-transform:uppercase;margin:0 0 6px}
 h2{font-size:13px;font-weight:700;text-transform:uppercase;margin:32px 0 8px;padding-top:12px;border-top:1px solid var(--ink)}
 p,li{margin:0 0 10px}
@@ -26,7 +27,7 @@ ul{padding-left:1.2em;margin:0}
 </head>
 <body>
 <main>
-  <div class="top"><a href="./">shelfstackd</a><a href="./#shelf">Back to the shelf</a></div>
+  <div class="top"><a href="./">shelfstackd</a><span class="r"><a href="./#shelf">Back to the shelf</a><a href="feed/">Feed</a></span></div>
   <h1>Privacy</h1>
   <p class="grey">Last changed 1 October 2026.</p>
 
@@ -56,7 +57,7 @@ ul{padding-left:1.2em;margin:0}
   </ul>
 
   <h2>Who can see it</h2>
-  <p>Your profile and your shelves are public unless you mark them private. Anyone with the link can see your display name, username, bio and photo, and your public shelves with their spines, walls and PNGs.</p>
+  <p>Your profile and your shelves are public unless you mark them private. Anyone with the link can see your display name, username, bio and photo, and your public shelves with their spines, walls and PNGs. Your public shelves also show in the feed, for everyone if your profile is public, and for your followers if it's private.</p>
   <ul>
     <li>Mark a shelf <strong>Private</strong> (in My shelves, or under it on your profile) and only you can see it. On your profile it shows to you alone, and nowhere else.</li>
     <li>Tick <strong>Private profile</strong> in Edit profile and only your followers see your profile and its shelves. Everyone else sees just your photo, display name and username, and can ask to follow you; you accept or decline each request. People who already followed you before you went private stay followers.</li>

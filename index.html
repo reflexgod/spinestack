@@ -224,22 +224,31 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
   .fgrid{grid-template-columns:1fr;gap:26px}
 }
 @media (max-width:520px){
-  .top{padding:12px 16px}
+  .top{padding:12px 16px;column-gap:12px}
   .mark{font-size:17px!important;letter-spacing:.22em;margin-right:-.22em}
-  .top a,.acct{font-size:11.5px}
+  .top a,.acct{font-size:11.5px;white-space:nowrap}
   .top .r{gap:12px}
+  .acct{max-width:14ch;overflow:hidden;text-overflow:ellipsis}   /* a long username ends in … rather than pushing the logo */
   form.search{grid-template-columns:1fr}
   .strip{height:200px}
   .found{--th:220px;--tw:84px}
   .row2{grid-template-columns:1fr}
   section{padding-block:40px 0}
 }
+/* narrow phones: no room for Info as well (How it works is in the footer), so the logo goes left and the links right,
+   and the username shortens only if it has to */
+@media (max-width:430px){
+  .top{grid-template-columns:auto minmax(0,1fr)}
+  .top > a:first-child{display:none}
+  .top .r{min-width:0;gap:10px;justify-self:stretch;justify-content:flex-end}
+  .acct{min-width:0;max-width:none}
+}
 </style>
 
 <header class="top" id="top">
   <a href="#how">Info</a>
   <a class="mark" href="#top" aria-label="shelfstackd, back to top">SHELFSTACKD</a>
-  <span class="r"><a href="#shelf">Shelf (<span id="navCount">0</span>)</a><button class="acct" id="acctBtn" type="button" hidden>Sign in</button></span>
+  <span class="r"><a href="#shelf">Shelf (<span id="navCount">0</span>)</a><a href="feed/">Feed</a><button class="acct" id="acctBtn" type="button" hidden>Sign in</button></span>
 </header>
 
 <main>

@@ -8,6 +8,8 @@ Type a film or a book, get its real spine, put it on a shelf, save the shelf as 
 index.html            the website (GitHub Pages serves this): search, the shelf, the story
 shelf.js              draws the spines and the story; index.html and u/ both use it, so a shelf looks the same everywhere
 u/index.html          profiles: /u/?username, and one shelf: /u/?username&shelf=<id>
+feed/index.html       the feed: /feed/, FOLLOWING and EVERYONE, newest saved shelves first
+worker-address.js     sends Worker requests to its workers.dev address on networks that block api.shelfstackd.com
 admin.html            approve or delete archive uploads (needs the admin token); read reports (Google sign-in, admins only)
 worker/               Cloudflare Worker: name lookup, scan search, image proxy (what the live site uses)
 backend/              older self-hosted search server (not used right now)
@@ -108,7 +110,16 @@ filters results, bump the `sc…:` cache key prefix in `src/index.js` so old cac
 the featured shelf drawn on its own, recent shelves, bio, most shelved. `/u/?username&shelf=<id>` shows one shelf. The
 owner gets Edit profile (photo, name, bio, featured shelf, Private profile). The header's @username and the Profile link
 in My shelves lead there; "Open in builder" on your own shelf opens `index.html?open=<id>`.
-Private shelves (the tick in My shelves) and private profiles show only to their owner.
+Private shelves (the tick in My shelves) show only to their owner. A private profile shows others only its photo,
+display name and @username; its public shelves show to its owner and the followers it accepted.
+
+## Follows and the feed
+
+FOLLOW on a profile follows a public profile at once and sends a request to a private one (its owner answers under
+REQUESTS on their profile). FOLLOWING and FOLLOWERS open the lists, 30 at a time. 100 follows and unfollows an hour
+per account, counted in the database. `/feed/` shows public shelves, 20 at a time: EVERYONE from public profiles,
+FOLLOWING from the people you follow. A shelf moves up only when it's saved in the builder (`shelves.saved_at`);
+renaming it or making it main doesn't. All of it is decided in the database (`0006`), not in the page.
 
 Photos, walls and PNGs live in the R2 bucket `shelfstackd-media` (binding `MEDIA`). Create it once, in `worker/`:
 `npx wrangler r2 bucket create shelfstackd-media`, then `npx wrangler deploy`. Keep `USER_R2` commented out: binding it
@@ -126,7 +137,7 @@ signed-out visitors never load the Supabase library.
   `[vars]`. Both are public; Row Level Security protects every table. The secret / service_role key isn't used
   anywhere and must never be added to the page, the repo or the Worker.
 - **Database:** run each file in `supabase/migrations/` once, in order, in the dashboard's SQL Editor. Then run the
-  test for the newest one (`supabase/tests/rls_phase2.sql` after `0002`): it plays two users and a signed-out visitor,
+  test for the newest one (`supabase/tests/rls_phase3.sql` after `0006`): it plays two users and a signed-out visitor,
   undoes everything, and ends with `ALL ... CHECKS PASSED` (or stops at the first `FAIL:`). `rls_phase1.sql` is for a
   database with `0001` only.
 - **Pro:** two switches that must agree: `SHELFSTACKD_PRO_REQUIRED` in `index.html` (what the page offers) and
