@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261002a">
+<link rel="stylesheet" href="../site.css?v=20261002b">
 <style>
 /* the feed: the tabs, then each shelf's card under the line that says who saved it (site.css has the tabs, the card
    and the rest) */
@@ -210,6 +210,15 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.q
 
 /* ---------- the feed ---------- */
 const feed = {scope:'', last:null, run:0};
+// A card's cut of its picture depends on how the shelf is laid out (site.css). The feed doesn't say, so that's asked
+// for once the cards are up: a pile or a grid of covers gets its own cut.
+async function cropCards(rows, root){
+  const ids = [...new Set(rows.map(x => x.shelf_id))]; if (!ids.length) return;
+  try {
+    for (const s of await api(`shelves?select=id,layout&id=in.(${ids.join(',')})`))
+      if (s.layout === 'stack' || s.layout === 'covers') for (const el of root.querySelectorAll(`[data-shelf="${s.id}"]`)) el.classList.add(s.layout);
+  } catch {}
+}
 function item(x){
   const li = document.createElement('li'), name = (x.display_name || '').trim(), who = esc(profileUrl(x.username));
   const shelf = Shelf.shelfName({name: x.name, caption: x.caption});
@@ -220,7 +229,7 @@ function item(x){
       <p class="line"><a href="${who}">@${esc(x.username)}</a> ${x.updated ? 'updated' : 'shelved'} <b>${esc(shelf)}</b></p>
       <time class="ago" datetime="${esc(x.saved_at)}" title="${esc(new Date(x.saved_at).toLocaleString())}">${ago(x.saved_at)}</time>
     </div>
-    <a class="pic" href="${esc(profileUrl(x.username, x.shelf_id))}" aria-label="Open ${esc(shelf)} by @${esc(x.username)}">${pic}</a>`;
+    <a class="pic" data-shelf="${esc(x.shelf_id)}" href="${esc(profileUrl(x.username, x.shelf_id))}" aria-label="Open ${esc(shelf)} by @${esc(x.username)}">${pic}</a>`;
   return li;
 }
 function none(kind){
@@ -258,6 +267,7 @@ async function more(run = feed.run){
   if (run !== feed.run) return;   // another tab was picked meanwhile
   btn.disabled = false; $('#state').hidden = true;
   for (const x of rows) $('#items').append(item(x));
+  cropCards(rows, $('#items'));
   const end = rows[rows.length - 1];
   if (end) feed.last = {at: end.saved_at, id: end.shelf_id};
   btn.hidden = rows.length < PAGE;

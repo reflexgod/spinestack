@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261002a">
+<link rel="stylesheet" href="../site.css?v=20261002b">
 <style>
 /* the profile (site.css has the cards, the tabs, the sheets and everything shared) */
 .phead{display:grid;grid-template-columns:96px minmax(0,1fr) auto;grid-template-areas:"ava who stats";gap:0 var(--s5);align-items:center}
@@ -476,7 +476,8 @@ function thumbs(list){
   const mine = view.mine, main = mine && featured();
   const card = s => {
     const name = shelfName(s), src = previewSrc(s), href = esc(pageUrl(view.profile.username, s.id));
-    const pic = `<span class="pic">${src ? `<img src="${esc(src)}" alt="" loading="lazy" width="360" height="640">` : ''}</span>`, meta = `${spines(countOf(s))} · ${esc(fmtDate(s.updated_at))}`;
+    const cut = s.layout === 'stack' || s.layout === 'covers' ? ' ' + s.layout : '';   // a pile or covers: its own cut of the picture (site.css)
+    const pic = `<span class="pic${cut}">${src ? `<img src="${esc(src)}" alt="" loading="lazy" width="360" height="640">` : ''}</span>`, meta = `${spines(countOf(s))} · ${esc(fmtDate(s.updated_at))}`;
     if (!mine) return `<li><a href="${href}" data-shelf="${s.id}" aria-label="${esc(name)}">${pic}<span class="cap">${esc(name)}</span><span class="meta">${meta}</span></a></li>`;
     const edit = '../build/?open=' + s.id;   // the builder, with this shelf in it
     const acts = `<div class="acts"><a class="dash xs" href="${edit}">open</a>` +

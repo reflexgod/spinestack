@@ -34,7 +34,7 @@ const shelfId = i => `aaaaaaaa-aaaa-4aaa-8aaa-${String(i).padStart(12, '0')}`;
 const SHELVES = Array.from({ length: 18 }, (_, i) => {
   const owner = PEOPLE[i % PEOPLE.length];
   return { id: shelfId(i), owner: owner.id, caption: i % 4 ? `shelf number ${i}` : 'my next reads.', name: i % 5 ? null : 'a much longer shelf name that has to be cut short',
-    filter: 'clean', intensity: 70, background: 'paper', wood: false, layout: 'row', varied: true, is_public: true, hidden: false,
+    filter: 'clean', intensity: 70, background: 'paper', wood: false, layout: ['row', 'stack', 'covers'][(i + Math.floor(i / 3)) % 3], varied: true, is_public: true, hidden: false,
     preview_key: `${owner.id}/p/${shelfId(i)}`, pro: {}, created_at: day(i + 1), updated_at: day(i), saved_at: day(i), shelf_items: [{ count: 2 }] };
 });
 const ITEMS = [
@@ -68,7 +68,10 @@ function rest(url, method, body, signedIn, named){
   if (what === 'rpc/save_shelf') return body.shelf.id;
   if (what.startsWith('rpc/')) return [];
   if (what === 'profiles') return PEOPLE.filter(p => (named || p.id !== ME.id) && (!q.has('id') || p.id === eq('id')) && (!q.has('username') || p.username === eq('username')));
-  if (what === 'shelves') return SHELVES.filter(s => (!q.has('owner') || s.owner === eq('owner')) && (!q.has('id') || s.id === eq('id')));
+  if (what === 'shelves'){
+    const ids = (q.get('id') || '').startsWith('in.(') ? q.get('id').slice(4, -1).split(',') : q.has('id') ? [eq('id')] : null;   // id=eq.x or id=in.(x,y)
+    return SHELVES.filter(s => (!q.has('owner') || s.owner === eq('owner')) && (!ids || ids.includes(s.id)));
+  }
   if (what === 'shelf_items') return ITEMS;
   return method === 'GET' ? [] : null;
 }

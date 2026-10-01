@@ -14,7 +14,7 @@ const SHOTS = [
   { name: 'feed', path: '/feed/?everyone', signedIn: true },
 ];
 
-// in the page: a story for each card, with 1 to 20 spines, as its preview
+// in the page: a story for each card, with 1 to 20 spines, as its preview, laid out the way the card says its shelf is
 async function drawPreviews(page) {
   await page.evaluate(async () => {
     if (!window.Shelf) return;
@@ -28,10 +28,12 @@ async function drawPreviews(page) {
         title: names[(i + at) % names.length], img: cover(bg, fg), bg, fg, accent: fg, style: (i + at) % 2 ? 'solid' : 'classic', font: 'oswald' }; });
     const counts = [5, 1, 8, 3, 20, 6, 2, 12, 4, 7, 10, 3], themes = ['paper', 'paper', 'ink', 'paper', 'blush', 'paper'], made = new Map();
     imgs.forEach((im, i) => {
-      const key = im.getAttribute('src');
+      const pic = im.closest('.pic'), layout = pic.classList.contains('stack') ? 'stack' : pic.classList.contains('covers') ? 'covers' : 'row';
+      const key = im.getAttribute('src') + layout;
       if (!made.has(key)) {
         const n = made.size, c = document.createElement('canvas'); c.width = 1080; c.height = 1920;
-        Shelf.renderStory(c.getContext('2d'), 'clean', false, books(counts[n % counts.length], n), { caption: 'my next reads.', theme: themes[n % themes.length], layout: 'row', varied: true, wood: n % 4 === 2, plank: false, shelfColour: '#FFFFFF', filter: 'clean', intensity: 60 }, false, {});
+        const count = layout === 'stack' ? [3, 6, 2][n % 3] : layout === 'covers' ? [6, 4, 9][n % 3] : counts[n % counts.length];
+        Shelf.renderStory(c.getContext('2d'), 'clean', false, books(count, n), { caption: 'my next reads.', theme: themes[n % themes.length], layout, varied: true, wood: layout === 'row' && n % 4 === 2, plank: false, shelfColour: '#FFFFFF', filter: 'clean', intensity: 60 }, false, {});
         const p = document.createElement('canvas'); p.width = 360; p.height = 640; p.getContext('2d').drawImage(c, 0, 0, 360, 640);
         made.set(key, p.toDataURL('image/jpeg', .9));
       }

@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&display=swap">
-<link rel="stylesheet" href="site.css?v=20261002a">
+<link rel="stylesheet" href="site.css?v=20261002b">
 <style>
 /* home: a welcome, then rows and grids of shelf cards (site.css has the cards, the bar and everything shared) */
 .home section{margin-top:var(--s6)}
@@ -256,13 +256,22 @@ function tile(x, lazy){
   const li = document.createElement('li'), shelf = Shelf.shelfName({name: x.name, caption: x.caption});
   const pic = x.preview_key ? `<img src="${esc(`${WORKER}/u/preview?k=${encodeURIComponent(x.preview_key)}&v=${encodeURIComponent(x.updated_at)}`)}" alt=""${lazy ? ' loading="lazy"' : ''} width="360" height="640">` : '';
   li.innerHTML = `<a href="${esc(profileUrl(x.username, x.shelf_id))}" aria-label="${esc(shelf)} by @${esc(x.username)}">
-      <span class="pic">${pic}</span><span class="cap">${esc(shelf)}</span><span class="by">@${esc(x.username)}</span></a>`;
+      <span class="pic" data-shelf="${esc(x.shelf_id)}">${pic}</span><span class="cap">${esc(shelf)}</span><span class="by">@${esc(x.username)}</span></a>`;
   return li;
 }
 function person(x){
   const li = document.createElement('li'), name = (x.display_name || '').trim();
   li.innerHTML = `<a href="${esc(profileUrl(x.username))}"><span class="fa" aria-hidden="true">${x.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(x.avatar_key)}`)}" alt="" loading="lazy">` : esc((name || x.username).trim()[0] || '·')}</span><span>@${esc(x.username)}</span></a>`;
   return li;
+}
+// A card's cut of its picture depends on how the shelf is laid out (site.css). The feed doesn't say, so that's asked
+// for once the cards are up: a pile or a grid of covers gets its own cut.
+async function cropCards(rows, root){
+  const ids = [...new Set(rows.map(x => x.shelf_id))]; if (!ids.length) return;
+  try {
+    for (const s of await api(`shelves?select=id,layout&id=in.(${ids.join(',')})`))
+      if (s.layout === 'stack' || s.layout === 'covers') for (const el of root.querySelectorAll(`[data-shelf="${s.id}"]`)) el.classList.add(s.layout);
+  } catch {}
 }
 const everyone = n => rpc('feed', {scope: 'everyone', before: null, before_id: null, n});
 
@@ -276,6 +285,7 @@ async function showOut(){
   $('#heroRow').replaceChildren(...rows.slice(0, ROW).map(x => tile(x, false)));
   const rest = rows.slice(ROW);
   $('#outGrid').replaceChildren(...rest.map(x => tile(x, true)));
+  cropCards(rows, $('#out'));
   $('#outState').hidden = true; $('#outJust').hidden = !rest.length;   // few shelves so far: they're all in the row above
   // the people behind the newest shelves, each once
   const seen = new Set(), who = rows.filter(x => !seen.has(x.owner) && seen.add(x.owner));
@@ -288,6 +298,7 @@ async function showIn(){
     try {
       const rows = await get();
       $(list).replaceChildren(...rows.map(x => tile(x, lazy)));
+      cropCards(rows, $(list));
       $(state).hidden = true; if (!rows.length) empty();
     } catch (e){ $(state).textContent = friendly(e); }
   };
