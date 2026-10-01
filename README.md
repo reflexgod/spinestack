@@ -263,6 +263,8 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   shelf's title carry the person's name.
 - **A page that isn't there** (`specs/notfound.spec.js`): any missing address, however deep, gets `404.html` with the
   status 404 (`tests/serve.js` does what GitHub Pages does), styled, with a link home that works from there.
+- **Privacy** (`specs/privacy.spec.js`): the page's sections, and that it says what the site does now (the feed, being
+  found, follows, private shelves and profiles, Settings, the photo).
 - **An empty site** (`specs/empty.spec.js`): with no public shelves, home shows the sample shelf under the hero, and
   shelves, members and the feed each say so in a line.
 - **The feed** (`specs/feed.spec.js`): the three tabs and which one opens, what a line says (with the clock held still,
