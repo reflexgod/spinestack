@@ -90,6 +90,7 @@ test('the feed shows each shelf as the same 2:3 card as home, under the line abo
   expect(Math.round(card.width)).toBe(150);
   expect(Math.round(card.height)).toBe(225);
   expect(Math.abs(card.left - line.left)).toBeLessThanOrEqual(1);   // in line with the text above it
+  expect(card.left - (await box(page.locator('.item .fa').first())).right).toBeGreaterThan(0);   // and clear of the photo
   expect(await css(page.locator('.item .pic').first(), 'borderTopLeftRadius')).toEqual({ borderTopLeftRadius: '3px' });
   // and it's the home card's cut of the picture: drawn 1.2 times the card's width, moved up
   const img = await page.locator('.item .pic img').first().evaluate(el => { const r = el.getBoundingClientRect(), c = el.parentElement.getBoundingClientRect(); return { w: r.width / c.width, top: (r.top - c.top) / c.height }; });

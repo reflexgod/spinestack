@@ -10,7 +10,7 @@ build/index.html      the shelf builder (New shelf / Edit shelf): Add, the spine
 add.js                + SHELF on every page: the Add to your shelf… dialog (suggestions as you type, then the spine choices and Add to shelf); the spine finder lives here
 shelf.js              draws the spines and the story (and says where it drew each book); build/ and u/ both use it, so a shelf looks the same everywhere
 u/index.html          profiles: /u/?username, and one shelf: /u/?username&shelf=<id>
-feed/index.html       the feed: /feed/, FOLLOWING and EVERYONE, newest saved shelves first
+feed/index.html       the feed: /feed/, FOLLOWING · YOU · EVERYONE, a line for each shelf saved ("@abc shelved my films · 2h") with its card, newest first
 worker-address.js     sends Worker requests to its workers.dev address on networks that block api.shelfstackd.com
 site.css              the look every page shares: one :root block of variables (the 950px column, the type scale, the 4/8/12/16/24/40 spacing, the 3px radius) and what uses them everywhere (the top bar, headings, buttons, fields, shelf cards, tabs, sheets, the footer). A page's own <style> holds only what that page alone needs
 nav.js                the top bar on every page: who is signed in, the account menu (Sign out is its last item), + SHELF and the ▾ next to it
@@ -233,6 +233,8 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **The look** (`specs/look.spec.js`): the content and the bar's contents in one 950px column on every page, the type
   scale, one black button a screen, shelf cards six across at 150px (three on a phone) cut 2:3, the profile's name,
   numbers and tabs.
+- **The feed** (`specs/feed.spec.js`): the three tabs and which one opens, what a line says (with the clock held still,
+  so "2h" and "1w" are known), You, signed out, and ← → between the tabs.
 
 `npm run shots` (in `tests/`) saves screenshots of home, the builder, a profile and the feed at 1280px and 390px into
 `tests/shots/`, with the tests' made-up data and the real fonts.

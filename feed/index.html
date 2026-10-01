@@ -15,32 +15,16 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261002b">
+<link rel="stylesheet" href="../site.css?v=20261002c">
 <style>
-/* the feed: the tabs, then each shelf's card under the line that says who saved it (site.css has the tabs, the card
-   and the rest) */
-.items{list-style:none;margin:var(--s5) 0 0;padding:0;display:grid;gap:var(--s5)}
-.item{display:grid;gap:var(--s3);min-width:0}
-.ihead{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:var(--s3);align-items:center}
-.fa{width:32px;height:32px;border-radius:50%;border:1px solid var(--ink);background:var(--wash);overflow:hidden;display:grid;place-items:center;font-size:var(--fs-body);text-transform:uppercase;text-decoration:none;color:var(--ink)}
-.fa img{width:100%;height:100%;object-fit:cover;display:block}
-.line{margin:0;min-width:0;overflow-wrap:anywhere}
-.line a,.line b{font-weight:500;text-decoration:none}
-.line a:hover,.line a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
-.ago{color:var(--grey);font-size:var(--fs-small);font-variant-numeric:tabular-nums;white-space:nowrap}
-/* the shelf's card, under the text and in line with it: the same 2:3 cut of its picture as on home */
-.item .pic{margin-left:44px;width:var(--card)}
+/* the feed: the tabs, then a line for each shelf saved and its card under it (site.css has the tabs, the lines, the
+   card and the rest) */
+.items{margin-top:var(--s5)}
 .fnone{display:grid;justify-items:start;gap:var(--s3);margin:var(--s5) 0 0}
 .fnone p{margin:0}
 .linkish{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
 #state{margin:var(--s5) 0 0}
 #more{margin-top:var(--s6)}
-
-@media (max-width:640px){
-  .ihead{grid-template-columns:28px minmax(0,1fr) auto;gap:var(--s2)}
-  .fa{width:28px;height:28px;font-size:var(--fs-card)}
-  .item .pic{margin-left:36px}
-}
 </style>
 </head>
 <body>
@@ -61,6 +45,7 @@
   <h1>Activity</h1>
   <nav class="tabs" role="tablist" aria-label="Feed">
     <button type="button" role="tab" id="tabF" data-scope="following" aria-selected="false" aria-controls="panel">Following</button>
+    <button type="button" role="tab" id="tabY" data-scope="you" aria-selected="false" aria-controls="panel">You</button>
     <button type="button" role="tab" id="tabE" data-scope="everyone" aria-selected="false" aria-controls="panel">Everyone</button>
   </nav>
   <div id="panel" role="tabpanel">
@@ -113,16 +98,17 @@
 <script src="../nav.js?v=20261001e"></script>
 <script>
 (() => {
-/* The feed: /feed/ (?following or ?everyone picks the tab). Public shelves, newest saved first, 20 at a time.
-   The database decides what shows (feed() in 0006): EVERYONE is public shelves of public profiles, FOLLOWING is public
-   shelves of the people you follow. Only saving a shelf in the builder moves it up; renaming it or making it main doesn't. */
+/* The feed: /feed/ (?following, ?you or ?everyone picks the tab). A line for each shelf saved, newest first, 20 at a
+   time. The database decides what shows (feed() in 0006): EVERYONE is public shelves of public profiles, FOLLOWING is
+   public shelves of the people you follow. YOU is your own shelves, private ones too, read from the shelves table.
+   Only saving a shelf in the builder moves it up; renaming it or making it main doesn't. */
 const $ = s => document.querySelector(s);
 const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
 const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
 const SB_LIB = {src:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
 const PAGE = 20;
 const params = new URLSearchParams(location.search);
-const asked = params.has('everyone') ? 'everyone' : params.has('following') ? 'following' : '';
+const asked = ['following', 'you', 'everyone'].find(k => params.has(k)) || '';
 
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const profileUrl = (name, shelf) => '../u/?' + name + (shelf ? '&shelf=' + shelf : '');
@@ -132,14 +118,14 @@ function friendly(e){
   if (/fetch|network/i.test(m)) return 'Couldn’t reach shelfstackd. Check your connection and try again.';
   return m || 'Something went wrong. Try again in a moment.';
 }
-// 2h, 3d: how long ago a shelf was saved
+// 2h, 3d: how long ago a shelf was saved. The browser says it (Intl.RelativeTimeFormat: "2h ago") and its "ago" is
+// left off. The same as in u/: keep the two in step.
+const RTF = new Intl.RelativeTimeFormat('en', {style: 'narrow', numeric: 'always'});
 function ago(t){
-  const m = Math.max(0, (Date.now() - new Date(t)) / 60000);
-  if (m < 1) return 'now';
-  if (m < 60) return Math.floor(m) + 'm';
-  if (m < 1440) return Math.floor(m / 60) + 'h';
-  const d = m / 1440;
-  return d < 7 ? Math.floor(d) + 'd' : d < 365 ? Math.floor(d / 7) + 'w' : Math.floor(d / 365) + 'y';
+  const s = Math.max(0, (Date.now() - new Date(t)) / 1000), D = 86400;
+  if (s < 60) return 'now';
+  const [n, unit] = s < 3600 ? [s / 60, 'minute'] : s < D ? [s / 3600, 'hour'] : s < 7*D ? [s / D, 'day'] : s < 30*D ? [s / (7*D), 'week'] : s < 365*D ? [s / (30*D), 'month'] : [s / (365*D), 'year'];
+  return RTF.format(-Math.floor(n), unit).replace(/\s*ago$/, '').replace(/\s+/g, '');
 }
 
 /* ---------- signing in (the same Supabase client and settings as u/) ---------- */
@@ -213,28 +199,36 @@ const feed = {scope:'', last:null, run:0};
 // A card's cut of its picture depends on how the shelf is laid out (site.css). The feed doesn't say, so that's asked
 // for once the cards are up: a pile or a grid of covers gets its own cut.
 async function cropCards(rows, root){
-  const ids = [...new Set(rows.map(x => x.shelf_id))]; if (!ids.length) return;
+  const ids = [...new Set(rows.filter(x => x.layout === undefined).map(x => x.shelf_id))]; if (!ids.length) return;   // YOU's rows say it themselves
   try {
     for (const s of await api(`shelves?select=id,layout&id=in.(${ids.join(',')})`))
       if (s.layout === 'stack' || s.layout === 'covers') for (const el of root.querySelectorAll(`[data-shelf="${s.id}"]`)) el.classList.add(s.layout);
   } catch {}
 }
+// one line: "@abc shelved my films · 2h" (in YOU: "You shelved…", and a private shelf says so), its card under it
 function item(x){
-  const li = document.createElement('li'), name = (x.display_name || '').trim(), who = esc(profileUrl(x.username));
+  const li = document.createElement('li'), name = (x.display_name || '').trim(), who = esc(profileUrl(x.username)), to = esc(profileUrl(x.username, x.shelf_id));
   const shelf = Shelf.shelfName({name: x.name, caption: x.caption});
   const pic = x.preview_key ? `<img src="${esc(`${WORKER}/u/preview?k=${encodeURIComponent(x.preview_key)}&v=${encodeURIComponent(x.updated_at)}`)}" alt="" loading="lazy" width="360" height="640">` : '';
+  const cut = x.layout === 'stack' || x.layout === 'covers' ? ' ' + x.layout : '';
   li.className = 'item';
-  li.innerHTML = `<div class="ihead">
-      <a class="fa" href="${who}" tabindex="-1" aria-hidden="true">${x.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(x.avatar_key)}`)}" alt="" loading="lazy">` : esc((name || x.username).trim()[0] || '·')}</a>
-      <p class="line"><a href="${who}">@${esc(x.username)}</a> ${x.updated ? 'updated' : 'shelved'} <b>${esc(shelf)}</b></p>
-      <time class="ago" datetime="${esc(x.saved_at)}" title="${esc(new Date(x.saved_at).toLocaleString())}">${ago(x.saved_at)}</time>
-    </div>
-    <a class="pic" data-shelf="${esc(x.shelf_id)}" href="${esc(profileUrl(x.username, x.shelf_id))}" aria-label="Open ${esc(shelf)} by @${esc(x.username)}">${pic}</a>`;
+  li.innerHTML = `<a class="fa" href="${who}" tabindex="-1" aria-hidden="true">${x.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(x.avatar_key)}`)}" alt="" loading="lazy">` : esc((name || x.username).trim()[0] || '·')}</a>
+    <p class="line"><a href="${who}">${x.mine ? 'You' : '@' + esc(x.username)}</a> ${x.updated ? 'updated' : 'shelved'} <a href="${to}">${esc(shelf)}</a>${x.is_public === false ? ' <span class="tag">private</span>' : ''} <span class="ago">· <time datetime="${esc(x.saved_at)}" title="${esc(new Date(x.saved_at).toLocaleString())}">${ago(x.saved_at)}</time></span></p>
+    <a class="pic${cut}" data-shelf="${esc(x.shelf_id)}" href="${to}" tabindex="-1" aria-label="Open ${esc(shelf)} by @${esc(x.username)}">${pic}</a>`;
   return li;
+}
+// YOU: your own shelves, private ones too, as the feed's rows. The feed function has no scope for them, so they're
+// read from the shelves table (Row Level Security lets you read your own).
+async function mine(from){
+  const p = me.profile;
+  const rows = await api(`shelves?select=id,caption,name,preview_key,layout,is_public,saved_at,created_at,updated_at&owner=eq.${me.user.id}&hidden=is.false&order=saved_at.desc,id.desc&limit=${PAGE}&offset=${from}`);
+  return rows.map(s => ({shelf_id: s.id, caption: s.caption, name: s.name, preview_key: s.preview_key, layout: s.layout || 'row', is_public: s.is_public, saved_at: s.saved_at, created_at: s.created_at,
+    updated_at: s.updated_at, owner: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key, updated: new Date(s.saved_at) - new Date(s.created_at) > 60000, mine: true}));
 }
 function none(kind){
   const box = $('#none');
-  if (kind === 'signin') box.innerHTML = '<p><button class="linkish" type="button" data-signin>Sign in</button> to see shelves from people you follow.</p>';
+  if (kind === 'signin') box.innerHTML = `<p><button class="linkish" type="button" data-signin>Sign in</button> to see ${feed.scope === 'you' ? 'your own shelves here' : 'shelves from people you follow'}.</p>`;
+  else if (kind === 'you') box.innerHTML = '<p>You haven’t saved a shelf yet.</p><a class="dash sm" href="../build/?new">Start a new shelf</a>';
   else if (kind === 'following') box.innerHTML = '<p>Follow people to see their shelves here.</p><button class="dash sm" type="button" data-scope="everyone">Everyone</button>';
   else box.innerHTML = '<p>No shelves yet.</p>';
   box.hidden = false;
@@ -249,7 +243,8 @@ async function show(scope){
   document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.scope === scope)));
   history.replaceState(null, '', location.pathname + '?' + scope + location.hash);   // back from a shelf lands on the same tab
   $('#items').replaceChildren(); $('#none').hidden = true; $('#more').hidden = true;
-  if (scope === 'following' && !me.user){ $('#state').hidden = true; none('signin'); return; }
+  if (scope !== 'everyone' && !me.user){ $('#state').hidden = true; none('signin'); return; }
+  if (scope === 'you' && !me.profile){ $('#state').hidden = true; none('you'); return; }   // no username yet, so no shelves saved
   $('#state').textContent = 'Loading…'; $('#state').hidden = false;
   await more(run);
 }
@@ -257,7 +252,7 @@ async function more(run = feed.run){
   const btn = $('#more'), last = feed.last;
   btn.disabled = true;
   let rows;
-  try { rows = await rpc('feed', {scope: feed.scope, before: last ? last.at : null, before_id: last ? last.id : null, n: PAGE}); }
+  try { rows = feed.scope === 'you' ? await mine($('#items').children.length) : await rpc('feed', {scope: feed.scope, before: last ? last.at : null, before_id: last ? last.id : null, n: PAGE}); }
   catch (e){
     if (run !== feed.run) return;
     btn.disabled = false;
@@ -274,7 +269,13 @@ async function more(run = feed.run){
   if (!$('#items').children.length) none(feed.scope);
 }
 $('#more').addEventListener('click', () => more());
-document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => { if (b.dataset.scope !== feed.scope) show(b.dataset.scope); }));
+const tabs = [...document.querySelectorAll('.tabs button')];
+tabs.forEach(b => b.addEventListener('click', () => { if (b.dataset.scope !== feed.scope) show(b.dataset.scope); }));
+// ← → move between the tabs
+document.querySelector('.tabs').addEventListener('keydown', e => {
+  const i = tabs.indexOf(document.activeElement); if (i < 0 || (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft')) return;
+  const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]; next.focus(); next.click();
+});
 
 (async () => {
   await startSession();

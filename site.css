@@ -141,6 +141,26 @@ textarea{resize:vertical;line-height:1.5}
 .thumbs .cap{display:block;font-size:var(--fs-card);margin-top:var(--s2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .thumbs .by,.thumbs .meta{display:block;font-size:var(--fs-small);color:var(--grey);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
+/* ---------- activity: a line for each shelf saved ("@abc shelved my films · 2h"), and the shelf's card under it,
+   in line with the text. The feed has them, and a profile's Activity tab. ---------- */
+.items{list-style:none;margin:0;padding:0;display:grid;gap:var(--s5)}
+.items .item{display:grid;grid-template-columns:32px minmax(0,1fr);gap:var(--s3);align-items:center;min-width:0}
+.items .fa{width:32px;height:32px;border-radius:50%;border:1px solid var(--ink);background:var(--wash);overflow:hidden;display:grid;place-items:center;font-size:var(--fs-body);text-transform:uppercase;text-decoration:none;color:var(--ink)}
+.items .fa img{width:100%;height:100%;object-fit:cover;display:block}
+.items .line{margin:0;min-width:0;overflow-wrap:anywhere}
+.items .line a{font-weight:500;text-decoration:none}
+.items .line a:hover,.items .line a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
+.items .ago{color:var(--grey);font-size:var(--fs-small);font-variant-numeric:tabular-nums;white-space:nowrap}
+.items .pic{grid-column:2;width:var(--card)}
+/* one person's own lines, on their profile: no photo beside each */
+.items.solo .item{grid-template-columns:minmax(0,1fr)}
+.items.solo .pic{grid-column:1}
+@media (max-width:640px){
+  .items .item{grid-template-columns:28px minmax(0,1fr);gap:var(--s2)}
+  .items .fa{width:28px;height:28px;font-size:var(--fs-card)}
+  .items.solo .item{grid-template-columns:minmax(0,1fr)}
+}
+
 /* ---------- sheets (sign in, lists, forms over the page) and the toast ---------- */
 .sheet{position:fixed;inset:0;background:rgba(0,0,0,.35);display:grid;place-items:center;z-index:30;padding:var(--s4)}
 .sheetbox{background:var(--paper);border:1px solid var(--ink);border-radius:var(--radius);width:100%;max-width:380px;padding:var(--s5);position:relative;max-height:calc(100% - var(--s4));overflow:auto}
