@@ -3,8 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="Shelves on shelfstackd.">
-<title>shelfstackd</title>
+<title>Profile · shelfstackd</title>
+<meta name="description" content="A person on shelfstackd and the shelves they have made.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<meta name="theme-color" content="#FFFFFF">
+<meta property="og:site_name" content="shelfstackd">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Profile · shelfstackd">
+<meta property="og:description" content="A person on shelfstackd and the shelves they have made.">
+<meta property="og:image" content="https://shelfstackd.com/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="shelfstackd. Your shelf, but the real spines. Four book spines stand side by side.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://shelfstackd.com/og.jpg">
 <script>
   /* The same public addresses as build/ (see the notes there). */
   window.SPINESTACK_WORKER = "https://api.shelfstackd.com";
@@ -302,6 +316,10 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;
 const clean0 = o => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null));
 const fmtDate = s => new Date(s).toLocaleDateString(undefined, {day:'numeric', month:'short', year:'numeric'});
 const spines = n => `${n} ${n === 1 ? 'spine' : 'spines'}`;
+// a person, as the tab's title says them: "Mira (@mira)", or "@mira" with no display name
+const person = p => { const n = (p.display_name || '').trim(); return n ? `${n} (@${p.username})` : '@' + p.username; };
+// the tab's title, and what the page is about (search engines and link previews that run the page read it)
+function titled(title, about){ document.title = title + ' · shelfstackd'; const m = document.querySelector('meta[name="description"]'); if (m) m.content = about; }
 // 2h, 3d: how long ago a shelf was saved. The browser says it (Intl.RelativeTimeFormat: "2h ago") and its "ago" is
 // left off. The same as in feed/: keep the two in step.
 const RTF = new Intl.RelativeTimeFormat('en', {style: 'narrow', numeric: 'always'});
@@ -510,7 +528,7 @@ async function load(){
     $('#state').innerHTML = `No one here. The name may have changed. <a href="../build/">Build your own shelf</a>.`; return;
   }
   view.profile = p; view.mine = !!(me.user && me.user.id === p.id);
-  document.title = (p.display_name || '@' + p.username) + ' · shelfstackd';
+  titled(person(p), `Shelves by ${person(p)} on shelfstackd.`);
   const [stats, shelves] = await Promise.all([rpc('profile_stats', {uid: p.id}).catch(() => []), fetchShelves().catch(() => [])]);
   view.shelves = shelves;
   paintStats(stats);
@@ -597,7 +615,7 @@ async function showShelf(id){
   $('#oneMeta').textContent = `${spines(countOf(s))} · ${fmtDate(s.updated_at)}`;
   $('#openBuilder').hidden = !view.mine; $('#openBuilder').href = '../build/?open=' + s.id;
   $('#reportShelf').hidden = view.mine; $('#reportShelf').dataset.id = s.id;
-  document.title = shelfName(s) + ' · @' + p.username + ' · shelfstackd';
+  titled(`${shelfName(s)} by ${person(p)}`, `${shelfName(s)}: a shelf by ${person(p)} on shelfstackd.`);
   await fontsReady;
   let list = [], wall = null, pngs = [];
   try { [list, wall, pngs] = await Promise.all([books(await api(`shelf_items?select=${ITEM_COLS}&shelf_id=eq.${s.id}&order=position`)), wallOf(s), pngsOf(s)]); } catch { list = []; }
@@ -741,7 +759,7 @@ async function paintRequests(){
 async function showPrivate(card){
   view.profile = card; view.mine = false;
   const name = (card.display_name || '').trim(), ava = $('#ava');
-  document.title = (name || '@' + card.username) + ' · shelfstackd';
+  titled(person(card), `${person(card)} is on shelfstackd. This profile is private.`);
   $('#name').textContent = name || '@' + card.username; $('#handle').textContent = '@' + card.username; $('#handle').hidden = !name;
   ava.className = 'ava';
   if (card.avatar_key) ava.innerHTML = `<img src="${esc(avatarSrc(card.avatar_key))}" alt="${esc(name || card.username)}">`;

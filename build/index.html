@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="Type a film or a book, get its real spine, save your shelf as an Instagram story.">
 <script>
   /* Only for the old self-hosted backend (backend/, not used now): its address, e.g. "http://localhost:8000" when it
      serves this page. Empty: the page uses the Worker below and doesn't look for a backend (with no Worker either, it
@@ -35,7 +34,23 @@
     (window.top === window ? location : window.top.location).replace(location.pathname + (rest ? '?' + rest : '') + location.hash);
   })();
 </script>
-<title>shelfstackd</title>
+<title>Make a shelf · shelfstackd</title>
+<meta name="description" content="Build a shelf of real film and book spines, then save it as an Instagram story.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<meta name="theme-color" content="#FFFFFF">
+<meta property="og:site_name" content="shelfstackd">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Make a shelf · shelfstackd">
+<meta property="og:description" content="Build a shelf of real film and book spines, then save it as an Instagram story.">
+<meta property="og:url" content="https://shelfstackd.com/build/">
+<meta property="og:image" content="https://shelfstackd.com/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="shelfstackd. Your shelf, but the real spines. Four book spines stand side by side.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://shelfstackd.com/og.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">

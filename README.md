@@ -15,6 +15,8 @@ members/index.html    Find @username (people by the start of a username or name,
 settings/index.html   your settings (signed in only): PROFILE (display name, bio, main shelf), PHOTO (cut square, made small, sent to the Worker), ACCOUNT (private profile). A profile's Edit profile comes here
 feed/index.html       the feed: /feed/, FOLLOWING · YOU · EVERYONE, a line for each shelf saved ("@abc shelved my films · 2h") with its card, newest first
 worker-address.js     sends Worker requests to its workers.dev address on networks that block api.shelfstackd.com
+favicon.svg           the mark: three spines on a shelf. favicon-32.png, favicon.ico and apple-touch-icon.png are made from it (tests/art.js); every page links them
+og.jpg                the picture a shared link shows (1200 x 630: the logo and a shelf); every page names it in its og: and twitter: tags
 sample-shelf.jpg      the builder's sample shelf as a picture; home shows it ("a shelf, for example") while there are no public shelves. Made by tests/art.js
 cards.js              shelf cards: finds the books in a shelf's preview picture and cuts the 2:3 card round them (home, the feed, profiles), keeping what it found per preview key
 site.css              the look every page shares: one :root block of variables (the 950px column, the type scale, the 4/8/12/16/24/40 spacing, the 3px radius) and what uses them everywhere (the top bar, headings, buttons, fields, shelf cards, tabs, sheets, the footer). A page's own <style> holds only what that page alone needs
@@ -255,6 +257,9 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **Shelves and Members** (`specs/shelves.spec.js`, `specs/members.spec.js`): every shelf as a card, 24 at a time and
   what Load more asks for; one people search 300 ms after the last key, Enter at once, the search kept in the address,
   FOLLOW and UNFOLLOW, FOLLOW signed out (sign-in, then finished once back), Recently active.
+- **Titles and icons** (`specs/meta.spec.js`): every page has its own title and a description of a sensible length,
+  links the three icons (which exist, at the right sizes) and names the share picture (1200 x 630); a profile's and a
+  shelf's title carry the person's name.
 - **An empty site** (`specs/empty.spec.js`): with no public shelves, home shows the sample shelf under the hero, and
   shelves, members and the feed each say so in a line.
 - **The feed** (`specs/feed.spec.js`): the three tabs and which one opens, what a line says (with the clock held still,
@@ -269,6 +274,7 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   answers those requests with made-up people and shelves, a made-up signed-in session, and the libraries from
   `tests/node_modules`. They serve the repo's files themselves (`tests/serve.js`, port 8181). A new page goes into
   `PAGES` in `tests/site.js`.
+
 `npm run art` makes the site's own pictures again and saves them at the root: the sample shelf (`sample-shelf.jpg`), the
 share picture (`og.jpg`) and the icons (from `favicon.svg`). Run it when the builder's sample shelf or the mark changes.
 
