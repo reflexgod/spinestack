@@ -8,6 +8,7 @@
 <script>
   /* The same public addresses as index.html (see the notes there). */
   window.SPINESTACK_WORKER = "https://api.shelfstackd.com";
+  window.SPINESTACK_WORKER_FALLBACK = "https://spinestack.spinestack-worker.workers.dev";
   window.SPINESTACK_SUPABASE_URL = "https://fiukspnovrlzlcdekcnb.supabase.co";
   window.SPINESTACK_SUPABASE_KEY = "sb_publishable_cZeUDJXk-nCbSJ4VZWn_GQ_6xNFyBo2";
 </script>
@@ -357,6 +358,7 @@ input.renamer{font:inherit;font-weight:500;line-height:inherit;height:1.55em;pad
 <div class="toast" id="toast" hidden></div>
 
 <script src="../shelf.js?v=20260930d"></script>
+<script src="../worker-address.js?v=20261001a"></script>
 <script>
 (() => {
 /* A profile: /u/?username, and one of its shelves: /u/?username&shelf=<id>.

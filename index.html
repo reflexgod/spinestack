@@ -12,6 +12,9 @@
   /* Address of the Spinestack Cloudflare Worker (worker/ folder), e.g. "https://spinestack.NAME.workers.dev".
      It looks up titles, finds DVD and book scans, and passes images through with CORS. */
   window.SPINESTACK_WORKER = "https://api.shelfstackd.com";
+  /* The same Worker at its workers.dev address: used only when a network won't connect to the one above (some college
+     and office Wi-Fi block new domains). worker-address.js switches after a network error, never after a 4xx or 5xx. */
+  window.SPINESTACK_WORKER_FALLBACK = "https://spinestack.spinestack-worker.workers.dev";
   /* Only for running without the Worker: a TMDB v4 "API Read Access Token" or v3 key for film search.
      Anyone who reads this page's source can see it, so keep it empty while the Worker is set. */
   window.SPINESTACK_TMDB = "";
@@ -408,6 +411,7 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
 <div class="toast" id="toast" hidden></div>
 
 <script src="shelf.js?v=20260930d"></script>
+<script src="worker-address.js?v=20261001a"></script>
 <script>
 (() => {
 const $ = s => document.querySelector(s);

@@ -9,6 +9,7 @@
   /* Same Worker as index.html. The admin token is never stored here: you type it each time,
      and it stays in this tab's sessionStorage only. */
   window.SPINESTACK_WORKER = "https://api.shelfstackd.com";
+  window.SPINESTACK_WORKER_FALLBACK = "https://spinestack.spinestack-worker.workers.dev";
   /* Reports are read from Supabase by an admin signed in with Google (public keys, as in index.html; the
      admins table in the database decides who may read them). */
   window.SPINESTACK_SUPABASE_URL = "https://fiukspnovrlzlcdekcnb.supabase.co";
@@ -80,6 +81,7 @@ li img{height:220px;width:auto;display:block;background:#F2F2F2}
     </div>
   </section>
 </main>
+<script src="worker-address.js?v=20261001a"></script>
 <script>
 (() => {
 const $ = s => document.querySelector(s), W = String(window.SPINESTACK_WORKER || '').replace(/\/+$/, '');

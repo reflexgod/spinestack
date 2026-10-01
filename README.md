@@ -49,7 +49,10 @@ The TMDB and Brave keys live only in the Worker, as secrets.
 | `/m/img?k=` | one of those pictures |
 | `POST /m/delete?k=` | signed in: deletes one of your own pictures, once no shelf of yours and not your profile uses it |
 
-The Worker answers at `https://api.shelfstackd.com` (a custom domain, in `wrangler.toml`); the site uses only that address.
+The Worker answers at `https://api.shelfstackd.com` (a custom domain, in `wrangler.toml`). On networks that block that
+domain (some college and office Wi-Fi block new domains), a request that fails with a network error is sent again to the
+same Worker at its workers.dev address, and the tab keeps using it for the session (`worker-address.js`). So keep
+`workers_dev = true`.
 CORS is open only to `https://shelfstackd.com`, `https://www.shelfstackd.com`, `https://reflexgod.github.io` and
 `http://localhost:8080`. `/identify` and `/scans`
 are cached in Workers KV for 30 days (so each title costs one Brave search), images are cached 30 days,
@@ -67,7 +70,8 @@ In `worker/`:
    `npx wrangler secret put ADMIN_TOKEN` and paste a long random string of your own. It's the password for `admin.html`; keep it only in a password manager.
 6. `npx wrangler deploy`. It prints the Worker address, e.g. `https://spinestack.NAME.workers.dev`.
 7. In `index.html`, `u/index.html` and `admin.html`, `window.SPINESTACK_WORKER` is the Worker's address
-   (`https://api.shelfstackd.com`). Keep `window.SPINESTACK_TMDB` empty.
+   (`https://api.shelfstackd.com`) and `window.SPINESTACK_WORKER_FALLBACK` its workers.dev address. Keep
+   `window.SPINESTACK_TMDB` empty.
 
 ### Archive
 
