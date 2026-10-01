@@ -7,7 +7,8 @@
     "test": "playwright test",
     "test:html": "html-validate --config .htmlvalidate.json \"../*.html\" \"../*/index.html\"",
     "test:all": "npm run test:html && npm test",
-    "serve": "node serve.js"
+    "serve": "node serve.js",
+    "shots": "node shots.js"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",

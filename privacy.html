@@ -8,26 +8,24 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="site.css?v=20261001a">
 <style>
-:root{--paper:#FFFFFF;--ink:#000000;--grey:#6B6B6B;--mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-*{box-sizing:border-box}
-html,body{margin:0;background:var(--paper);color:var(--ink);font:400 13px/1.65 var(--mono)}
-main{max-width:680px;margin:0 auto;padding:28px 24px 64px}
-a{color:var(--ink)}
-.top{display:flex;justify-content:space-between;align-items:center;text-transform:uppercase;margin-bottom:40px}
-.top a{text-decoration:none}
-.top .r{display:flex;gap:18px}
-h1{font-size:22px;font-weight:700;text-transform:uppercase;margin:0 0 6px}
-h2{font-size:13px;font-weight:700;text-transform:uppercase;margin:32px 0 8px;padding-top:12px;border-top:1px solid var(--ink)}
-p,li{margin:0 0 10px}
-ul{padding-left:1.2em;margin:0}
-.grey{color:var(--grey)}
-@media (max-width:520px){main{padding:20px 16px 48px}}
+/* a page to read: the shared column, with the text kept to a comfortable width in it */
+body{line-height:1.65}
+main{padding-bottom:var(--s6)}
+main > *{max-width:680px}
+.ptop{display:flex;justify-content:space-between;align-items:center;gap:var(--s4);max-width:none;margin-bottom:var(--s6)}
+.ptop a{text-decoration:none;font-size:var(--fs-nav);font-weight:500;letter-spacing:var(--track);text-transform:uppercase}
+.ptop .r{display:flex;gap:var(--s5)}
+h1{margin-bottom:var(--s1)}
+h2{margin-top:var(--s6)}
+li{margin:0 0 var(--s2)}
+ul{padding-left:1.2em;margin:0 0 var(--s3)}
 </style>
 </head>
 <body>
 <main>
-  <div class="top"><a href="./">shelfstackd</a><span class="r"><a href="build/#shelf">Back to the shelf</a><a href="feed/">Feed</a></span></div>
+  <div class="ptop"><a href="./">shelfstackd</a><span class="r"><a href="build/#shelf">Back to the shelf</a><a href="feed/">Feed</a></span></div>
   <h1>Privacy</h1>
   <p class="grey">Last changed 1 October 2026.</p>
 
@@ -70,7 +68,7 @@ ul{padding-left:1.2em;margin:0}
 
   <h2>Contact</h2>
   <p>Questions or requests: <a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a>.</p>
-  <p class="grey" style="margin-top:32px"><a href="https://search.brave.com/" target="_blank" rel="noopener">Search by Brave</a></p>
+  <p class="grey" style="margin-top:var(--s6)"><a href="https://search.brave.com/" target="_blank" rel="noopener">Search by Brave</a></p>
 </main>
 </body>
 </html>

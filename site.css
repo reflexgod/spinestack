@@ -1,0 +1,155 @@
+/* shelfstackd: the look every page shares. The numbers are here once, as variables; a page's own <style> uses them
+   and adds only what that page alone needs. Black ink on white paper, Geist Mono, one 950px column. */
+:root{
+  --paper:#FFFFFF; --ink:#000000; --grey:#6B6B6B; --hair:#D9D9D9; --wash:#F3F3F3;
+  --mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+
+  /* one column: every page's content, and the top bar's, sit in it */
+  --col:950px; --gutter:24px;
+
+  /* type (Geist Mono runs wide, so it stays small) */
+  --fs-body:13px;      /* text */
+  --fs-title:22px;     /* a page's title: weight 400, in its own case */
+  --fs-dialog:16px;    /* a sheet's or dialog's title */
+  --fs-section:12px;   /* section headings: uppercase, grey, a hairline under */
+  --fs-nav:12px;       /* the top bar's links: uppercase, weight 500 */
+  --fs-tab:13px;       /* tabs: in their own case, the current one black with a 1px underline */
+  --fs-card:12px;      /* a shelf's name under its card */
+  --fs-small:11px;     /* @username under a card, notes, small print */
+  --fs-btn:11px;       /* buttons: uppercase, weight 600 */
+  --fs-label:10px;     /* tiny labels: uppercase, grey */
+  --fs-stat:20px;      /* the numbers on a profile */
+  --fs-logo:18px; --logo-track:.18em;
+  --track:1px;         /* letter-spacing of uppercase nav links, section headings and labels */
+
+  /* spacing: only these */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:40px;
+
+  --radius:3px;
+  --btn-pad:7px 12px;
+  --cards:6; --card-gap:10px;   /* shelf cards: six across the column (150px each), 10px apart */
+}
+@media (max-width:820px){ :root{--cards:4} }
+@media (max-width:640px){ :root{--gutter:16px; --fs-logo:15px; --cards:3} }
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--paper)}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 var(--fs-body)/1.55 var(--mono)}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+p{margin:0 0 var(--s3)}
+.grey{color:var(--grey)}
+
+/* the column */
+main{width:min(100% - 2*var(--gutter), var(--col));margin-inline:auto;padding-top:var(--s5)}
+
+/* ---------- type ---------- */
+h1{font-size:var(--fs-title);font-weight:400;line-height:1.3;letter-spacing:0;margin:0 0 var(--s5);overflow-wrap:anywhere}
+/* a section heading, with room on its right for a small link (More) or a count */
+h2{display:flex;gap:var(--s3);align-items:baseline;font-size:var(--fs-section);font-weight:400;line-height:1.5;text-transform:uppercase;letter-spacing:var(--track);color:var(--grey);
+  border-bottom:1px solid var(--hair);padding-bottom:var(--s1);margin:0 0 var(--s3)}
+h2 small{font-size:inherit;font-weight:400;letter-spacing:0}
+h2 .more{margin-left:auto;font:400 var(--fs-small) var(--mono);letter-spacing:var(--track);text-transform:uppercase;color:var(--grey);background:none;border:0;padding:0;text-decoration:none;cursor:pointer}
+h2 .more:hover,h2 .more:focus-visible{color:var(--ink)}
+.lbl{font-size:var(--fs-label);line-height:1.5;color:var(--grey);text-transform:uppercase;letter-spacing:var(--track)}
+.note{font-size:var(--fs-small);color:var(--grey)}
+.note:empty{display:none}
+.note.warn{color:var(--ink);font-weight:700}
+em.pro,.tag{font-style:normal;font-weight:700;font-size:9px;border:1px solid currentColor;padding:0 3px;letter-spacing:.04em;text-transform:uppercase}
+
+/* ---------- buttons: one black one a screen, the rest outlined or plain text ---------- */
+.btn{display:inline-block;font:600 var(--fs-btn)/1.35 var(--mono);text-transform:uppercase;letter-spacing:.04em;text-align:center;text-decoration:none;white-space:nowrap;
+  background:var(--paper);color:var(--ink);border:1px solid var(--ink);border-radius:var(--radius);padding:var(--btn-pad);cursor:pointer}
+.btn:hover{background:var(--wash)}
+.btn.primary{background:var(--ink);color:var(--paper)}
+.btn.primary:hover{background:#222}
+.btn.full{width:100%}
+.btn:disabled{opacity:.5;cursor:default}
+/* a text button: our dashed underline */
+.dash{display:inline-block;background:none;border:0;padding:0 0 var(--s1);font:600 var(--fs-btn)/1.35 var(--mono);text-transform:uppercase;letter-spacing:.04em;color:var(--ink);cursor:pointer;text-decoration:none;white-space:nowrap;
+  background-image:repeating-linear-gradient(90deg,var(--ink) 0 6px,transparent 6px 9px);background-size:100% 2px;background-repeat:no-repeat;background-position:left bottom}
+.dash.grey{color:var(--grey);background-image:repeating-linear-gradient(90deg,var(--grey) 0 6px,transparent 6px 9px)}
+.dash:disabled{opacity:.5;cursor:default}
+
+/* ---------- fields ---------- */
+input[type=text],input[type=email],select,textarea{font:400 var(--fs-body) var(--mono);color:var(--ink);background:var(--paper);border:1px solid var(--ink);border-radius:var(--radius);padding:var(--s2) var(--s3);width:100%;min-width:0}
+input[type=text]::placeholder{color:#767676}
+textarea{resize:vertical;line-height:1.5}
+.field{display:grid;gap:var(--s1);min-width:0;border:0;margin:0;padding:0}
+.check{display:flex;gap:var(--s2);align-items:center;cursor:pointer}
+.check input,.opts input{accent-color:var(--ink);margin:0}
+
+/* ---------- the top bar. Its contents sit in the column; only its bottom line runs the width of the window.
+   Signed in: the logo, you, ⚡, the places, search and + SHELF. Signed out: the logo, the places, ⚡, SIGN IN and
+   + SHELF. Each page has the markup; nav.js runs it. ---------- */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);border-bottom:1px solid var(--hair);display:flex;align-items:center;gap:var(--s1) var(--s5);
+  padding:var(--s3) max(var(--gutter), calc((100% - var(--col))/2))}
+.top a{text-decoration:none;font-size:var(--fs-nav);font-weight:500;letter-spacing:var(--track);text-transform:uppercase;white-space:nowrap}
+.top svg{width:16px;height:16px;display:block;flex:none}
+.top .mark{font-weight:800;font-size:var(--fs-logo);letter-spacing:var(--logo-track);line-height:1;margin-right:auto;flex:none}
+.acct{display:flex;align-items:center;gap:var(--s2);min-width:0;font:400 var(--fs-nav) var(--mono);background:none;border:0;padding:0;color:var(--ink);cursor:pointer}
+.acct .ava{width:24px;height:24px;border-radius:50%;border:1px solid var(--ink);background:var(--wash);overflow:hidden;display:grid;place-items:center;font-size:var(--fs-small);text-transform:uppercase;flex:none}
+.acct .ava img{width:100%;height:100%;object-fit:cover;display:block}
+.acct .who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}   /* a username is shown as it is; a long one ends in … */
+.acct > svg{width:12px;height:12px}
+.links{display:flex;gap:var(--s5);align-items:center;flex:none}
+.links a{display:flex;align-items:center;padding:var(--s1) 0;border-bottom:1px solid transparent}
+.links a[aria-current]{border-bottom-color:var(--ink)}
+.signin{flex:none}
+.addwrap{display:flex;flex:none}
+.top .add{display:flex;align-items:center;gap:var(--s1);font-size:var(--fs-btn);font-weight:600;letter-spacing:.04em}
+.top .addmore{display:flex;align-items:center;padding:7px var(--s2);margin-left:-1px;border-radius:0 var(--radius) var(--radius) 0}
+.top .addmore.primary{margin-left:0;border-left-color:#5A5A5A}
+.top .add svg,.top .addmore svg{width:12px;height:12px}
+.addwrap.split .add{border-radius:var(--radius) 0 0 var(--radius)}
+/* narrow windows and phones: the logo, you and + on the first row; the places on a second row that scrolls sideways
+   inside the bar */
+@media (max-width:820px){
+  .top{flex-wrap:wrap;padding-bottom:0}
+  .links{order:9;flex:0 0 100%;overflow-x:auto;scrollbar-width:none;padding-bottom:var(--s2)}
+  .links::-webkit-scrollbar{display:none}
+}
+@media (max-width:520px){
+  .acct .who,.acct > svg{display:none}   /* you are just your photo */
+  .top .add span{display:none}           /* + SHELF is just + */
+}
+
+/* ---------- tabs ---------- */
+.tabs{display:flex;gap:var(--s5);border-bottom:1px solid var(--hair)}
+.tabs button{font:400 var(--fs-tab) var(--mono);background:none;border:0;padding:0 0 var(--s2);margin-bottom:-1px;color:var(--grey);cursor:pointer;border-bottom:1px solid transparent}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+
+/* ---------- shelf cards: a shelf's preview cut like a poster (2:3), its name under it, then who made it ----------
+   The preview is the whole 9:16 story. A card shows the part with the spines: they stand between 28% and 89% of the
+   story's height (one row or two, a wood shelf to 92%) and within the middle 83% of its width, so the picture is
+   drawn 1.2 times the card's width and moved up until they sit in the middle. The caption above them is out of the
+   card, and the shelf's name is under it. */
+.thumbs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(var(--cards),minmax(0,1fr));gap:var(--s4) var(--card-gap)}
+.thumbs:empty{display:none}
+.thumbs a{display:block;text-decoration:none;min-width:0}
+.thumbs .pic{display:block;position:relative;aspect-ratio:2/3;overflow:hidden;border-radius:var(--radius);background:var(--wash)}
+.thumbs .pic::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12);pointer-events:none}   /* a hairline inside the edge, no box round it */
+.thumbs .pic img{position:absolute;left:-10%;top:-33%;width:120%;height:auto;aspect-ratio:9/16;object-fit:cover;max-width:none;display:block}
+.thumbs .cap{display:block;font-size:var(--fs-card);margin-top:var(--s2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.thumbs .by,.thumbs .meta{display:block;font-size:var(--fs-small);color:var(--grey);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ---------- sheets (sign in, lists, forms over the page) and the toast ---------- */
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.35);display:grid;place-items:center;z-index:30;padding:var(--s4)}
+.sheetbox{background:var(--paper);border:1px solid var(--ink);border-radius:var(--radius);width:100%;max-width:380px;padding:var(--s5);position:relative;max-height:calc(100% - var(--s4));overflow:auto}
+.sheetbox > div{display:grid;gap:var(--s4)}
+.sheetbox h2{display:block;font-size:var(--fs-dialog);text-transform:none;letter-spacing:0;color:var(--ink);border:0;padding:0 var(--s5) 0 0;margin:0}
+.sheetbox p{margin:0}
+.sheetbox form{display:grid;gap:var(--s3)}
+.x{position:absolute;top:var(--s2);right:var(--s3);background:none;border:0;font:400 22px var(--mono);cursor:pointer;color:var(--ink);padding:var(--s1)}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + var(--s4));transform:translateX(-50%);background:var(--ink);color:var(--paper);border-radius:var(--radius);padding:var(--s2) var(--s4);font-size:var(--fs-card);max-width:calc(100% - 2*var(--s4));z-index:40}
+
+/* ---------- the footer: black, the width of the window, its contents in the column ---------- */
+footer{background:var(--ink);color:var(--paper);margin-top:var(--s6);padding:var(--s6) max(var(--gutter), calc((100% - var(--col))/2)) var(--s5)}
+.fgrid{display:grid;grid-template-columns:1.1fr 1.3fr 1fr;gap:var(--s6)}
+footer h3{font-size:var(--fs-section);font-weight:400;text-transform:uppercase;letter-spacing:var(--track);color:#B5B5B5;margin:0 0 var(--s3)}
+footer p,footer li{font-size:var(--fs-card)}
+footer ol{margin:0;padding-left:1.3em;display:grid;gap:var(--s1)}
+.fbtn{display:inline-block;font:600 var(--fs-btn)/1.35 var(--mono);text-transform:uppercase;letter-spacing:.04em;text-decoration:none;color:var(--paper);border:1px solid var(--paper);border-radius:var(--radius);padding:var(--btn-pad)}
+.fbase{margin-top:var(--s5);border-top:1px solid #555;padding-top:var(--s3);display:flex;justify-content:space-between;gap:var(--s2) var(--s4);flex-wrap:wrap;font-size:var(--fs-small)}
+@media (max-width:820px){ .fgrid{grid-template-columns:1fr;gap:var(--s5)} }

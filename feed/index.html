@@ -15,111 +15,32 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&display=swap">
+<link rel="stylesheet" href="../site.css?v=20261001a">
 <style>
-/* the site's own look, as in build/ and u/ */
-:root{--paper:#FFFFFF;--ink:#000000;--grey:#6B6B6B;--hair:#D9D9D9;--mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-*{box-sizing:border-box}
-[hidden]{display:none!important}
-html{background:var(--paper)}
-body{margin:0;background:var(--paper);color:var(--ink);font:400 12px/1.55 var(--mono)}
-a{color:inherit}
-:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
-/* the top bar, the same on every page (each page keeps its own copy; nav.js runs it). Signed in: the logo, you, ⚡,
-   the places, search and + SHELF. Signed out: the logo, the places, ⚡, SIGN IN and + SHELF */
-.top{--pad:24px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);display:flex;align-items:center;gap:6px 22px;padding:12px var(--pad)}
-.top a{text-decoration:none;font-size:13px;text-transform:uppercase;white-space:nowrap}
-.top svg{width:17px;height:17px;display:block;flex:none}
-.mark{font-weight:800;font-size:22px!important;letter-spacing:.34em;line-height:1;margin-right:auto;flex:none}
-.acct{display:flex;align-items:center;gap:8px;min-width:0;font:400 13px var(--mono);background:none;border:0;padding:0;color:var(--ink);cursor:pointer}
-.acct .ava{width:26px;height:26px;border-radius:50%;border:1px solid var(--ink);background:#F2F2F2;overflow:hidden;display:grid;place-items:center;font-size:12px;text-transform:uppercase;flex:none}
-.acct .ava img{width:100%;height:100%;object-fit:cover;display:block}
-.acct .who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}   /* usernames are lowercase: shown as they are; a long one ends in … */
-.acct > svg{width:14px;height:14px}
-.links{display:flex;gap:22px;align-items:center;flex:none}
-.links a{display:flex;align-items:center;padding:4px 0 2px;border-bottom:2px dashed transparent}
-.links a[aria-current]{font-weight:700;border-bottom-color:var(--ink)}
-.signin{flex:none}
-.addwrap{display:flex;flex:none;border-radius:8px}
-.addwrap.here{box-shadow:0 0 0 2px var(--paper),0 0 0 3px var(--ink)}   /* this is the builder */
-.top .add{display:flex;align-items:center;gap:5px;padding:7px 13px;font-size:12px}
-.top .addmore{display:flex;align-items:center;padding:7px;border-radius:0 8px 8px 0;border-left-color:#5A5A5A}
-.top .add svg,.top .addmore svg{width:14px;height:14px}
-.addwrap.split .add{border-radius:8px 0 0 8px}
-@media (max-width:1040px){
-  .top{column-gap:18px}
-  .mark{font-size:17px!important;letter-spacing:.22em}
-  .links{gap:18px}
-}
-/* narrow windows and phones: the logo, you and + on the first row; the places on a second row that scrolls sideways
-   inside the bar */
-@media (max-width:820px){
-  .top{flex-wrap:wrap;padding-bottom:0}
-  .links{order:9;flex:0 0 calc(100% + 2*var(--pad));overflow-x:auto;scrollbar-width:none;margin-inline:calc(-1*var(--pad));padding:0 var(--pad) 10px}
-  .links::-webkit-scrollbar{display:none}
-}
-@media (max-width:640px){ .top{--pad:16px} }
-@media (max-width:520px){
-  .top{column-gap:14px}
-  .top a{font-size:11.5px}
-  .acct .who,.acct > svg{display:none}   /* you are just your photo */
-  .top .add span{display:none}           /* + SHELF is just + */
-  .top .add{padding:7px 9px}
-}
-p{margin:0 0 12px}
-.grey{color:var(--grey)}
-.dash{display:inline-block;background:none;border:0;padding:0 0 9px;font:500 16px var(--mono);text-transform:uppercase;color:var(--ink);cursor:pointer;text-decoration:none;
-  background-image:repeating-linear-gradient(90deg,var(--ink) 0 11px,transparent 11px 14px);background-size:100% 4px;background-repeat:no-repeat;background-position:left bottom}
-.dash.sm{font-size:12px;padding-bottom:6px;background-size:100% 3px;background-image:repeating-linear-gradient(90deg,var(--ink) 0 8px,transparent 8px 11px)}
-.dash:disabled{opacity:.5;cursor:default}
-.btn{font:500 13px var(--mono);text-transform:uppercase;background:var(--ink);color:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 22px;cursor:pointer;text-decoration:none;display:inline-block}
-.btn:hover{background:#222}
-.btn.full{width:100%}
-.btn:disabled{opacity:.5;cursor:default}
-.note{font-size:11px;color:var(--grey)}
-.sheet{position:fixed;inset:0;background:rgba(0,0,0,.35);display:grid;place-items:center;z-index:30;padding:16px}
-.sheetbox{background:var(--paper);border:1px solid var(--ink);border-radius:12px;width:100%;max-width:380px;padding:26px 24px 22px;position:relative;max-height:calc(100% - 16px);overflow:auto}
-.sheetbox > div{display:grid;gap:14px}
-.sheetbox h2{margin:0;font-size:16px;font-weight:700;text-transform:uppercase}
-.sheetbox p{margin:0}
-.x{position:absolute;top:8px;right:12px;background:none;border:0;font:400 22px var(--mono);cursor:pointer;color:var(--ink);padding:4px}
-.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);background:var(--ink);color:var(--paper);border-radius:8px;padding:10px 16px;font-size:12px;max-width:calc(100% - 32px);z-index:40}
-footer{background:var(--ink);color:var(--paper);padding:36px 24px 22px;margin-top:72px}
-.fgrid{display:grid;grid-template-columns:1.1fr 1.3fr 1fr;gap:36px;max-width:1200px;margin:0 auto}
-footer h3{font-size:16px;font-weight:700;text-transform:uppercase;margin:0 0 10px}
-footer p,footer li{font-size:13px;letter-spacing:.02em}
-footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
-.fbtn{display:inline-block;background:var(--paper);color:var(--ink);border-radius:8px;padding:12px 28px;text-transform:uppercase;text-decoration:none;font-size:14px;margin-top:4px}
-.fbase{max-width:1200px;margin:34px auto 0;border-top:1px solid #8A8A8A;padding-top:12px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:11.5px}
-
-/* the feed: one column, the profile's tabs, each shelf in the profile cards' frame */
-.feed{max-width:640px;margin:0 auto;padding:36px 24px 0}
-.tabs{display:flex;gap:30px;border-bottom:1px solid var(--ink)}
-.tabs button{font:400 12px var(--mono);text-transform:uppercase;letter-spacing:.06em;background:none;border:0;padding:0 0 10px;margin-bottom:-1px;color:var(--grey);cursor:pointer;border-bottom:2px solid transparent}
-.tabs button[aria-selected="true"]{color:var(--ink);font-weight:700;border-bottom-color:var(--ink)}
-.items{list-style:none;margin:28px 0 0;padding:0;display:grid;gap:40px}
-.item{display:grid;gap:12px;min-width:0}
-.ihead{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:12px;align-items:center}
-.fa{width:32px;height:32px;border-radius:50%;border:1px solid var(--ink);background:#F2F2F2;overflow:hidden;display:grid;place-items:center;font:400 13px var(--mono);text-transform:uppercase;text-decoration:none;color:var(--ink)}
+/* the feed: the tabs, then each shelf under the line that says who saved it (site.css has the tabs and the rest) */
+.items{list-style:none;margin:var(--s5) 0 0;padding:0;display:grid;gap:var(--s6)}
+.item{display:grid;gap:var(--s3);min-width:0}
+.ihead{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:var(--s3);align-items:center}
+.fa{width:32px;height:32px;border-radius:50%;border:1px solid var(--ink);background:var(--wash);overflow:hidden;display:grid;place-items:center;font-size:var(--fs-body);text-transform:uppercase;text-decoration:none;color:var(--ink)}
 .fa img{width:100%;height:100%;object-fit:cover;display:block}
-.line{margin:0;min-width:0;font-size:13px;overflow-wrap:anywhere}
+.line{margin:0;min-width:0;overflow-wrap:anywhere}
 .line a,.line b{font-weight:500;text-decoration:none}
 .line a:hover,.line a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
-.ago{color:var(--grey);font-size:11.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
-/* under the text, as wide as a profile card can get */
-.pic{display:block;margin-left:44px;width:min(360px, calc(100% - 44px));background:#F3F3F3;border:1px solid var(--hair);border-radius:8px;aspect-ratio:9/16;overflow:hidden}
+.ago{color:var(--grey);font-size:var(--fs-small);font-variant-numeric:tabular-nums;white-space:nowrap}
+/* the shelf's picture, under the text: the whole story, with a hairline inside its edge */
+.pic{display:block;position:relative;margin-left:44px;width:min(360px, calc(100% - 44px));background:var(--wash);border-radius:var(--radius);aspect-ratio:9/16;overflow:hidden}
+.pic::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12);pointer-events:none}
 .pic img{width:100%;height:100%;object-fit:cover;display:block}
-.fnone{display:grid;justify-items:start;gap:14px;margin:28px 0 0;font-size:14px}
+.fnone{display:grid;justify-items:start;gap:var(--s3);margin:var(--s5) 0 0}
 .fnone p{margin:0}
 .linkish{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
-#state{margin:28px 0 0}
-#more{margin-top:36px}
+#state{margin:var(--s5) 0 0}
+#more{margin-top:var(--s6)}
 
-@media (max-width:820px){ .fgrid{grid-template-columns:1fr;gap:26px} }
 @media (max-width:640px){
-  .feed{padding:22px 16px 0}
-  .ihead{grid-template-columns:28px minmax(0,1fr) auto;gap:10px}
-  .fa{width:28px;height:28px;font-size:12px}
-  .pic{margin-left:38px;width:min(360px, calc(100% - 38px))}
+  .ihead{grid-template-columns:28px minmax(0,1fr) auto;gap:var(--s2)}
+  .fa{width:28px;height:28px;font-size:var(--fs-card)}
+  .pic{margin-left:36px;width:min(360px, calc(100% - 36px))}
 }
 </style>
 </head>
@@ -134,10 +55,11 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
     <a class="find" href="../members/" aria-label="Search" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
   </nav>
   <a class="signin" id="signInBtn" href="#" hidden>Sign in</a>
-  <span class="addwrap"><a class="btn add" href="../build/" aria-label="New shelf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Shelf</span></a><button class="btn addmore" id="addMore" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More ways to add" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></span>
+  <span class="addwrap"><a class="btn primary add" href="../build/" aria-label="New shelf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Shelf</span></a><button class="btn primary addmore" id="addMore" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More ways to add" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></span>
 </header>
 
 <main class="feed">
+  <h1>Activity</h1>
   <nav class="tabs" role="tablist" aria-label="Feed">
     <button type="button" role="tab" id="tabF" data-scope="following" aria-selected="false" aria-controls="panel">Following</button>
     <button type="button" role="tab" id="tabE" data-scope="everyone" aria-selected="false" aria-controls="panel">Everyone</button>
@@ -156,7 +78,7 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
     <div>
       <h2>Sign in</h2>
       <p>Save your shelves to your account and open them again on any device.</p>
-      <button class="btn full" id="googleBtn" type="button">Continue with Google</button>
+      <button class="btn primary full" id="googleBtn" type="button">Continue with Google</button>
       <p class="note">Accounts are for people 18 or older. <a href="../privacy.html">Privacy</a></p>
     </div>
   </div>
@@ -189,7 +111,7 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
 
 <script src="../shelf.js?v=20260930d"></script>
 <script src="../worker-address.js?v=20261001a"></script>
-<script src="../nav.js?v=20261001d"></script>
+<script src="../nav.js?v=20261001e"></script>
 <script>
 (() => {
 /* The feed: /feed/ (?following or ?everyone picks the tab). Public shelves, newest saved first, 20 at a time.

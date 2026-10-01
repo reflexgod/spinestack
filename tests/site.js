@@ -100,9 +100,10 @@ const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers
 
 /* Answers everything that isn't the site itself. Returns {unknown}: requests nothing here knew how to answer. */
 /* signedIn: a session for the made-up account; named: false leaves that account without a username yet;
-   slow: how long /identify takes to answer, in ms; capped: the Worker's Brave searches for today are used up.
+   slow: how long /identify takes to answer, in ms; capped: the Worker's Brave searches for today are used up;
+   realFonts: the fonts come from Google Fonts as they do on the site (for screenshots; the tests go without).
    Returns {unknown, asked}: requests nothing here could answer, and every search /identify was asked for. */
-async function mockNetwork(page, { signedIn = false, named = true, slow = 0, capped = false } = {}){
+async function mockNetwork(page, { signedIn = false, named = true, slow = 0, capped = false, realFonts = false } = {}){
   const unknown = [], asked = [];
   if (signedIn){
     const exp = Math.floor(Date.now() / 1000) + 3600, b64 = o => Buffer.from(JSON.stringify(o)).toString('base64url');
@@ -136,6 +137,7 @@ async function mockNetwork(page, { signedIn = false, named = true, slow = 0, cap
       // /scans: no scans of anything, so a spine is made from the cover; capped says why there are none today
       return json(capped ? { results: [], round: +url.searchParams.get('round') || 0, more: true, capped: true } : { results: [], more: false });
     }
+    if (realFonts && /^fonts\.(googleapis|gstatic)\.com$/.test(url.hostname)) return route.continue();
     if (url.hostname === 'fonts.googleapis.com') return route.fulfill({ status: 200, contentType: 'text/css', body: '' });
     // a library from jsDelivr: the same file from tests/node_modules, when that's the version the page asks for
     const lib = /^\/npm\/((?:@[^/]+\/)?[^/@]+)@([^/]+)\/(.+)$/.exec(url.hostname === 'cdn.jsdelivr.net' ? url.pathname : '');

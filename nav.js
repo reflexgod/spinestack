@@ -30,13 +30,13 @@
 
   const css = document.createElement('style');
   css.textContent = `
-.navmenu{position:fixed;z-index:50;inset:auto;left:0;top:0;margin:0;min-width:190px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow:auto;padding:6px 0;
-  border:1px solid var(--ink,#000);border-radius:8px;background:var(--paper,#fff);color:var(--ink,#000)}
-.navmenu a,.navmenu button{display:block;width:100%;box-sizing:border-box;text-align:left;background:none;border:0;border-radius:0;margin:0;padding:9px 16px;
-  font:400 12px/1.4 var(--mono,monospace);text-transform:uppercase;letter-spacing:.02em;color:inherit;text-decoration:none;white-space:nowrap;cursor:pointer}
-.navmenu a:hover,.navmenu button:hover,.navmenu a:focus-visible,.navmenu button:focus-visible{background:#F2F2F2;outline:0}
+.navmenu{position:fixed;z-index:50;inset:auto;left:0;top:0;margin:0;min-width:180px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow:auto;padding:var(--s1,4px) 0;
+  border:1px solid var(--ink,#000);border-radius:var(--radius,3px);background:var(--paper,#fff);color:var(--ink,#000)}
+.navmenu a,.navmenu button{display:block;width:100%;box-sizing:border-box;text-align:left;background:none;border:0;border-radius:0;margin:0;padding:var(--s2,8px) var(--s4,16px);
+  font:500 var(--fs-nav,12px)/1.4 var(--mono,monospace);text-transform:uppercase;letter-spacing:var(--track,1px);color:inherit;text-decoration:none;white-space:nowrap;cursor:pointer}
+.navmenu a:hover,.navmenu button:hover,.navmenu a:focus-visible,.navmenu button:focus-visible{background:var(--wash,#F3F3F3);outline:0}
 .navmenu a[aria-current]{font-weight:700}
-.navmenu hr{border:0;border-top:1px solid var(--hair,#D9D9D9);margin:6px 0}`;
+.navmenu hr{border:0;border-top:1px solid var(--hair,#D9D9D9);margin:var(--s1,4px) 0}`;
   document.head.appendChild(css);
 
   /* ---------- the menus ---------- */
@@ -172,7 +172,7 @@
     if (window.Add){ window.Add.open(opt); return Promise.resolve(true); }
     if (!window.Shelf) return Promise.resolve(false);
     adding = adding || new Promise(res => {
-      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261001c';
+      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261001d';
       s.onload = () => res(!!window.Add); s.onerror = () => { adding = null; s.remove(); res(false); };
       document.head.appendChild(s);
     });

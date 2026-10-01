@@ -12,6 +12,7 @@ shelf.js              draws the spines and the story; build/ and u/ both use it,
 u/index.html          profiles: /u/?username, and one shelf: /u/?username&shelf=<id>
 feed/index.html       the feed: /feed/, FOLLOWING and EVERYONE, newest saved shelves first
 worker-address.js     sends Worker requests to its workers.dev address on networks that block api.shelfstackd.com
+site.css              the look every page shares: one :root block of variables (the 950px column, the type scale, the 4/8/12/16/24/40 spacing, the 3px radius) and what uses them everywhere (the top bar, headings, buttons, fields, shelf cards, tabs, sheets, the footer). A page's own <style> holds only what that page alone needs
 nav.js                the top bar on every page: who is signed in, the account menu (Sign out is its last item), + SHELF and the ▾ next to it
 admin.html            approve or delete archive uploads (needs the admin token); read reports (Google sign-in, admins only)
 tests/                checks for the pages: Playwright, axe, html-validate (see Tests). The site never loads anything from here
@@ -224,6 +225,12 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   slower earlier answer dropped, six results in order of closeness, ↑ ↓ Enter Esc, Enter searching at once, the
   loading and nothing-found lines; the capped answer from `/scans` and its message; "Search by Brave" in every
   footer; the builder's count and limit, its empty shelf, and the note under the preview clear of the Save bar.
+- **The look** (`specs/look.spec.js`): the content and the bar's contents in one 950px column on every page, the type
+  scale, one black button a screen, shelf cards six across at 150px (three on a phone) cut 2:3, the profile's name,
+  numbers and tabs.
+
+`npm run shots` (in `tests/`) saves screenshots of home, the builder, a profile and the feed at 1280px and 390px into
+`tests/shots/`, with the tests' made-up data and the real fonts.
 - **axe** (`specs/a11y.spec.js`) runs on every page, `privacy.html` and `admin.html` too: nothing serious or critical.
 - **html-validate** reads every HTML file with its recommended rules, except that inline `style` is allowed and the
   doctype is lowercase (`tests/.htmlvalidate.json`).

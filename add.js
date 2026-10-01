@@ -166,48 +166,48 @@ let server = false;   // the old self-hosted backend (backend/): the builder loo
 const ICON = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;   // Lucide 1.49.0 (ISC)
 const css = document.createElement('style');
 css.textContent = `
-#addDialog{box-sizing:border-box;width:min(680px,calc(100vw - 24px));max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow:auto;margin:auto;padding:26px 24px 22px;
-  border:1px solid var(--ink,#000);border-radius:12px;background:var(--paper,#fff);color:var(--ink,#000);font:400 12px/1.55 var(--mono,monospace)}
+#addDialog{box-sizing:border-box;width:min(680px,calc(100vw - 24px));max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow:auto;margin:auto;padding:var(--s5,24px);
+  border:1px solid var(--ink,#000);border-radius:var(--radius,3px);background:var(--paper,#fff);color:var(--ink,#000);font:400 var(--fs-body,13px)/1.55 var(--mono,monospace)}
 #addDialog::backdrop{background:rgba(0,0,0,.35)}
 #addDialog *{box-sizing:border-box}
-#addDialog h2{margin:0 0 16px;padding-right:30px;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:0;display:block;text-align:left}
-#addDialog h3{margin:0 0 10px;font-size:14px;font-weight:700;text-transform:uppercase;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline}
-#addDialog h3 small{font-size:12px;font-weight:400}
-#addDialog p{margin:0 0 12px}
-#addDialog .addx{position:absolute;top:10px;right:10px;width:32px;height:32px;display:grid;place-items:center;background:none;border:0;padding:0;color:inherit;cursor:pointer}
-#addDialog .addx svg{width:18px;height:18px}
+#addDialog h2{display:block;margin:0 0 var(--s4,16px);padding:0 var(--s6,40px) 0 0;border:0;font-size:var(--fs-dialog,16px);font-weight:400;text-transform:none;letter-spacing:0;color:inherit}
+#addDialog h3{margin:0 0 var(--s3,12px);font-size:var(--fs-body,13px);font-weight:500;display:flex;flex-wrap:wrap;gap:var(--s1,4px) var(--s3,12px);align-items:baseline}
+#addDialog h3 small{font-size:var(--fs-small,11px);font-weight:400;color:var(--grey,#6B6B6B)}
+#addDialog p{margin:0 0 var(--s3,12px)}
+#addDialog .addx{position:absolute;top:var(--s3,12px);right:var(--s3,12px);width:32px;height:32px;display:grid;place-items:center;background:none;border:0;padding:0;color:inherit;cursor:pointer}
+#addDialog .addx svg{width:16px;height:16px}
 #addDialog .addsearch{position:relative;margin:0}
-#addDialog .addsearch input{width:100%;min-width:0;font:400 14px var(--mono,monospace);color:inherit;background:var(--paper,#fff);border:1px solid var(--ink,#000);border-radius:8px;padding:12px 46px 12px 12px}
+#addDialog .addsearch input{width:100%;min-width:0;height:36px;font:400 var(--fs-body,13px) var(--mono,monospace);color:inherit;background:var(--paper,#fff);border:1px solid var(--ink,#000);border-radius:var(--radius,3px);padding:var(--s2,8px) var(--s6,40px) var(--s2,8px) var(--s3,12px)}
 #addDialog .addsearch input::placeholder{color:#767676}
-#addDialog .addsearch button{position:absolute;top:1px;right:1px;bottom:1px;width:44px;display:grid;place-items:center;background:none;border:0;border-radius:0 7px 7px 0;padding:0;color:inherit;cursor:pointer}
-#addDialog .addsearch button svg{width:17px;height:17px}
-#addDialog .addopts{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:12px;align-items:center}
-#addDialog .addopts label{cursor:pointer;text-transform:uppercase;display:flex;gap:6px;align-items:center}
+#addDialog .addsearch button{position:absolute;top:1px;right:1px;bottom:1px;width:var(--s6,40px);display:grid;place-items:center;background:none;border:0;padding:0;color:inherit;cursor:pointer}
+#addDialog .addsearch button svg{width:16px;height:16px}
+#addDialog .addopts{display:flex;flex-wrap:wrap;gap:var(--s2,8px) var(--s4,16px);margin-top:var(--s3,12px);align-items:center}
+#addDialog .addopts label{cursor:pointer;display:flex;gap:var(--s1,4px);align-items:center}
 #addDialog .addopts input{accent-color:var(--ink,#000);margin:0}
-#addDialog .addstatus{min-height:18px;margin-top:14px}
-#addDialog .addstatus.err{font-weight:700}
-#addDialog .addlist{list-style:none;margin:8px 0 0;padding:0;border-top:1px solid var(--ink,#000)}
-#addDialog .addlist li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 14px;align-items:baseline;padding:9px 8px;border-bottom:1px solid var(--ink,#000);cursor:pointer}
-#addDialog .addlist li:hover{background:#F7F7F7}
+#addDialog .addstatus{min-height:20px;margin-top:var(--s3,12px)}
+#addDialog .addstatus.err{font-weight:500}
+#addDialog .addlist{list-style:none;margin:var(--s2,8px) 0 0;padding:0;border-top:1px solid var(--hair,#D9D9D9)}
+#addDialog .addlist li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 var(--s3,12px);align-items:baseline;padding:var(--s2,8px);border-bottom:1px solid var(--hair,#D9D9D9);cursor:pointer}
+#addDialog .addlist li:hover{background:var(--wash,#F3F3F3)}
 #addDialog .addlist li[aria-selected="true"]{background:var(--ink,#000);color:var(--paper,#fff)}
-#addDialog .addlist .t{font-weight:700;text-transform:uppercase;overflow-wrap:anywhere}
-#addDialog .addlist .y{font-weight:400;margin-left:2px;font-variant-numeric:tabular-nums}
-#addDialog .addlist .k{font-size:11px;text-transform:uppercase;white-space:nowrap}
-#addDialog .addlist .by{grid-column:1/-1;font-size:11px;color:var(--grey,#6B6B6B);overflow-wrap:anywhere}
-#addDialog .addlist li[aria-selected="true"] .by{color:inherit}
-#addDialog #addSpines{margin-top:18px}
-#addDialog .addfound{--th:300px;--tw:104px;display:flex;gap:16px;overflow-x:auto;padding:8px 4px 4px;margin-bottom:8px;align-items:flex-start}
-#addDialog .pick{flex:none;display:grid;grid-template-rows:var(--th) 18px;gap:8px;justify-items:center;width:max-content;min-width:var(--tw)}
+#addDialog .addlist .t{font-weight:500;overflow-wrap:anywhere}
+#addDialog .addlist .y{font-weight:400;color:var(--grey,#6B6B6B);margin-left:2px;font-variant-numeric:tabular-nums}
+#addDialog .addlist .k{font-size:var(--fs-label,10px);text-transform:uppercase;letter-spacing:var(--track,1px);color:var(--grey,#6B6B6B);white-space:nowrap}
+#addDialog .addlist .by{grid-column:1/-1;font-size:var(--fs-small,11px);color:var(--grey,#6B6B6B);overflow-wrap:anywhere}
+#addDialog .addlist li[aria-selected="true"] :is(.y,.k,.by){color:inherit}
+#addDialog #addSpines{margin-top:var(--s4,16px)}
+#addDialog .addfound{--th:300px;--tw:104px;display:flex;gap:var(--s4,16px);overflow-x:auto;padding:var(--s2,8px) var(--s1,4px) var(--s1,4px);margin-bottom:var(--s2,8px);align-items:flex-start}
+#addDialog .pick{flex:none;display:grid;grid-template-rows:var(--th) 16px;gap:var(--s2,8px);justify-items:center;width:max-content;min-width:var(--tw)}
 #addDialog .pick .art{height:var(--th);display:flex;align-items:flex-end;background:none;border:0;padding:0;cursor:pointer;outline-offset:4px;border-radius:2px}
 #addDialog .pick .art[aria-checked="true"]{outline:2px solid var(--ink,#000)}
 #addDialog .pick .art img,#addDialog .pick .art canvas{height:var(--th);width:auto;display:block}
-#addDialog .pick img.cov{aspect-ratio:auto 2/3;background:#F2F2F2}
-#addDialog .pick .lbl{font-size:10.5px;color:var(--grey,#6B6B6B);white-space:nowrap;width:var(--tw);text-align:center;overflow:hidden;text-overflow:ellipsis;align-self:center}
+#addDialog .pick img.cov{aspect-ratio:auto 2/3;background:var(--wash,#F3F3F3)}
+#addDialog .pick .lbl{font-size:var(--fs-label,10px);letter-spacing:0;text-transform:none;color:var(--grey,#6B6B6B);white-space:nowrap;width:var(--tw);text-align:center;overflow:hidden;text-overflow:ellipsis;align-self:center}
 #addDialog .pick .lbl a{color:inherit}
 #addDialog .addfound .rule{flex:none;width:1px;height:var(--th);background:var(--hair,#D9D9D9)}
-#addDialog .addbar{display:flex;justify-content:flex-end;margin-top:14px}
+#addDialog .addbar{display:flex;justify-content:flex-end;margin-top:var(--s4,16px)}
 /* on a phone it sits at the top, so the box and its suggestions stay above the keyboard */
-@media (max-width:520px){ #addDialog{padding:22px 16px 18px;margin-top:12px} #addDialog .addfound{--th:220px;--tw:84px} }`;
+@media (max-width:520px){ #addDialog{padding:var(--s4,16px);margin-top:var(--s3,12px)} #addDialog .addfound{--th:220px;--tw:84px} }`;
 document.head.appendChild(css);
 const dlg = document.createElement('dialog');
 dlg.id = 'addDialog'; dlg.setAttribute('aria-labelledby', 'addTitle');
@@ -235,7 +235,7 @@ dlg.innerHTML = `
     <div class="addfound" id="addFound" role="radiogroup" aria-label="Which spine"></div>
     <p class="grey" id="addNoReal" hidden>No real spine found yet. Upload a photo of yours on the builder to add it to the archive.</p>
     <p class="grey" id="addNote" hidden>Real DVD and book spines show up once the shelfstackd server is connected. Until then, upload a full DVD scan on the builder.</p>
-    <div class="addbar"><button class="btn" id="addGo" type="button" disabled>Add to shelf</button></div>
+    <div class="addbar"><button class="btn primary" id="addGo" type="button" disabled>Add to shelf</button></div>
   </div>`;
 document.body.appendChild(dlg);
 const $ = s => dlg.querySelector(s);
