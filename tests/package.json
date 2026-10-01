@@ -1,0 +1,18 @@
+{
+  "name": "shelfstackd-tests",
+  "private": true,
+  "description": "Checks for the shelfstackd pages. Nothing here is loaded by the site.",
+  "scripts": {
+    "setup": "playwright install chromium",
+    "test": "playwright test",
+    "test:html": "html-validate --config .htmlvalidate.json \"../*.html\" \"../*/index.html\"",
+    "test:all": "npm run test:html && npm test",
+    "serve": "node serve.js"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.63.0",
+    "@supabase/supabase-js": "2.117.2",
+    "html-validate": "11.16.1"
+  }
+}

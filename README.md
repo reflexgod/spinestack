@@ -12,6 +12,7 @@ u/index.html          profiles: /u/?username, and one shelf: /u/?username&shelf=
 feed/index.html       the feed: /feed/, FOLLOWING and EVERYONE, newest saved shelves first
 worker-address.js     sends Worker requests to its workers.dev address on networks that block api.shelfstackd.com
 admin.html            approve or delete archive uploads (needs the admin token); read reports (Google sign-in, admins only)
+tests/                checks for the pages: Playwright, axe, html-validate (see Tests). The site never loads anything from here
 worker/               Cloudflare Worker: name lookup, scan search, image proxy (what the live site uses)
 backend/              older self-hosted search server (not used right now)
   api/                FastAPI app
@@ -157,6 +158,50 @@ signed-out visitors never load the Supabase library.
 - **Staying awake:** Supabase pauses free projects after a week without activity; the Worker's daily cron
   (03:00 UTC) makes one tiny read so it doesn't.
 - **Privacy:** `privacy.html`. Accounts are for people 18 or older.
+
+## Libraries
+
+No build step, no framework. A page loads a library only from `cdn.jsdelivr.net`, at an exact version, with an
+`integrity` hash (as the Supabase script is loaded); `tests/specs/libraries.spec.js` checks that. Menus and popups use
+the browser's own `<dialog>` and `popover`; relative times use `Intl.RelativeTimeFormat`. All MIT, except Lucide (ISC).
+
+| Library | For | File on `cdn.jsdelivr.net/npm/` | `integrity` |
+|---|---|---|---|
+| Supabase JS 2.117.2 | accounts | `@supabase/supabase-js@2.117.2/dist/umd/supabase.js` | `sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok` |
+| Floating UI core 1.8.0 | needed by Floating UI DOM | `@floating-ui/core@1.8.0/dist/floating-ui.core.umd.min.js` | `sha384-HNCdK6HYLs4EKIDg2Ml3NdfNMVD/LcFbGXnagRABpWmpJjiEuhrtSIckScRnqDOD` |
+| Floating UI DOM 1.8.0 | keeps the account menu and the ▾ menus on screen | `@floating-ui/dom@1.8.0/dist/floating-ui.dom.umd.min.js` | `sha384-h02fHnOrZRtL8NvKyMkr2vfTxUr0lTnQdZexzrbPfME4nd74qGfOZ97tbiroJo1Y` |
+| SortableJS 1.15.7 | dragging spines into order in the builder | `sortablejs@1.15.7/Sortable.min.js` | `sha384-DgmC6Xe2bSN2WjTDXzWYbUbxyhNP+NNkGDR/g78pCXV7E7rcVTGxVg0uIVCUUcBc` |
+| Cropper.js 1.6.3 | square crop of a profile photo | `cropperjs@1.6.3/dist/cropper.min.js` | `sha384-aKBOyDyHi7nysLl4xSArmbTpotGkhOQNGnSQaljyIveY3ofQZ3GWak4U9F5NcPxI` |
+| | its stylesheet | `cropperjs@1.6.3/dist/cropper.min.css` | `sha384-4B0iRmDz7QrXJK2xob77YvAC46zoUOJDr2MOKrkWWR7QoJg9i63rGSnCwIjGYGHs` |
+| browser-image-compression 2.0.2 | shrinks the photo before upload (the Worker takes 2 MB at most) | `browser-image-compression@2.0.2/dist/browser-image-compression.js` | `sha384-dHP9fwqd9BAiDh9uJ0p10khgbbcFMh34bVEiCnJ1Ah/AT2T2k4t572VEo3WXzxXp` |
+| Lucide 1.49.0 | icons (zap, search, chevron-down, x, plus) | pasted into the pages as inline SVG, not loaded | |
+
+Only Supabase is loaded so far; each of the others is added to a page when the page starts using it. To change a
+version: `curl -s <file's address> | openssl dgst -sha384 -binary | openssl base64 -A` gives the new hash.
+
+## Tests
+
+In `tests/`, with its own `package.json`. Once: `npm install`, then `npm run setup` (downloads Playwright's Chromium).
+
+```
+cd tests
+npm run test:all     # html-validate, then Playwright
+npm test             # Playwright only
+npm run test:html    # html-validate only
+npx playwright test specs/site.spec.js --project=phone-390    # one file, at one width
+```
+
+- **Playwright** (`specs/site.spec.js`) opens every page at 1280 px and at 390 px, signed out and signed in: the top
+  bar is there, the page doesn't scroll sideways, nothing is logged as an error, signed-out home loads its shelves, and
+  old builder links at the root go on to `/build/`. Two checks wait for their stage (marked `test.fixme`): Sign out as
+  the account menu's last item, and the + SHELF dialog closing with Esc.
+- **axe** (`specs/a11y.spec.js`) runs on every page, `privacy.html` and `admin.html` too: nothing serious or critical.
+- **html-validate** reads every HTML file with its recommended rules, except that inline `style` is allowed and the
+  doctype is lowercase (`tests/.htmlvalidate.json`).
+- The tests never reach Supabase, the Worker, Google Fonts or jsDelivr, and never use a real account: `tests/site.js`
+  answers those requests with made-up people and shelves, a made-up signed-in session, and the libraries from
+  `tests/node_modules`. They serve the repo's files themselves (`tests/serve.js`, port 8181). A new page goes into
+  `PAGES` in `tests/site.js`.
 
 ## 2. Run the backend (optional, not used right now)
 

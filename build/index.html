@@ -27,8 +27,6 @@
   /* Inside a profile page (u/), which opens this builder over itself: no site header, footer or My shelves. */
   if (window.parent !== window && /[?&]embed(&|=|$)/.test(location.search)) document.documentElement.classList.add('embed');
 </script>
-</head>
-<body>
 <title>shelfstackd</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -259,7 +257,8 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
   section{padding-block:40px 0}
 }
 </style>
-
+</head>
+<body>
 <header class="top" id="top">
   <a class="mark" href="../" aria-label="shelfstackd, home">SHELFSTACKD</a>
   <nav class="links" aria-label="shelfstackd"><a href="../shelves/">Shelves</a><a href="../members/">Members</a><a href="../feed/">Feed</a><a class="count" href="#shelf">Shelf (<span id="navCount">0</span>)</a></nav>
@@ -307,7 +306,7 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
   <section id="upload" class="col">
     <h2>Upload</h2>
     <p>Found a scan yourself? Drop it here. A full DVD or book wrap, with back, spine and front in one image, gives you the real spine. A plain cover or poster gets a spine made from its colours.</p>
-    <label class="drop" id="drop" for="file">
+    <label class="drop" id="drop">
       <span class="dash sm">Choose image</span>
       <span class="grey" style="display:block;margin-top:10px">or drag it here, or copy an image and press Ctrl+V</span>
       <input type="file" id="file" accept="image/*" multiple>
@@ -325,7 +324,7 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
         <div class="ctl"><span class="lbl">Filter</span>
           <div class="filters" id="filters" role="group" aria-label="Filter"></div>
           <label class="range"><span class="lbl">Intensity</span><input type="range" id="intensity" min="0" max="100" value="70" aria-label="Filter intensity"></label></div>
-        <div class="phone"><div class="stage" id="stage"><canvas id="story" width="1080" height="1920" aria-label="Story preview"></canvas>
+        <div class="phone"><div class="stage" id="stage"><canvas id="story" width="1080" height="1920" role="img" aria-label="Story preview"></canvas>
           <div class="pngbox" id="pngBox" hidden><button class="pngx" id="pngX" type="button" aria-label="Remove this PNG">✕</button><span class="pngh" id="pngH" aria-hidden="true"></span><span class="pngr" id="pngR" aria-hidden="true"></span></div></div></div>
         <div class="ctl"><label class="lbl" for="caption">Caption</label><input type="text" id="caption" value="my next reads." maxlength="60"></div>
         <div class="ctl" id="themeWrap"><span class="lbl">Background</span>
@@ -427,7 +426,7 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
 <div class="modal" id="modal" hidden>
   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="mtitle">
     <b id="mtitle">SAVE YOUR STORY</b>
-    <img id="mimg" alt="Your story image">
+    <img id="mimg" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="Your story image">
     <p>Press and hold the image on a phone, or right-click it on a computer, and choose Save image. Then add it to your Instagram story.</p>
     <button class="btn" id="mclose" type="button">Done</button>
   </div>
