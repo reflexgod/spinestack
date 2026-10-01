@@ -57,7 +57,6 @@ test('Activity: a line for each shelf saved, newest first, its card under the li
   const first = page.locator('#acts .item').first(), mira = PEOPLE[1], shelf = SHELVES[1];
   await expect(first.locator('.line a').nth(1)).toHaveAttribute('href', `/u/?mira&shelf=${shelf.id}`);
   await expect(first.locator('.pic')).toHaveAttribute('href', `/u/?mira&shelf=${shelf.id}`);
-  await expect(first.locator('.pic')).toHaveClass(/stack/);   // cut by its layout, as its card is everywhere
   const card = await first.locator('.pic').boundingBox(), line = await first.locator('.line').boundingBox();
   expect(Math.round(card.width)).toBe(150);
   expect(Math.abs(card.x - line.x)).toBeLessThanOrEqual(1);

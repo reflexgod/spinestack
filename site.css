@@ -122,22 +122,17 @@ textarea{resize:vertical;line-height:1.5}
 .tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
 
 /* ---------- shelf cards: a shelf's preview cut like a poster (2:3), its name under it, then who made it ----------
-   The preview is the whole 9:16 story. A card shows the part with the spines: they stand between 28% and 89% of the
-   story's height (one row or two, a wood shelf to 92%) and within the middle 83% of its width, so the picture is
-   drawn 1.2 times the card's width and moved up until they sit in the middle. The caption above them is out of the
-   card, and the shelf's name is under it.
-   Books laid out another way need another cut, or they're lost at the card's sides: a pile of books lying flat reaches
-   nearly across the story, and covers stand in a grid as wide. A pile (.pic.stack) is drawn at the card's own width,
-   which makes it about 70% of the card across, and from the story's foot, where the pile stands. Covers
-   (.pic.covers) are drawn 1.08 times the card's width. */
+   The preview is the whole 9:16 story, and a card shows the part with the books. cards.js finds them in the picture
+   itself and puts them in the middle of the card (it sets the picture's left, top and width, clips off the caption
+   and the "made with" line, and gives the card the story's background colour). Until it has, and for a picture it
+   can't read, the cut is the one here: spines stand between 28% and 89% of the story's height and within the middle
+   83% of its width, so the picture is drawn 1.2 times the card's width and moved up until they sit in the middle. */
 .thumbs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(var(--cards),minmax(0,1fr));gap:var(--s4) var(--card-gap)}
 .thumbs:empty{display:none}
 .thumbs a{display:block;text-decoration:none;min-width:0}
 .pic{display:block;position:relative;aspect-ratio:2/3;overflow:hidden;border-radius:var(--radius);background:var(--wash)}
 .pic::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12);pointer-events:none}   /* a hairline inside the edge, no box round it */
 .pic img{position:absolute;left:-10%;top:-33%;width:120%;height:auto;aspect-ratio:9/16;object-fit:cover;max-width:none;display:block}
-.pic.stack img{left:0;top:auto;bottom:0;width:100%}
-.pic.covers img{left:-4%;top:-22%;width:108%}
 .thumbs .cap{display:block;font-size:var(--fs-card);margin-top:var(--s2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .thumbs .by,.thumbs .meta{display:block;font-size:var(--fs-small);color:var(--grey);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 

@@ -35,7 +35,7 @@ const shelfId = i => `aaaaaaaa-aaaa-4aaa-8aaa-${String(i).padStart(12, '0')}`;
 const SHELVES = Array.from({ length: 18 }, (_, i) => {
   const owner = PEOPLE[i % PEOPLE.length];
   return { id: shelfId(i), owner: owner.id, caption: i % 4 ? `shelf number ${i}` : 'my next reads.', name: i % 5 ? null : 'a much longer shelf name that has to be cut short',
-    filter: 'clean', intensity: 70, background: 'paper', wood: false, layout: ['row', 'stack', 'covers'][(i + Math.floor(i / 3)) % 3], varied: true, is_public: true, hidden: false,
+    filter: 'clean', intensity: 70, background: i % 4 === 3 ? 'ink' : 'paper', wood: false, layout: ['row', 'stack', 'covers'][(i + Math.floor(i / 3)) % 3], varied: true, is_public: true, hidden: false,
     preview_key: `${owner.id}/p/${shelfId(i)}`, pro: {}, created_at: day(i % 6 === 4 ? i + 1 : i), updated_at: day(i), saved_at: day(i), shelf_items: [{ count: 2 }] };   // every sixth was saved again a day after it was made
 });
 const ITEMS = [
@@ -79,14 +79,30 @@ function rest(url, method, body, signedIn, named){
   return method === 'GET' ? [] : null;
 }
 
-// a picture for every image the Worker would send: a plain PNG, 200 x 300, made here
-const PICTURE = (() => {
-  const zlib = require('zlib'), w = 200, h = 300, row = w * 3 + 1, raw = Buffer.alloc(row * h);
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++){ const o = y * row + 1 + x * 3; raw[o] = 40 + (y >> 2); raw[o + 1] = 60; raw[o + 2] = 90 + (x >> 2); }
+// a PNG made here: w x h, each pixel's [r, g, b] from paint(x, y)
+function png(w, h, paint){
+  const zlib = require('zlib'), row = w * 3 + 1, raw = Buffer.alloc(row * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++){ const o = y * row + 1 + x * 3, c = paint(x, y); raw[o] = c[0]; raw[o + 1] = c[1]; raw[o + 2] = c[2]; }
   const chunk = (type, data) => { const body = Buffer.concat([Buffer.from(type), data]), len = Buffer.alloc(4), crc = Buffer.alloc(4); len.writeUInt32BE(data.length); crc.writeUInt32BE(zlib.crc32(body)); return Buffer.concat([len, body, crc]); };
   const head = Buffer.alloc(13); head.writeUInt32BE(w, 0); head.writeUInt32BE(h, 4); head[8] = 8; head[9] = 2;
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', head), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
-})();
+}
+// a picture for most images the Worker would send (photos, covers): 200 x 300, no plain background
+const PICTURE = png(200, 300, (x, y) => [40 + (y >> 2), 60, 90 + (x >> 2)]);
+/* A shelf's preview: its story at 360 x 640, in flat shapes. A plain background (white, or the Ink theme's), a bar
+   where the caption is, a bar where "made with shelfstackd" is, and a block where the books are for the shelf's layout
+   (STORY: x0, y0, x1, y1 in the picture, as shelf.js places them). cards.js cuts each card round that block. */
+const STORY = { row: [30, 180, 330, 567], stack: [47, 500, 313, 567], covers: [30, 133, 330, 593] };
+const CAPTION = [30, 83, 150, 100], MADE_WITH = [130, 617, 230, 624];
+const stories = new Map();
+function storyPicture(layout, dark){
+  const key = layout + (dark ? ' dark' : '');
+  if (!stories.has(key)){
+    const bg = dark ? [14, 15, 18] : [255, 255, 255], ink = dark ? [241, 242, 244] : [15, 20, 25], grey = dark ? [100, 101, 104] : [160, 162, 164], inside = (x, y, b) => x >= b[0] && x < b[2] && y >= b[1] && y < b[3];
+    stories.set(key, png(360, 640, (x, y) => inside(x, y, STORY[layout]) ? [36, 69, 107] : inside(x, y, CAPTION) ? ink : inside(x, y, MADE_WITH) ? grey : bg));
+  }
+  return stories.get(key);
+}
 // what the Worker's /identify knows: a search finds the ones whose title or maker has what was typed, films first
 // and then books, each in this order (so the page's own ordering, closest title first, has something to do)
 const MATCHES = [
@@ -133,7 +149,11 @@ async function mockNetwork(page, { signedIn = false, named = true, slow = 0, cap
     if (url.origin === WORKER || url.origin === WORKER_FALLBACK){
       const json = o => route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify(o) });
       if (method === 'POST') return json({ key: `${ME.id}/${url.pathname.replace(/\W+/g, '-')}` });   // something saved: the key it's kept under
-      if (/^\/(u\/preview|u\/blob|m\/img|archive\/img|img)$/.test(url.pathname)) return route.fulfill({ status: 200, headers: CORS, contentType: 'image/png', body: PICTURE });
+      if (url.pathname === '/u/preview'){   // a shelf's preview: its story
+        const shelf = SHELVES.find(x => x.preview_key === url.searchParams.get('k'));
+        return route.fulfill({ status: 200, headers: CORS, contentType: 'image/png', body: storyPicture(shelf ? shelf.layout : 'row', !!shelf && shelf.background === 'ink') });
+      }
+      if (/^\/(u\/blob|m\/img|archive\/img|img)$/.test(url.pathname)) return route.fulfill({ status: 200, headers: CORS, contentType: 'image/png', body: PICTURE });
       if (url.pathname === '/identify'){
         const want = url.searchParams.get('want') || 'all', q = plain(url.searchParams.get('q'));
         asked.push(url.searchParams.get('q') + (url.searchParams.get('suggest') ? ' (typed)' : ''));
@@ -174,4 +194,4 @@ async function open(page, pathname){
   await page.waitForLoadState('networkidle');
 }
 
-module.exports = { ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, PICTURE, WORKER, mockNetwork, watchErrors, open };
+module.exports = { ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, PICTURE, STORY, CAPTION, MADE_WITH, CORS, WORKER, storyPicture, mockNetwork, watchErrors, open };

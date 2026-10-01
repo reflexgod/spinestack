@@ -49,8 +49,6 @@ test('You: your own shelves, said as "You shelved…", kept on reload', async ({
   await expect(lines(page)).toHaveCount(6);
   for (const t of await lines(page).allTextContents()) expect(t).toMatch(/^You (shelved|updated) /);   // updated: saved again later than it was made
   await expect(page.locator('#items .pic').first()).toHaveAttribute('href', /\/u\/\?tester&shelf=/);
-  // the cards are cut by layout here too, with nothing more asked of the database
-  await expect(page.locator(`#items [data-shelf="${SHELVES[3].id}"]`)).toHaveClass(/stack/);
   await page.reload();
   await expect(page.getByRole('tab', { name: 'You' })).toHaveAttribute('aria-selected', 'true');
   await expect(lines(page)).toHaveCount(6);

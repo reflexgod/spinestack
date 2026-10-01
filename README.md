@@ -13,6 +13,7 @@ u/index.html          profiles: /u/?username with its tabs Profile (the main she
 settings/index.html   your settings (signed in only): PROFILE (display name, bio, main shelf), PHOTO (cut square, made small, sent to the Worker), ACCOUNT (private profile). A profile's Edit profile comes here
 feed/index.html       the feed: /feed/, FOLLOWING · YOU · EVERYONE, a line for each shelf saved ("@abc shelved my films · 2h") with its card, newest first
 worker-address.js     sends Worker requests to its workers.dev address on networks that block api.shelfstackd.com
+cards.js              shelf cards: finds the books in a shelf's preview picture and cuts the 2:3 card round them (home, the feed, profiles), keeping what it found per preview key
 site.css              the look every page shares: one :root block of variables (the 950px column, the type scale, the 4/8/12/16/24/40 spacing, the 3px radius) and what uses them everywhere (the top bar, headings, buttons, fields, shelf cards, tabs, sheets, the footer). A page's own <style> holds only what that page alone needs
 nav.js                the top bar on every page: who is signed in, the account menu (Sign out is its last item), + SHELF and the ▾ next to it
 admin.html            approve or delete archive uploads (needs the admin token); read reports (Google sign-in, admins only)
@@ -242,6 +243,10 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **Settings** (`specs/settings.spec.js`): signed out and with no username yet; the three tabs and their addresses;
   Profile's Save sending the name, bio and main shelf; a photo cut square, made small (WebP, under the Worker's 2 MB),
   sent to the Worker and saved, then removed; Cancel; the private profile switch; a profile's links here.
+- **Shelf cards** (`specs/cards.spec.js`): on home, the feed and a profile, a pile, covers and a row are each in the
+  middle of their card with room round them, the caption and the "made with" line clipped off, on the story's colour;
+  a picture is looked at once (kept per preview key); a picture with no plain background, or one that comes without
+  CORS, still shows with the stylesheet's cut.
 - **The feed** (`specs/feed.spec.js`): the three tabs and which one opens, what a line says (with the clock held still,
   so "2h" and "1w" are known), You, signed out, and ← → between the tabs.
 

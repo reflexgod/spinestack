@@ -3,7 +3,7 @@
 const { chromium } = require('@playwright/test');
 const { spawn } = require('child_process');
 const path = require('path'), fs = require('fs');
-const { mockNetwork, PICTURE } = require('./site');
+const { mockNetwork, PICTURE, SHELVES } = require('./site');
 
 const PORT = 8183, BASE = `http://127.0.0.1:${PORT}`, OUT = path.resolve(process.argv[2] || path.join(__dirname, 'shots'));
 const SHOTS = [
@@ -21,9 +21,11 @@ const SHOTS = [
   { name: 'settings-account', path: '/settings/#account', signedIn: true },
 ];
 
-// in the page: a story for each card, with 1 to 20 spines, as its preview, laid out the way the card says its shelf is
+// in the page: a story for each card, with 1 to 20 spines, as its preview, laid out as the card's shelf is; cards.js
+// then cuts each card round its books, as it does with real previews
+const LAYOUTS = Object.fromEntries(SHELVES.map(s => [s.id, s.layout]));
 async function drawPreviews(page) {
-  await page.evaluate(async () => {
+  await page.evaluate(async LAYOUTS => {
     if (!window.Shelf) return;
     const imgs = [...document.querySelectorAll('.thumbs .pic img, .items .pic img')]; if (!imgs.length) return;
     await Promise.all(['500 52px "Geist Mono"', '600 40px Oswald'].map(f => document.fonts.load(f).catch(() => {})));
@@ -35,7 +37,7 @@ async function drawPreviews(page) {
         title: names[(i + at) % names.length], img: cover(bg, fg), bg, fg, accent: fg, style: (i + at) % 2 ? 'solid' : 'classic', font: 'oswald' }; });
     const counts = [5, 1, 8, 3, 20, 6, 2, 12, 4, 7, 10, 3], themes = ['paper', 'paper', 'ink', 'paper', 'blush', 'paper'], made = new Map();
     imgs.forEach((im, i) => {
-      const pic = im.closest('.pic'), layout = pic.classList.contains('stack') ? 'stack' : pic.classList.contains('covers') ? 'covers' : 'row';
+      const layout = LAYOUTS[im.closest('.pic').dataset.shelf] || 'row';
       const key = im.getAttribute('src') + layout;
       if (!made.has(key)) {
         const n = made.size, c = document.createElement('canvas'); c.width = 1080; c.height = 1920;
@@ -47,7 +49,7 @@ async function drawPreviews(page) {
       im.removeAttribute('loading'); im.src = made.get(key);
     });
     await Promise.all(imgs.map(im => im.decode().catch(() => {})));
-  });
+  }, LAYOUTS);
 }
 
 (async () => {

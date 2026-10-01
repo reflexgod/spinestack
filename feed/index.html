@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261002c">
+<link rel="stylesheet" href="../site.css?v=20261002d">
 <style>
 /* the feed: the tabs, then a line for each shelf saved and its card under it (site.css has the tabs, the lines, the
    card and the rest) */
@@ -95,6 +95,7 @@
 
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
+<script src="../cards.js?v=20261002a"></script>
 <script src="../nav.js?v=20261002a"></script>
 <script>
 (() => {
@@ -196,33 +197,23 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.q
 
 /* ---------- the feed ---------- */
 const feed = {scope:'', last:null, run:0};
-// A card's cut of its picture depends on how the shelf is laid out (site.css). The feed doesn't say, so that's asked
-// for once the cards are up: a pile or a grid of covers gets its own cut.
-async function cropCards(rows, root){
-  const ids = [...new Set(rows.filter(x => x.layout === undefined).map(x => x.shelf_id))]; if (!ids.length) return;   // YOU's rows say it themselves
-  try {
-    for (const s of await api(`shelves?select=id,layout&id=in.(${ids.join(',')})`))
-      if (s.layout === 'stack' || s.layout === 'covers') for (const el of root.querySelectorAll(`[data-shelf="${s.id}"]`)) el.classList.add(s.layout);
-  } catch {}
-}
 // one line: "@abc shelved my films · 2h" (in YOU: "You shelved…", and a private shelf says so), its card under it
 function item(x){
   const li = document.createElement('li'), name = (x.display_name || '').trim(), who = esc(profileUrl(x.username)), to = esc(profileUrl(x.username, x.shelf_id));
   const shelf = Shelf.shelfName({name: x.name, caption: x.caption});
-  const pic = x.preview_key ? `<img src="${esc(`${WORKER}/u/preview?k=${encodeURIComponent(x.preview_key)}&v=${encodeURIComponent(x.updated_at)}`)}" alt="" loading="lazy" width="360" height="640">` : '';
-  const cut = x.layout === 'stack' || x.layout === 'covers' ? ' ' + x.layout : '';
+  const pic = x.preview_key ? `<img src="${esc(`${WORKER}/u/preview?k=${encodeURIComponent(x.preview_key)}&v=${encodeURIComponent(x.updated_at)}`)}" alt="" crossorigin="anonymous" loading="lazy" width="360" height="640">` : '';   // with CORS, so cards.js can read it and cut the card round the books
   li.className = 'item';
   li.innerHTML = `<a class="fa" href="${who}" tabindex="-1" aria-hidden="true">${x.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(x.avatar_key)}`)}" alt="" loading="lazy">` : esc((name || x.username).trim()[0] || '·')}</a>
     <p class="line"><a href="${who}">${x.mine ? 'You' : '@' + esc(x.username)}</a> ${x.updated ? 'updated' : 'shelved'} <a href="${to}">${esc(shelf)}</a>${x.is_public === false ? ' <span class="tag">private</span>' : ''} <span class="ago">· <time datetime="${esc(x.saved_at)}" title="${esc(new Date(x.saved_at).toLocaleString())}">${ago(x.saved_at)}</time></span></p>
-    <a class="pic${cut}" data-shelf="${esc(x.shelf_id)}" href="${to}" tabindex="-1" aria-label="Open ${esc(shelf)} by @${esc(x.username)}">${pic}</a>`;
+    <a class="pic" data-shelf="${esc(x.shelf_id)}" href="${to}" tabindex="-1" aria-label="Open ${esc(shelf)} by @${esc(x.username)}">${pic}</a>`;
   return li;
 }
 // YOU: your own shelves, private ones too, as the feed's rows. The feed function has no scope for them, so they're
 // read from the shelves table (Row Level Security lets you read your own).
 async function mine(from){
   const p = me.profile;
-  const rows = await api(`shelves?select=id,caption,name,preview_key,layout,is_public,saved_at,created_at,updated_at&owner=eq.${me.user.id}&hidden=is.false&order=saved_at.desc,id.desc&limit=${PAGE}&offset=${from}`);
-  return rows.map(s => ({shelf_id: s.id, caption: s.caption, name: s.name, preview_key: s.preview_key, layout: s.layout || 'row', is_public: s.is_public, saved_at: s.saved_at, created_at: s.created_at,
+  const rows = await api(`shelves?select=id,caption,name,preview_key,is_public,saved_at,created_at,updated_at&owner=eq.${me.user.id}&hidden=is.false&order=saved_at.desc,id.desc&limit=${PAGE}&offset=${from}`);
+  return rows.map(s => ({shelf_id: s.id, caption: s.caption, name: s.name, preview_key: s.preview_key, is_public: s.is_public, saved_at: s.saved_at, created_at: s.created_at,
     updated_at: s.updated_at, owner: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key, updated: new Date(s.saved_at) - new Date(s.created_at) > 60000, mine: true}));
 }
 function none(kind){
@@ -262,7 +253,6 @@ async function more(run = feed.run){
   if (run !== feed.run) return;   // another tab was picked meanwhile
   btn.disabled = false; $('#state').hidden = true;
   for (const x of rows) $('#items').append(item(x));
-  cropCards(rows, $('#items'));
   const end = rows[rows.length - 1];
   if (end) feed.last = {at: end.saved_at, id: end.shelf_id};
   btn.hidden = rows.length < PAGE;

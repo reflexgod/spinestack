@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261002c">
+<link rel="stylesheet" href="../site.css?v=20261002d">
 <style>
 /* the profile (site.css has the cards, the tabs, the sheets and everything shared) */
 .phead{display:grid;grid-template-columns:96px minmax(0,1fr) auto;grid-template-areas:"ava who stats";gap:0 var(--s5);align-items:center}
@@ -288,6 +288,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
+<script src="../cards.js?v=20261002a"></script>
 <script src="../nav.js?v=20261002a"></script>
 <script>
 (() => {
@@ -484,9 +485,9 @@ function thumbs(list){
   const mine = view.mine, main = mine && featured();
   const card = s => {
     const name = shelfName(s), src = previewSrc(s), href = esc(pageUrl(view.profile.username, s.id));
-    const cut = s.layout === 'stack' || s.layout === 'covers' ? ' ' + s.layout : '';   // a pile or covers: its own cut of the picture (site.css)
-    const pic = `<span class="pic${cut}">${src ? `<img src="${esc(src)}" alt="" loading="lazy" width="360" height="640">` : ''}</span>`, meta = `${spines(countOf(s))} · ${esc(fmtDate(s.updated_at))}`;
-    if (!mine) return `<li><a href="${href}" data-shelf="${s.id}" aria-label="${esc(name)}">${pic}<span class="cap">${esc(name)}</span><span class="meta">${meta}</span></a></li>`;
+    // the picture comes with CORS, so cards.js can read it and cut the card round the books
+    const pic = `<span class="pic" data-shelf="${s.id}">${src ? `<img src="${esc(src)}" alt="" crossorigin="anonymous" loading="lazy" width="360" height="640">` : ''}</span>`, meta = `${spines(countOf(s))} · ${esc(fmtDate(s.updated_at))}`;
+    if (!mine) return `<li><a href="${href}" aria-label="${esc(name)}">${pic}<span class="cap">${esc(name)}</span><span class="meta">${meta}</span></a></li>`;
     const edit = '../build/?open=' + s.id;   // the builder, with this shelf in it
     const acts = `<div class="acts"><a class="dash xs" href="${edit}">open</a>` +
       (main && main.id === s.id ? '<span class="tag">main</span>' : s.is_public ? `<button class="dash xs" type="button" data-act="main" data-id="${s.id}">make main shelf</button>` : '') +
@@ -673,7 +674,7 @@ function startRename(btn){
 document.addEventListener('click', e => { const b = e.target.closest('button[data-rename]'); if (b && view.mine){ e.preventDefault(); startRename(b); } });
 // cards: a link's own button, or (yours) the card itself, which opens the builder instead of the shelf's page
 function onCards(e){
-  const act = e.target.closest('[data-act]'), link = e.target.closest('a[data-shelf]');
+  const act = e.target.closest('[data-act]');
   if (act){ e.preventDefault(); cardAction(act); return; }
 }
 $('#recent').addEventListener('click', onCards);
@@ -825,10 +826,9 @@ let actsShown = 0;
 const savedAt = s => s.saved_at || s.updated_at;
 function actLine(s){
   const p = view.profile, li = document.createElement('li'), name = shelfName(s), src = previewSrc(s), to = esc(pageUrl(p.username, s.id)), at = savedAt(s);
-  const cut = s.layout === 'stack' || s.layout === 'covers' ? ' ' + s.layout : '';
   li.className = 'item';
   li.innerHTML = `<p class="line"><a href="${esc(pageUrl(p.username))}">@${esc(p.username)}</a> ${new Date(at) - new Date(s.created_at) > 60000 ? 'updated' : 'shelved'} <a href="${to}">${esc(name)}</a>${s.is_public ? '' : ' <span class="tag">private</span>'} <span class="ago">· <time datetime="${esc(at)}" title="${esc(new Date(at).toLocaleString())}">${ago(at)}</time></span></p>
-    <a class="pic${cut}" href="${to}" tabindex="-1" aria-label="Open ${esc(name)}">${src ? `<img src="${esc(src)}" alt="" loading="lazy" width="360" height="640">` : ''}</a>`;
+    <a class="pic" data-shelf="${s.id}" href="${to}" tabindex="-1" aria-label="Open ${esc(name)}">${src ? `<img src="${esc(src)}" alt="" crossorigin="anonymous" loading="lazy" width="360" height="640">` : ''}</a>`;
   return li;
 }
 function paintActivity(more){

@@ -92,32 +92,4 @@ test('the feed shows each shelf as the same 2:3 card as home, under the line abo
   expect(Math.abs(card.left - line.left)).toBeLessThanOrEqual(1);   // in line with the text above it
   expect(card.left - (await box(page.locator('.item .fa').first())).right).toBeGreaterThan(0);   // and clear of the photo
   expect(await css(page.locator('.item .pic').first(), 'borderTopLeftRadius')).toEqual({ borderTopLeftRadius: '3px' });
-  // and it's the home card's cut of the picture: drawn 1.2 times the card's width, moved up
-  const img = await page.locator('.item .pic img').first().evaluate(el => { const r = el.getBoundingClientRect(), c = el.parentElement.getBoundingClientRect(); return { w: r.width / c.width, top: (r.top - c.top) / c.height }; });
-  expect(img.w).toBeCloseTo(1.2, 2);
-  expect(img.top).toBeCloseTo(-0.33, 2);
 });
-
-test('a card cuts the picture by how the shelf is laid out: a pile from its foot at the card\'s width, covers a little closer', async ({ page }) => {
-  await mockNetwork(page, { signedIn: true });
-  const { SHELVES } = require('../site');
-  const cut = id => page.locator(`[data-shelf="${id}"] img, .pic[data-shelf="${id}"] img`).first().evaluate(el => {
-    const r = el.getBoundingClientRect(), c = el.parentElement.getBoundingClientRect();
-    return { w: +(r.width / c.width).toFixed(2), left: +((r.left - c.left) / c.width).toFixed(2), top: +((r.top - c.top) / c.height).toFixed(2), bottom: +((r.bottom - c.bottom) / c.height).toFixed(2), cls: el.parentElement.className };
-  });
-  const row = SHELVES[0], pile = SHELVES[1], covers = SHELVES[2];
-  for (const path of ['/', '/feed/?everyone']) {
-    await open(page, path);
-    await expect(page.locator(`[data-shelf="${pile.id}"]`).first()).toHaveClass(/stack/);
-    expect(await cut(row.id)).toMatchObject({ w: 1.2, left: -0.1, top: -0.33 });      // spines in a row: 1.2 times, moved up
-    expect(await cut(pile.id)).toMatchObject({ w: 1, left: 0, bottom: 0 });             // a pile: the card's width, from the story's foot
-    expect(await cut(covers.id)).toMatchObject({ w: 1.08, left: -0.04, top: -0.22 });   // covers: a little closer
-  }
-  // a profile's cards know the layout from the shelf itself
-  await open(page, '/u/?mira');
-  await page.locator('#tabS').click();
-  const cls = await page.locator('#all .pic').evaluateAll(els => els.map(e => e.className));
-  expect(cls.some(c => /\bstack\b/.test(c))).toBe(true);
-  expect(cls.some(c => /\bcovers\b/.test(c))).toBe(true);
-});
-
