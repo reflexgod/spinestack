@@ -15,7 +15,7 @@ test('the tabs are Following · You · Everyone; signed in it opens on Following
   await expect(page.getByRole('tab', { name: 'Following' })).toHaveAttribute('aria-selected', 'true');
   await expect(page).toHaveURL(/\/feed\/\?following$/);
   await expect(lines(page)).toHaveCount(6);   // only @mira is followed
-  for (const t of await lines(page).allTextContents()) expect(t).toMatch(/^@mira shelved /);
+  for (const t of await lines(page).allTextContents()) expect(t).toMatch(/^@mira (shelved|updated) /);
   expect(errors).toEqual([]);
 });
 
@@ -28,6 +28,7 @@ test('a line says who shelved what and how long ago, and the shelf\'s card is un
   expect(text[0]).toBe('@tester shelved a much longer shelf name that has to be cut short · 2h');
   expect(text[1]).toBe('@mira shelved shelf number 1 · 1d');
   expect(text[3]).toBe('@tester shelved shelf number 3 · 3d');
+  expect(text[4]).toBe('@mira updated untitled shelf · 4d');   // saved again later than it was made
   expect(text[7]).toBe('@mira shelved shelf number 7 · 1w');
   expect(text[17]).toBe('@longusername_twenty1 shelved shelf number 17 · 2w');
   // the name is a link to the person, the shelf's a link to the shelf, and so is its card

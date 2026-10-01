@@ -118,6 +118,8 @@
     out.type = 'button'; out.setAttribute('role', 'menuitem'); out.textContent = 'Sign out';
     out.addEventListener('click', () => { acctMenu.hide(false); if (on.signOut) on.signOut(); });
     acctMenu.out = out;
+    // a link to another tab of the page you're on (Activity, on your own profile) loads nothing, so the menu shuts itself
+    acctMenu.menu.addEventListener('click', e => { if (e.target.closest('a')) acctMenu.hide(false); });
     addMenu = makeMenu('addMenu', 'More ways to add', moreBtn, {placement: 'bottom-end'});
     addMenu.menu.append(item('Upload a scan…', ROOT + 'build/#upload'));
     // on the builder it opens the file picker; from anywhere else the link goes to the builder's upload

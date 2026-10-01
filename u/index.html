@@ -60,7 +60,15 @@
 .pgrid{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:var(--s6);margin-top:var(--s5);align-items:start}
 .pmain{display:grid;gap:var(--s6);min-width:0}
 .pmain .thumbs{grid-template-columns:repeat(4,minmax(0,1fr))}
-#panelS,#viewShelf{margin-top:var(--s5)}
+#panelS,#panelA,#panelN,#viewShelf{margin-top:var(--s5)}
+/* Activity: this person's lines (site.css draws them). Network: Following · Followers under the tabs, then the
+   people, in the page */
+#acts:empty,#netPeople:empty{display:none}
+.tabs.sub{margin-top:0;border-bottom:0;gap:var(--s4)}
+.tabs.sub button{font-size:var(--fs-card);padding-bottom:var(--s1)}
+#netPeople{max-height:none;overflow:visible;max-width:520px;padding:0;margin-top:var(--s4)}
+#netNone{margin:var(--s4) 0 0}
+#actsMore,#netMore{margin-top:var(--s5)}
 /* every shelf at one scale (a spine is 1160 story px: about 315 px here, as in the design), so one spine is one
    normal spine on a short shelf, not a spine blown up to fill the space */
 .feat{display:grid;justify-items:center;gap:var(--s2);--fk:.27}
@@ -162,6 +170,8 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
       <nav class="tabs" role="tablist" aria-label="Profile">
         <button type="button" role="tab" id="tabP" data-tab="profile" aria-selected="true" aria-controls="panelP">Profile</button>
         <button type="button" role="tab" id="tabS" data-tab="shelves" aria-selected="false" aria-controls="panelS">Shelves</button>
+        <button type="button" role="tab" id="tabA" data-tab="activity" aria-selected="false" aria-controls="panelA">Activity</button>
+        <button type="button" role="tab" id="tabN" data-tab="network" aria-selected="false" aria-controls="panelN">Network</button>
       </nav>
       <div class="pgrid" id="panelP" role="tabpanel" aria-labelledby="tabP">
         <div class="pmain">
@@ -188,6 +198,22 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
         <ol class="thumbs" id="all"></ol>
         <p class="grey" id="allNone" hidden>No shelves yet.</p>
       </div>
+      <div id="panelA" role="tabpanel" aria-labelledby="tabA" hidden>
+        <ol class="items solo" id="acts"></ol>
+        <p class="grey" id="actsNone" hidden>No activity yet.</p>
+        <button class="dash sm" id="actsMore" type="button" hidden>Load more</button>
+      </div>
+      <div id="panelN" role="tabpanel" aria-labelledby="tabN" hidden>
+        <nav class="tabs sub" role="tablist" aria-label="Network">
+          <button type="button" role="tab" id="tabNg" data-net="following" aria-selected="true" aria-controls="netPanel">Following</button>
+          <button type="button" role="tab" id="tabNr" data-net="followers" aria-selected="false" aria-controls="netPanel">Followers</button>
+        </nav>
+        <div id="netPanel" role="tabpanel" aria-label="People">
+          <ul class="people" id="netPeople"></ul>
+          <p class="grey" id="netNone" hidden></p>
+          <button class="dash sm" id="netMore" type="button" hidden>Load more</button>
+        </div>
+      </div>
     </div>
 
     <section id="viewShelf" hidden>
@@ -213,7 +239,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
   <div class="sheetbox">
     <button class="x" data-close type="button" aria-label="Close">×</button>
     <div>
-      <h2 id="listTitle">Followers</h2>
+      <h2 id="listTitle">Requests</h2>
       <ul class="people" id="people"></ul>
       <p class="grey" id="peopleNone" hidden></p>
       <button class="dash sm" id="peopleMore" type="button" hidden>Load more</button>
@@ -262,7 +288,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
-<script src="../nav.js?v=20261001e"></script>
+<script src="../nav.js?v=20261002a"></script>
 <script>
 (() => {
 /* A profile: /u/?username, and one of its shelves: /u/?username&shelf=<id>.
@@ -284,6 +310,15 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;
 const clean0 = o => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null));
 const fmtDate = s => new Date(s).toLocaleDateString(undefined, {day:'numeric', month:'short', year:'numeric'});
 const spines = n => `${n} ${n === 1 ? 'spine' : 'spines'}`;
+// 2h, 3d: how long ago a shelf was saved. The browser says it (Intl.RelativeTimeFormat: "2h ago") and its "ago" is
+// left off. The same as in feed/: keep the two in step.
+const RTF = new Intl.RelativeTimeFormat('en', {style: 'narrow', numeric: 'always'});
+function ago(t){
+  const s = Math.max(0, (Date.now() - new Date(t)) / 1000), D = 86400;
+  if (s < 60) return 'now';
+  const [n, unit] = s < 3600 ? [s / 60, 'minute'] : s < D ? [s / 3600, 'hour'] : s < 7*D ? [s / D, 'day'] : s < 30*D ? [s / (7*D), 'week'] : s < 365*D ? [s / (30*D), 'month'] : [s / (365*D), 'year'];
+  return RTF.format(-Math.floor(n), unit).replace(/\s*ago$/, '').replace(/\s+/g, '');
+}
 const timeout = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('timeout')), ms))]);
 let toastT = 0; function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 4200); }
 function friendly(e){
@@ -441,7 +476,7 @@ const previewSrc = s => s.preview_key ? `${WORKER}/u/preview?k=${encodeURICompon
 const countOf = s => ((s.shelf_items || [])[0] || {}).count || 0;
 const publicOnes = () => view.shelves.filter(s => s.is_public);
 const PROFILE_COLS = 'id,username,display_name,bio,avatar_key,pinned_shelf_id,is_private,created_at';
-const SHELF_COLS = 'id,caption,name,filter,intensity,background,wood,layout,varied,is_public,preview_key,pro,created_at,updated_at,shelf_items(count)';
+const SHELF_COLS = 'id,caption,name,filter,intensity,background,wood,layout,varied,is_public,preview_key,pro,created_at,updated_at,saved_at,shelf_items(count)';
 const fetchShelves = () => api(`shelves?select=${SHELF_COLS}&owner=eq.${view.profile.id}${view.mine ? '' : '&is_public=is.true'}&hidden=is.false&order=updated_at.desc&limit=200`);
 // a shelf's card; on your own profile its picture opens the builder, its name renames it, and it has its links:
 // open, make main shelf, private or public, delete
@@ -506,6 +541,7 @@ async function refresh(){
   paintStats(stats); paintHead();
   if (SHELF) return showShelf(SHELF);
   paintLists(); paintFeatured(); paintMost();
+  if (!$('#panelA').hidden) paintActivity();
 }
 function paintStats(stats){ const st = stats[0] || {}; $('#nShelves').textContent = st.shelf_count || 0; $('#nSpines').textContent = st.spine_count || 0; }
 function paintHead(){
@@ -725,11 +761,11 @@ async function showPrivate(card){
   followButton($('#followBtn'), card, () => {});
 }
 
-// the lists: followers, following, and the requests waiting for you; 30 at a time
-const lists = {kind: '', last: null};
-const LIST_TITLE = {followers: 'Followers', following: 'Following', requests: 'Requests'};
+/* ---------- the lists of people: Following and Followers in the Network tab, the requests waiting for you in a sheet;
+   30 at a time ---------- */
 const LIST_NONE = {followers: 'No followers yet.', following: 'Not following anyone yet.', requests: 'No requests waiting.'};
-function personRow(x, kind){
+// one person: photo, name, and FOLLOW (or, for a request, Accept and Decline). list: the list the row is in
+function personRow(x, kind, list){
   const li = document.createElement('li'), name = (x.display_name || '').trim(), href = pageUrl(x.username);
   li.className = 'person';
   li.innerHTML = `<a class="pa" href="${esc(href)}" tabindex="-1" aria-hidden="true">${x.avatar_key ? `<img src="${esc(avatarSrc(x.avatar_key))}" alt="" loading="lazy">` : esc((name || x.username).trim()[0] || '·')}</a>
@@ -743,8 +779,9 @@ function personRow(x, kind){
       try {
         const r = await rpc('answer_request', {requester: x.id, accept: b.dataset.answer === '1'});
         li.remove(); toast(r === 'accepted' ? '@' + x.username + ' follows you now.' : 'Request declined.');
-        if (!$('#people').children.length) listNone();
+        if (!list.ul.children.length) list.none();
         paintRequests(); paintFollowStats();
+        if (r === 'accepted' && netShown === 'followers') netList.open('followers');   // they're in your followers now
       } catch (err){ toast(friendly(err)); acts.querySelectorAll('button').forEach(y => { y.disabled = false; }); }
     });
   } else if (!me.user || x.id !== me.user.id){
@@ -753,47 +790,81 @@ function personRow(x, kind){
   }
   return li;
 }
-function listNone(){ $('#peopleNone').textContent = LIST_NONE[lists.kind]; $('#peopleNone').hidden = false; }
-async function openList(kind){
-  lists.kind = kind; lists.last = null;
-  $('#listTitle').textContent = LIST_TITLE[kind]; $('#people').replaceChildren(); $('#peopleNone').hidden = true; $('#peopleMore').hidden = true;
-  openSheet('#listSheet', '#listSheet .x');
-  await moreList();
+function peopleList(ul, noneEl, moreEl){
+  const st = {kind: '', last: null, run: 0};
+  const list = {ul, none(){ noneEl.textContent = LIST_NONE[st.kind]; noneEl.hidden = false; }};
+  async function more(){
+    const kind = st.kind, run = st.run, page = {before: st.last ? st.last.at : null, before_id: st.last ? st.last.id : null, n: 30};
+    moreEl.disabled = true;
+    let rows = [];
+    try { rows = kind === 'requests' ? await rpc('request_list', page) : await rpc('follow_list', {uid: view.profile.id, kind, ...page}); }
+    catch (err){ toast(friendly(err)); }
+    if (run !== st.run) return;   // another list was opened meanwhile
+    for (const x of rows) ul.append(personRow(x, kind, list));
+    const last = rows[rows.length - 1];
+    if (last) st.last = {at: last.followed_at || last.requested_at, id: last.id};
+    moreEl.hidden = rows.length < 30; moreEl.disabled = false;
+    if (!ul.children.length) list.none();
+  }
+  moreEl.addEventListener('click', more);
+  list.open = kind => { st.kind = kind; st.last = null; st.run++; ul.replaceChildren(); noneEl.hidden = true; moreEl.hidden = true; return more(); };
+  return list;
 }
-async function moreList(){
-  const kind = lists.kind, more = $('#peopleMore'), page = {before: lists.last ? lists.last.at : null, before_id: lists.last ? lists.last.id : null, n: 30};
-  more.disabled = true;
-  let rows = [];
-  try { rows = kind === 'requests' ? await rpc('request_list', page) : await rpc('follow_list', {uid: view.profile.id, kind, ...page}); }
-  catch (err){ toast(friendly(err)); }
-  if (kind !== lists.kind) return;   // another list was opened meanwhile
-  for (const x of rows) $('#people').append(personRow(x, kind));
-  const last = rows[rows.length - 1];
-  if (last) lists.last = {at: last.followed_at || last.requested_at, id: last.id};
-  more.hidden = rows.length < 30; more.disabled = false;
-  if (!$('#people').children.length) listNone();
-}
-$('#peopleMore').addEventListener('click', moreList);
+const netList = peopleList($('#netPeople'), $('#netNone'), $('#netMore')), reqList = peopleList($('#people'), $('#peopleNone'), $('#peopleMore'));
+let netShown = '';   // which of the two the Network tab has now: 'following' or 'followers'
+$('#reqBtn').addEventListener('click', () => { openSheet('#listSheet', '#listSheet .x'); reqList.open('requests'); });
+// FOLLOWING and FOLLOWERS, the numbers at the top, open the Network tab on that list
 document.querySelectorAll('.statlink').forEach(d => {
-  d.addEventListener('click', () => openList(d.dataset.list));   // its button too: Enter and Space click it
+  d.addEventListener('click', () => goTab(d.dataset.list === 'followers' ? '#followers' : '#network'));   // its button too: Enter and Space click it
 });
-$('#reqBtn').addEventListener('click', () => openList('requests'));
 
-/* tabs: Profile / Shelves (#shelves keeps the second one on reload) */
-function paintTabs(){
-  const shelvesTab = location.hash === '#shelves';
-  $('#tabP').setAttribute('aria-selected', String(!shelvesTab)); $('#tabS').setAttribute('aria-selected', String(shelvesTab));
-  $('#panelP').hidden = shelvesTab; $('#panelS').hidden = !shelvesTab;
+/* ---------- the Activity tab: a line for each shelf saved, newest first (the feed's lines, without the photo: they're
+   all this person's). On your own profile your private shelves are there too, marked. ---------- */
+const ACTS = 20;
+let actsShown = 0;
+const savedAt = s => s.saved_at || s.updated_at;
+function actLine(s){
+  const p = view.profile, li = document.createElement('li'), name = shelfName(s), src = previewSrc(s), to = esc(pageUrl(p.username, s.id)), at = savedAt(s);
+  const cut = s.layout === 'stack' || s.layout === 'covers' ? ' ' + s.layout : '';
+  li.className = 'item';
+  li.innerHTML = `<p class="line"><a href="${esc(pageUrl(p.username))}">@${esc(p.username)}</a> ${new Date(at) - new Date(s.created_at) > 60000 ? 'updated' : 'shelved'} <a href="${to}">${esc(name)}</a>${s.is_public ? '' : ' <span class="tag">private</span>'} <span class="ago">· <time datetime="${esc(at)}" title="${esc(new Date(at).toLocaleString())}">${ago(at)}</time></span></p>
+    <a class="pic${cut}" href="${to}" tabindex="-1" aria-label="Open ${esc(name)}">${src ? `<img src="${esc(src)}" alt="" loading="lazy" width="360" height="640">` : ''}</a>`;
+  return li;
 }
-document.querySelector('.tabs').addEventListener('click', e => {
-  const b = e.target.closest('[data-tab]'); if (!b) return;
-  history.replaceState(null, '', location.pathname + location.search + (b.dataset.tab === 'shelves' ? '#shelves' : ''));
-  paintTabs();
+function paintActivity(more){
+  const list = [...view.shelves].sort((a, b) => new Date(savedAt(b)) - new Date(savedAt(a)));
+  if (!more){ $('#acts').replaceChildren(); actsShown = 0; }
+  for (const s of list.slice(actsShown, actsShown + ACTS)) $('#acts').append(actLine(s));
+  actsShown = Math.min(list.length, actsShown + ACTS);
+  $('#actsNone').hidden = !!list.length; $('#actsMore').hidden = actsShown >= list.length;
+}
+$('#actsMore').addEventListener('click', () => paintActivity(true));
+
+/* ---------- tabs: Profile · Shelves (#shelves) · Activity (#activity) · Network (#network is Following, #followers
+   is Followers). The address has the tab, so a reload lands on it, and so do the account menu's links. ---------- */
+const HASH = {'': ['profile'], '#shelves': ['shelves'], '#activity': ['activity'], '#network': ['network', 'following'], '#following': ['network', 'following'], '#followers': ['network', 'followers']};
+const PANEL = {profile: '#panelP', shelves: '#panelS', activity: '#panelA', network: '#panelN'};
+function paintTabs(){
+  const [tab, net] = HASH[location.hash] || HASH[''];
+  for (const b of document.querySelectorAll('#viewProfile > .tabs button')){ const on = b.dataset.tab === tab; b.setAttribute('aria-selected', String(on)); $(PANEL[b.dataset.tab]).hidden = !on; }
+  if (tab === 'activity') paintActivity();
+  if (tab === 'network'){
+    for (const b of document.querySelectorAll('.tabs.sub button')) b.setAttribute('aria-selected', String(b.dataset.net === net));
+    if (netShown !== net){ netShown = net; netList.open(net); }
+  }
+}
+function goTab(hash){ history.replaceState(null, '', location.pathname + location.search + hash); paintTabs(); }
+document.querySelector('#viewProfile > .tabs').addEventListener('click', e => {
+  const b = e.target.closest('[data-tab]'); if (b) goTab({profile: '', shelves: '#shelves', activity: '#activity', network: '#network'}[b.dataset.tab]);
 });
-document.querySelector('.tabs').addEventListener('keydown', e => {
-  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-  const next = document.activeElement === $('#tabP') ? $('#tabS') : $('#tabP'); next.focus(); next.click();
+document.querySelector('.tabs.sub').addEventListener('click', e => { const b = e.target.closest('[data-net]'); if (b) goTab(b.dataset.net === 'followers' ? '#followers' : '#network'); });
+// ← → move between the tabs of a row
+for (const row of document.querySelectorAll('#viewProfile .tabs')) row.addEventListener('keydown', e => {
+  const all = [...row.querySelectorAll('button')], i = all.indexOf(document.activeElement); if (i < 0 || (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft')) return;
+  const next = all[(i + (e.key === 'ArrowRight' ? 1 : all.length - 1)) % all.length]; next.focus(); next.click();
 });
+// a link to another tab of this same page (the account menu's Shelves, Activity, Network on your own profile)
+addEventListener('hashchange', () => { if (view.profile && !$('#viewProfile').hidden) paintTabs(); });
 
 /* the ··· menu */
 function closeMenu(){ $('#menu').hidden = true; $('#moreBtn').setAttribute('aria-expanded', 'false'); }

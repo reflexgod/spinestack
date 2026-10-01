@@ -36,7 +36,7 @@ const SHELVES = Array.from({ length: 18 }, (_, i) => {
   const owner = PEOPLE[i % PEOPLE.length];
   return { id: shelfId(i), owner: owner.id, caption: i % 4 ? `shelf number ${i}` : 'my next reads.', name: i % 5 ? null : 'a much longer shelf name that has to be cut short',
     filter: 'clean', intensity: 70, background: 'paper', wood: false, layout: ['row', 'stack', 'covers'][(i + Math.floor(i / 3)) % 3], varied: true, is_public: true, hidden: false,
-    preview_key: `${owner.id}/p/${shelfId(i)}`, pro: {}, created_at: day(i + 1), updated_at: day(i), saved_at: day(i), shelf_items: [{ count: 2 }] };
+    preview_key: `${owner.id}/p/${shelfId(i)}`, pro: {}, created_at: day(i % 6 === 4 ? i + 1 : i), updated_at: day(i), saved_at: day(i), shelf_items: [{ count: 2 }] };   // every sixth was saved again a day after it was made
 });
 const ITEMS = [
   { position: 0, item_id: 'b0', kind: 'book', title: 'The Waves', author: 'Virginia Woolf', year: 1931, spine_src: null, cover_src: null,
@@ -46,7 +46,7 @@ const ITEMS = [
 ];
 const feedRow = s => { const p = PEOPLE.find(x => x.id === s.owner);
   return { shelf_id: s.id, caption: s.caption, name: s.name, preview_key: s.preview_key, saved_at: s.saved_at, created_at: s.created_at, updated_at: s.updated_at,
-    owner: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key, updated: false }; };
+    owner: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key, updated: new Date(s.saved_at) - new Date(s.created_at) > 60000 }; };
 const card = (p, me) => ({ id: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key, is_private: p.is_private, i_follow: !!me && p.username === 'mira', i_requested: false });
 
 /* ---------- Supabase's REST API, answered from the data above ---------- */

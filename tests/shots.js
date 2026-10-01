@@ -3,7 +3,7 @@
 const { chromium } = require('@playwright/test');
 const { spawn } = require('child_process');
 const path = require('path'), fs = require('fs');
-const { mockNetwork } = require('./site');
+const { mockNetwork, PICTURE } = require('./site');
 
 const PORT = 8183, BASE = `http://127.0.0.1:${PORT}`, OUT = path.resolve(process.argv[2] || path.join(__dirname, 'shots'));
 const SHOTS = [
@@ -11,7 +11,14 @@ const SHOTS = [
   { name: 'home-signed-out', path: '/', signedIn: false },
   { name: 'build', path: '/build/', signedIn: true },
   { name: 'profile', path: '/u/?mira', signedIn: true },
+  { name: 'profile-activity', path: '/u/?mira#activity', signedIn: true },
+  { name: 'profile-network', path: '/u/?mira#network', signedIn: true },
+  { name: 'own-profile', path: '/u/?tester', signedIn: true },
   { name: 'feed', path: '/feed/?everyone', signedIn: true },
+  { name: 'feed-you', path: '/feed/?you', signedIn: true },
+  { name: 'settings', path: '/settings/', signedIn: true },
+  { name: 'settings-photo', path: '/settings/#photo', signedIn: true, photo: true },
+  { name: 'settings-account', path: '/settings/#account', signedIn: true },
 ];
 
 // in the page: a story for each card, with 1 to 20 spines, as its preview, laid out the way the card says its shelf is
@@ -56,6 +63,10 @@ async function drawPreviews(page) {
         await page.goto(BASE + shot.path); await page.waitForLoadState('networkidle');
         await page.evaluate(() => document.fonts.ready);
         await drawPreviews(page);
+        if (shot.photo) {   // a photo chosen, so the frame it's cut with shows
+          await page.locator('#photoFile').setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: PICTURE });
+          await page.locator('#cropBox .cropper-container').waitFor();
+        }
         await page.waitForTimeout(400);
         const file = path.join(OUT, `${shot.name}-${w}.png`);
         await page.screenshot({ path: file });

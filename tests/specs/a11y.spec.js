@@ -77,3 +77,12 @@ for (const tab of ['Photo', 'Account']) {
   });
 }
 
+// a profile's other tabs
+for (const [name, path] of [['Activity', '/u/?mira#activity'], ['Network', '/u/?mira#network'], ['your own Activity', '/u/?tester#activity']]) {
+  test(`axe: a profile, ${name}`, async ({ page }) => {
+    await mockNetwork(page, { signedIn: true });
+    await open(page, path);
+    await clean(page);
+  });
+}
+

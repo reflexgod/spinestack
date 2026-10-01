@@ -9,7 +9,7 @@ index.html            the home page (GitHub Pages serves this). Signed out: a we
 build/index.html      the shelf builder (New shelf / Edit shelf): Add, the spines as a list (drag one there or on the preview to move it), Style, the preview; at the bottom its name, who can view it, Cancel · Save · Save story
 add.js                + SHELF on every page: the Add to your shelf… dialog (suggestions as you type, then the spine choices and Add to shelf); the spine finder lives here
 shelf.js              draws the spines and the story (and says where it drew each book); build/ and u/ both use it, so a shelf looks the same everywhere
-u/index.html          profiles: /u/?username, and one shelf: /u/?username&shelf=<id>
+u/index.html          profiles: /u/?username with its tabs Profile (the main shelf first) · Shelves · Activity · Network (Following, Followers), and one shelf: /u/?username&shelf=<id>
 settings/index.html   your settings (signed in only): PROFILE (display name, bio, main shelf), PHOTO (cut square, made small, sent to the Worker), ACCOUNT (private profile). A profile's Edit profile comes here
 feed/index.html       the feed: /feed/, FOLLOWING · YOU · EVERYONE, a line for each shelf saved ("@abc shelved my films · 2h") with its card, newest first
 worker-address.js     sends Worker requests to its workers.dev address on networks that block api.shelfstackd.com
@@ -236,6 +236,9 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **The look** (`specs/look.spec.js`): the content and the bar's contents in one 950px column on every page, the type
   scale, one black button a screen, shelf cards six across at 150px (three on a phone) cut 2:3, the profile's name,
   numbers and tabs.
+- **A profile's tabs** (`specs/profile.spec.js`): the four tabs, their addresses and ← →; the main shelf first on
+  Profile; Activity's lines; Network's Following and Followers and the numbers that open them; the account menu's
+  links changing the tab on your own profile without loading it again.
 - **Settings** (`specs/settings.spec.js`): signed out and with no username yet; the three tabs and their addresses;
   Profile's Save sending the name, bio and main shelf; a photo cut square, made small (WebP, under the Worker's 2 MB),
   sent to the Worker and saved, then removed; Cancel; the private profile switch; a profile's links here.
