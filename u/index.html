@@ -80,7 +80,21 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
 .menu button{background:none;border:0;font:400 12px var(--mono);text-transform:uppercase;text-align:left;padding:8px 14px;cursor:pointer;color:var(--ink)}
 .menu button:hover{background:#F2F2F2}
 .bio-m{grid-area:bio;display:none;white-space:pre-line;overflow-wrap:anywhere;margin:0}
-.stats{grid-area:stats;display:flex;margin:0}
+.statcol{grid-area:stats;display:grid;justify-items:end;gap:10px}
+.stats{display:flex;margin:0}
+.statlink{cursor:pointer;outline-offset:4px}
+.statlink:hover dd,.statlink:focus-visible dd{text-decoration:underline dashed;text-decoration-thickness:2px;text-underline-offset:5px}
+/* FOLLOW, FOLLOWING / UNFOLLOW, REQUESTED / CANCEL: one width, so a label never moves the button mid-press */
+.btn.follow{min-width:calc(9ch + 30px);text-align:center}   /* FOLLOWING and REQUESTED, the longest, so it never changes width */
+.privmsg{margin:40px 0 0;font-size:14px}
+.people{list-style:none;margin:0;padding:0;display:grid;gap:14px;max-height:min(60vh,520px);overflow:auto;padding-right:2px}
+.person{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:12px;align-items:center}
+.person .pa{width:40px;height:40px;border-radius:50%;border:1px solid var(--ink);background:#F2F2F2;overflow:hidden;display:grid;place-items:center;font:400 16px var(--mono);text-transform:uppercase;text-decoration:none;color:var(--ink)}
+.person .pa img{width:100%;height:100%;object-fit:cover;display:block}
+.person .pn{min-width:0;display:grid;text-decoration:none}
+.person .pn b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.person .pn span{color:var(--grey);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.person .acts{display:flex;gap:10px;align-items:center}
 .stats div{padding:0 22px;text-align:center;border-left:1px solid var(--hair);display:flex;flex-direction:column-reverse}
 .stats div:first-child{border-left:0}
 .stats dd{margin:0;font-size:26px;font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums}
@@ -155,7 +169,9 @@ input.renamer{font:inherit;font-weight:500;line-height:inherit;height:1.55em;pad
   .bio-m{display:block}
   .bio-m:empty{display:none}
   .side .biosec{display:none}
+  .statcol{justify-items:stretch}
   .stats{border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);padding:12px 0;justify-content:space-around}
+  #reqBtn{justify-self:start}
   .stats div{padding:0 6px;border-left:0}
   .stats dd{font-size:20px}
   .stats dt{font-size:9.5px}
@@ -190,19 +206,24 @@ input.renamer{font:inherit;font-weight:500;line-height:inherit;height:1.55em;pad
         <p class="handle" id="handle"></p>
         <div class="pbtns">
           <button class="btn ghost sm" id="editBtn" type="button" hidden>Edit profile</button>
+          <button class="btn ghost sm follow" id="followBtn" type="button" hidden>Follow</button>
           <button class="btn ghost sm" id="moreBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More">···</button>
           <div class="menu" id="menu" role="menu" hidden><button type="button" role="menuitem" id="copyLink">Copy link</button><button type="button" role="menuitem" id="reportProfile" hidden>Report</button></div>
         </div>
       </div>
       <p class="bio-m" id="bioM"></p>
-      <dl class="stats">
-        <div><dt>Shelves</dt><dd id="nShelves">0</dd></div>
-        <div><dt>Spines</dt><dd id="nSpines">0</dd></div>
-        <div><dt>Following</dt><dd>0</dd></div>
-        <div><dt>Followers</dt><dd>0</dd></div>
-      </dl>
+      <div class="statcol" id="statCol">
+        <dl class="stats">
+          <div><dt>Shelves</dt><dd id="nShelves">0</dd></div>
+          <div><dt>Spines</dt><dd id="nSpines">0</dd></div>
+          <div class="statlink" data-list="following" role="button" tabindex="0"><dt>Following</dt><dd id="nFollowing">0</dd></div>
+          <div class="statlink" data-list="followers" role="button" tabindex="0"><dt>Followers</dt><dd id="nFollowers">0</dd></div>
+        </dl>
+        <button class="dash sm" id="reqBtn" type="button" hidden>Requests</button>
+      </div>
     </div>
-    <p class="note" id="privNote" hidden style="margin-top:18px">Your profile is private: only you can see it and its shelves.</p>
+    <p class="note" id="privNote" hidden style="margin-top:18px">Your profile is private: only your followers see its shelves. Others see your photo and name, and can ask to follow you.</p>
+    <p class="privmsg" id="privateMsg" hidden>This profile is private.</p>
 
     <div id="viewProfile">
       <nav class="tabs" role="tablist" aria-label="Profile">
@@ -260,6 +281,18 @@ input.renamer{font:inherit;font-weight:500;line-height:inherit;height:1.55em;pad
   </div>
 </div>
 
+<div class="sheet" id="listSheet" hidden role="dialog" aria-modal="true" aria-labelledby="listTitle">
+  <div class="sheetbox">
+    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <div>
+      <h2 id="listTitle">Followers</h2>
+      <ul class="people" id="people"></ul>
+      <p class="grey" id="peopleNone" hidden></p>
+      <button class="dash sm" id="peopleMore" type="button" hidden>Load more</button>
+    </div>
+  </div>
+</div>
+
 <div class="sheet" id="reportSheet" hidden role="dialog" aria-modal="true" aria-labelledby="reportTitle">
   <div class="sheetbox">
     <button class="x" data-close type="button" aria-label="Close">×</button>
@@ -291,7 +324,7 @@ input.renamer{font:inherit;font-weight:500;line-height:inherit;height:1.55em;pad
       <label class="field"><span class="lbl">Bio</span><textarea id="bioIn" maxlength="160" rows="3"></textarea><span class="note" id="bioCount"></span></label>
       <label class="field"><span class="lbl">Featured shelf</span><select id="pinIn"></select></label>
       <label class="check"><input type="checkbox" id="privIn"> Private profile</label>
-      <p class="note">A private profile and its shelves show only to you. Your username, <b id="unameRO"></b>, stays as it is.</p>
+      <p class="note">A private profile shows only its photo and name to people who don't follow it, and they ask to follow it. Your username, <b id="unameRO"></b>, stays as it is.</p>
       <button class="btn full" id="saveBtn" type="button">Save</button>
       <p class="note" id="editNote"></p>
     </div>
@@ -390,11 +423,12 @@ async function workerPost(path, body){
   return j;
 }
 async function startSession(){
-  if (!hasSession() && !returning()) return;
+  const back = returning();   // asked before Supabase takes ?code= off (it leaves "?name=" behind)
+  if (!hasSession() && !back) return;
   try {
-    const sb = await supa(), {data:{session}} = await sb.auth.getSession();   // finishes a Google sign-in coming back with ?code=
     const err = new URLSearchParams(location.search).get('error_description');
-    if (returning()) history.replaceState(null, '', (NAME ? pageUrl(NAME, SHELF) : location.pathname) + location.hash);
+    const sb = await supa(), {data:{session}} = await sb.auth.getSession();   // finishes a Google sign-in coming back with ?code=
+    if (back) history.replaceState(null, '', (NAME ? pageUrl(NAME, SHELF) : location.pathname) + location.hash);
     if (err) toast('Sign-in didn’t finish: ' + err);
     me.user = session && session.user;
     if (me.user){
@@ -537,13 +571,19 @@ async function load(){
   let p;
   try { p = (await api(`profiles?select=${PROFILE_COLS}&username=eq.${NAME}`))[0]; }
   catch (e){ $('#state').textContent = friendly(e); return; }
-  if (!p){ $('#state').innerHTML = `No one here. Profiles can be private, or the name may have changed. <a href="../">Build your own shelf</a>.`; return; }
+  if (!p){
+    // a private profile you don't follow: only its card
+    const card = (await rpc('profile_card', {p_username: NAME}).catch(() => []))[0];
+    if (card && card.is_private) return showPrivate(card);
+    $('#state').innerHTML = `No one here. The name may have changed. <a href="../">Build your own shelf</a>.`; return;
+  }
   view.profile = p; view.mine = !!(me.user && me.user.id === p.id);
   document.title = (p.display_name || '@' + p.username) + ' · shelfstackd';
   const [stats, shelves] = await Promise.all([rpc('profile_stats', {uid: p.id}).catch(() => []), fetchShelves().catch(() => [])]);
   view.shelves = shelves;
   paintStats(stats);
   paintHead();
+  paintFollow().then(async () => { if (await finishFollow()) paintFollow(); });
   $('#state').hidden = true; $('#page').hidden = false;
   if (SHELF) return showShelf(SHELF);
   $('#viewProfile').hidden = false; $('#viewShelf').hidden = true;
@@ -723,6 +763,143 @@ $('#recent').addEventListener('click', onCards);
 $('#all').addEventListener('click', onCards);
 $('#featLink').addEventListener('click', e => { const s = featured(); if (view.mine && s && !e.ctrlKey && !e.metaKey && !e.shiftKey){ e.preventDefault(); openBuilder(s.id); } });
 $('#openBuilder').addEventListener('click', e => { e.preventDefault(); openBuilder(e.currentTarget.dataset.id); });
+
+/* ---------- following: the FOLLOW button, the numbers, the lists, requests to a private profile ---------- */
+// FOLLOW pressed while signed out, or before picking a username, waits here (index.html sends you back once you have one)
+const PENDING = 'shelfstackd-follow';
+const pendingFollow = () => { try { const v = JSON.parse(sessionStorage.getItem(PENDING) || 'null'); return v && Date.now() - v.at < 30*60e3 ? v : null; } catch { return null; } };
+const keepFollow = x => { try { sessionStorage.setItem(PENDING, JSON.stringify({id: x.id, username: x.username, at: Date.now()})); } catch {} };
+const dropFollow = () => { try { sessionStorage.removeItem(PENDING); } catch {} };
+const avatarSrc = k => `${WORKER}/m/img?k=${encodeURIComponent(k)}`;
+// 'none', 'following', or 'requested' (a private profile that hasn't answered yet)
+const stateOf = x => x.i_follow ? 'following' : x.i_requested ? 'requested' : 'none';
+const LABEL = {none: 'Follow', following: 'Following', requested: 'Requested'}, UNDO = {following: 'Unfollow', requested: 'Cancel'};
+function followButton(btn, person, changed){
+  // hover shows UNFOLLOW (or CANCEL) and a click does it; on a phone the first tap shows it and a second one does it
+  let state = stateOf(person), sure = 0, touch = false;
+  const paint = undo => { btn.textContent = undo && UNDO[state] ? UNDO[state] : LABEL[state]; btn.setAttribute('aria-pressed', String(state !== 'none')); };
+  paint(false);
+  btn.onpointerdown = e => { touch = e.pointerType === 'touch'; };
+  btn.onmouseenter = () => { if (!touch) paint(true); };
+  btn.onmouseleave = () => { if (!sure) paint(false); };
+  btn.onclick = async () => {
+    if (!me.user){ keepFollow(person); openSheet('#signSheet', '#googleBtn'); toast('Sign in to follow @' + person.username + '.'); return; }
+    if (!me.profile){ keepFollow(person); toast('Pick a username first.'); setTimeout(() => { location.href = '../'; }, 900); return; }
+    if (state !== 'none' && touch && !sure){ sure = setTimeout(() => { sure = 0; paint(false); }, 3000); paint(true); return; }
+    clearTimeout(sure); sure = 0; btn.disabled = true;
+    try {
+      state = await rpc(state === 'none' ? 'follow' : 'unfollow', {target: person.id});
+      person.i_follow = state === 'following'; person.i_requested = state === 'requested';
+      if (state === 'requested') toast('Request sent to @' + person.username + '.');
+      if (changed) changed(state);
+    } catch (err){ toast(friendly(err)); }
+    finally { btn.disabled = false; paint(false); }
+  };
+}
+// a FOLLOW pressed before signing in, finished on the profile it was pressed on. true when it followed (or asked to).
+async function finishFollow(){
+  const pf = pendingFollow();
+  if (!pf || !view.profile || pf.id !== view.profile.id || view.mine || !me.user) return false;
+  if (!me.profile){ toast('Pick a username first.'); setTimeout(() => { location.href = '../'; }, 900); return false; }
+  dropFollow();
+  try {
+    const st = await rpc('follow', {target: pf.id});
+    toast(st === 'requested' ? 'Request sent to @' + pf.username + '.' : 'You follow @' + pf.username + ' now.');
+    return true;
+  } catch (err){ toast(friendly(err)); return false; }
+}
+// the header: FOLLOW on someone else's profile; the numbers; on your own, the requests waiting for you
+async function paintFollow(){
+  const p = view.profile, b = $('#followBtn');
+  b.hidden = view.mine;
+  if (!view.mine){
+    const card = (await rpc('profile_card', {p_username: p.username}).catch(() => []))[0] || {};
+    followButton(b, {...card, id: p.id, username: p.username}, state => {
+      if (p.is_private && state === 'none') location.reload();   // a private profile shows you only its card again
+      else paintFollowStats();
+    });
+  }
+  paintFollowStats();
+  if (view.mine) paintRequests();
+}
+async function paintFollowStats(){
+  const st = (await rpc('follow_stats', {uid: view.profile.id}).catch(() => []))[0] || {};
+  $('#nFollowing').textContent = st.following || 0; $('#nFollowers').textContent = st.followers || 0;
+}
+async function paintRequests(){
+  const list = await rpc('request_list', {n: 31}).catch(() => []), b = $('#reqBtn');
+  b.hidden = !list.length; b.textContent = `Requests (${list.length > 30 ? '30+' : list.length})`;
+}
+// a private profile you don't follow: its photo, display name and username, "This profile is private", and FOLLOW
+async function showPrivate(card){
+  view.profile = card; view.mine = false;
+  const name = (card.display_name || '').trim(), ava = $('#ava');
+  document.title = (name || '@' + card.username) + ' · shelfstackd';
+  $('#name').textContent = name || '@' + card.username; $('#handle').textContent = '@' + card.username; $('#handle').hidden = !name;
+  ava.className = 'ava';
+  if (card.avatar_key) ava.innerHTML = `<img src="${esc(avatarSrc(card.avatar_key))}" alt="${esc(name || card.username)}">`;
+  else { ava.textContent = (name || card.username).trim()[0] || '·'; ava.setAttribute('aria-hidden', 'true'); }
+  $('#editBtn').hidden = true; $('#reportProfile').hidden = false; $('#statCol').hidden = true; $('#bioM').hidden = true;
+  $('#viewProfile').hidden = true; $('#viewShelf').hidden = true; $('#privateMsg').hidden = false; $('#followBtn').hidden = false;
+  $('#state').hidden = true; $('#page').hidden = false;
+  if (await finishFollow()) card = (await rpc('profile_card', {p_username: card.username}).catch(() => []))[0] || card;
+  followButton($('#followBtn'), card, () => {});
+}
+
+// the lists: followers, following, and the requests waiting for you; 30 at a time
+const lists = {kind: '', last: null};
+const LIST_TITLE = {followers: 'Followers', following: 'Following', requests: 'Requests'};
+const LIST_NONE = {followers: 'No followers yet.', following: 'Not following anyone yet.', requests: 'No requests waiting.'};
+function personRow(x, kind){
+  const li = document.createElement('li'), name = (x.display_name || '').trim(), href = pageUrl(x.username);
+  li.className = 'person';
+  li.innerHTML = `<a class="pa" href="${esc(href)}" tabindex="-1" aria-hidden="true">${x.avatar_key ? `<img src="${esc(avatarSrc(x.avatar_key))}" alt="" loading="lazy">` : esc((name || x.username).trim()[0] || '·')}</a>
+    <a class="pn" href="${esc(href)}"><b>${esc(name || '@' + x.username)}</b><span>@${esc(x.username)}</span></a><div class="acts"></div>`;
+  const acts = li.querySelector('.acts');
+  if (kind === 'requests'){
+    acts.innerHTML = '<button class="btn sm" type="button" data-answer="1">Accept</button><button class="dash sm" type="button" data-answer="0">Decline</button>';
+    acts.addEventListener('click', async e => {
+      const b = e.target.closest('[data-answer]'); if (!b) return;
+      acts.querySelectorAll('button').forEach(y => { y.disabled = true; });
+      try {
+        const r = await rpc('answer_request', {requester: x.id, accept: b.dataset.answer === '1'});
+        li.remove(); toast(r === 'accepted' ? '@' + x.username + ' follows you now.' : 'Request declined.');
+        if (!$('#people').children.length) listNone();
+        paintRequests(); paintFollowStats();
+      } catch (err){ toast(friendly(err)); acts.querySelectorAll('button').forEach(y => { y.disabled = false; }); }
+    });
+  } else if (!me.user || x.id !== me.user.id){
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ghost sm follow'; acts.append(b);
+    followButton(b, x, () => paintFollowStats());
+  }
+  return li;
+}
+function listNone(){ $('#peopleNone').textContent = LIST_NONE[lists.kind]; $('#peopleNone').hidden = false; }
+async function openList(kind){
+  lists.kind = kind; lists.last = null;
+  $('#listTitle').textContent = LIST_TITLE[kind]; $('#people').replaceChildren(); $('#peopleNone').hidden = true; $('#peopleMore').hidden = true;
+  openSheet('#listSheet', '#listSheet .x');
+  await moreList();
+}
+async function moreList(){
+  const kind = lists.kind, more = $('#peopleMore'), page = {before: lists.last ? lists.last.at : null, before_id: lists.last ? lists.last.id : null, n: 30};
+  more.disabled = true;
+  let rows = [];
+  try { rows = kind === 'requests' ? await rpc('request_list', page) : await rpc('follow_list', {uid: view.profile.id, kind, ...page}); }
+  catch (err){ toast(friendly(err)); }
+  if (kind !== lists.kind) return;   // another list was opened meanwhile
+  for (const x of rows) $('#people').append(personRow(x, kind));
+  const last = rows[rows.length - 1];
+  if (last) lists.last = {at: last.followed_at || last.requested_at, id: last.id};
+  more.hidden = rows.length < 30; more.disabled = false;
+  if (!$('#people').children.length) listNone();
+}
+$('#peopleMore').addEventListener('click', moreList);
+document.querySelectorAll('.statlink').forEach(d => {
+  d.addEventListener('click', () => openList(d.dataset.list));
+  d.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openList(d.dataset.list); } });
+});
+$('#reqBtn').addEventListener('click', () => openList('requests'));
 
 /* tabs: Profile / Shelves (#shelves keeps the second one on reload) */
 function paintTabs(){

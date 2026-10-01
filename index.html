@@ -1446,6 +1446,11 @@ $('#nameBtn').addEventListener('click', async () => {
   const {data, error} = await acct.sb.from('profiles').insert({id: acct.user.id, username: v}).select('id,username,is_private').single();
   if (error){ nameFree = false; paintName(friendly(error), false); return; }
   acct.profile = data; closeSheet(); paintAcct(); toast('Welcome, @' + data.username + '.');
+  // FOLLOW was pressed on a profile before there was a username: back to that profile, which finishes it
+  try {
+    const pf = JSON.parse(sessionStorage.getItem('shelfstackd-follow') || 'null');
+    if (pf && Date.now() - pf.at < 30*60e3 && /^[a-z0-9_]{3,20}$/.test(pf.username)){ location.href = 'u/?' + pf.username; return; }
+  } catch {}
   await loadMine();
   if (acct.pendingSave){ acct.pendingSave = false; saveShelf(false); }
 });
