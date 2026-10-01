@@ -234,7 +234,7 @@ footer{margin-top:0}
           <div class="ctl"><span class="lbl">Filter</span>
             <div class="filters" id="filters" role="group" aria-label="Filter"></div>
             <label class="range"><span class="lbl">Intensity</span><input type="range" id="intensity" min="0" max="100" value="70" aria-label="Filter intensity"></label></div>
-          <div class="ctl"><label class="lbl" for="caption">Caption</label><input type="text" id="caption" value="my next reads." maxlength="60"></div>
+          <div class="ctl"><label class="lbl" for="caption">Caption</label><input type="text" id="caption" maxlength="60"></div>
           <div class="ctl" id="themeWrap"><span class="lbl">Background</span>
             <div class="seg" id="theme" role="group" aria-label="Background"><button type="button" data-v="paper">Paper</button><button type="button" data-v="ink">Ink</button><button type="button" data-v="blush">Blush</button><button type="button" data-v="shelf">Shelf</button><button type="button" data-v="dark">Dark</button><button type="button" data-v="forest">Forest</button><button type="button" data-v="wall">Your PNG<em class="pro">PRO</em></button></div>
             <p class="note" id="themeNote"></p>
@@ -362,7 +362,7 @@ const {extractPalette, findSpine, findSoloSpine} = Add;
 // ?new (+ new shelf on your profile): an empty shelf to begin with, not the sample
 const FRESH = new URLSearchParams(location.search).has('new');
 let books = [], isSample = true, uid = 0, server = false;
-const settings = {caption:'my next reads.', theme:'paper', layout:'row', varied:true, wood:false, plank:false, shelfColour:'#FFFFFF'};
+const settings = {caption:'', theme:'paper', layout:'row', varied:true, wood:false, plank:false, shelfColour:'#FFFFFF'};
 
 const API = String(window.SPINESTACK_API || '').replace(/\/+$/, '');
 
@@ -430,7 +430,21 @@ const usesPro = () => !!settings.plank || walled() || media.pngs.length > 0;
 const keysOf = pro => [pro && pro.wall_key, ...((pro && pro.wall_items) || []).map(p => p.key)].filter(Boolean);
 // this page's shelf, drawn by shelf.js
 let layout = {captionBottom: 150, booksTop: null, spots: []};   // where the preview's caption ends, its books begin, and each book is
-const renderStory = (x = sctx, f = settings.filter, fast = false) => { const r = Shelf.renderStory(x, f, fast, books, settings, false, art()); if (x === sctx) layout = r; return r; };
+let exporting = false;   // while the story is being saved, the preview holds the story and nothing else
+const renderStory = (x = sctx, f = settings.filter, fast = false) => {
+  const r = Shelf.renderStory(x, f, fast, books, settings, false, art());
+  if (x === sctx){ layout = r; if (!exporting && !settings.caption.trim()) captionHint(x); }
+  return r;
+};
+// With no name yet, the preview says where it will go, lightly. Only this preview: never the story that's saved or
+// shared, or the picture kept with a saved shelf.
+function captionHint(x){
+  const dark = walled() ? !!media.wall.dark : ['ink', 'dark', 'forest'].includes(settings.theme);
+  x.save();
+  x.fillStyle = dark ? 'rgba(255,255,255,.3)' : 'rgba(0,0,0,.2)'; x.font = '500 52px "Geist Mono", ui-monospace, monospace'; x.textBaseline = 'alphabetic'; x.textAlign = 'left';
+  x.fillText('your shelf', 90, 290);
+  x.restore();
+}
 const sizes = (H0, U, list = books) => Shelf.sizes(H0, U, list, settings);
 Shelf.onTextureLoaded(() => redraw());
 /* the Filter row: a live thumbnail of this shelf in each look */
@@ -944,11 +958,13 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#modal').
 $('#exportBtn').addEventListener('click', async () => {
   if (!books.length){ toast('Add something to your shelf first.'); return; }
   await Promise.all(Object.values(TEX).map(t => t.ready).filter(Boolean));
-  renderStory();
+  exporting = true; renderStory();   // the story alone: no "your shelf" where a name would be
+  const back = () => { exporting = false; redraw(); };
   let blobOk = true;
   try { story.toBlob(() => {}); } catch { blobOk = false; }
-  if (!blobOk){ toast('One image can’t be exported. Remove it and try again.'); return; }
+  if (!blobOk){ back(); toast('One image can’t be exported. Remove it and try again.'); return; }
   story.toBlob(async blob => {
+    back();
     if (!blob){ toast('Couldn’t create the image. Try again.'); return; }
     if (downloads){
       try { await downloads.save({filename:'shelfstackd-story.png', data:blob}); toast('Saved. Open Instagram, add a story, pick this image.'); return; }
@@ -969,13 +985,13 @@ const edition = () => { try { return localStorage.getItem(Add.EDITION) === 'any'
 document.querySelectorAll('input[name=ed]').forEach(r => { r.checked = r.value === edition(); r.addEventListener('change', () => { if (r.checked) try { localStorage.setItem(Add.EDITION, r.value); } catch {} }); });
 
 /* ---------- the shelf's name, and who can view it ---------- */
-// A new shelf's name is also the caption on its story, as it always was: the caption follows the name until it's
-// written by hand (Style → Caption). After that they're two things, and the name is kept in shelves.name.
+// A shelf's name is also the caption on its story: the caption follows the name (with no name there's no caption)
+// until it's written by hand (Style → Caption). After that they're two things, and the name is kept in shelves.name.
 let mirrored = '';
 const shelfNameNow = () => $('#shelfName').value.replace(/\s+/g, ' ').trim().slice(0, 60);
 $('#shelfName').addEventListener('input', () => {
   const v = shelfNameNow();
-  if (settings.caption === DEFAULT_CAPTION || settings.caption === mirrored){ settings.caption = v || DEFAULT_CAPTION; mirrored = v; $('#caption').value = settings.caption; }
+  if (settings.caption === DEFAULT_CAPTION || settings.caption === mirrored){ settings.caption = v; mirrored = v; $('#caption').value = v; }
   redraw();
 });
 const isPublicNow = () => ($('input[name=vis]:checked') || {}).value !== 'private';

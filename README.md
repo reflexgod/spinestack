@@ -6,9 +6,9 @@ Type a film or a book, get its real spine, put it on a shelf, save the shelf as 
 
 ```
 index.html            the home page (GitHub Pages serves this). Signed out: a welcome and the newest public shelves; signed in: new shelves from people you follow. Links to the old builder here (/?open=, /#shelf) go on to build/
-build/index.html      the shelf builder (New shelf / Edit shelf): its name, who can view it, Add, the spines as a list, Style, the preview, Cancel · Save · Save story
+build/index.html      the shelf builder (New shelf / Edit shelf): Add, the spines as a list (drag one there or on the preview to move it), Style, the preview; at the bottom its name, who can view it, Cancel · Save · Save story
 add.js                + SHELF on every page: the Add to your shelf… dialog (suggestions as you type, then the spine choices and Add to shelf); the spine finder lives here
-shelf.js              draws the spines and the story; build/ and u/ both use it, so a shelf looks the same everywhere
+shelf.js              draws the spines and the story (and says where it drew each book); build/ and u/ both use it, so a shelf looks the same everywhere
 u/index.html          profiles: /u/?username, and one shelf: /u/?username&shelf=<id>
 feed/index.html       the feed: /feed/, FOLLOWING and EVERYONE, newest saved shelves first
 worker-address.js     sends Worker requests to its workers.dev address on networks that block api.shelfstackd.com
@@ -223,7 +223,9 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   search, pick, Add to shelf on the builder (no reload) and from another page (which goes to the builder); the
   builder's fields, Style shut with its one line, a row's controls opening one at a time, ↑ ↓ and dragging; Save
   signed out and signed in, `?open=<id>`, `?new`, old `?embed` links, a profile's links to the builder, the shelf being
-  made surviving a trip to another page (and giving way to a saved shelf that's opened), Cancel.
+  made surviving a trip to another page (and giving way to a saved shelf that's opened), Cancel; the order of the
+  page, dragging a spine on the preview (mouse, and hold-then-drag with a finger), and the caption: it follows the
+  Name, and with no name the preview's faint "your shelf" is not in the saved story.
 - **The dialog's search** (`specs/add.spec.js`): suggestions while typing with one search for a word typed quickly, a
   slower earlier answer dropped, six results in order of closeness, ↑ ↓ Enter Esc, Enter searching at once, the
   loading and nothing-found lines; the capped answer from `/scans` and its message; "Search by Brave" in every

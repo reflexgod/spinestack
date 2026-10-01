@@ -413,3 +413,53 @@ test('with a finger: holding a spine and then dragging moves it; a quick swipe a
   expect(await titles(page)).toEqual([before[1], before[2], before[3], before[0]]);
 });
 
+/* ---------- the caption on the preview ---------- */
+// how much lettering is in the band where the caption goes (story pixels 80 to 700 across, 240 to 300 down):
+// {dark: pixels of black ink, faint: pixels of the light grey "your shelf"}
+const captionBand = (page, src) => page.evaluate(async src => {
+  let c = document.querySelector('#story');
+  if (src){ const im = new Image(); im.src = src; await im.decode(); c = document.createElement('canvas'); c.width = 1080; c.height = 1920; c.getContext('2d').drawImage(im, 0, 0, 1080, 1920); }
+  const d = c.getContext('2d').getImageData(80, 240, 620, 60).data; let dark = 0, faint = 0;
+  for (let i = 0; i < d.length; i += 4){ const v = (d[i] + d[i + 1] + d[i + 2]) / 3; if (v < 90) dark++; else if (v < 235) faint++; }
+  return { dark, faint };
+}, src);
+
+test('the caption on the preview follows the Name; with no name it is a faint "your shelf" that is not in the saved story', async ({ page }) => {
+  test.skip(isPhone(), 'the saved story is a download here; on a phone it goes to the share sheet');
+  const errors = watchErrors(page);
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/build/');
+  await page.waitForTimeout(300);
+  // no name: no caption, only the hint, lightly
+  await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue('');
+  const hint = await captionBand(page);
+  expect(hint.dark).toBe(0);
+  expect(hint.faint).toBeGreaterThan(200);
+  // the story that's saved has nothing there
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save story' }).click();
+  const file = await (await download).path();
+  const saved = await captionBand(page, 'data:image/png;base64,' + require('fs').readFileSync(file).toString('base64'));
+  expect(saved).toEqual({ dark: 0, faint: 0 });
+  // a name: it's the caption, in ink, and Style's Caption box has it too
+  await page.getByRole('textbox', { name: 'Name' }).fill('2am films');
+  await expect.poll(async () => (await captionBand(page)).dark).toBeGreaterThan(500);
+  await page.locator('#stylePanel summary').click();
+  await expect(page.getByRole('textbox', { name: 'Caption' })).toHaveValue('2am films');
+  // the name cleared: back to the hint
+  await page.getByRole('textbox', { name: 'Name' }).fill('');
+  await expect.poll(async () => (await captionBand(page)).dark).toBe(0);
+  await expect(page.getByRole('textbox', { name: 'Caption' })).toHaveValue('');
+  expect(errors).toEqual([]);
+});
+
+test('a shelf saved with no name has no caption', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/build/');
+  await page.locator('header.top .add').click();
+  await addGummo(page);
+  const saved = page.waitForRequest(r => r.url().includes('/rpc/save_shelf'));
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  expect((await saved).postDataJSON().shelf.caption).toBe('');
+});
+
