@@ -270,7 +270,7 @@ const paintAcct = () => Nav.paint(me);
 const signIn = () => openSheet('#signSheet', '#googleBtn');
 Nav.onSignIn(signIn);
 // Sign out, from the account menu (nav.js): the page starts again signed out
-Nav.onSignOut(async () => { try { const {error} = await (await supa()).auth.signOut(); if (error) throw error; } catch (e){ toast(friendly(e)); } });
+Nav.onSignOut(async () => { try { const {error} = await (await supa()).auth.signOut({scope: 'local'}); if (error) throw error; } catch (e){ toast(friendly(e)); } });
 $('#googleBtn').addEventListener('click', async () => {
   const btn = $('#googleBtn'); btn.disabled = true;
   try {

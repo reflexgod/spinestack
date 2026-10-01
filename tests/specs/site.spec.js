@@ -130,7 +130,9 @@ test.describe('account menu', () => {
     await mockNetwork(page, { signedIn: true });
     await open(page, '/');
     await page.locator('#acctBtn').click();
+    const logout = page.waitForRequest(r => r.url().includes('/auth/v1/logout'));
     await page.getByRole('menuitem', { name: 'Sign out' }).click();
+    expect(new URL((await logout).url()).searchParams.get('scope'), 'this device only, not every device').toBe('local');
     await expect(page.locator('#signInBtn')).toHaveText(/sign in/i);
     await expect(page.locator('#acctBtn')).toBeHidden();
     await expect(page.locator('#start')).toBeVisible();   // signed-out home
@@ -140,7 +142,9 @@ test.describe('account menu', () => {
     await mockNetwork(page, { signedIn: true });
     await open(page, '/build/');
     await page.locator('#acctBtn').click();
+    const logout = page.waitForRequest(r => r.url().includes('/auth/v1/logout'));
     await page.getByRole('menuitem', { name: 'Sign out' }).click();
+    expect(new URL((await logout).url()).searchParams.get('scope')).toBe('local');
     await expect(page.locator('#signInBtn')).toHaveText(/sign in/i);
     await expect(page).toHaveURL(/\/build\/$/);
   });
@@ -160,6 +164,16 @@ test.describe('account menu', () => {
     await open(page, '/');
     await expect(page.getByRole('menu')).toHaveCount(0);
   });
+});
+
+test('every sign-out is for this device only', () => {
+  test.skip(isPhone(), 'reads files, no browser: once is enough');
+  const fs = require('fs'), path = require('path'), { ROOT } = require('../site');
+  for (const f of ['index.html', 'build/index.html', 'feed/index.html', 'u/index.html', 'admin.html']) {
+    const calls = fs.readFileSync(path.join(ROOT, f), 'utf8').match(/auth\.signOut\([^)]*\)/g) || [];
+    expect(calls.length, f).toBeGreaterThan(0);
+    for (const c of calls) expect(c, f).toBe("auth.signOut({scope: 'local'})");
+  }
 });
 
 test('the ▾ next to + SHELF has one item: Upload a scan…', async ({ page }) => {

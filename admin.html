@@ -172,7 +172,7 @@ $('#repIn').addEventListener('click', async () => {
   try { const c = await supa(); const {error} = await c.auth.signInWithOAuth({provider:'google', options:{redirectTo: location.origin + location.pathname}}); if (error) throw error; }
   catch (e){ $('#repIn').insertAdjacentHTML('afterend', `<p class="status err">${esc(e.message)}</p>`); }
 });
-$('#repOut').addEventListener('click', async () => { await sb.auth.signOut(); $('#repList').innerHTML = ''; status(''); show(); });
+$('#repOut').addEventListener('click', async () => { await sb.auth.signOut({scope: 'local'}); $('#repList').innerHTML = ''; status(''); show(); });
 if (hasSession() || returning()) supa().then(show).catch(e => status(e.message, true));
 })();
 </script>

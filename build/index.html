@@ -1495,7 +1495,7 @@ $('#nameBtn').addEventListener('click', async () => {
   if (acct.pendingSave){ acct.pendingSave = false; saveShelf(false); }
 });
 async function signOut(){
-  try { await (await supa()).auth.signOut(); } catch {}
+  try { await (await supa()).auth.signOut({scope: 'local'}); } catch {}
   await setUser(null); closeSheet(); toast('Signed out.');
 }
 $('#nameOut').addEventListener('click', signOut);   // no username yet, so no account menu: the way out is here
