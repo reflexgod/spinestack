@@ -77,18 +77,13 @@
 .cap .tag,.featmeta .tag{flex:none}
 /* exactly the height of the name it replaces, so nothing below it moves (a link that moves mid-press misses its click) */
 input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1);min-width:0;width:100%;max-width:320px}
-.newcard{display:block;width:100%;padding:0;border:0;background:none;cursor:pointer;font:inherit;color:var(--ink)}
+.newcard{display:block;text-decoration:none;color:var(--ink)}
 .thumbs .pic.new{background:var(--paper);border:1px dashed var(--ink);display:grid;place-items:center;font:600 var(--fs-btn) var(--mono);text-transform:uppercase;letter-spacing:.04em}
 .thumbs .pic.new::after{display:none}
 .newcard:hover .pic.new{background:var(--wash)}
 .thumbs .acts{display:flex;flex-wrap:wrap;gap:var(--s1) var(--s2);margin-top:var(--s1);align-items:baseline}
 .dash.xs{font-size:var(--fs-label);font-weight:400;text-transform:none;letter-spacing:0;padding-bottom:2px;background-size:100% 1px}
 .tag{vertical-align:1px}
-/* the builder, over the profile */
-.builder{position:fixed;inset:0;z-index:20;background:var(--paper);display:grid;grid-template-rows:auto minmax(0,1fr)}
-.bbar{display:flex;justify-content:space-between;align-items:center;gap:var(--s4);padding:max(var(--s3), env(safe-area-inset-top,0px)) max(var(--gutter), calc((100% - var(--col))/2)) var(--s3);border-bottom:1px solid var(--hair)}
-.bbar b{font-size:var(--fs-dialog);font-weight:400}
-.builder iframe{display:block;width:100%;height:100%;border:0}
 .side{display:grid;gap:var(--s6);min-width:0}
 .side .bio{white-space:pre-line;overflow-wrap:anywhere;margin:0}
 .addbio{background:none;border:0;padding:0;font:inherit;color:var(--grey);cursor:pointer;text-align:left}
@@ -199,15 +194,10 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 
     <section id="viewShelf" hidden>
       <a class="dash sm back" id="backLink" href="#">← All shelves</a>
-      <div class="feat"><div class="pic1" id="oneShelf"></div><div class="featmeta"><b id="oneCap"></b><span class="grey" id="oneMeta"></span><a class="dash sm" id="openBuilder" href="#" hidden style="margin-left:auto">Open in builder</a><button class="dash sm grey" id="reportShelf" type="button" hidden style="margin-left:auto">Report</button></div></div>
+      <div class="feat"><div class="pic1" id="oneShelf"></div><div class="featmeta"><b id="oneCap"></b><span class="grey" id="oneMeta"></span><a class="dash sm" id="openBuilder" href="../build/" hidden style="margin-left:auto">Open in builder</a><button class="dash sm grey" id="reportShelf" type="button" hidden style="margin-left:auto">Report</button></div></div>
     </section>
   </div>
 </main>
-
-<div class="builder" id="builder" hidden role="dialog" aria-modal="true" aria-labelledby="bTitle">
-  <div class="bbar"><b id="bTitle">New shelf</b><button class="dash sm" id="bClose" type="button">Close</button></div>
-  <iframe id="bFrame" title="Shelf builder" allow="web-share; clipboard-write"></iframe>
-</div>
 
 <div class="sheet" id="signSheet" hidden role="dialog" aria-modal="true" aria-label="Sign in">
   <div class="sheetbox">
@@ -399,7 +389,7 @@ let sheetFrom = null;
 function openSheet(id, focus){ sheetFrom = document.activeElement; $(id).hidden = false; const f = $(focus); if (f) f.focus(); }
 function closeSheets(){ document.querySelectorAll('.sheet').forEach(s => s.hidden = true); if (sheetFrom && sheetFrom.focus) sheetFrom.focus(); }
 document.querySelectorAll('.sheet').forEach(s => s.addEventListener('click', e => { if (e.target === s || e.target.closest('[data-close]')) closeSheets(); }));
-document.addEventListener('keydown', e => { if (e.key === 'Escape'){ if (!$('#builder').hidden) askClose(); else { closeSheets(); closeMenu(); } } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape'){ closeSheets(); closeMenu(); } });
 
 /* ---------- a saved spine back into a book (the same as rebuild() in build/: keep the two in step) ---------- */
 const srcOf = ref => ref.startsWith('a:') ? `${WORKER}/archive/img?id=${ref.slice(2)}` : ref.startsWith('u:') ? `${WORKER}/u/blob?k=${encodeURIComponent(ref.slice(2))}`
@@ -488,14 +478,15 @@ function thumbs(list){
     const name = shelfName(s), src = previewSrc(s), href = esc(pageUrl(view.profile.username, s.id));
     const pic = `<span class="pic">${src ? `<img src="${esc(src)}" alt="" loading="lazy" width="360" height="640">` : ''}</span>`, meta = `${spines(countOf(s))} · ${esc(fmtDate(s.updated_at))}`;
     if (!mine) return `<li><a href="${href}" data-shelf="${s.id}" aria-label="${esc(name)}">${pic}<span class="cap">${esc(name)}</span><span class="meta">${meta}</span></a></li>`;
-    const acts = `<div class="acts"><button class="dash xs" type="button" data-act="open" data-id="${s.id}">open</button>` +
+    const edit = '../build/?open=' + s.id;   // the builder, with this shelf in it
+    const acts = `<div class="acts"><a class="dash xs" href="${edit}">open</a>` +
       (main && main.id === s.id ? '<span class="tag">main</span>' : s.is_public ? `<button class="dash xs" type="button" data-act="main" data-id="${s.id}">make main shelf</button>` : '') +
       `<button class="dash xs" type="button" data-act="privacy" data-id="${s.id}">${s.is_public ? 'private' : 'public'}</button>` +
       `<button class="dash xs" type="button" data-act="delete" data-id="${s.id}">delete</button></div>`;
-    return `<li class="own"><a href="${href}" data-shelf="${s.id}" aria-label="Open ${esc(name)}">${pic}</a>
+    return `<li class="own"><a href="${edit}" aria-label="Open ${esc(name)} in the builder">${pic}</a>
       <span class="cap"><button class="name" type="button" data-rename="${s.id}" title="Rename">${esc(name)}</button>${!s.is_public ? '<span class="tag">private</span>' : ''}</span><span class="meta">${meta}</span>${acts}</li>`;
   };
-  return (mine ? '<li><button class="newcard" type="button" data-act="new"><span class="pic new">+ new shelf</span></button></li>' : '') + list.map(card).join('');
+  return (mine ? '<li><a class="newcard" href="../build/?new"><span class="pic new">+ new shelf</span></a></li>' : '') + list.map(card).join('');
 }
 let redrawT = 0;
 function redrawAll(){ clearTimeout(redrawT); redrawT = setTimeout(() => { for (const f of view.drawn) f(); }, 60); }
@@ -574,7 +565,7 @@ function featured(){ const p = view.profile, pub = publicOnes(); return pub.find
 let featRun = 0;
 async function paintFeatured(){
   const s = featured(), run = ++featRun; $('#featWrap').hidden = !s; if (!s) return;
-  $('#featLink').href = pageUrl(view.profile.username, s.id);
+  $('#featLink').href = view.mine ? '../build/?open=' + s.id : pageUrl(view.profile.username, s.id);
   if (view.mine) $('#featCap').replaceChildren(nameButton(s)); else $('#featCap').textContent = shelfName(s);
   $('#featMeta').textContent = `${spines(countOf(s))} · ${fmtDate(s.updated_at)}`;
   let list;
@@ -602,7 +593,7 @@ async function showShelf(id){
   if (!s){ $('#oneCap').textContent = 'This shelf is private, or it was deleted.'; $('#oneMeta').textContent = ''; $('#oneShelf').replaceChildren(); $('#openBuilder').hidden = $('#reportShelf').hidden = true; return; }
   $('#oneCap').textContent = shelfName(s);
   $('#oneMeta').textContent = `${spines(countOf(s))} · ${fmtDate(s.updated_at)}`;
-  $('#openBuilder').hidden = !view.mine; $('#openBuilder').dataset.id = s.id;
+  $('#openBuilder').hidden = !view.mine; $('#openBuilder').href = '../build/?open=' + s.id;
   $('#reportShelf').hidden = view.mine; $('#reportShelf').dataset.id = s.id;
   document.title = shelfName(s) + ' · @' + p.username + ' · shelfstackd';
   await fontsReady;
@@ -612,33 +603,10 @@ async function showShelf(id){
   draw(); view.drawn.push(draw);
 }
 
-/* ---------- your own shelves, from here: the builder over this page, and each card's links ---------- */
-// the same builder as build/ (in its embed mode), in a frame over the profile; it says when it saved
-function openBuilder(id){
-  if (!view.mine) return;
-  const b = $('#bClose'); delete b.dataset.sure; b.textContent = 'Close';
-  $('#bTitle').textContent = id ? 'Edit shelf' : 'New shelf';
-  $('#bFrame').src = '../build/?embed' + (id ? '&open=' + encodeURIComponent(id) : '&new');
-  $('#builder').hidden = false; document.body.style.overflow = 'hidden'; b.focus();
-}
-function closeBuilder(){ $('#builder').hidden = true; $('#bFrame').src = 'about:blank'; document.body.style.overflow = ''; }
-function askClose(){
-  const b = $('#bClose'); let dirty = false;
-  try { const w = $('#bFrame').contentWindow; dirty = !!(w && w.spinestackDirty && w.spinestackDirty()); } catch {}
-  if (dirty && !b.dataset.sure){ b.dataset.sure = '1'; b.textContent = 'Close without saving?'; setTimeout(() => { if (b.isConnected && b.dataset.sure){ delete b.dataset.sure; b.textContent = 'Close'; } }, 4000); return; }
-  closeBuilder();
-}
-$('#bClose').addEventListener('click', askClose);
-addEventListener('message', e => {
-  if (e.origin !== location.origin || !e.data || e.data.spinestack !== 'saved' || $('#builder').hidden) return;
-  closeBuilder(); toast('Shelf saved.');
-  refresh().catch(err => toast(friendly(err)));
-});
+/* ---------- your own shelves, from here: each card's links (opening one, and a new one, are links to the builder) ---------- */
 async function cardAction(b){
   const act = b.dataset.act, id = b.dataset.id, s = view.shelves.find(x => x.id === id);
-  if (act === 'new') return openBuilder(null);
   if (!s) return;
-  if (act === 'open') return openBuilder(id);
   if (act === 'delete' && !b.dataset.sure){ b.dataset.sure = '1'; b.textContent = 'sure? delete'; setTimeout(() => { if (b.isConnected){ delete b.dataset.sure; b.textContent = 'delete'; } }, 4000); return; }
   b.disabled = true;
   try {
@@ -697,12 +665,9 @@ document.addEventListener('click', e => { const b = e.target.closest('button[dat
 function onCards(e){
   const act = e.target.closest('[data-act]'), link = e.target.closest('a[data-shelf]');
   if (act){ e.preventDefault(); cardAction(act); return; }
-  if (link && view.mine && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.button){ e.preventDefault(); openBuilder(link.dataset.shelf); }
 }
 $('#recent').addEventListener('click', onCards);
 $('#all').addEventListener('click', onCards);
-$('#featLink').addEventListener('click', e => { const s = featured(); if (view.mine && s && !e.ctrlKey && !e.metaKey && !e.shiftKey){ e.preventDefault(); openBuilder(s.id); } });
-$('#openBuilder').addEventListener('click', e => { e.preventDefault(); openBuilder(e.currentTarget.dataset.id); });
 
 /* ---------- following: the FOLLOW button, the numbers, the lists, requests to a private profile ---------- */
 // FOLLOW pressed while signed out, or before picking a username, waits here (build/ sends you back once you have one)

@@ -214,19 +214,58 @@ test('?open=<id> is Edit shelf, with the shelf’s name, who can view it, and it
   expect(errors).toEqual([]);
 });
 
-test('?embed (the builder over a profile): no bar, no title, no Cancel, and an empty shelf', async ({ page }) => {
+test('your own profile: + new shelf goes to the builder with an empty shelf, and a card’s open to Edit shelf', async ({ page }) => {
+  const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
-  await page.setContent('<iframe id="f" style="width:100%;height:700px;border:0"></iframe>');
-  await page.goto('/u/?tester');
-  await page.waitForLoadState('networkidle');
-  await page.locator('[data-act="new"]').first().click();
-  const frame = page.frameLocator('#bFrame');
-  await expect(frame.locator('#books .empty')).toBeVisible();
-  await expect(frame.locator('header.top')).toBeHidden();
-  await expect(frame.locator('#pageTitle')).toBeHidden();
-  await expect(frame.locator('#cancelBtn')).toBeHidden();
-  await expect(frame.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
-  await expect(frame.getByRole('textbox', { name: 'Add' })).toBeVisible();
+  const mine = SHELVES.find(s => s.owner === ME.id);
+  await open(page, '/u/?tester');
+  await expect(page.locator('#builder, iframe')).toHaveCount(0);   // no builder laid over the profile any more
+  await page.getByRole('link', { name: '+ new shelf' }).first().click();
+  await expect(page).toHaveURL(/\/build\/$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('New shelf');
+  await expect(page.locator('#books')).toHaveText('Your shelf is empty. Add a film or a book above.');   // empty, not the sample
+  await expect(page.locator('header.top')).toBeVisible();
+  await open(page, '/u/?tester');
+  await page.locator('#recent li.own').first().getByRole('link', { name: 'open', exact: true }).click();
+  await expect(page).toHaveURL(/\/build\/$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Edit shelf');
+  await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue(mine.name);
+  expect(await titles(page)).toEqual(['The Waves', 'Journey by Moonlight']);
+  expect(errors).toEqual([]);
+});
+
+test('old ?embed links come to the builder itself, at the root and at /build/', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  const mine = SHELVES.find(s => s.owner === ME.id);
+  await page.goto('/build/?embed&open=' + mine.id);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Edit shelf');
+  await expect(page).toHaveURL(/\/build\/$/);
+  await expect(page.locator('header.top')).toBeVisible();
+  await page.goto('/?embed&new');
+  await expect(page).toHaveURL(/\/build\/$/);
+  await expect(page.locator('#books .empty')).toBeVisible();
+});
+
+test('opening a saved shelf replaces a draft of another shelf; + new shelf keeps a new shelf that was being made', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  const mine = SHELVES.find(s => s.owner === ME.id);
+  await open(page, '/build/');
+  await page.locator('header.top .add').click();
+  await addGummo(page);
+  await page.waitForFunction(() => !!sessionStorage.getItem('spinestack-draft'));
+  await page.waitForTimeout(700);
+  await open(page, '/build/?new');            // + new shelf: the new shelf being made is still it
+  expect(await titles(page)).toEqual(['Gummo']);
+  await page.waitForFunction(() => !!sessionStorage.getItem('spinestack-draft'));
+  await page.waitForTimeout(700);
+  await open(page, '/build/?open=' + mine.id);   // a saved shelf was asked for: it opens, not the draft
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Edit shelf');
+  expect(await titles(page)).toEqual(['The Waves', 'Journey by Moonlight']);
+  await page.waitForFunction(() => !!sessionStorage.getItem('spinestack-draft'));
+  await page.waitForTimeout(700);
+  await open(page, '/build/?new');            // + new shelf while a saved shelf was being changed: a new, empty one
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('New shelf');
+  await expect(page.locator('#books .empty')).toBeVisible();
 });
 
 test('the shelf being made is still there after leaving the page and coming back', async ({ page }) => {

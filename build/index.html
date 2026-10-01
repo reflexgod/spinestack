@@ -24,8 +24,16 @@
   window.SPINESTACK_SUPABASE_KEY = "sb_publishable_cZeUDJXk-nCbSJ4VZWn_GQ_6xNFyBo2";
   /* Sign-in by email link: off until the site has its own domain to send email from. */
   window.SPINESTACK_EMAIL_LOGIN = false;
-  /* Inside a profile page (u/), which opens this builder over itself: no site header, footer or My shelves. */
-  if (window.parent !== window && /[?&]embed(&|=|$)/.test(location.search)) document.documentElement.classList.add('embed');
+  /* The builder used to open inside a profile page as well (?embed, in a frame over it). It's this page alone now, and
+     links of that kind come here without it: ?embed&open=<id> is ?open=<id>, ?embed&new is ?new. */
+  (function(){
+    var q = new URLSearchParams(location.search);
+    if (!q.has('embed')) return;
+    q.delete('embed');
+    var rest = q.toString().replace(/=(&|$)/g, '$1');
+    document.documentElement.hidden = true;
+    (window.top === window ? location : window.top.location).replace(location.pathname + (rest ? '?' + rest : '') + location.hash);
+  })();
 </script>
 <title>shelfstackd</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -151,9 +159,6 @@ em.pro{margin:0 var(--s1)}
 .barleft:has(#saveNew[hidden]):has(#saveNote:empty){display:none}
 .mkbar .note{margin:0}
 footer{margin-top:0}
-/* the builder inside a profile page */
-.embed .top,.embed footer,.embed #pageTitle,.embed #cancelBtn{display:none!important}   /* the profile's frame has the title and Close */
-.embed main{padding-top:var(--s4)}
 .uname{display:flex;align-items:center;gap:var(--s1);border:1px solid var(--ink);border-radius:var(--radius);padding:0 0 0 var(--s3)}
 .uname input[type=text]{border:0;padding-left:0}
 .uname input[type=text]:focus{outline:none}
@@ -347,9 +352,8 @@ const W = 1080, H = 1920;
 const {FONTS, STYLES, crop, loadImg, isReal, TEX, texture, isDark, posterTitle, DEFAULT_CAPTION} = Shelf;
 // the colour picking and the spine finder live in add.js (the + SHELF dialog uses them on every page)
 const {extractPalette, findSpine, findSoloSpine} = Add;
-// the builder inside a profile page (u/): it opens a saved shelf (?embed&open=<id>) or an empty one (?embed&new),
-// and tells the profile when it's saved
-const EMBED = document.documentElement.classList.contains('embed');
+// ?new (+ new shelf on your profile): an empty shelf to begin with, not the sample
+const FRESH = new URLSearchParams(location.search).has('new');
 let books = [], isSample = true, uid = 0, server = false;
 const settings = {caption:'my next reads.', theme:'paper', layout:'row', varied:true, wood:false, plank:false, shelfColour:'#FFFFFF'};
 
@@ -906,7 +910,7 @@ document.querySelectorAll('input[name=vis]').forEach(r => r.addEventListener('ch
 
 /* ---------- boot ---------- */
 async function boot(){
-  if (EMBED){ books = []; isSample = false; } else books = samples();   // on a profile, a new shelf starts empty
+  if (FRESH){ books = []; isSample = false; } else books = samples();
   renderList();
   // the old self-hosted backend: only looked for when its address is set, or when there's no Worker to use
   // (asking for /api/health on a plain site, like shelfstackd.com, only gets a 404)
@@ -960,9 +964,15 @@ function friendly(e){
 async function startAccounts(){
   if (!accounts) return;
   $('#saveShelf').hidden = false; paintAcct();
-  const draft = EMBED ? null : takeDraft();           // a draft waits for the builder page itself, not a profile's
+  // The shelf being made waits as a draft. It gives way to what was asked for: another saved shelf to open
+  // (?open=<id>), or a new shelf (?new) when the draft is a saved shelf being changed. Coming back from signing in,
+  // the draft is what's wanted.
+  const openId = new URLSearchParams(location.search).get('open');
+  let draft = takeDraft();
+  if (draft && !returning() && ((openId && draft.shelfId !== openId) || (FRESH && draft.shelfId))){ dropDraft(); draft = null; }
   if (draft) await restoreDraft(draft);
-  if (!hasSession() && !returning()){ embedReady(); return; }          // signed out: nothing more loads
+  if (FRESH) history.replaceState(null, '', here() + location.hash);
+  if (!hasSession() && !returning()) return;          // signed out: nothing more loads
   try {
     const sb = await supa(), {data:{session}} = await sb.auth.getSession();   // finishes a Google sign-in coming back with ?code=
     const err = new URLSearchParams(location.search).get('error_description');
@@ -970,19 +980,12 @@ async function startAccounts(){
     if (err) toast('Sign-in didn’t finish: ' + err);
     await setUser(session && session.user);
     watchAuth();
-    const openId = new URLSearchParams(location.search).get('open');
     if (openId && !draft){
-      if (!EMBED) history.replaceState(null, '', here() + location.hash);
-      if (acct.shelves.some(s => s.id === openId)) await openShelf(openId); else if (EMBED) toast('Couldn’t open that shelf.');
+      history.replaceState(null, '', here() + location.hash);
+      if (acct.shelves.some(s => s.id === openId)) await openShelf(openId); else toast('Couldn’t open that shelf.');
     }
   } catch (e){ toast(friendly(e)); }
-  embedReady();
 }
-// on a profile: what's on the shelf now, so closing the builder can ask first when there are changes
-const snapshot = () => JSON.stringify([books.map(b => [b.id, b.title, b.author, b.kind, b.style, b.font, b.bg, b.fg]), settings, shelfNameNow(), isPublicNow(),
-  media.wall && (media.wall.key || media.wall.name), media.pngs.map(p => [p.key, p.x, p.y, p.w, p.rot, p.opacity])]);
-let clean = '';
-function embedReady(){ if (!EMBED) return; clean = snapshot(); window.spinestackDirty = () => snapshot() !== clean; }
 function watchAuth(){
   if (acct.watching) return; acct.watching = true;
   // (no Supabase calls inside this callback: they'd wait on the lock it holds)
@@ -1005,7 +1008,7 @@ async function setUser(user){
 function paintAcct(){
   if (!accounts) return;
   const p = acct.profile;
-  if (!EMBED) Nav.paint({user: acct.user, profile: p});   // the bar (nav.js): Sign in, Finish sign-up, or you and the account menu
+  Nav.paint({user: acct.user, profile: p});   // the bar (nav.js): Sign in, Finish sign-up, or you and the account menu
   $('#pageTitle').textContent = acct.shelfId ? 'Edit shelf' : 'New shelf';
   paintLimit();   // Pro holds more
   $('#saveNew').hidden = !acct.shelfId;
@@ -1169,10 +1172,9 @@ async function saveShelf(asNew){
     if (want !== shown){ const r = await acct.sb.from('shelves').update({name: want}).eq('id', id); if (r.error) throw r.error; }
     forgetArt(keysOf(was && was.pro).filter(k => !keysOf(pro).includes(k)));
     acct.shelfId = id; toast(updating ? 'Shelf updated.' : 'Shelf saved.');
-    if (EMBED){ clean = snapshot(); parent.postMessage({spinestack: 'saved', id}, location.origin); }   // the profile closes this and shows it
     await loadMine();
     // saved: this shelf is no longer being made, and its own page is the place to see it
-    if (!EMBED){ booted = false; clearTimeout(draftT); dropDraft(); location.href = '../u/?' + acct.profile.username + '&shelf=' + id; }
+    booted = false; clearTimeout(draftT); dropDraft(); location.href = '../u/?' + acct.profile.username + '&shelf=' + id;
   } catch (e){ toast(friendly(e)); }
   finally { saving = false; $('#saveShelf').disabled = false; paintAcct(); }
 }
@@ -1306,7 +1308,7 @@ async function stashDraft(){
 }
 function dropDraft(){ try { sessionStorage.removeItem(DRAFT); } catch {} idb.del(DRAFT).catch(() => {}); }
 let draftT = 0, booted = false;   // booted: the page has finished opening (a draft restored, a waiting spine added)
-function scheduleDraft(){ if (EMBED || !booted) return; clearTimeout(draftT); draftT = setTimeout(stashDraft, 500); }
+function scheduleDraft(){ if (!booted) return; clearTimeout(draftT); draftT = setTimeout(stashDraft, 500); }
 function takeDraft(){
   try { const d = JSON.parse(sessionStorage.getItem(DRAFT) || 'null'); sessionStorage.removeItem(DRAFT); return d && Date.now() - d.at < 3600e3 ? d : null; } catch { return null; }
 }
@@ -1319,12 +1321,11 @@ async function restoreDraft(d){
 }
 
 Add.setToast(toast);
-/* opening: the sample shelf (or an empty one inside a profile), then a draft or ?open=<id>, then a spine picked with
-   + SHELF on another page, which was waiting to be put on */
+/* opening: the sample shelf (or an empty one for ?new), then a draft or ?open=<id>, then a spine picked with + SHELF
+   on another page, which was waiting to be put on */
 (async () => {
   boot();
   await startAccounts();
-  if (EMBED) return;
   const p = Add.takePending();
   if (p){
     $('#saveNote').textContent = 'Adding ' + p.m.title + '…';

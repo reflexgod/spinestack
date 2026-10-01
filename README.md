@@ -132,7 +132,9 @@ before the change aren't reused. `/scans` keeps what Brave said as it came (`raw
 `/u/?username` (a real file, so GitHub Pages answers 200 and link previews work): photo, name, @username, the numbers,
 the featured shelf drawn on its own, recent shelves, bio, most shelved. `/u/?username&shelf=<id>` shows one shelf. The
 owner gets Edit profile (photo, name, bio, featured shelf, Private profile). The header's @username and the Profile link
-lead there; "open" on your own shelf opens `build/?embed&open=<id>` over the profile.
+lead there. On your own profile "+ new shelf" goes to the builder (`build/?new`: an empty shelf) and "open" on a shelf to
+`build/?open=<id>`; saving there comes back to the shelf's page. (The builder used to open in a frame over the profile,
+`?embed`; old links of that kind are sent on to the builder itself.)
 Private shelves (Who can view: Private in the builder, or "private" on the shelf's card) show only to their owner. A private profile shows others only its photo,
 display name and @username; its public shelves show to its owner and the followers it accepted.
 
@@ -220,7 +222,8 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **The builder and + SHELF** (`specs/build.spec.js`): + SHELF opens the dialog on every page and Esc closes it;
   search, pick, Add to shelf on the builder (no reload) and from another page (which goes to the builder); the
   builder's fields, Style shut with its one line, a row's controls opening one at a time, ↑ ↓ and dragging; Save
-  signed out and signed in, `?open=<id>`, `?embed`, the shelf being made surviving a trip to another page, Cancel.
+  signed out and signed in, `?open=<id>`, `?new`, old `?embed` links, a profile's links to the builder, the shelf being
+  made surviving a trip to another page (and giving way to a saved shelf that's opened), Cancel.
 - **The dialog's search** (`specs/add.spec.js`): suggestions while typing with one search for a word typed quickly, a
   slower earlier answer dropped, six results in order of closeness, ↑ ↓ Enter Esc, Enter searching at once, the
   loading and nothing-found lines; the capped answer from `/scans` and its message; "Search by Brave" in every
