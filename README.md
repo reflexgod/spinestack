@@ -7,7 +7,7 @@ Type a film or a book, get its real spine, put it on a shelf, save the shelf as 
 ```
 index.html            the home page (GitHub Pages serves this). Signed out: a welcome and the newest public shelves; signed in: new shelves from people you follow. Links to the old builder here (/?open=, /#shelf) go on to build/
 build/index.html      the shelf builder (New shelf / Edit shelf): its name, who can view it, Add, the spines as a list, Style, the preview, Cancel · Save · Save story
-add.js                + SHELF on every page: the Add to your shelf… dialog (search, then the spine choices and Add to shelf); the spine finder lives here
+add.js                + SHELF on every page: the Add to your shelf… dialog (suggestions as you type, then the spine choices and Add to shelf); the spine finder lives here
 shelf.js              draws the spines and the story; build/ and u/ both use it, so a shelf looks the same everywhere
 u/index.html          profiles: /u/?username, and one shelf: /u/?username&shelf=<id>
 feed/index.html       the feed: /feed/, FOLLOWING and EVERYONE, newest saved shelves first
@@ -44,8 +44,8 @@ The TMDB and Brave keys live only in the Worker, as secrets.
 
 | Endpoint | What it returns |
 |---|---|
-| `/identify?q=&want=all\|movie\|book` | `{results:[{kind,title,year,creator,cover}]}` |
-| `/scans?title=&year=&kind=movie\|book&creator=&round=0-3` | one Brave search per round: up to 10 wrap-shaped (or single-spine) scans whose page names the title, plus approved archive spines first in round 0: `{results:[...], round, more}` |
+| `/identify?q=&want=all\|movie\|book[&suggest=1]` | `{results:[{kind,title,year,creator,cover}]}`: up to 5 films (TMDB) and 5 books (Open Library, most-read first, without the government reports it files as books). `suggest=1` is a half-typed title: answered the same, but not kept in KV |
+| `/scans?title=&year=&kind=movie\|book&creator=&round=0-3` | one Brave search per round: up to 10 wrap-shaped (or single-spine) scans whose page names the title, plus approved archive spines first in round 0: `{results:[...], round, more}`, with `capped: true` once the day's Brave searches are used up (see The Brave cap) |
 | `/img?url=` | the image, with CORS. http(s) and `image/*` only, 8 MB max, private addresses blocked, 3 redirects max |
 | `POST /archive?kind=&title=&year=&author=` | a PNG of one spine (300 KB max, at least 3 times taller than wide), re-encoded and kept as *pending* |
 | `/archive/img?id=` | an approved archive spine |
@@ -63,6 +63,16 @@ CORS is open only to `https://shelfstackd.com`, `https://www.shelfstackd.com`, `
 `http://localhost:8080`. `/identify` and `/scans`
 are cached in Workers KV for 30 days (so each title costs one Brave search), images are cached 30 days,
 and each visitor is limited to about 30 searches and 150 images a minute.
+
+### The Brave cap
+
+Brave bills after about 1,000 searches a month, so the Worker makes at most `BRAVE_DAILY_CAP` Brave searches a day,
+across everyone: 30 (at most 930 a month), set under `[vars]` in `worker/wrangler.toml`; change the number there and
+deploy. Each search is counted in the `Archive` Durable Object before it's made, so the cap can't be passed, and if
+the count can't be read the search isn't made. Once the day's searches are used up, `/scans` answers only with archive
+spines and scans kept from earlier searches, with `capped: true`; the dialog then says "Spine search is resting for
+today. Here’s one made from the cover." and offers the spine made from the poster or cover. The count starts again at
+midnight UTC. `/health` shows the cap in force (`braveDailyCap`). Every page's footer says "Search by Brave".
 
 ### Set up once
 
@@ -94,19 +104,27 @@ minute stale. Both fit the Workers Free plan and need no card.
 
 ### Update
 
-`cd worker && npx wrangler deploy`. Secrets and the KV cache stay as they are. If you change how `/scans`
-filters results, bump the `sc…:` cache key prefix in `src/index.js` so old cached answers aren't reused.
+`cd worker && npx wrangler deploy`. Secrets and the KV cache stay as they are. To try a change first without deploying:
+`cd worker && npx wrangler dev` runs the Worker on this machine (`http://127.0.0.1:8787`, with its own empty KV and
+Durable Object; films need `TMDB_TOKEN` in `worker/.dev.vars`).
+If you change what `/identify` answers, bump its cache key prefix in `src/index.js` (`id3:` now) so answers kept
+before the change aren't reused. `/scans` keeps what Brave said as it came (`raw1:`), and its filters run again on that.
 
 ### How a real spine is found
 
+0. In the Add to your shelf… dialog (`add.js`, opened by + SHELF on any page and by the builder's Add box) a title is
+   looked up as it's typed: a search starts 300 ms after the last key and replaces the one before it, Enter searches at
+   once. Up to six results show, films and books together, the closest titles first (the same as what was typed, then
+   starting with it, then containing it); ↑ ↓ move through them and Enter picks one.
 1. The page asks the Worker for one round at a time, at most 4 per title, and stops once two good spines turn up, to save Brave searches.
    Films: `"<title>" <year> dvd cover`, `"<title>" <year> dvd cover english`, `"<title>" dvd cover scan`, `"<title>" criterion dvd`.
    Books: `"<title>" <author> book cover spine`, `"<title>" <author> book spine`, `"<title>" spine`, `<title> <author> full cover wrap`.
 2. It keeps images shaped like a wrap (1.3–1.9 wide for films, 1.2–2.4 for books) or like a single spine (4 times taller than wide), whose title or address contains the whole title; one-word titles also need the year or director.
 3. The page loads each scan through `/img`, and `findSpine()` looks for the strip between back and front: two clear edges near the middle, about 5 % wide for a DVD, lettering on it, an even colour down it. Photos of open cases and books on a table are turned down.
-4. Each cut gets a score from 0 to 100. A film's best cut goes on the shelf by itself only at 75 or more (in tests right spines scored 76–97 and wrong ones up to 69) **and** when it looks like the English edition; books always let you pick, unless the spine comes from the archive. Cuts under 45 aren't shown, and each page gives one option at most.
+4. Each cut gets a score from 0 to 100. A film's best cut is picked for you only at 75 or more (in tests right spines scored 76–97 and wrong ones up to 69) **and** when it looks like the English edition; books always let you pick, unless the spine comes from the archive. Cuts under 45 aren't shown, and each page gives one option at most.
    Editions: the Worker marks a scan as another edition when its page title, address or file name has another language or region (Polish, Deutsch, español, français, 日本, region 2, `.pl`/`.de`/… pages, `nl`/`ger`/… in file names) and marks VHS tapes. With **Edition: English** (the default) English DVDs and Blu-rays come first; VHS comes last either way. **Any** drops the language rule.
-5. With no good scan, the page falls back to a spine made from the poster or cover.
+5. With no good scan, or when the day's Brave searches are used up, the pick is a spine made from the poster or cover.
+   Add to shelf puts the picked one on the shelf.
 
 ## Profiles
 
@@ -202,6 +220,10 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   search, pick, Add to shelf on the builder (no reload) and from another page (which goes to the builder); the
   builder's fields, Style shut with its one line, a row's controls opening one at a time, ↑ ↓ and dragging; Save
   signed out and signed in, `?open=<id>`, `?embed`, the shelf being made surviving a trip to another page, Cancel.
+- **The dialog's search** (`specs/add.spec.js`): suggestions while typing with one search for a word typed quickly, a
+  slower earlier answer dropped, six results in order of closeness, ↑ ↓ Enter Esc, Enter searching at once, the
+  loading and nothing-found lines; the capped answer from `/scans` and its message; "Search by Brave" in every
+  footer; the builder's count and limit, its empty shelf, and the note under the preview clear of the Save bar.
 - **axe** (`specs/a11y.spec.js`) runs on every page, `privacy.html` and `admin.html` too: nothing serious or critical.
 - **html-validate** reads every HTML file with its recommended rules, except that inline `style` is allowed and the
   doctype is lowercase (`tests/.htmlvalidate.json`).
