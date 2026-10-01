@@ -6,12 +6,13 @@ Type a film or a book, get its real spine, put it on a shelf, save the shelf as 
 
 ```
 index.html            the home page (GitHub Pages serves this). Signed out: a welcome and the newest public shelves; signed in: new shelves from people you follow. Links to the old builder here (/?open=, /#shelf) go on to build/
-build/index.html      the shelf builder: search, the shelf, the story
+build/index.html      the shelf builder (New shelf / Edit shelf): its name, who can view it, Add, the spines as a list, Style, the preview, Cancel · Save · Save story
+add.js                + SHELF on every page: the Add to your shelf… dialog (search, then the spine choices and Add to shelf); the spine finder lives here
 shelf.js              draws the spines and the story; build/ and u/ both use it, so a shelf looks the same everywhere
 u/index.html          profiles: /u/?username, and one shelf: /u/?username&shelf=<id>
 feed/index.html       the feed: /feed/, FOLLOWING and EVERYONE, newest saved shelves first
 worker-address.js     sends Worker requests to its workers.dev address on networks that block api.shelfstackd.com
-nav.js                the top bar on every page: who is signed in, the account menu (Sign out is its last item), the ▾ next to + SHELF
+nav.js                the top bar on every page: who is signed in, the account menu (Sign out is its last item), + SHELF and the ▾ next to it
 admin.html            approve or delete archive uploads (needs the admin token); read reports (Google sign-in, admins only)
 tests/                checks for the pages: Playwright, axe, html-validate (see Tests). The site never loads anything from here
 worker/               Cloudflare Worker: name lookup, scan search, image proxy (what the live site uses)
@@ -38,7 +39,7 @@ At this point uploads, spine cutting from scans, the shelf and story export all 
 
 A free Cloudflare Worker in `worker/` does the parts a static page can't: it looks titles up on TMDB and
 Open Library, finds DVD and book scans with the Brave Image Search API, and passes scan images through with
-CORS so the page can cut the spine out of them in the browser (`findSpine()` in `build/index.html`).
+CORS so the page can cut the spine out of them in the browser (`findSpine()` in `add.js`).
 The TMDB and Brave keys live only in the Worker, as secrets.
 
 | Endpoint | What it returns |
@@ -112,8 +113,8 @@ filters results, bump the `sc…:` cache key prefix in `src/index.js` so old cac
 `/u/?username` (a real file, so GitHub Pages answers 200 and link previews work): photo, name, @username, the numbers,
 the featured shelf drawn on its own, recent shelves, bio, most shelved. `/u/?username&shelf=<id>` shows one shelf. The
 owner gets Edit profile (photo, name, bio, featured shelf, Private profile). The header's @username and the Profile link
-in My shelves lead there; "Open in builder" on your own shelf opens `build/?embed&open=<id>` over the profile.
-Private shelves (the tick in My shelves) show only to their owner. A private profile shows others only its photo,
+lead there; "open" on your own shelf opens `build/?embed&open=<id>` over the profile.
+Private shelves (Who can view: Private in the builder, or "private" on the shelf's card) show only to their owner. A private profile shows others only its photo,
 display name and @username; its public shelves show to its owner and the followers it accepted.
 
 ## Follows and the feed
@@ -177,8 +178,8 @@ the browser's own `<dialog>` and `popover`; relative times use `Intl.RelativeTim
 | browser-image-compression 2.0.2 | shrinks the photo before upload (the Worker takes 2 MB at most) | `browser-image-compression@2.0.2/dist/browser-image-compression.js` | `sha384-dHP9fwqd9BAiDh9uJ0p10khgbbcFMh34bVEiCnJ1Ah/AT2T2k4t572VEo3WXzxXp` |
 | Lucide 1.49.0 | icons (zap, search, chevron-down, x, plus) | pasted into the pages as inline SVG, not loaded | |
 
-Loaded so far: Supabase, and Floating UI (by `nav.js`, only for someone signed in, who has the menus). Each of the
-others is added to a page when the page starts using it. To change a
+Loaded so far: Supabase, Floating UI (by `nav.js`, only for someone signed in, who has the menus) and SortableJS (by the
+builder). Each of the others is added to a page when the page starts using it. To change a
 version: `curl -s <file's address> | openssl dgst -sha384 -binary | openssl base64 -A` gives the new hash.
 
 ## Tests
@@ -196,8 +197,11 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **Playwright** (`specs/site.spec.js`) opens every page at 1280 px and at 390 px, signed out and signed in: the top
   bar is there, the page doesn't scroll sideways, nothing is logged as an error, signed-out home loads its shelves, and
   old builder links at the root go on to `/build/`. The account menu: its seven items with Sign out last, open by tap,
-  by mouse and by keyboard, closed by Esc and by a click outside, always inside the window; Sign out signs out. One
-  check waits for its stage (marked `test.fixme`): the + SHELF dialog closing with Esc.
+  by mouse and by keyboard, closed by Esc and by a click outside, always inside the window; Sign out signs out.
+- **The builder and + SHELF** (`specs/build.spec.js`): + SHELF opens the dialog on every page and Esc closes it;
+  search, pick, Add to shelf on the builder (no reload) and from another page (which goes to the builder); the
+  builder's fields, Style shut with its one line, a row's controls opening one at a time, ↑ ↓ and dragging; Save
+  signed out and signed in, `?open=<id>`, `?embed`, the shelf being made surviving a trip to another page, Cancel.
 - **axe** (`specs/a11y.spec.js`) runs on every page, `privacy.html` and `admin.html` too: nothing serious or critical.
 - **html-validate** reads every HTML file with its recommended rules, except that inline `style` is allowed and the
   doctype is lowercase (`tests/.htmlvalidate.json`).

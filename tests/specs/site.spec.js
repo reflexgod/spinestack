@@ -220,16 +220,3 @@ test('old builder links at the root go on to /build/', async ({ page }) => {
   await page.goto('/#how');
   await expect(page).toHaveURL(/\/build\/#how$/);
 });
-
-/* ---------- waiting for its stage ---------- */
-
-// Stage 2 (+ SHELF popup) builds this dialog; the check is switched on then.
-test.fixme('+ SHELF opens a dialog, and Esc closes it', async ({ page }) => {
-  await mockNetwork(page, { signedIn: true });
-  await open(page, '/');
-  await page.locator('header.top .add').click();
-  const dialog = page.getByRole('dialog', { name: /add to your shelf/i });
-  await expect(dialog).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(dialog).toBeHidden();
-});

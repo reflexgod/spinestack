@@ -54,7 +54,6 @@ a{color:inherit}
 .links{display:flex;gap:22px;align-items:center;flex:none}
 .links a{display:flex;align-items:center;padding:4px 0 2px;border-bottom:2px dashed transparent}
 .links a[aria-current]{font-weight:700;border-bottom-color:var(--ink)}
-.links .count{margin-left:6px}   /* this page only: how many spines are on the shelf */
 .signin{flex:none}
 .addwrap{display:flex;flex:none;border-radius:8px}
 .addwrap.here{box-shadow:0 0 0 2px var(--paper),0 0 0 3px var(--ink)}   /* this is the builder */
@@ -84,72 +83,67 @@ a{color:inherit}
   .top .add{padding:7px 9px}
 }
 
-.col{max-width:600px;margin:0 auto;padding:0 16px}
-.wide{max-width:940px;margin:0 auto;padding:0 16px}
-section{padding-block:56px 0}
+/* the builder, laid out like a new-list page: the name and who can view it, Add, the spines as a list, Style, and the
+   live preview beside them; Cancel, Save and Save story stay at the bottom */
+main.mk{max-width:1120px;margin:0 auto;padding:28px 24px 0}
 h1,h2{font-weight:700;text-transform:uppercase;margin:0 0 14px;letter-spacing:0}
-h1{font-size:24px;line-height:1.3;text-align:center}
+h1{font-size:24px;line-height:1.3;margin-bottom:22px}
 h2{font-size:16px;display:flex;gap:10px;align-items:baseline}
 h2 small{font-size:12px;font-weight:400}
 p{margin:0 0 12px}
-.say{font-size:16px;font-weight:700;margin:18px 0 26px}
 .grey{color:var(--grey)}
-.center{text-align:center}
+.mkgrid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:26px 56px;align-items:start}
+.mkform{display:grid;gap:26px;min-width:0}
+.fieldrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px 28px;align-items:end}
+.field{display:grid;gap:6px;min-width:0;border:0;margin:0;padding:0}
+.field legend{padding:0;margin-bottom:6px}
+.who .seg2{display:flex;border:1px solid var(--ink);border-radius:8px;overflow:hidden}
+.who label{padding:11px 16px;cursor:pointer;text-transform:uppercase;font-size:12px;line-height:1.35}
+.who label + label{border-left:1px solid var(--ink)}
+.who label:has(input:checked){background:var(--ink);color:var(--paper)}
+.who label:has(input:focus-visible){outline:2px solid var(--ink);outline-offset:2px}
+.who input{position:absolute;opacity:0;width:1px;height:1px}
+.addrow{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:end}
+.addform{position:relative;flex:1 1 280px;display:grid;gap:6px;margin:0}
+.addform input[type=text]{padding-right:46px}
+.addform button{position:absolute;right:1px;bottom:1px;height:40px;width:44px;display:grid;place-items:center;background:none;border:0;padding:0;color:var(--ink);cursor:pointer;border-radius:0 7px 7px 0}
+.addform button svg{width:17px;height:17px}
 
 /* the dashed underline from the reference: chunky dashes under uppercase text */
 .dash{display:inline-block;background:none;border:0;padding:0 0 9px;font:500 16px var(--mono);text-transform:uppercase;color:var(--ink);cursor:pointer;text-decoration:none;
   background-image:repeating-linear-gradient(90deg,var(--ink) 0 11px,transparent 11px 14px);background-size:100% 4px;background-repeat:no-repeat;background-position:left bottom}
 .dash.sm{font-size:12px;padding-bottom:6px;background-size:100% 3px;background-image:repeating-linear-gradient(90deg,var(--ink) 0 8px,transparent 8px 11px)}
 
-form.search{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px}
 input[type=text],select{font:400 13px var(--mono);color:var(--ink);background:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 12px;width:100%;min-width:0}
 input[type=text]::placeholder{color:#8A8A8A}
-.opts{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:12px;align-items:center}
-.opts .ed{margin-left:auto;display:flex;gap:18px;align-items:center}
 .opts label{cursor:pointer;text-transform:uppercase;display:flex;gap:6px;align-items:center}
 .opts input{accent-color:var(--ink);margin:0}
 .btn{font:500 13px var(--mono);text-transform:uppercase;background:var(--ink);color:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 22px;cursor:pointer}
 .btn:hover{background:#222}
 .btn.full{width:100%}
-.status{min-height:18px;margin-top:14px}
-.status.err{font-weight:700}
 
-table{border-collapse:collapse;width:100%}
-.tbl{overflow-x:auto;margin-top:6px}
-th,td{text-align:left;padding:9px 8px 9px 0;border-bottom:1px solid var(--ink);white-space:nowrap;vertical-align:top}
-th{font-weight:400;color:var(--grey);text-transform:uppercase;font-size:11px}
-td.t{white-space:normal;font-weight:700;text-transform:uppercase}
-td.t,td.by{white-space:normal;overflow-wrap:anywhere}
-tbody tr{cursor:pointer}
-tbody tr:hover td{background:#F2F2F2}
-td.no{color:var(--grey);font-variant-numeric:tabular-nums}
-
-.found{--th:300px;--tw:104px;display:flex;gap:16px;overflow-x:auto;padding:8px 0 4px;align-items:flex-start}
-.pick{flex:none;display:grid;grid-template-rows:var(--th) 18px 26px auto;gap:6px;justify-items:center;width:max-content;min-width:var(--tw)}
-.pick .art{height:var(--th);display:flex;align-items:flex-end}
-.pick .art img,.pick .art canvas{height:var(--th);width:auto;display:block}
-.pick img.cov{aspect-ratio:auto 2/3;background:#F2F2F2}
-.pick .lbl{font-size:10.5px;color:var(--grey);white-space:nowrap;width:var(--tw);text-align:center;overflow:hidden;text-overflow:ellipsis;align-self:center}
-.pick .lbl a{color:inherit}
-.pick .on{font-size:12px;font-weight:700;text-transform:uppercase;align-self:start}
-.found .rule{flex:none;width:1px;height:var(--th);background:var(--hair)}
-.picked{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline}
-.found{margin-bottom:8px}
-
-/* the shelf as it stands, drawn with the same spines as the story */
-.strip{display:flex;gap:5px;align-items:flex-end;height:260px;margin-top:26px;overflow-x:auto;overflow-y:hidden}
-.strip button{flex:none;background:none;border:0;padding:0;cursor:pointer;line-height:0}
-.strip canvas{display:block}
-.src{font-size:10.5px;color:var(--grey);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-
-.drop{display:block;border:1px dashed var(--ink);border-radius:8px;padding:22px 18px;cursor:pointer;text-align:center}
-.drop.over{background:#F2F2F2}
+/* or upload a scan: press it, drop a picture on it, or paste one anywhere on the page */
+.drop{display:inline-flex;gap:8px;align-items:baseline;border:1px dashed transparent;border-radius:8px;padding:10px;cursor:pointer}
+.drop.over{background:#F2F2F2;border-color:var(--ink)}
 .drop input{position:absolute;width:1px;height:1px;opacity:0}
 
-.shelfgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:40px;align-items:start;margin-top:8px}
+/* the spines, one row each: drag the dots to reorder; press a row and its controls open (one row at a time) */
+#shelf h2{margin-bottom:10px}
 ol.books{list-style:none;margin:0;padding:0;border-top:1px solid var(--ink)}
-ol.books .book{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:12px;padding:12px 0;border-bottom:1px solid var(--ink)}
-.thumb{width:42px;height:62px;object-fit:cover;background:#EEE}
+ol.books .book{border-bottom:1px solid var(--ink);background:var(--paper)}
+.bhead{display:flex;align-items:center;gap:10px}
+.grip{flex:none;width:14px;height:22px;cursor:grab;touch-action:none;background:radial-gradient(circle,var(--ink) 1.3px,transparent 1.7px) 0 0/7px 7px;display:none}
+.sortable .grip{display:block}
+.bopen{flex:1;min-width:0;display:grid;grid-template-columns:34px minmax(0,1fr) 14px;gap:12px;align-items:center;background:none;border:0;padding:9px 0;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.thumb{width:34px;height:50px;object-fit:cover;background:#EEE;display:block}
+.bwho{display:grid;min-width:0}
+.bt{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bby{color:var(--grey);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bopen svg{width:14px;height:14px}
+.book.open .bopen svg{transform:rotate(180deg)}
+.bbody{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:2px 0 14px}
+.sortable .bbody{padding-left:24px}
+.sortable-ghost{opacity:.35}
 .fields{display:grid;gap:7px;min-width:0}
 .row2{display:grid;grid-template-columns:1.3fr 1fr;gap:7px}
 .row3{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
@@ -169,8 +163,19 @@ input[type=color]::-webkit-color-swatch{border:0;border-radius:2px}
 .note.warn{color:var(--ink);font-weight:700}
 .empty{padding:20px 0;color:var(--grey)}
 
-.story{display:grid;gap:16px}
-.phone{border:1px solid var(--ink);border-radius:26px;padding:6px;width:100%;max-width:270px;margin:0 auto}
+/* Style: every look of the shelf in one panel, shut until asked for, with what's picked on its one line */
+details.style{border-top:1px solid var(--ink);border-bottom:1px solid var(--ink)}
+details.style summary{display:flex;gap:12px;align-items:baseline;padding:14px 0;cursor:pointer;list-style:none}
+details.style summary::-webkit-details-marker{display:none}
+.sname{font-size:16px;font-weight:700;text-transform:uppercase}
+.sline{flex:1;min-width:0;color:var(--grey);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+details.style summary svg{width:14px;height:14px;flex:none;align-self:center}
+details.style[open] summary svg{transform:rotate(180deg)}
+.stylebox{display:grid;gap:16px;padding:4px 0 22px}
+.opts{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+/* the live preview: beside the form, and it stays in view while the form scrolls */
+.mkside{position:sticky;top:72px;display:grid;gap:10px;justify-items:center}
+.phone{border:1px solid var(--ink);border-radius:26px;padding:6px;width:min(100%, 330px, calc((100vh - 190px)*9/16));min-width:200px;margin:0 auto}
 #story{display:block;width:100%;aspect-ratio:9/16;border-radius:20px;background:#fff}
 .ctl{display:grid;gap:6px}
 .lbl{font-size:11px;color:var(--grey);text-transform:uppercase}
@@ -208,8 +213,6 @@ em.pro{font-style:normal;font-weight:700;font-size:9px;border:1px solid currentC
 .range input{accent-color:var(--ink);flex:1;min-width:0}
 .check input{accent-color:var(--ink);margin:0}
 
-.home{padding-block:64px 72px;text-align:center}
-
 footer{background:var(--ink);color:var(--paper);padding:36px 24px 22px}
 .fgrid{display:grid;grid-template-columns:1.1fr 1.3fr 1fr;gap:36px;max-width:1200px;margin:0 auto}
 footer h3{font-size:16px;font-weight:700;text-transform:uppercase;margin:0 0 10px}
@@ -221,20 +224,14 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
 .btn.ghost{background:var(--paper);color:var(--ink)}
 .btn.ghost:hover{background:#F2F2F2}
 .btn:disabled{opacity:.5;cursor:default}
-.savewrap{display:grid;gap:8px;justify-items:start;margin-top:4px}
-.namebox{display:grid;gap:6px;justify-self:stretch;margin:0}
-.namerow{display:flex;gap:8px}
-.namerow .btn{padding:0 18px;flex:none}
+/* Cancel, Save and Save story: always at the bottom of the window */
+.mkbar{position:sticky;bottom:0;z-index:4;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:flex-end;background:var(--paper);border-top:1px solid var(--ink);
+  margin:40px -24px 0;padding:12px 24px calc(12px + env(safe-area-inset-bottom,0px))}
+.barleft{margin-right:auto;display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline;min-width:0}
+.mkbar .note{margin:0}
 /* the builder inside a profile page */
-.embed .top,.embed footer,.embed .home,.embed #mine{display:none!important}
-.embed main{padding-bottom:48px}
-.mine{list-style:none;margin:10px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:26px 18px}
-.mine .card{display:grid;gap:4px;align-content:start}
-.mine .open{padding:0;border:1px solid var(--hair);background:#F3F3F3;border-radius:8px;cursor:pointer;aspect-ratio:9/16;overflow:hidden;outline-offset:3px}
-.mine .open img{width:100%;height:100%;object-fit:cover;display:block}
-.mine .card.on .open{outline:2px solid var(--ink)}
-.mine .cap{font-weight:500;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mine .acts{display:flex;flex-direction:row;flex-wrap:wrap;gap:6px 18px;margin-top:4px}
+.embed .top,.embed footer,.embed #pageTitle,.embed #cancelBtn{display:none!important}   /* the profile's frame has the title and Close */
+.embed main.mk{padding-top:18px}
 .sheet{position:fixed;inset:0;background:rgba(0,0,0,.35);display:grid;place-items:center;z-index:30;padding:16px}
 .sheetbox{background:var(--paper);border:1px solid var(--ink);border-radius:12px;width:100%;max-width:380px;padding:26px 24px 22px;position:relative}
 .sheetbox > div{display:grid;gap:14px}
@@ -247,22 +244,30 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
 .uname input[type=text]:focus{outline:none}
 .uname:focus-within{outline:2px solid var(--ink);outline-offset:2px}
 input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 12px;width:100%}
-.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);background:var(--ink);color:var(--paper);border-radius:8px;padding:10px 16px;font-size:12px;max-width:calc(100% - 32px);z-index:20}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 82px);transform:translateX(-50%);background:var(--ink);color:var(--paper);border-radius:8px;padding:10px 16px;font-size:12px;max-width:calc(100% - 32px);z-index:20}
 .modal{position:fixed;inset:0;background:rgba(255,255,255,.92);display:grid;place-items:center;padding:16px;z-index:30}
 .modal-card{background:var(--paper);border:1px solid var(--ink);border-radius:10px;padding:18px;max-width:380px;width:100%;display:grid;gap:12px;max-height:calc(100% - 32px);overflow:auto}
 .modal-card img{width:100%;max-width:230px;margin:0 auto;display:block}
 
-@media (max-width:820px){
-  .shelfgrid{grid-template-columns:minmax(0,1fr);gap:28px}
-  .story{order:-1}
-  .fgrid{grid-template-columns:1fr;gap:26px}
+/* narrower: one column, in this order: name and who can view, Add, the preview, the spines, Style */
+@media (max-width:900px){
+  .mkgrid{display:flex;flex-direction:column;gap:26px}
+  .mkform{display:contents}
+  .mkside{position:static;order:3;width:100%}
+  .fieldrow{order:1} .addrow{order:2} #shelf{order:4} details.style{order:5}
+  .phone{width:min(100%, 300px)}
+}
+@media (max-width:820px){ .fgrid{grid-template-columns:1fr;gap:26px} }
+@media (max-width:640px){
+  main.mk{padding:20px 16px 0}
+  .mkbar{margin-inline:-16px;padding-inline:16px}
 }
 @media (max-width:520px){
-  form.search{grid-template-columns:1fr}
-  .strip{height:200px}
-  .found{--th:220px;--tw:84px}
+  .fieldrow{grid-template-columns:minmax(0,1fr)}
+  .who .seg2{width:max-content}
   .row2{grid-template-columns:1fr}
-  section{padding-block:40px 0}
+  .mkbar{gap:8px 14px}
+  .mkbar .btn{padding:11px 16px}
 }
 </style>
 </head>
@@ -274,119 +279,92 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
   <nav class="links" aria-label="shelfstackd">
     <a href="../shelves/">Shelves</a><a href="../members/">Members</a>
     <a class="zap" href="../feed/" aria-label="Activity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z"/></svg></a>
-    <a class="find" href="../members/" aria-label="Search" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a><a class="count" href="#shelf">Shelf (<span id="navCount">0</span>)</a>
+    <a class="find" href="../members/" aria-label="Search" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
   </nav>
   <a class="signin" id="signInBtn" href="#" hidden>Sign in</a>
   <span class="addwrap here"><a class="btn add" href="#search" aria-current="page" aria-label="New shelf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Shelf</span></a><button class="btn addmore" id="addMore" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More ways to add" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></span>
 </header>
 
-<main>
-  <section id="search" class="col">
-    <h1>Find a spine</h1>
-    <p>Type a film or a book. shelfstackd looks through DVD and book scans online, cuts the spine out of each one, and puts it on your shelf. When the shelf looks right, save it as a story.</p>
-    <p class="say">The real spine, not a mockup.</p>
-    <form class="search" id="sform" autocomplete="off">
-      <input type="text" id="q" placeholder="Gummo, The Waves, Kids..." aria-label="Film or book name" maxlength="120">
-      <button class="btn" type="submit">Search</button>
-    </form>
-    <div class="opts" role="radiogroup" aria-label="Search in">
-      <label><input type="radio" name="qk" value="all" checked>All</label>
-      <label><input type="radio" name="qk" value="movie">Films</label>
-      <label><input type="radio" name="qk" value="book">Books</label>
-      <span class="ed" role="radiogroup" aria-label="Edition"><span class="grey">Edition</span>
-        <label><input type="radio" name="ed" value="english" checked>English</label>
-        <label><input type="radio" name="ed" value="any">Any</label></span>
-    </div>
-    <select id="qkind" hidden aria-hidden="true"><option value="all">all</option><option value="movie">movie</option><option value="book">book</option></select>
-    <div class="strip" id="strip" role="group" aria-label="Your shelf"></div>
-    <p class="grey" id="stripEmpty" hidden style="margin-top:26px">Your shelf is empty. Search a title.</p>
-    <p class="grey" id="modeNote" style="margin-top:14px">Search needs the shelfstackd server, so it's off in this preview. Uploading a scan below still works.</p>
-    <p class="grey" id="recent" hidden style="margin-top:14px">Recently found: <span></span></p>
-    <div class="status" id="sstatus" role="status"></div>
-    <div id="matches" hidden>
-      <div class="tbl"><table>
-        <thead><tr><th>No.</th><th>Title</th><th>Year</th><th>Type</th><th>By</th></tr></thead>
-        <tbody id="mrows"></tbody>
-      </table></div>
-    </div>
-    <div id="spines" hidden style="margin-top:26px">
-      <h2 class="picked"><span id="spinesTitle">Spines</span> <small id="spinesBy"></small> <button class="dash sm" id="changeMatch" type="button">Change</button></h2>
-      <p id="dupAsk" hidden><span id="dupText"></span> <button class="dash sm" id="dupAdd" type="button">Add again</button> <button class="dash sm" id="dupCancel" type="button">Cancel</button></p>
-      <div class="found" id="found"></div>
-      <p class="grey" id="noReal" hidden>No real spine found yet. Upload a photo of yours to add it to the archive.</p>
-      <p class="grey" id="spinesNote" hidden>Real DVD and book spines show up once the shelfstackd server is connected. Until then, paste a full DVD scan below.</p>
-    </div>
-  </section>
-
-  <section id="upload" class="col">
-    <h2>Upload</h2>
-    <p>Found a scan yourself? Drop it here. A full DVD or book wrap, with back, spine and front in one image, gives you the real spine. A plain cover or poster gets a spine made from its colours.</p>
-    <label class="drop" id="drop">
-      <span class="dash sm">Choose image</span>
-      <span class="grey" style="display:block;margin-top:10px">or drag it here, or copy an image and press Ctrl+V</span>
-      <input type="file" id="file" accept="image/*" multiple>
-    </label>
-  </section>
-
-  <section id="shelf" class="wide">
-    <h2>Shelf <small id="count"></small> <button class="dash sm" id="clear" type="button" style="margin-left:auto">Clear</button></h2>
-    <p class="grey" id="sampleNote">This is a sample shelf. It clears when you add your first title.</p>
-    <div class="shelfgrid">
-      <ol class="books" id="books"></ol>
-      <div class="story" id="export">
-        <div class="ctl"><span class="lbl">Layout</span>
-          <div class="seg" id="layout" role="group" aria-label="Layout"><button type="button" data-v="row">Spines</button><button type="button" data-v="stack">Stacked</button><button type="button" data-v="covers">Covers</button></div></div>
-        <div class="ctl"><span class="lbl">Filter</span>
-          <div class="filters" id="filters" role="group" aria-label="Filter"></div>
-          <label class="range"><span class="lbl">Intensity</span><input type="range" id="intensity" min="0" max="100" value="70" aria-label="Filter intensity"></label></div>
-        <div class="phone"><div class="stage" id="stage"><canvas id="story" width="1080" height="1920" role="img" aria-label="Story preview"></canvas>
-          <div class="pngbox" id="pngBox" hidden><button class="pngx" id="pngX" type="button" aria-label="Remove this PNG">✕</button><span class="pngh" id="pngH" aria-hidden="true"></span><span class="pngr" id="pngR" aria-hidden="true"></span></div></div></div>
-        <div class="ctl"><label class="lbl" for="caption">Caption</label><input type="text" id="caption" value="my next reads." maxlength="60"></div>
-        <div class="ctl" id="themeWrap"><span class="lbl">Background</span>
-          <div class="seg" id="theme" role="group" aria-label="Background"><button type="button" data-v="paper">Paper</button><button type="button" data-v="ink">Ink</button><button type="button" data-v="blush">Blush</button><button type="button" data-v="shelf">Shelf</button><button type="button" data-v="dark">Dark</button><button type="button" data-v="forest">Forest</button><button type="button" data-v="wall">Your PNG<em class="pro">PRO</em></button></div>
-          <p class="note" id="themeNote"></p>
-          <div class="wallbox" id="wallBox" hidden>
-            <p class="wallrow"><span class="wallname" id="wallName"></span><button class="dash sm" id="wallPick" type="button">Choose picture</button><button class="dash sm" id="wallRemove" type="button">Remove</button></p>
-            <p class="note">Best size: 1080 × 1920 px (9:16, same as an Instagram story). Min 720 × 1280. PNG, JPG or WEBP, max 5 MB.</p>
-            <p class="note warn" id="wallWarn"></p>
-          </div>
-          <input type="file" id="wallFile" accept="image/png,image/jpeg,image/webp" hidden>
-          <div class="pngadd"><button class="dash sm" id="pngAdd" type="button">+ Add PNG<em class="pro">PRO</em></button>
-            <p class="note">Posters, photos, anything. PNG, JPG or WEBP, max 5 MB each. Transparent PNGs work. Place it anywhere on the wall. It always stays behind the books.</p>
-            <p class="note" id="pngNote"></p>
-            <label class="range" id="pngOpWrap" hidden><span class="lbl">Opacity</span><input type="range" id="pngOp" min="10" max="100" value="100" aria-label="Opacity of the picked PNG"><span class="lbl" id="pngOpV">100%</span></label>
-            <input type="file" id="pngFile" accept="image/png,image/jpeg,image/webp" multiple hidden></div>
-          <label class="check"><input type="checkbox" id="woodShelf"> Wood shelf</label>
-          <label class="check"><input type="checkbox" id="plank"> Floating shelf<em class="pro">PRO</em></label>
-          <div class="colours" id="colourWrap" hidden><span class="lbl">Shelf colour<em class="pro">PRO</em></span>
-            <div class="swatches" id="swatches" role="group" aria-label="Shelf colour">
-              <button type="button" class="swatch" data-c="#FFFFFF" aria-label="White" style="background:#FFFFFF"></button><button type="button" class="swatch" data-c="#161616" aria-label="Black" style="background:#161616"></button><button type="button" class="swatch" data-c="#B7B7B2" aria-label="Grey" style="background:#B7B7B2"></button><button type="button" class="swatch" data-c="#D8A86A" aria-label="Oak" style="background:#D8A86A"></button><button type="button" class="swatch" data-c="#7A4E2D" aria-label="Walnut" style="background:#7A4E2D"></button><button type="button" class="swatch" data-c="#86A27B" aria-label="Sage" style="background:#86A27B"></button>
-              <input type="text" id="colourHex" value="#FFFFFF" maxlength="7" spellcheck="false" autocomplete="off" aria-label="Shelf colour as a hex code"></div></div>
-          <p class="note" id="plankNote"></p></div>
-        <label class="check" id="variedWrap"><input type="checkbox" id="varied" checked> Mixed heights</label>
-        <button class="btn full" id="exportBtn" type="button">Save story</button>
-        <p class="note" id="exportNote"></p>
-        <div class="savewrap" id="saveWrap" hidden>
-          <button class="btn full ghost" id="saveShelf" type="button">Save shelf</button>
-          <button class="dash sm" id="saveNew" type="button" hidden>Save as a new shelf</button>
-          <form class="namebox" id="nameBox" hidden>
-            <label class="lbl" for="shelfName">Name this shelf</label>
-            <div class="namerow"><input type="text" id="shelfName" maxlength="60" autocomplete="off" spellcheck="false"><button class="btn" type="submit">Save</button></div>
-            <p class="note">It's also the caption on the story. <button class="dash sm" id="nameCancel" type="button">Cancel</button></p>
-          </form>
-          <p class="note" id="saveNote"></p>
-        </div>
+<main class="mk">
+  <h1 id="pageTitle">New shelf</h1>
+  <div class="mkgrid">
+    <div class="mkform">
+      <div class="fieldrow">
+        <label class="field"><span class="lbl">Name</span><input type="text" id="shelfName" maxlength="60" autocomplete="off" spellcheck="false"></label>
+        <fieldset class="field who"><legend class="lbl">Who can view</legend>
+          <div class="seg2"><label><input type="radio" name="vis" value="public" checked>Public</label><label><input type="radio" name="vis" value="private">Private</label></div>
+        </fieldset>
       </div>
+
+      <div class="addrow" id="search">
+        <form class="addform" id="findForm" autocomplete="off">
+          <label class="lbl" for="findQ">Add</label>
+          <input type="text" id="findQ" placeholder="find a film or book…" maxlength="120">
+          <button type="submit" aria-label="Find it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></button>
+        </form>
+        <label class="drop" id="drop"><span class="grey">or</span> <span class="dash sm" id="upload">upload a scan</span><input type="file" id="file" accept="image/*" multiple></label>
+      </div>
+
+      <section id="shelf">
+        <h2>Spines <small id="count"></small> <button class="dash sm" id="clear" type="button" style="margin-left:auto">Clear</button></h2>
+        <p class="grey" id="sampleNote">This is a sample shelf. It clears when you add your first title.</p>
+        <ol class="books" id="books"></ol>
+      </section>
+
+      <details class="style" id="stylePanel">
+        <summary><span class="sname">Style</span><span class="sline" id="styleLine"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <div class="stylebox">
+          <div class="ctl"><span class="lbl">Layout</span>
+            <div class="seg" id="layout" role="group" aria-label="Layout"><button type="button" data-v="row">Spines</button><button type="button" data-v="stack">Stacked</button><button type="button" data-v="covers">Covers</button></div></div>
+          <label class="check" id="variedWrap"><input type="checkbox" id="varied" checked> Mixed heights</label>
+          <div class="ctl"><span class="lbl">Filter</span>
+            <div class="filters" id="filters" role="group" aria-label="Filter"></div>
+            <label class="range"><span class="lbl">Intensity</span><input type="range" id="intensity" min="0" max="100" value="70" aria-label="Filter intensity"></label></div>
+          <div class="ctl"><label class="lbl" for="caption">Caption</label><input type="text" id="caption" value="my next reads." maxlength="60"></div>
+          <div class="ctl" id="themeWrap"><span class="lbl">Background</span>
+            <div class="seg" id="theme" role="group" aria-label="Background"><button type="button" data-v="paper">Paper</button><button type="button" data-v="ink">Ink</button><button type="button" data-v="blush">Blush</button><button type="button" data-v="shelf">Shelf</button><button type="button" data-v="dark">Dark</button><button type="button" data-v="forest">Forest</button><button type="button" data-v="wall">Your PNG<em class="pro">PRO</em></button></div>
+            <p class="note" id="themeNote"></p>
+            <div class="wallbox" id="wallBox" hidden>
+              <p class="wallrow"><span class="wallname" id="wallName"></span><button class="dash sm" id="wallPick" type="button">Choose picture</button><button class="dash sm" id="wallRemove" type="button">Remove</button></p>
+              <p class="note">Best size: 1080 × 1920 px (9:16, same as an Instagram story). Min 720 × 1280. PNG, JPG or WEBP, max 5 MB.</p>
+              <p class="note warn" id="wallWarn"></p>
+            </div>
+            <input type="file" id="wallFile" accept="image/png,image/jpeg,image/webp" hidden>
+            <div class="pngadd"><button class="dash sm" id="pngAdd" type="button">+ Add PNG<em class="pro">PRO</em></button>
+              <p class="note">Posters, photos, anything. PNG, JPG or WEBP, max 5 MB each. Transparent PNGs work. Place it anywhere on the wall. It always stays behind the books.</p>
+              <p class="note" id="pngNote"></p>
+              <label class="range" id="pngOpWrap" hidden><span class="lbl">Opacity</span><input type="range" id="pngOp" min="10" max="100" value="100" aria-label="Opacity of the picked PNG"><span class="lbl" id="pngOpV">100%</span></label>
+              <input type="file" id="pngFile" accept="image/png,image/jpeg,image/webp" multiple hidden></div></div>
+          <div class="ctl"><span class="lbl">Shelf</span>
+            <label class="check"><input type="checkbox" id="woodShelf"> Wood shelf</label>
+            <label class="check"><input type="checkbox" id="plank"> Floating shelf<em class="pro">PRO</em></label>
+            <div class="colours" id="colourWrap" hidden><span class="lbl">Shelf colour<em class="pro">PRO</em></span>
+              <div class="swatches" id="swatches" role="group" aria-label="Shelf colour">
+                <button type="button" class="swatch" data-c="#FFFFFF" aria-label="White" style="background:#FFFFFF"></button><button type="button" class="swatch" data-c="#161616" aria-label="Black" style="background:#161616"></button><button type="button" class="swatch" data-c="#B7B7B2" aria-label="Grey" style="background:#B7B7B2"></button><button type="button" class="swatch" data-c="#D8A86A" aria-label="Oak" style="background:#D8A86A"></button><button type="button" class="swatch" data-c="#7A4E2D" aria-label="Walnut" style="background:#7A4E2D"></button><button type="button" class="swatch" data-c="#86A27B" aria-label="Sage" style="background:#86A27B"></button>
+                <input type="text" id="colourHex" value="#FFFFFF" maxlength="7" spellcheck="false" autocomplete="off" aria-label="Shelf colour as a hex code"></div></div>
+            <p class="note" id="plankNote"></p></div>
+          <div class="ctl"><span class="lbl">Edition</span>
+            <div class="opts" role="radiogroup" aria-label="Edition">
+              <label><input type="radio" name="ed" value="english" checked>English</label>
+              <label><input type="radio" name="ed" value="any">Any</label></div>
+            <p class="note">Which DVD and book scans a search looks for first.</p></div>
+        </div>
+      </details>
     </div>
-  </section>
 
-  <section id="mine" class="wide" hidden>
-    <h2>My shelves <small id="mineCount"></small></h2>
-    <p class="grey" id="mineEmpty" hidden>No saved shelves yet. Make one above and press Save shelf.</p>
-    <ol class="mine" id="mineList"></ol>
-  </section>
+    <div class="mkside">
+      <div class="phone"><div class="stage" id="stage"><canvas id="story" width="1080" height="1920" role="img" aria-label="Story preview"></canvas>
+        <div class="pngbox" id="pngBox" hidden><button class="pngx" id="pngX" type="button" aria-label="Remove this PNG">✕</button><span class="pngh" id="pngH" aria-hidden="true"></span><span class="pngr" id="pngR" aria-hidden="true"></span></div></div></div>
+      <p class="note" id="exportNote"></p>
+    </div>
+  </div>
 
-  <div class="home"><a class="dash" href="#top">Back to top</a></div>
+  <div class="mkbar">
+    <span class="barleft"><button class="dash sm" id="saveNew" type="button" hidden>Save as a new shelf</button><span class="note" id="saveNote" role="status"></span></span>
+    <button class="dash sm" id="cancelBtn" type="button">Cancel</button>
+    <button class="btn" id="saveShelf" type="button" hidden>Save</button>
+    <button class="btn ghost" id="exportBtn" type="button">Save story</button>
+  </div>
 </main>
 
 <div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-label="Account">
@@ -450,168 +428,23 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
 
 <script src="../shelf.js?v=20260930d"></script>
 <script src="../worker-address.js?v=20261001a"></script>
-<script src="../nav.js?v=20261001a"></script>
+<script src="../nav.js?v=20261001b"></script>
+<script src="../add.js?v=20261001a"></script>
 <script>
 (() => {
 const $ = s => document.querySelector(s);
 const story = $('#story'), sctx = story.getContext('2d');
 const W = 1080, H = 1920;
 // the spines and the story are drawn by shelf.js (shared with the profile page)
-const {FONTS, STYLES, hex, lum, contrast, sat, dist, crop, posterTitle, loadImg, isReal, isCase, makeSpine, TEX, texture, isDark, shelfName} = Shelf;
+const {FONTS, STYLES, crop, loadImg, isReal, TEX, texture, isDark, posterTitle, DEFAULT_CAPTION} = Shelf;
+// the colour picking and the spine finder live in add.js (the + SHELF dialog uses them on every page)
+const {extractPalette, findSpine, findSoloSpine} = Add;
 // the builder inside a profile page (u/): it opens a saved shelf (?embed&open=<id>) or an empty one (?embed&new),
 // and tells the profile when it's saved
 const EMBED = document.documentElement.classList.contains('embed');
 let books = [], isSample = true, uid = 0, server = false;
 const settings = {caption:'my next reads.', theme:'paper', layout:'row', varied:true, wood:false, plank:false, shelfColour:'#FFFFFF'};
 
-/* ---------- colour ---------- */
-function extractPalette(img){
-  const c = document.createElement('canvas'); c.width = 48; c.height = 72;
-  const x = c.getContext('2d', {willReadFrequently:true}), iw = img.width, ih = img.height;
-  x.drawImage(img, iw*.06, ih*.06, iw*.88, ih*.66, 0, 0, 48, 72);
-  const d = x.getImageData(0,0,48,72).data, buckets = new Map();
-  for (let i = 0; i < d.length; i += 4){
-    const k = (d[i]>>4)<<8 | (d[i+1]>>4)<<4 | (d[i+2]>>4), e = buckets.get(k) || {n:0,r:0,g:0,b:0};
-    e.n++; e.r += d[i]; e.g += d[i+1]; e.b += d[i+2]; buckets.set(k, e);
-  }
-  const list = [...buckets.values()].map(e => ({n:e.n, c:[e.r/e.n, e.g/e.n, e.b/e.n]})).sort((a,b) => b.n - a.n);
-  if (!list.length) return {bg:'#333333', fg:'#FFFFFF', accent:'#CCCCCC'};
-  const score = e => e.n * (.35 + sat(e.c)*1.8), dom = list.slice(0,10).sort((a,b) => score(b)-score(a))[0].c, bg = hex(...dom);
-  const others = list.slice(0,14).filter(e => dist(e.c, dom) > 70);
-  const ac = others.slice().sort((a,b) => sat(b.c)*Math.sqrt(b.n) - sat(a.c)*Math.sqrt(a.n))[0];
-  const accent = ac ? hex(...ac.c) : (lum(bg) > .5 ? '#1A1A1A' : '#F2F2F2');
-  let fg = null, best = 0;
-  for (const e of others){ const h = hex(...e.c), ct = contrast(h, bg); if (ct > best){ best = ct; fg = h; } }
-  if (best < 4.5) fg = contrast('#FFFFFF', bg) >= contrast('#111111', bg) ? '#FFFFFF' : '#111111';
-  return {bg, fg, accent};
-}
-
-/* ---------- wrap scans: find the spine between back and front ---------- */
-/* Returns {x, w, frontX, score} in image pixels, or null when there's no clear spine.
-   score is 0-100: how sure we are this is a clean spine (clear edges, where a DVD spine sits,
-   an even colour down its height, lettering on it). The same logic lives in backend/api/spine.py. */
-function findSpine(img, kind){
-  kind = kind || (img.width/img.height >= 1.3 && img.width/img.height <= 1.9 ? 'movie' : 'book');
-  const aspect = img.width/img.height, [lo, hi] = kind === 'movie' ? [1.3, 1.9] : [1.2, 2.4];
-  if (aspect < lo || aspect > hi) return null;
-  const cw = 600, ch = Math.max(40, Math.round(cw/aspect));
-  const c = document.createElement('canvas'); c.width = cw; c.height = ch;
-  const x = c.getContext('2d', {willReadFrequently:true}); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, cw, ch);
-  const d = x.getImageData(0,0,cw,ch).data, y0 = Math.floor(ch*.08), y1 = Math.floor(ch*.92), cols = [];
-  const px = (X, Y) => { const i = (Y*cw+X)*4; return [d[i], d[i+1], d[i+2]]; };
-  // a photo of a case or book on a table has a plain background down both sides; a scan runs to the edge
-  const band = Math.max(4, Math.floor(cw/50)), sd = (x0, x1) => { const s = [0,0,0], q = [0,0,0]; let n = 0;
-    for (let Y = 0; Y < ch; Y++) for (let X = x0; X < x1; X++){ const p = px(X, Y); for (let k = 0; k < 3; k++){ s[k] += p[k]; q[k] += p[k]*p[k]; } n++; }
-    return [0,1,2].reduce((a, k) => a + Math.sqrt(Math.max(0, q[k]/n - (s[k]/n)**2)), 0)/3; };
-  const border = (sd(0, band) + sd(cw - band, cw))/2;
-  if (border < 10) return null;
-  for (let X = 0; X < cw; X++){ let r=0,g=0,b=0,n=0; for (let Y = y0; Y < y1; Y += 2){ const i = (Y*cw+X)*4; r+=d[i]; g+=d[i+1]; b+=d[i+2]; n++; } cols.push([r/n,g/n,b/n]); }
-  const avg = (a, b) => { const s = [0,0,0]; for (let i = a; i <= b; i++){ s[0]+=cols[i][0]; s[1]+=cols[i][1]; s[2]+=cols[i][2]; } const n = b-a+1; return [s[0]/n, s[1]/n, s[2]/n]; };
-  const median = list => [0,1,2].map(k => { const v = list.map(p => p[k]).sort((a,b) => a-b), m = v.length >> 1; return v.length % 2 ? v[m] : (v[m-1] + v[m])/2; });
-  // colour step between the 3 columns left and right of X: scans have soft, blurred edges
-  const edge = cols.map((_, i) => i < 3 || i > cw-4 ? 0 : dist(avg(i-3, i-1), avg(i+1, i+3)));
-  const film = kind === 'movie', minW = Math.round(cw*(film ? .025 : .02)), maxW = Math.round(cw*(film ? .09 : .14));
-  const cands = [];
-  for (let L = Math.floor(cw*.36); L <= Math.floor(cw*.56); L++)
-    for (let R = L + minW; R <= Math.min(cw-4, L + maxW); R++){
-      const lo = Math.min(edge[L], edge[R]), hi = Math.max(edge[L], edge[R]);
-      if (lo < 10 || hi < 25) continue;                           // one edge can be soft (spine and front alike), not both
-      const e = .6*lo + .4*hi, wf = (R-L)/cw, off = Math.abs((L+R)/2/cw - .5);
-      const fit = film ? ((wf >= .03 && wf <= .07) || (aspect >= 1.65 && wf >= .025 && wf <= .06) ? 1 : .75)*Math.exp(-.5*(off/.035)**2)   // DVD: 129 | 14 | 129 mm; Blu-ray runs wider, spine thinner
-                       : Math.exp(-.5*(off/.1)**2);
-      cands.push({L, R, e, fit, s:e*fit});
-    }
-  if (!cands.length) return null;
-  cands.sort((a,b) => b.s - a.s);
-  // among the best, prefer an even colour down the height (a spine, not a slice of a photo)
-  const evenness = (L, R) => {
-    const rows = [];
-    for (let Y = y0; Y < y1; Y += 2){ let r=0,g=0,b=0; for (let X = L+1; X < R; X++){ const i = (Y*cw+X)*4; r+=d[i]; g+=d[i+1]; b+=d[i+2]; } const n = R-L-1; rows.push([r/n,g/n,b/n]); }
-    const med = median(rows);
-    return rows.filter(v => dist(v, med) < 60).length / rows.length;
-  };
-  const top40 = cands.slice(0, 40);
-  for (const cd of top40){ cd.u = evenness(cd.L, cd.R); cd.f = cd.s*(.5 + .5*cd.u); }
-  const ranked = top40.slice().sort((a,b) => b.f - a.f);            // best first; equal ones keep their order
-  // drop plain margins above and below the wrap (rows that are one flat colour right across the scan)
-  const flat = Y => { let s = 0, q = 0; for (let X = 0; X < cw; X += 2){ const i = (Y*cw+X)*4, v = d[i] + d[i+1] + d[i+2]; s += v; q += v*v; } const n = Math.ceil(cw/2); return Math.sqrt(Math.max(0, q/n - (s/n)**2))/3 < 6; };
-  let top = 0, bot = ch - 1;
-  while (top < ch*.15 && flat(top)) top++;
-  while (bot > ch*.85 && flat(bot)) bot--;
-  const k = img.width/cw, ky = img.height/ch;
-  const cut = best => {
-    // move each edge inward past columns that look more like the back or front cover than the spine
-    const bl = best.L, br = best.R, q = Math.floor((br-bl)/4), inner = median(cols.slice(bl+q, br-q+1)), cap = Math.max(2, Math.round(cw*.02));
-    const outL = avg(Math.max(0, bl-5), bl-2), outR = avg(br+2, Math.min(cw-1, br+5));
-    let L = bl, R = br;
-    while (L - bl < cap && R - L > minW && dist(cols[L], inner) > dist(cols[L], outL)) L++;
-    while (br - R < cap && R - L > minW && dist(cols[R], inner) > dist(cols[R], outR)) R--;
-    // spine and cover the same colour (Gummo: yellow on yellow) leave a soft edge that lettering can beat:
-    // widen a thin film spine over columns that still match it, up to a DVD spine's usual 5 %
-    if (film) while ((R-L)/cw < .05){ const r = R < cw-4 && dist(cols[R+1], inner) < 35, l = L > 3 && dist(cols[L-1], inner) < 35; if (!r && !l) break; if (r) R++; if (l && (R-L)/cw < .05) L--; }
-    L++; R--;                                                         // one more column for the soft edge itself
-    // a spine carries lettering: rows change as they cross it. A blank strip is a gap or a case hinge.
-    const g = [];
-    for (let Y = y0; Y < y1; Y++){ let s = 0; for (let X = L+1; X < R; X++){ const i = (Y*cw+X)*4; s += d[i] + d[i+1] + d[i+2]; } g.push(s/(3*Math.max(1, R-L-1))); }
-    let text = 0; for (let i = 1; i < g.length; i++) text += Math.abs(g[i] - g[i-1]); text /= Math.max(1, g.length - 1);
-    const penalty = (Math.abs(aspect - 4/3) < .012 ? .6 : 1)*(text < 2 ? .7 : 1);   // 4:3 is a phone photo, not a scan
-    // Books: scans are rare and look-alikes common (3D mock-ups, a strip of one cover, two books side by side,
-    // wooden boards for "Norwegian Wood"). Keep only a flat scan: a busy edge all round, clear edges on both
-    // sides of the spine, straight up and down, and an even colour top to bottom.
-    if (!film){
-      const at = X => Math.max(...edge.slice(Math.max(0, X-3), X+4));
-      const drift = X => { const pos = [[.1, .4], [.6, .9]].map(([a, b]) => { let best = -1, arg = X;
-        for (let i = Math.max(3, X-12); i <= Math.min(cw-4, X+12); i++){ const col = (i0, i1) => { const t = [0,0,0]; let n = 0;
-          for (let Y = Math.floor(ch*a); Y < Math.floor(ch*b); Y += 2) for (let c2 = i0; c2 <= i1; c2++){ const j = (Y*cw+c2)*4; t[0]+=d[j]; t[1]+=d[j+1]; t[2]+=d[j+2]; n++; } return t.map(v => v/n); };
-          const e = dist(col(i+1, i+3), col(i-3, i-1)); if (e > best){ best = e; arg = i; } } return arg; });
-        return Math.abs(pos[0] - pos[1])/cw; };
-      if (border < 20 || Math.min(at(bl), at(br)) < 25 || best.u < .9 || Math.max(drift(bl), drift(br)) > .012) return null;
-    }
-    const score = Math.round(100*Math.min(1, best.e/60)*best.fit*(.5 + .5*best.u)*penalty);
-    if (score < 20) return null;
-    return {x:L*k, w:(R-L+1)*k, frontX:(br+1)*k, y:top*ky, h:(bot-top+1)*ky, score};
-  };
-  // A spine is never much wider than a real one for its height: a DVD's is 14 x 184 mm (1:13), a Blu-ray's
-  // 12 x 148, and scans squash them (right cuts in the tested scans ran up to 1:8). The thickest paperbacks
-  // are about 1:3.5. A wider cut has taken in part of the back or front, so the next candidate gets a turn;
-  // with none left, there's no clean spine here (the caller moves on to the next scan, or the cover).
-  const most = film ? .14 : .3, first = cut(ranked[0]);
-  if (!first || first.w/first.h <= most) return first;
-  for (const cd of ranked.slice(1)){ const r = cut(cd); if (r && r.w/r.h <= most) return r; }
-  return null;
-}
-/* A photo or scan of a single spine (at least 4 times taller than wide). Trims plain background
-   around it. score 0-100: a clean background around it (or none at all) and lettering on it. */
-function findSoloSpine(img){
-  const ch = 600, cw = Math.max(6, Math.round(ch*img.width/img.height));
-  const c = document.createElement('canvas'); c.width = cw; c.height = ch;
-  const x = c.getContext('2d', {willReadFrequently:true}); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, cw, ch);
-  const d = x.getImageData(0, 0, cw, ch).data, px = (X, Y) => { const i = (Y*cw+X)*4; return [d[i], d[i+1], d[i+2]]; };
-  // background: the colour of the outer ring of pixels
-  const ring = [];
-  for (let X = 0; X < cw; X++){ ring.push(px(X, 0), px(X, ch-1)); }
-  for (let Y = 0; Y < ch; Y++){ ring.push(px(0, Y), px(cw-1, Y)); }
-  const bg = [0,1,2].map(k => ring.map(p => p[k]).sort((a,b) => a-b)[ring.length >> 1]);
-  const plain = ring.filter(p => dist(p, bg) < 30).length/ring.length;   // 1: a clean background all round
-  const isBg = p => plain > .6 && dist(p, bg) < 30;
-  const colBg = X => { let n = 0; for (let Y = 0; Y < ch; Y += 2) n += isBg(px(X, Y)); return n/Math.ceil(ch/2) > .9; };
-  const rowBg = Y => { let n = 0; for (let X = 0; X < cw; X++) n += isBg(px(X, Y)); return n/cw > .9; };
-  let L = 0, R = cw-1, T = 0, B = ch-1;
-  while (L < R && colBg(L)) L++;
-  while (R > L && colBg(R)) R--;
-  while (T < B && rowBg(T)) T++;
-  while (B > T && rowBg(B)) B--;
-  const w = R-L+1, h = B-T+1;
-  if (w < 4 || h < ch*.5 || h/w < 4 || h/w > 40) return null;
-  // lettering: rows change as they cross the spine
-  let text = 0, prev = null;
-  for (let Y = T; Y <= B; Y++){ let s = 0; for (let X = L; X <= R; X++){ const p = px(X, Y); s += p[0]+p[1]+p[2]; } s /= 3*w; if (prev !== null) text += Math.abs(s - prev); prev = s; }
-  text /= Math.max(1, h-1);
-  const score = Math.round(100*(plain > .6 ? 1 : .6)*(.4 + .6*Math.min(1, text/6)));
-  if (score < 20) return null;
-  const k = img.width/cw, ky = img.height/ch;
-  return {x:L*k, y:T*ky, w:w*k, h:h*ky, score};
-}
 const API = String(window.SPINESTACK_API || '').replace(/\/+$/, '');
 
 /* ---------- sample shelf (drawn covers, no real artwork) ---------- */
@@ -692,60 +525,87 @@ function renderThumbs(){
     const c = bt.querySelector('canvas'), x = c.getContext('2d'); x.setTransform(c.width/W, 0, 0, c.height/H, 0, 0); renderStory(x, bt.dataset.v, true); x.setTransform(1, 0, 0, 1, 0, 0);
   }), 250);
 }
-function renderStrip(){
-  const el = $('#strip'), none = !books.length;
-  el.hidden = none; $('#stripEmpty').hidden = !none; if (none){ el.replaceChildren(); return; }
-  const dpr = Math.min(2, window.devicePixelRatio || 1), s = sizes(1160, books.length <= 2 ? 220 : 165);
-  const build = H0 => el.replaceChildren(...books.map((b,i) => {
-    const k = (H0 - 2)/1160, sp = makeSpine(b, s[i].w*k*dpr, s[i].h*k*dpr), bt = document.createElement('button');
-    sp.style.width = sp.width/dpr + 'px'; sp.style.height = sp.height/dpr + 'px';
-    bt.type = 'button'; bt.dataset.id = b.id; bt.setAttribute('aria-label', (b.title || 'Untitled') + ', show in the list'); bt.append(sp); return bt;
-  }));
-  const h0 = el.clientHeight; build(h0);
-  if (el.clientHeight !== h0) build(el.clientHeight);   // a sideways scrollbar took some height
+let raf = 0; const redraw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { renderStory(); if ($('#stylePanel').open) renderThumbs(); paintStyleLine(); scheduleDraft(); }); };
+$('#stylePanel').addEventListener('toggle', () => { if ($('#stylePanel').open) renderThumbs(); });   // the filter thumbnails are drawn only while they show
+// Style's one line: what's picked now, e.g. Spines · Clean · Paper · Wood shelf
+function paintStyleLine(){
+  const label = (id, v) => { const b = document.querySelector(`${id} button[data-v="${v}"]`); return b ? b.firstChild.textContent.trim() : ''; };
+  const f = FILTERS.find(x => x.id === settings.filter);
+  $('#styleLine').textContent = [label('#layout', settings.layout), f ? f.name : '', label('#theme', settings.theme), settings.wood ? 'Wood shelf' : settings.plank ? 'Floating shelf' : ''].filter(Boolean).join(' · ');
 }
-$('#strip').addEventListener('click', e => {
-  const bt = e.target.closest('button'); if (!bt) return;
-  const li = document.querySelector(`#books .book[data-id="${bt.dataset.id}"]`); if (!li) return;
-  li.scrollIntoView({behavior:'smooth', block:'center'}); document.getElementById(bt.dataset.id + '-title').focus({preventScroll:true});
-});
-let raf = 0; const redraw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { renderStory(); renderStrip(); renderThumbs(); }); };
 addEventListener('resize', redraw);
 
 /* ---------- shelf list ---------- */
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';   // Lucide chevron-down
+const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+let openId = null;   // the spine whose controls show: press a row to open it, and the one that was open shuts
+const byLine = b => [b.author, b.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · ');
 function renderList(){
   $('#count').textContent = books.length ? `(${books.length})` : '';
   $('#sampleNote').hidden = !isSample || !books.length;
-  $('#navCount').textContent = books.length;
   $('#clear').hidden = !books.length;
   const ol = $('#books');
-  if (!books.length){ ol.innerHTML = '<li class="empty">Nothing here yet. Search a title above.</li>'; redraw(); return; }
-  ol.innerHTML = books.map((b,i) => `
-  <li class="book" data-id="${b.id}">
-    <img class="thumb" src="${b.thumb}" alt="">
-    <div class="fields">
-      <div class="row2">
-        <input type="text" class="t" id="${b.id}-title" data-f="title" value="${esc(b.title)}" placeholder="Title" aria-label="Title">
-        <input type="text" id="${b.id}-author" data-f="author" value="${esc(b.author)}" placeholder="${b.kind === 'movie' ? 'Director' : 'Author'}" aria-label="Author or director">
-      </div>
-      <div class="row3">
-        <select id="${b.id}-kind" data-f="kind" aria-label="Book or film"><option value="book"${b.kind!=='movie'?' selected':''}>Book</option><option value="movie"${b.kind==='movie'?' selected':''}>Film</option></select>
-        <select id="${b.id}-style" data-f="style" aria-label="Spine style">${Object.entries(STYLES).filter(([k]) => k !== 'real' || b.spineImg).map(([k,v]) => `<option value="${k}"${b.style===k?' selected':''}>${v}</option>`).join('')}</select>
-        <select id="${b.id}-font" data-f="font" aria-label="Lettering">${Object.entries(FONTS).map(([k,v]) => `<option value="${k}"${b.font===k?' selected':''}>${v.label}</option>`).join('')}</select>
-        <label class="sw"><input type="color" id="${b.id}-bg" data-f="bg" value="${b.bg.toLowerCase()}">Spine</label>
-        <label class="sw"><input type="color" id="${b.id}-fg" data-f="fg" value="${b.fg.toLowerCase()}">Text</label>
-      </div>
-      <div class="note" id="${b.id}-note"></div>
+  if (!books.length){ ol.innerHTML = '<li class="empty">Nothing here yet. Find a film or book above.</li>'; redraw(); return; }
+  if (!books.some(b => b.id === openId)) openId = null;
+  ol.innerHTML = books.map((b,i) => { const open = b.id === openId; return `
+  <li class="book${open ? ' open' : ''}" data-id="${b.id}">
+    <div class="bhead">
+      <span class="grip" title="Drag to reorder" aria-hidden="true"></span>
+      <button class="bopen" type="button" aria-expanded="${open}" aria-controls="${b.id}-body">
+        <img class="thumb" src="${b.thumb || BLANK}" alt="">
+        <span class="bwho"><span class="bt" id="${b.id}-head">${esc(b.title) || 'Untitled'}</span><span class="bby" id="${b.id}-by">${esc(byLine(b))}</span></span>${CHEV}
+      </button>
     </div>
-    <div class="acts">
-      <button class="ib" type="button" data-a="up" aria-label="Move left"${i===0?' disabled':''}>↑</button>
-      <button class="ib" type="button" data-a="down" aria-label="Move right"${i===books.length-1?' disabled':''}>↓</button>
-      <button class="ib" type="button" data-a="del" aria-label="Remove ${esc(b.title || 'item')}">✕</button>
+    <div class="bbody" id="${b.id}-body"${open ? '' : ' hidden'}>
+      <div class="fields">
+        <div class="row2">
+          <input type="text" class="t" id="${b.id}-title" data-f="title" value="${esc(b.title)}" placeholder="Title" aria-label="Title">
+          <input type="text" id="${b.id}-author" data-f="author" value="${esc(b.author)}" placeholder="${b.kind === 'movie' ? 'Director' : 'Author'}" aria-label="Author or director">
+        </div>
+        <div class="row3">
+          <select id="${b.id}-kind" data-f="kind" aria-label="Book or film"><option value="book"${b.kind!=='movie'?' selected':''}>Book</option><option value="movie"${b.kind==='movie'?' selected':''}>Film</option></select>
+          <select id="${b.id}-style" data-f="style" aria-label="Spine style">${Object.entries(STYLES).filter(([k]) => k !== 'real' || b.spineImg).map(([k,v]) => `<option value="${k}"${b.style===k?' selected':''}>${v}</option>`).join('')}</select>
+          <select id="${b.id}-font" data-f="font" aria-label="Lettering">${Object.entries(FONTS).map(([k,v]) => `<option value="${k}"${b.font===k?' selected':''}>${v.label}</option>`).join('')}</select>
+          <label class="sw"><input type="color" id="${b.id}-bg" data-f="bg" value="${b.bg.toLowerCase()}">Spine</label>
+          <label class="sw"><input type="color" id="${b.id}-fg" data-f="fg" value="${b.fg.toLowerCase()}">Text</label>
+        </div>
+        <div class="note" id="${b.id}-note"></div>
+      </div>
+      <div class="acts">
+        <button class="ib" type="button" data-a="up" aria-label="Move up"${i===0?' disabled':''}>↑</button>
+        <button class="ib" type="button" data-a="down" aria-label="Move down"${i===books.length-1?' disabled':''}>↓</button>
+        <button class="ib" type="button" data-a="del" aria-label="Remove ${esc(b.title || 'item')}">✕</button>
+      </div>
     </div>
-  </li>`).join('');
+  </li>`; }).join('');
   books.forEach(setNote); redraw();
 }
+function paintOpen(){
+  for (const li of document.querySelectorAll('#books .book')){
+    const on = li.dataset.id === openId;
+    li.classList.toggle('open', on); li.querySelector('.bopen').setAttribute('aria-expanded', String(on)); li.querySelector('.bbody').hidden = !on;
+  }
+}
+// a row's top line: its title, and who it's by
+function paintHead(b){
+  const t = document.getElementById(b.id + '-head'), by = document.getElementById(b.id + '-by');
+  if (t) t.textContent = b.title || 'Untitled'; if (by) by.textContent = byLine(b);
+}
+/* Dragging a row by its dots puts the spine somewhere else on the shelf (SortableJS, which works with a finger too).
+   If the library can't load, the dots stay hidden and the ↑ ↓ in an open row, there for the keyboard, do it all. */
+const SORTABLE = {src:'https://cdn.jsdelivr.net/npm/sortablejs@1.15.7/Sortable.min.js', integrity:'sha384-DgmC6Xe2bSN2WjTDXzWYbUbxyhNP+NNkGDR/g78pCXV7E7rcVTGxVg0uIVCUUcBc'};
+(() => {
+  const el = document.createElement('script'); el.src = SORTABLE.src; el.integrity = SORTABLE.integrity; el.crossOrigin = 'anonymous';
+  el.onerror = () => el.remove();
+  el.onload = () => {
+    if (!window.Sortable) return;
+    document.documentElement.classList.add('sortable');
+    new window.Sortable($('#books'), {handle:'.grip', draggable:'.book', animation:150, forceFallback:true, fallbackTolerance:3,
+      onEnd: e => { if (e.oldIndex == null || e.newIndex == null || e.oldIndex === e.newIndex) return; const [b] = books.splice(e.oldIndex, 1); books.splice(e.newIndex, 0, b); renderList(); }});
+  };
+  document.head.appendChild(el);
+})();
 function setNote(b){
   const el = document.getElementById(b.id + '-note'); if (!el) return; el.classList.remove('warn');
   if (b.status === 'reading'){ el.innerHTML = 'Reading the cover…'; return; }
@@ -780,6 +640,7 @@ $('#books').addEventListener('input', e => {
   const li = e.target.closest('.book'), f = e.target.dataset.f; if (!li || !f) return;
   const b = books.find(b => b.id === li.dataset.id); b[f] = e.target.value; b.touched = true;
   if (f === 'title') delete b.titleImg;   // an edited title can't come from the poster any more
+  paintHead(b);
   if (f === 'kind' && !isReal(b)){
     if (b.kind === 'movie'){ b.style = 'dvd'; b.bg = '#111111'; b.fg = '#F4F4F2'; } else { b.style = 'art'; Object.assign(b, extractPalette(b.img)); }
     renderList(); return;
@@ -787,6 +648,8 @@ $('#books').addEventListener('input', e => {
   setNote(b); redraw();
 });
 $('#books').addEventListener('click', e => {
+  const head = e.target.closest('.bopen');
+  if (head){ const id = head.closest('.book').dataset.id; openId = openId === id ? null : id; paintOpen(); return; }
   const btn = e.target.closest('[data-a]'); if (!btn) return;
   const i = books.findIndex(b => b.id === btn.closest('.book').dataset.id), a = btn.dataset.a;
   if (a === 'archive'){ btn.disabled = true; archiveSpine(books[i]); return; }
@@ -802,221 +665,17 @@ function shelve(b){
   books.push(b); renderList(); return true;
 }
 
-/* ---------- search: the Spinestack server, or TMDB + Open Library straight from the browser ---------- */
-const sstatus = (msg, err) => { const s = $('#sstatus'); s.classList.toggle('err', !!err); s.innerHTML = msg; };
+/* ---------- Add: the same dialog + SHELF opens (add.js) ---------- */
 const TMDB = String(window.SPINESTACK_TMDB || '').trim();
 const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
 const direct = !window.claude;   // the Claude preview can't reach other sites
 const viaWorker = u => WORKER ? WORKER + '/img?url=' + encodeURIComponent(u) : u;
 const timeout = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('timeout')), ms))]);
-const getJSON = (url, opt) => fetch(url, opt).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
-async function tmdbFilms(q){
-  const bearer = TMDB.length > 40, opt = bearer ? {headers:{Authorization:'Bearer ' + TMDB}} : {}, key = bearer ? '' : '&api_key=' + encodeURIComponent(TMDB);
-  const find = (s, y) => getJSON('https://api.themoviedb.org/3/search/movie?include_adult=false&query=' + encodeURIComponent(s) + (y ? '&year=' + y : '') + key, opt);
-  const yq = q.match(/^(.+?)[\s,(]+((?:19|20)\d\d)\)?$/);   // "kids 1995": TMDB finds nothing when the year is in the query
-  let r = yq ? await find(yq[1], yq[2]) : await find(q);
-  if (yq && !(r.results || []).length) r = await find(yq[1]);
-  return Promise.all((r.results || []).slice(0,5).map(async (m,i) => {
-    let creator = '';
-    if (i < 3) try { const c = await getJSON(`https://api.themoviedb.org/3/movie/${m.id}/credits?` + key.slice(1), opt); creator = ((c.crew || []).find(p => p.job === 'Director') || {}).name || ''; } catch {}
-    return {kind:'movie', title:m.title || '', year:(m.release_date || '').slice(0,4), creator, cover:m.poster_path ? 'https://image.tmdb.org/t/p/w500' + m.poster_path : ''};
-  }));
-}
-async function olBooks(q){
-  const r = await getJSON('https://openlibrary.org/search.json?limit=5&fields=title,author_name,first_publish_year,cover_i&q=' + encodeURIComponent(q));
-  return (r.docs || []).map(d => ({kind:'book', title:d.title || '', year:String(d.first_publish_year || ''), creator:(d.author_name || [''])[0], cover:d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-L.jpg` : ''}));
-}
-async function identifyDirect(q, want){
-  const films = want !== 'book' && TMDB, books = want !== 'movie';
-  const [f, b] = await Promise.allSettled([films ? tmdbFilms(q) : [], books ? olBooks(q) : []]);
-  if ((!films || f.status === 'rejected') && (!books || b.status === 'rejected')) throw new Error('no answer');
-  return [...(f.value || []), ...(b.value || [])];
-}
-let matches = [];
-$('#sform').addEventListener('submit', async e => {
-  e.preventDefault();
-  const q = $('#q').value.trim(); if (!q) return;
-  const want = $('#qkind').value, noFilms = !server && !WORKER && !TMDB && want !== 'book';
-  if (!server && !direct){ sstatus('Search runs on the shelfstackd server, which this preview doesn’t have. Drop a scan below instead.', true); return; }
-  if (noFilms && want === 'movie'){ sstatus('Film search needs a TMDB key. Books work without one.', true); $('#matches').hidden = true; return; }
-  $('#spines').hidden = true; sstatus('Looking up “' + esc(q) + '”…');
-  try {
-    let results;
-    if (server) results = (await fetch(API + '/api/identify?q=' + encodeURIComponent(q)).then(r => r.json())).results;
-    else if (WORKER) results = await getJSON(`${WORKER}/identify?want=${want}&q=` + encodeURIComponent(q)).then(r => r.results).catch(() => identifyDirect(q, want));
-    else results = await identifyDirect(q, want);
-    matches = results.filter(m => want === 'all' || m.kind === want);
-    if (!matches.length){ sstatus('Nothing matched “' + esc(q) + '”. Check the spelling, or drop a scan below.', true); $('#matches').hidden = true; return; }
-    sstatus(matches.length + ' match' + (matches.length > 1 ? 'es' : '') + '.' + (noFilms ? ' Film search needs a TMDB key.' : ''));
-    $('#mrows').innerHTML = matches.map((m,i) => `<tr tabindex="0" data-i="${i}"><td class="no">${String(i+1).padStart(3,'0')}</td><td class="t">${esc(m.title)}</td><td>${esc(m.year || '—')}</td><td><span class="kind ${m.kind}">${m.kind === 'movie' ? 'Film' : 'Book'}</span></td><td class="by">${esc(m.creator || '—')}</td></tr>`).join('');
-    $('#matches').hidden = false;
-  } catch { sstatus((server ? 'The search server' : 'The search') + ' didn’t answer. Try again in a moment.', true); }
-});
-const pickMatch = tr => tr && findSpines(matches[+tr.dataset.i]);
-$('#mrows').addEventListener('click', e => pickMatch(e.target.closest('tr')));
-$('#mrows').addEventListener('keydown', e => { if (e.key === 'Enter') pickMatch(e.target.closest('tr')); });
-
-/* An image that fails this would stop Save story from working, so it never goes on the shelf. */
-const canvasSafe = img => { try { const c = document.createElement('canvas'); c.width = c.height = 1; const x = c.getContext('2d'); x.drawImage(img, 0, 0, 1, 1); c.toDataURL(); return true; } catch { return false; } };
-/* Picking a match looks for real spines in DVD and book scans (the Worker finds them, the browser cuts them).
-   A clearly good one goes on the shelf by itself; otherwise the user picks. With no scans, a spine made
-   from the poster or cover goes on instead. The tiles then switch that shelf item between the choices. */
-const AUTO_SCORE = 75, SHOW_SCORE = 45;   // tested: right spines scored 76-97, wrong ones up to 69; below 45 mostly photos of open cases
-const englishOnly = () => ($('input[name=ed]:checked') || {}).value !== 'any';
-// the Worker flags each scan: en = no sign of another language or region, vhs = a tape
-const isEnglish = c => c.en !== false && !c.vhs;
-// best first: with English on, English DVD/Blu-ray above other editions; VHS below everything else either way
-const rankCut = (c, english) => (english && !isEnglish(c) ? -1000 : 0) + (c.vhs ? -500 : 0) + c.score;
-let current = null;
-const keyOf = m => [m.kind, m.title.toLowerCase(), m.year || ''].join('|');
-function bookFor(cur, choice){
-  const m = cur.m, film = m.kind === 'movie', base = {title:m.title, author:m.creator || '', kind:m.kind, year:m.year || '', coverUrl:m.cover || '', font:'oswald', key:cur.key, choice};
-  if (choice.startsWith('real:')){
-    const r = cur.real[+choice.slice(5)], front = r.front || cur.img || r.spine, pal = extractPalette(front);
-    return newBook(Object.assign(base, {img:front, spineImg:r.spine, archiveId:r.archive ? r.id : undefined, source:r.archive ? 'the archive' : hostOf(r.source), bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real'}, front.src ? {thumb:front.src} : {}));
-  }
-  const img = cur.img, pal = extractPalette(img), t = film ? cur.title : null;
-  const bg = t ? t.bg : film ? '#111111' : pal.bg, fg = t ? (contrast('#F4F4F2', bg) >= contrast('#111111', bg) ? '#F4F4F2' : '#111111') : film ? '#F4F4F2' : pal.fg;
-  return newBook(Object.assign(base, {img, thumb:img.src, bg, fg, accent:pal.accent, titleImg:t && t.img, style:choice === 'cover' ? 'cover' : film ? 'dvd' : 'art'}));
-}
-const tileCanvas = (b, w, H0) => { const dpr = Math.min(2, window.devicePixelRatio || 1), sp = makeSpine(b, w*dpr, H0*dpr); sp.style.width = sp.width/dpr + 'px'; sp.setAttribute('aria-hidden', 'true'); return sp; };
-function showTiles(cur){
-  const m = cur.m, noun = m.kind === 'movie' ? 'poster' : 'cover', on = books.find(b => b.key === cur.key);
-  // every option in one row at one height: the spine, one line saying where it's from, then Use this,
-  // or On shelf and Remove under the one that's on the shelf
-  const tile = (c, art, label, what) => `<div class="pick" data-c="${c}"><div class="art">${art}</div><span class="lbl">${label}</span>` +
-    (on && on.choice === c ? '<span class="on">On shelf</span><button class="dash sm" type="button" data-del="1">Remove</button>'
-                           : `<button class="dash sm" type="button" data-use="${c}" aria-label="Use ${what}">Use this</button>`) + '</div>';
-  const tiles = cur.real.map((r,i) => tile('real:' + i, '', r.archive
-    ? `From the archive · <a href="#" data-report="${esc(r.id)}">Report</a>`
-    : `<a class="src" href="${esc(r.source)}" target="_blank" rel="noopener">${esc(hostOf(r.source))}</a>`, 'this spine'));
-  if (cur.img){
-    tiles.push(tile('spine', '', 'Generated', 'a spine made from the ' + noun));
-    tiles.push('<span class="rule" aria-hidden="true"></span>');
-    tiles.push(tile('cover', `<img class="cov" src="${esc(cur.img.src)}" crossorigin="anonymous" alt="${esc(m.title)} ${noun}">`, 'Cover', 'the ' + noun));
-  }
-  $('#found').innerHTML = tiles.join('') || (cur.busy ? '' : '<p class="grey">No scans and no ' + noun + ' found for this title. Drop a scan below.</p>');
-  $('#noReal').hidden = cur.busy || !WORKER || server || cur.real.length > 0 || m.kind !== 'book';
-  const H0 = parseFloat(getComputedStyle($('#found')).getPropertyValue('--th')) || 300;
-  cur.real.forEach((r,i) => $(`#found [data-c="real:${i}"] .art`).append(tileCanvas({style:'real', spineImg:r.spine}, H0*r.spine.width/r.spine.height, H0)));
-  const gen = $('#found [data-c="spine"] .art');
-  if (gen){ const b = cur.preview || (cur.preview = bookFor(cur, 'spine')); gen.append(tileCanvas(b, isCase(b) ? H0/11 : Math.min(H0/5, 220*b.wf*H0/1160), H0)); }
-}
-/* Loads one scan through the Worker and cuts its spine: an archive spine is used as it is,
-   a tall thin image is a single spine, anything else is a wrap (back | spine | front). */
-async function cutOne(s, kind){
-  try {
-    const img = await timeout(loadImg(s.archive ? WORKER + s.img : viaWorker(s.img)), 15000);
-    if (!canvasSafe(img)) return null;
-    const base = {source:s.source, img:s.img, scan:img, archive:!!s.archive, id:s.id, front:null, en:s.en !== false, vhs:!!s.vhs};
-    if (s.archive) return Object.assign(base, {spine:img, score:100});   // checked by hand before it was approved
-    if (img.height/img.width >= 4){ const c = findSoloSpine(img); return c && Object.assign(base, {spine:crop(img, c.x, c.y, c.w, c.h), score:c.score, solo:true}); }
-    const cut = findSpine(img, kind); if (!cut) return null;
-    return Object.assign(base, {spine:crop(img, cut.x, cut.y, cut.w, cut.h), front:crop(img, cut.frontX, cut.y, img.width - cut.frontX, cut.h), score:cut.score});
-  } catch { return null; }
-}
-/* Asks the Worker for scans one round (one search) at a time and stops once two good spines turn up,
-   so most titles cost one or two searches. Returns the cuts, best first. */
-const ROUNDS = 4;
-async function cutScans(cur, english){
-  const q = `${WORKER}/scans?kind=${cur.m.kind}&title=${encodeURIComponent(cur.m.title)}&year=${encodeURIComponent(cur.m.year || '')}&creator=${encodeURIComponent(cur.m.creator || '')}`;
-  const seen = new Set(), cuts = []; let scans = 0, rounds = 0, busy = false;
-  for (let round = 0; round < ROUNDS && cur === current; round++){
-    if (round) sstatus(`Looking for more scans (${round + 1} of ${ROUNDS})…`);
-    let r;
-    try { r = await timeout(getJSON(q + '&round=' + round), 20000); rounds++; }
-    catch (err){ if (!cuts.length && !rounds) throw err; busy = /429/.test(err.message); break; }   // keep what the earlier rounds found
-    const fresh = (r.results || []).filter(s => !seen.has(s.img) && seen.add(s.img));
-    scans += fresh.length;
-    if (fresh.length && cur === current) sstatus(`Cutting spines from ${scans} scan${scans > 1 ? 's' : ''}…`);
-    cuts.push(...(await Promise.all(fresh.map(s => cutOne(s, cur.m.kind)))).filter(Boolean));
-    if (cuts.filter(c => c.score >= AUTO_SCORE && (!english || isEnglish(c))).length >= 2 || !r.more) break;
-  }
-  // one option per page: the same scan often comes at several sizes (reddit previews, eBay listings)
-  const best = new Map();
-  const show = cur.m.kind === 'book' ? 20 : SHOW_SCORE;   // a book cut has already passed the strict flat-scan checks in findSpine
-  for (const c of cuts.filter(c => c.score >= show && c.spine.width <= c.spine.height/5).sort((a,b) => rankCut(b, english) - rankCut(a, english)))
-    if (!best.has(c.source)) best.set(c.source, c);
-  return {scans, rounds, busy, cuts:[...best.values()].slice(0, 8)};
-}
-async function findSpines(m, again){
-  const key = keyOf(m), cur = current = {m, key, real:[], res:{spines:[]}, img:null, busy:true}, noun = m.kind === 'movie' ? 'poster' : 'cover';
-  $('#spines').hidden = false; $('#matches').hidden = true;
-  $('#spinesTitle').textContent = m.title + (m.year ? ' (' + m.year + ')' : ''); $('#spinesBy').textContent = m.creator ? '· ' + m.creator : '';
-  $('#spinesNote').hidden = server || !!WORKER; $('#found').innerHTML = ''; $('#noReal').hidden = true; $('#dupAsk').hidden = true;
-  if (!again && books.some(b => b.key === key)){
-    // already on the shelf: ask inline before adding it a second time
-    $('#dupText').textContent = m.title + ' is already on your shelf.'; $('#dupAsk').hidden = false; cur.busy = false; showTiles(cur); sstatus('');
-    return;
-  }
-  if (again) cur.key = key + '#' + (1 + books.filter(b => (b.key || '').split('#')[0] === key).length);
-  const poster = m.cover ? timeout(loadImg(server ? API + '/api/image?url=' + encodeURIComponent(m.cover) : viaWorker(m.cover)), 15000).catch(() => null) : Promise.resolve(null);
-  let found = {scans:0, cuts:[]}, failed = false;
-  const english = englishOnly();
-  if (!server && WORKER){
-    sstatus('Searching ' + (m.kind === 'movie' ? 'DVD' : 'book') + ' scans of “' + esc(m.title) + '”…');
-    try { found = await cutScans(cur, english); } catch (err){ failed = /429/.test(err.message) ? 'busy' : true; }
-  }
-  const img = await poster;
-  if (cur !== current) return;
-  if (img && canvasSafe(img)){ cur.img = img; if (m.kind === 'movie') cur.title = posterTitle(img); }
-  else if (m.cover) toast('The ' + noun + ' from ' + hostOf(m.cover) + ' can’t be used in a story. Try another match.');
-  cur.real = found.cuts;
-  const best = cur.real[0], add = c => { if (shelve(bookFor(cur, c))) toast(m.title + ' added to your shelf.'); };
-  if (server){
-    // the Spinestack backend (backend/): unchanged, it cuts the spines itself
-    if (cur.img) add('spine');
-    showTiles(cur); sstatus('Searching scans of “' + esc(m.title) + '”. Takes 10 to 20 seconds.');
-    try { cur.res = await fetch(`${API}/api/spines?title=${encodeURIComponent(m.title)}&kind=${m.kind}&year=${encodeURIComponent(m.year||'')}&creator=${encodeURIComponent(m.creator||'')}`).then(r => r.json()); }
-    catch { if (cur === current) sstatus('The search server didn’t answer. Try again in a moment.', true); }
-    if (cur !== current) return;
-    cur.real = (await Promise.all(cur.res.spines.map(s => Promise.all([loadImg(API + s.spine), loadImg(API + s.front)]).then(([spine, front]) => ({spine, front, score:s.score, source:s.source})).catch(() => null)))).filter(Boolean);
-    if (cur !== current) return;
-    cur.busy = false; showTiles(cur);
-    const n = cur.real.length;
-    sstatus(n ? `${n} real spine${n > 1 ? 's' : ''} found. Pick one to use it instead.` : 'No clean spine in the scans found online.' + (cur.img ? ' Using one made from the ' + noun + '.' : ''), !n);
-    return;
-  }
-  cur.busy = false;
-  // goes on by itself only when it's clearly right: a high score, the English edition (unless Edition is Any),
-  // and a film (book scans are rarer and less reliable) or a spine from the checked archive
-  const n = found.cuts.length, spines = n + ' possible spine' + (n > 1 ? 's' : '');
-  if (best && best.score >= AUTO_SCORE && (!english || isEnglish(best)) && (m.kind === 'movie' || best.archive)){
-    add('real:0'); sstatus(n > 1 ? `Real spine found. ${n - 1} more below if it’s the wrong edition.` : 'Real spine found.');
-  }
-  else if (best && english && !found.cuts.some(isEnglish)) sstatus(`${spines} found, but none looks like the English edition. Pick one, or set Edition to Any.`);
-  else if (best) sstatus(`${spines} found. Use the one that looks right.`);
-  else if (cur.img){
-    add('spine');   // the grey line under the tiles asks for a photo of a real one (books)
-    sstatus(!WORKER ? 'Pick Cover to show the ' + noun + ' face out instead.' : failed === 'busy' ? 'Scan search is busy. This spine is made from the ' + noun + '; try again in a minute.'
-      : failed ? 'Scan search didn’t answer, so this spine is made from the ' + noun + '.' : 'No clean spine in the scans found online, so this one is made from the ' + noun + '.', !!WORKER);
-  }
-  else sstatus('No scans and no ' + noun + ' found for this title. Drop a scan below.', true);
-  showTiles(cur);
-}
-$('#found').addEventListener('click', e => {
-  const flag = e.target.closest('a[data-report]');
-  if (flag){
-    e.preventDefault(); e.stopPropagation();
-    fetch(`${WORKER}/report?id=${encodeURIComponent(flag.dataset.report)}`, {method:'POST'}).catch(() => {});
-    flag.removeAttribute('data-report'); flag.removeAttribute('href'); flag.textContent = 'Reported'; toast('Reported. Thanks.');
-    return;
-  }
-  const u = e.target.closest('[data-use]'), cur = current; if (!u || !cur) return;
-  const c = u.dataset.use, b = bookFor(cur, c), i = books.findIndex(x => x.key === cur.key);
-  const what = c === 'cover' ? 'its cover' : c === 'spine' ? 'the generated spine' : 'a real spine';
-  if (i >= 0){ Object.assign(b, {id:books[i].id, wf:books[i].wf, hf:books[i].hf, jit:books[i].jit, cat:books[i].cat}); books[i] = b; renderList(); toast(cur.m.title + ' now shows ' + what + '.'); }
-  else if (shelve(b)) toast(cur.m.title + ' added to your shelf.');
-  showTiles(cur);
-});
-$('#found').addEventListener('click', e => {
-  if (!e.target.closest('[data-del]') || !current) return;
-  const cur = current; books = books.filter(b => b.key !== cur.key); renderList(); showTiles(cur); toast(cur.m.title + ' removed.');
-});
-$('#dupAdd').addEventListener('click', () => { if (current) findSpines(current.m, true); });
-$('#dupCancel').addEventListener('click', () => { $('#dupAsk').hidden = true; });
-$('#changeMatch').addEventListener('click', () => { $('#matches').hidden = false; $('#matches').scrollIntoView({behavior:'smooth', block:'nearest'}); });
-const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./,''); } catch { return 'source'; } };
+// what the dialog needs to know about this shelf, and where its Add to shelf puts a spine
+Add.setShelf({has: key => books.some(b => b.key === key), count: key => books.filter(b => (b.key || '').split('#')[0] === key).length,
+  add: f => { const ok = shelve(newBook(f)); if (ok) toast(f.title + ' added to your shelf.'); return ok; }});
+$('#findForm').addEventListener('submit', e => { e.preventDefault(); const q = $('#findQ').value.trim(); $('#findQ').value = ''; Add.open({query: q}); });
+Nav.onUpload(() => $('#file').click());   // "Upload a scan…" in the ▾ next to + SHELF
 
 /* ---------- uploads ---------- */
 function titleFromName(name){ let t = (name||'').replace(/\.[a-z0-9]+$/i,'').replace(/[_\-+]+/g,' ').replace(/\s+/g,' ').trim(); if (/^(image|img|download|images|screenshot|photo|unnamed|pasted)\b/i.test(t) || /^[\d\s]+$/.test(t) || t.length > 60) t = ''; return t; }
@@ -1044,7 +703,10 @@ function addFiles(files){
         const pal = extractPalette(im);
         b = newBook({title:titleFromName(f.name), img:im, thumb:fr.result, bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'art', font:'oswald', file:f});
       }
-      if (shelve(b)){ identify(b); const el = document.getElementById(b.id + '-title'); if (el && !b.title) el.focus(); }
+      if (shelve(b)){
+        identify(b);
+        if (!b.title){ openId = b.id; paintOpen(); const el = document.getElementById(b.id + '-title'); if (el) el.focus(); }   // its row opens for the title
+      }
     };
     fr.readAsDataURL(f);
   });
@@ -1069,6 +731,7 @@ async function identify(b){
     if (books.includes(b) && r && typeof r === 'object'){
       const set = (f, v) => { if (typeof v === 'string' && v.trim() && !(b.touched && b[f])){ b[f] = v.trim().slice(0,80); const el = document.getElementById(b.id + '-' + f); if (el) el.value = b[f]; } };
       set('title', r.title); set('author', r.creator); if (typeof r.studio === 'string') b.studio = r.studio.trim().slice(0,40);
+      paintHead(b);
       if (r.kind === 'movie' && b.kind !== 'movie'){ b.kind = 'movie'; if (!isReal(b) && !b.touched){ b.style = 'dvd'; b.bg = '#111111'; b.fg = '#F4F4F2'; } b.status = ''; renderList(); return; }
     }
   } catch (err){ if (err && (err.code === 'not_granted' || err.code === 'images_unavailable')) canSee = false; }
@@ -1306,13 +969,25 @@ $('#exportBtn').addEventListener('click', async () => {
   }, 'image/png');
 });
 
-document.querySelectorAll('input[name=qk]').forEach(r => r.addEventListener('change', () => { $('#qkind').value = r.value; }));
+// Edition (English or Any): which scans a search looks for first. Kept on this device, where the dialog reads it.
+const edition = () => { try { return localStorage.getItem(Add.EDITION) === 'any' ? 'any' : 'english'; } catch { return 'english'; } };
+document.querySelectorAll('input[name=ed]').forEach(r => { r.checked = r.value === edition(); r.addEventListener('change', () => { if (r.checked) try { localStorage.setItem(Add.EDITION, r.value); } catch {} }); });
+
+/* ---------- the shelf's name, and who can view it ---------- */
+// A new shelf's name is also the caption on its story, as it always was: the caption follows the name until it's
+// written by hand (Style → Caption). After that they're two things, and the name is kept in shelves.name.
+let mirrored = '';
+const shelfNameNow = () => $('#shelfName').value.replace(/\s+/g, ' ').trim().slice(0, 60);
+$('#shelfName').addEventListener('input', () => {
+  const v = shelfNameNow();
+  if (settings.caption === DEFAULT_CAPTION || settings.caption === mirrored){ settings.caption = v || DEFAULT_CAPTION; mirrored = v; $('#caption').value = settings.caption; }
+  redraw();
+});
+const isPublicNow = () => ($('input[name=vis]:checked') || {}).value !== 'private';
+const setVisible = pub => { for (const r of document.querySelectorAll('input[name=vis]')) r.checked = (r.value === 'public') === !!pub; };
+document.querySelectorAll('input[name=vis]').forEach(r => r.addEventListener('change', () => scheduleDraft()));
 
 /* ---------- boot ---------- */
-function fillRecent(items){
-  const el = $('#recent'); if (!items.length){ el.hidden = true; return; }
-  el.hidden = false; el.querySelector('span').textContent = items.slice(0, 8).join(', ');
-}
 async function boot(){
   if (EMBED){ books = []; isSample = false; } else books = samples();   // on a profile, a new shelf starts empty
   renderList();
@@ -1324,12 +999,12 @@ async function boot(){
     const h = await fetch(API + '/api/health', {signal:ctl.signal}).then(r => r.ok ? r.json() : null);
     server = !!(h && h.ok);
   } catch { server = false; }
-  $('#modeNote').hidden = server || !!WORKER;
-  if (!server && !WORKER && direct) $('#modeNote').textContent = TMDB ? 'Search works here. Real DVD and book spines need the shelfstackd server.' : 'Book search works here. Films need a TMDB key, and real spines need the shelfstackd server.';
   $('#exportNote').textContent = 'On a phone this opens the share sheet. Pick Instagram, then Story.';
+  let recent = [];
   if (server){
-    try { const r = await fetch(API + '/api/recent').then(r => r.json()); fillRecent(r.recent.map(x => x.title)); } catch {}
+    try { const r = await fetch(API + '/api/recent').then(r => r.json()); recent = r.recent.map(x => x.title); } catch {}
   }
+  Add.setServer(server, recent);
 }
 
 /* ---------- accounts (Supabase): sign in with Google, save shelves, open them again ----------
@@ -1367,7 +1042,7 @@ function friendly(e){
 /* the account, and what the page shows for it */
 async function startAccounts(){
   if (!accounts) return;
-  $('#saveWrap').hidden = false; paintAcct();
+  $('#saveShelf').hidden = false; paintAcct();
   const draft = EMBED ? null : takeDraft();           // a draft waits for the builder page itself, not a profile's
   if (draft) await restoreDraft(draft);
   if (!hasSession() && !returning()){ embedReady(); return; }          // signed out: nothing more loads
@@ -1387,7 +1062,7 @@ async function startAccounts(){
   embedReady();
 }
 // on a profile: what's on the shelf now, so closing the builder can ask first when there are changes
-const snapshot = () => JSON.stringify([books.map(b => [b.id, b.title, b.author, b.kind, b.style, b.font, b.bg, b.fg]), settings,
+const snapshot = () => JSON.stringify([books.map(b => [b.id, b.title, b.author, b.kind, b.style, b.font, b.bg, b.fg]), settings, shelfNameNow(), isPublicNow(),
   media.wall && (media.wall.key || media.wall.name), media.pngs.map(p => [p.key, p.x, p.y, p.w, p.rot, p.opacity])]);
 let clean = '';
 function embedReady(){ if (!EMBED) return; clean = snapshot(); window.spinestackDirty = () => snapshot() !== clean; }
@@ -1400,7 +1075,7 @@ async function setUser(user){
   const same = (user && user.id) === (acct.user && acct.user.id);
   if (same && (acct.profile || !user)) return;
   acct.user = user || null; acct.profile = null;
-  if (!user){ acct.shelfId = null; acct.shelves = []; acct.pendingSave = false; proAccount = false; paintAcct(); paintMine(); return; }
+  if (!user){ acct.shelfId = null; acct.shelves = []; acct.pendingSave = false; proAccount = false; paintAcct(); return; }
   const {data, error} = await acct.sb.from('profiles').select('id,username,is_private,display_name,avatar_key').eq('id', user.id).maybeSingle();
   if (error){ toast('Couldn’t load your account. Try again in a moment.'); paintAcct(); return; }
   acct.profile = data;
@@ -1414,10 +1089,9 @@ function paintAcct(){
   if (!accounts) return;
   const p = acct.profile;
   if (!EMBED) Nav.paint({user: acct.user, profile: p});   // the bar (nav.js): Sign in, Finish sign-up, or you and the account menu
-  $('#saveShelf').textContent = acct.shelfId ? 'Update shelf' : 'Save shelf';
+  $('#pageTitle').textContent = acct.shelfId ? 'Edit shelf' : 'New shelf';
   $('#saveNew').hidden = !acct.shelfId;
   $('#saveNote').textContent = acct.user ? '' : 'Sign in to keep this shelf and open it again later.';
-  $('#mine').hidden = !p;
 }
 Nav.onSignIn(() => openSheet('signin'));
 Nav.onFinish(() => openSheet('name'));
@@ -1554,7 +1228,7 @@ async function previewBlob(){
   throw new Error('Couldn’t make the shelf’s picture. Try again.');
 }
 let saving = false;
-async function saveShelf(asNew, named){
+async function saveShelf(asNew){
   if (saving) return;
   if (!books.length || isSample){ toast('Add your own titles first.'); return; }
   if (!acct.user){ acct.pendingSave = true; openSheet('signin'); return; }
@@ -1562,7 +1236,6 @@ async function saveShelf(asNew, named){
   if (books.length > spineMax()){ proToast('Free shelves hold 6 spines. Pro holds 20.'); return; }
   if (usesPro() && !isPro()){ proToast('Your own wall, PNGs and the floating shelf come with Pro.'); return; }
   const updating = !asNew && !!acct.shelfId;
-  if (!updating && !named){ askName(asNew); return; }   // a new shelf gets its name first
   saving = true; $('#saveShelf').disabled = true; $('#saveNote').textContent = 'Saving…';
   const id = updating ? acct.shelfId : crypto.randomUUID(), was = acct.shelves.find(s => s.id === id);
   try {
@@ -1571,30 +1244,20 @@ async function saveShelf(asNew, named){
     const pro = proSettings();
     const pv = await workerPost('/u/preview?shelf=' + id, await previewBlob());
     const {error} = await acct.sb.rpc('save_shelf', {items, shelf:{id, caption: settings.caption.slice(0, 60), filter: settings.filter, intensity: settings.intensity,
-      background: settings.theme === 'wall' ? 'paper' : settings.theme, wood: settings.wood, layout: settings.layout, varied: settings.varied, is_public: was ? was.is_public : true, preview_key: pv.key, pro}});
+      background: settings.theme === 'wall' ? 'paper' : settings.theme, wood: settings.wood, layout: settings.layout, varied: settings.varied, is_public: isPublicNow(), preview_key: pv.key, pro}});
     if (error) throw error;
+    // its name, when that isn't simply its caption: shelves.name, which a rename on the profile writes too
+    const cap = settings.caption.slice(0, 60).trim(), shown = was && was.name != null ? was.name : cap === DEFAULT_CAPTION ? '' : cap, want = shelfNameNow();
+    if (want !== shown){ const r = await acct.sb.from('shelves').update({name: want}).eq('id', id); if (r.error) throw r.error; }
     forgetArt(keysOf(was && was.pro).filter(k => !keysOf(pro).includes(k)));
-    acct.shelfId = id; toast(updating ? 'Shelf updated.' : 'Saved to My shelves.');
+    acct.shelfId = id; toast(updating ? 'Shelf updated.' : 'Shelf saved.');
     if (EMBED){ clean = snapshot(); parent.postMessage({spinestack: 'saved', id}, location.origin); }   // the profile closes this and shows it
     await loadMine();
+    // saved: this shelf is no longer being made, and its own page is the place to see it
+    if (!EMBED){ booted = false; clearTimeout(draftT); dropDraft(); location.href = '../u/?' + acct.profile.username + '&shelf=' + id; }
   } catch (e){ toast(friendly(e)); }
   finally { saving = false; $('#saveShelf').disabled = false; paintAcct(); }
 }
-// a new shelf's name is its caption: asked for in a small field, filled in with the caption it has
-let naming = false;
-function askName(asNew){
-  naming = asNew; $('#nameBox').hidden = false; $('#saveShelf').hidden = true; $('#saveNew').hidden = true;
-  const f = $('#shelfName'); f.value = settings.caption; f.focus(); f.select();
-}
-function doneNaming(){ $('#nameBox').hidden = true; $('#saveShelf').hidden = false; paintAcct(); }
-$('#nameBox').addEventListener('submit', e => {
-  e.preventDefault();
-  const v = $('#shelfName').value.replace(/\s+/g, ' ').trim().slice(0, 60);
-  settings.caption = v; $('#caption').value = v; redraw();
-  doneNaming(); saveShelf(naming, true);
-});
-$('#nameCancel').addEventListener('click', doneNaming);
-$('#shelfName').addEventListener('keydown', e => { if (e.key === 'Escape') doneNaming(); });
 // the wall and PNGs this shelf needs, uploaded once (a picture keeps its key while it stays on the shelf)
 async function uploadArt(){
   const mine = k => k && k.startsWith(acct.user.id + '/');
@@ -1611,55 +1274,27 @@ async function uploadArt(){
 const forgetArt = keys => { for (const k of keys) workerPost('/m/delete?k=' + encodeURIComponent(k)).catch(() => {}); };
 $('#saveShelf').addEventListener('click', () => saveShelf(false));
 $('#saveNew').addEventListener('click', () => saveShelf(true));
+// Cancel: this shelf is dropped (a saved shelf stays as it was saved), and you go back to your profile, or home
+$('#cancelBtn').addEventListener('click', e => {
+  const b = e.currentTarget;
+  if (!isSample && books.length && !b.dataset.sure){
+    b.dataset.sure = '1'; b.textContent = 'Discard changes?';
+    setTimeout(() => { if (b.dataset.sure){ delete b.dataset.sure; b.textContent = 'Cancel'; } }, 4000);
+    return;
+  }
+  booted = false; clearTimeout(draftT); dropDraft();
+  location.href = acct.profile ? '../u/?' + acct.profile.username : '../';
+});
 
-/* My shelves */
+/* your saved shelves: read so one can be opened (?open=<id>) and saved over; they're listed on your profile */
 const SHELF_COLS = 'id,caption,name,filter,intensity,background,wood,layout,varied,is_public,preview_key,pro,created_at,updated_at,shelf_items(count)';
 async function loadMine(){
   if (!acct.profile) return;
   // own shelves only: since phase 2, other people's public shelves are readable too
   const {data, error} = await acct.sb.from('shelves').select(SHELF_COLS).eq('owner', acct.user.id).order('updated_at', {ascending:false}).limit(60);
   if (error){ toast('Couldn’t load your shelves. Try again in a moment.'); return; }
-  acct.shelves = data || []; paintMine();
+  acct.shelves = data || [];
 }
-const fmtDate = s => new Date(s).toLocaleDateString(undefined, {day:'numeric', month:'short', year:'numeric'});
-function paintMine(){
-  const list = acct.shelves;
-  $('#mineCount').textContent = list.length ? `(${list.length})` : '';
-  $('#mineEmpty').hidden = !!list.length || !acct.profile;
-  $('#mineList').innerHTML = list.map(s => {
-    const n = ((s.shelf_items || [])[0] || {}).count || 0, cap = shelfName(s);
-    const src = s.preview_key ? `${WORKER}/u/preview?k=${encodeURIComponent(s.preview_key)}&v=${encodeURIComponent(s.updated_at)}` : '';
-    return `<li class="card${s.id === acct.shelfId ? ' on' : ''}"><button class="open" type="button" data-open="${s.id}" aria-label="Open ${esc(cap)}">${src ? `<img src="${esc(src)}" alt="" loading="lazy" width="360" height="640">` : ''}</button>
-      <div class="cap">${esc(cap)}</div><div class="grey">${n} ${n === 1 ? 'spine' : 'spines'} · ${esc(fmtDate(s.updated_at))}</div>
-      <div class="acts"><button class="dash sm" type="button" data-open="${s.id}">Open</button><button class="dash sm" type="button" data-del="${s.id}">Delete</button>
-        <label class="check"><input type="checkbox" data-private="${s.id}"${s.is_public ? '' : ' checked'}> Private</label></div></li>`;
-  }).join('');
-}
-// Private: only its owner sees it (never on the profile); public is the default
-$('#mineList').addEventListener('change', async e => {
-  const box = e.target.closest('[data-private]'); if (!box) return;
-  const id = box.dataset.private, s = acct.shelves.find(x => x.id === id), priv = box.checked;
-  box.disabled = true;
-  const {error} = await acct.sb.from('shelves').update({is_public: !priv}).eq('id', id);
-  box.disabled = false;
-  if (error){ box.checked = !priv; toast(friendly(error)); return; }
-  if (s) s.is_public = !priv;
-  toast(priv ? 'Only you can see this shelf now.' : 'This shelf shows on your profile again.');
-});
-$('#mineList').addEventListener('click', async e => {
-  const o = e.target.closest('[data-open]'), d = e.target.closest('[data-del]');
-  if (o) openShelf(o.dataset.open);
-  if (d){
-    if (!d.dataset.sure){ d.dataset.sure = '1'; d.textContent = 'Sure? Delete'; setTimeout(() => { if (d.isConnected){ delete d.dataset.sure; d.textContent = 'Delete'; } }, 4000); return; }
-    d.disabled = true;
-    const id = d.dataset.del, gone = keysOf((acct.shelves.find(s => s.id === id) || {}).pro), {error} = await acct.sb.from('shelves').delete().eq('id', id);
-    if (error){ toast(friendly(error)); d.disabled = false; return; }
-    workerPost('/u/forget?shelf=' + id).catch(() => {});
-    forgetArt(gone);
-    if (acct.shelfId === id) acct.shelfId = null;
-    toast('Shelf deleted.'); paintAcct(); loadMine();
-  }
-});
 // a saved item back into a book on the shelf
 const srcOf = ref => ref.startsWith('a:') ? `${WORKER}/archive/img?id=${ref.slice(2)}` : ref.startsWith('u:') ? `${WORKER}/u/blob?k=${encodeURIComponent(ref.slice(2))}`
   : ref.startsWith('url:') ? viaWorker(ref.slice(4)) : ref.startsWith('data:image/') ? ref : '';
@@ -1719,11 +1354,14 @@ async function openShelf(id){
   const {data, error} = await acct.sb.from('shelf_items').select('position,item_id,kind,title,author,year,spine_src,cover_src,look').eq('shelf_id', id).order('position');
   if (error){ $('#saveNote').textContent = ''; toast(friendly(error)); return; }
   await putOnShelf(data || [], s);
-  acct.shelfId = id; paintAcct(); paintMine(); $('#saveNote').textContent = '';
-  $('#shelf').scrollIntoView({behavior:'smooth'});
+  // its name (while it has none of its own, its caption) and who can view it
+  const named = s.name != null, shown = named ? s.name : s.caption && s.caption !== DEFAULT_CAPTION ? s.caption : '';
+  $('#shelfName').value = shown; mirrored = named ? '' : shown; setVisible(s.is_public);
+  acct.shelfId = id; paintAcct(); $('#saveNote').textContent = '';
 }
 
-/* Signing in with Google leaves the page and comes back to it: the shelf being made waits in this tab meanwhile */
+/* The shelf being made waits in this tab: while Google signs you in (the page leaves and comes back), and while
+   you're on another page, so + SHELF there adds to it. It's kept again shortly after each change, for an hour. */
 const DRAFT = 'spinestack-draft';
 const idb = (() => {
   let db = null;
@@ -1731,28 +1369,54 @@ const idb = (() => {
   const run = async (mode, fn) => { const d = await open(); return new Promise((res, rej) => { const t = d.transaction('kv', mode), r = fn(t.objectStore('kv')); t.oncomplete = () => res(r.result); t.onerror = () => rej(t.error); }); };
   return {put: (k, v) => run('readwrite', st => st.put(v, k)), get: k => run('readonly', st => st.get(k)), del: k => run('readwrite', st => st.delete(k))};
 })();
+const INLINE = new WeakMap();   // image -> its data: address, so keeping the draft again doesn't encode it again
 async function stashDraft(){
   try {
-    if (isSample || !books.length){ sessionStorage.removeItem(DRAFT); return; }
-    const inline = async (src, kind) => { const b = await encode(src, kind); return await new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); }); };
+    if (isSample || !books.length){ dropDraft(); return; }
+    const inline = async (src, kind) => {
+      const hit = INLINE.get(src); if (hit) return hit;
+      const b = await encode(src, kind), url = await new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); });
+      INLINE.set(src, url); return url;
+    };
     const items = await Promise.all(books.map(b => itemFor(b, inline)));
-    sessionStorage.setItem(DRAFT, JSON.stringify({at: Date.now(), settings: {...settings}, shelfId: acct.shelfId, save: acct.pendingSave, items}));
-    try { await idb.put(DRAFT, {wall: media.wall && {blob: media.wall.blob, key: media.wall.key, name: media.wall.name, small: media.wall.small, dark: media.wall.dark},
-      pngs: media.pngs.map(p => ({blob: p.blob, key: p.key, x: p.x, y: p.y, w: p.w, rot: p.rot, opacity: p.opacity}))}); } catch {}
+    // the spines and pictures go to IndexedDB, which has the room; if it can't be used, the spines go with the rest
+    let kept = false;
+    try { await idb.put(DRAFT, {items, wall: media.wall && {blob: media.wall.blob, key: media.wall.key, name: media.wall.name, small: media.wall.small, dark: media.wall.dark},
+      pngs: media.pngs.map(p => ({blob: p.blob, key: p.key, x: p.x, y: p.y, w: p.w, rot: p.rot, opacity: p.opacity}))}); kept = true; } catch {}
+    sessionStorage.setItem(DRAFT, JSON.stringify({at: Date.now(), settings: {...settings}, shelfId: acct.shelfId, save: acct.pendingSave, name: shelfNameNow(), mirrored, isPublic: isPublicNow(), ...(kept ? {} : {items})}));
   } catch { try { sessionStorage.removeItem(DRAFT); } catch {} }
 }
+function dropDraft(){ try { sessionStorage.removeItem(DRAFT); } catch {} idb.del(DRAFT).catch(() => {}); }
+let draftT = 0, booted = false;   // booted: the page has finished opening (a draft restored, a waiting spine added)
+function scheduleDraft(){ if (EMBED || !booted) return; clearTimeout(draftT); draftT = setTimeout(stashDraft, 500); }
 function takeDraft(){
   try { const d = JSON.parse(sessionStorage.getItem(DRAFT) || 'null'); sessionStorage.removeItem(DRAFT); return d && Date.now() - d.at < 3600e3 ? d : null; } catch { return null; }
 }
 async function restoreDraft(d){
   let drafted = null;
   try { drafted = await idb.get(DRAFT); idb.del(DRAFT).catch(() => {}); } catch {}
-  await putOnShelf(d.items || [], d.settings || {}, drafted || {});
+  await putOnShelf(d.items || (drafted && drafted.items) || [], d.settings || {}, drafted || {});
   acct.shelfId = d.shelfId || null; acct.pendingSave = !!d.save;
+  $('#shelfName').value = d.name || ''; mirrored = d.mirrored || ''; setVisible(d.isPublic !== false);
 }
 
-boot();
-startAccounts();
+Add.setToast(toast);
+/* opening: the sample shelf (or an empty one inside a profile), then a draft or ?open=<id>, then a spine picked with
+   + SHELF on another page, which was waiting to be put on */
+(async () => {
+  boot();
+  await startAccounts();
+  if (EMBED) return;
+  const p = Add.takePending();
+  if (p){
+    $('#saveNote').textContent = 'Adding ' + p.m.title + '…';
+    let f = null; try { f = await Add.resolve(p); } catch {}
+    $('#saveNote').textContent = ''; paintAcct();
+    if (f){ if (shelve(newBook(f))) toast(p.m.title + ' added to your shelf.'); }
+    else { toast('Couldn’t add ' + p.m.title + '. Search for it again.'); Add.open({query: p.m.title}); }
+  }
+  booted = true; scheduleDraft();
+})();
 const faces = ['600 40px Oswald','400 40px Oswald','600 40px "Cormorant Garamond"','italic 500 40px "Cormorant Garamond"','40px "Archivo Black"','40px "Gochi Hand"','500 40px "IBM Plex Mono"','400 40px "IBM Plex Mono"','600 40px "IBM Plex Sans"','500 40px "Geist Mono"','400 40px "Geist Mono"'];
 if (document.fonts){ Promise.all(faces.map(f => document.fonts.load(f).catch(() => {}))).then(redraw); document.fonts.ready.then(redraw); }
 })();

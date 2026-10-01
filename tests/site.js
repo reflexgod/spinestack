@@ -65,6 +65,7 @@ function rest(url, method, body, signedIn, named){
   if (what === 'rpc/unfollow') return 'none';
   if (what === 'rpc/username_available') return true;
   if (what === 'rpc/am_i_pro') return false;
+  if (what === 'rpc/save_shelf') return body.shelf.id;
   if (what.startsWith('rpc/')) return [];
   if (what === 'profiles') return PEOPLE.filter(p => (named || p.id !== ME.id) && (!q.has('id') || p.id === eq('id')) && (!q.has('username') || p.username === eq('username')));
   if (what === 'shelves') return SHELVES.filter(s => (!q.has('owner') || s.owner === eq('owner')) && (!q.has('id') || s.id === eq('id')));
@@ -72,7 +73,19 @@ function rest(url, method, body, signedIn, named){
   return method === 'GET' ? [] : null;
 }
 
-const PIXEL = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+// a picture for every image the Worker would send: a plain PNG, 200 x 300, made here
+const PICTURE = (() => {
+  const zlib = require('zlib'), w = 200, h = 300, row = w * 3 + 1, raw = Buffer.alloc(row * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++){ const o = y * row + 1 + x * 3; raw[o] = 40 + (y >> 2); raw[o + 1] = 60; raw[o + 2] = 90 + (x >> 2); }
+  const chunk = (type, data) => { const body = Buffer.concat([Buffer.from(type), data]), len = Buffer.alloc(4), crc = Buffer.alloc(4); len.writeUInt32BE(data.length); crc.writeUInt32BE(zlib.crc32(body)); return Buffer.concat([len, body, crc]); };
+  const head = Buffer.alloc(13); head.writeUInt32BE(w, 0); head.writeUInt32BE(h, 4); head[8] = 8; head[9] = 2;
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', head), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
+})();
+// what a search for a title finds: a film and a book
+const MATCHES = [
+  { kind: 'movie', title: 'Gummo', year: '1997', creator: 'Harmony Korine', cover: 'https://image.tmdb.org/t/p/w500/gummo.jpg' },
+  { kind: 'book', title: 'The Waves', year: '1931', creator: 'Virginia Woolf', cover: 'https://covers.openlibrary.org/b/id/1-L.jpg' },
+];
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' };
 
 /* Answers everything that isn't the site itself. Returns {unknown}: requests nothing here knew how to answer. */
@@ -99,8 +112,11 @@ async function mockNetwork(page, { signedIn = false, named = true } = {}){
     }
     if (url.origin === SB_URL) return route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: '{}' });   // auth
     if (url.origin === WORKER || url.origin === WORKER_FALLBACK){
-      if (/^\/(u\/preview|u\/blob|m\/img|archive\/img|img)$/.test(url.pathname)) return route.fulfill({ status: 200, headers: CORS, contentType: 'image/png', body: PIXEL });
-      return route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify({ results: [] }) });
+      const json = o => route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify(o) });
+      if (method === 'POST') return json({ key: `${ME.id}/${url.pathname.replace(/\W+/g, '-')}` });   // something saved: the key it's kept under
+      if (/^\/(u\/preview|u\/blob|m\/img|archive\/img|img)$/.test(url.pathname)) return route.fulfill({ status: 200, headers: CORS, contentType: 'image/png', body: PICTURE });
+      if (url.pathname === '/identify'){ const want = url.searchParams.get('want') || 'all'; return json({ results: MATCHES.filter(m => want === 'all' || m.kind === want) }); }
+      return json({ results: [], more: false });   // /scans: no scans of anything, so a spine is made from the cover
     }
     if (url.hostname === 'fonts.googleapis.com') return route.fulfill({ status: 200, contentType: 'text/css', body: '' });
     // a library from jsDelivr: the same file from tests/node_modules, when that's the version the page asks for

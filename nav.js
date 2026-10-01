@@ -2,13 +2,14 @@
    fills in who is signed in, builds the two menus (the account menu, and the ▾ next to + SHELF) and opens and closes
    them. A page calls Nav.paint({user, profile}) whenever that changes (profile: id, username, display_name,
    avatar_key), and says what its own Sign in, Finish sign-up and Sign out do: Nav.onSignIn(fn), Nav.onFinish(fn),
-   Nav.onSignOut(fn). Load it after worker-address.js, before the page's own script. */
+   Nav.onSignOut(fn). + SHELF opens the Add to your shelf… dialog (add.js, loaded the first time it's pressed).
+   Load it after shelf.js and worker-address.js, before the page's own script. */
 (() => {
   const ROOT = new URL('.', document.currentScript.src).href;   // the site's root: this file sits there
   const bar = document.querySelector('header.top'); if (!bar) return;
   const q = s => bar.querySelector(s);
   const acctBtn = q('#acctBtn'), signBtn = q('#signInBtn'), moreBtn = q('#addMore'), addWrap = q('.addwrap'), links = q('.links'), zap = q('.zap'), find = q('.find');
-  const on = {signIn: null, finish: null, signOut: null};
+  const on = {signIn: null, finish: null, signOut: null, upload: null};
   let state = {user: null, profile: null};
 
   /* Floating UI keeps a menu on screen (it flips and shifts it). Only someone signed in has menus, so only they load
@@ -119,7 +120,8 @@
     acctMenu.out = out;
     addMenu = makeMenu('addMenu', 'More ways to add', moreBtn, {placement: 'bottom-end'});
     addMenu.menu.append(item('Upload a scan…', ROOT + 'build/#upload'));
-    addMenu.menu.addEventListener('click', () => addMenu.hide(false));
+    // on the builder it opens the file picker; from anywhere else the link goes to the builder's upload
+    addMenu.menu.addEventListener('click', e => { addMenu.hide(false); if (on.upload){ e.preventDefault(); on.upload(); } });
   }
   function fillAccount(p){
     const mine = ROOT + 'u/?' + p.username;
@@ -161,5 +163,26 @@
     else if (on.finish){ e.preventDefault(); on.finish(); }   // signed in, no username yet (elsewhere the link goes to the builder, which asks)
   });
 
-  window.Nav = {paint, onSignIn: fn => { on.signIn = fn; }, onFinish: fn => { on.finish = fn; }, onSignOut: fn => { on.signOut = fn; }};
+  /* ---------- + SHELF: the Add to your shelf… dialog ---------- */
+  // add.js draws spines with shelf.js, which every page with the bar loads. If either can't be had, + SHELF is the
+  // plain link to the builder it always was.
+  const addLink = q('.add');
+  let adding = null;
+  function openAdd(opt){
+    if (window.Add){ window.Add.open(opt); return Promise.resolve(true); }
+    if (!window.Shelf) return Promise.resolve(false);
+    adding = adding || new Promise(res => {
+      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261001a';
+      s.onload = () => res(!!window.Add); s.onerror = () => { adding = null; s.remove(); res(false); };
+      document.head.appendChild(s);
+    });
+    return adding.then(ok => { if (ok) window.Add.open(opt); return ok; });
+  }
+  addLink.addEventListener('click', e => {
+    if (e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;   // a new tab or window still gets the builder
+    e.preventDefault();
+    openAdd().then(ok => { if (!ok) location.href = addLink.href; });
+  });
+
+  window.Nav = {paint, add: openAdd, onSignIn: fn => { on.signIn = fn; }, onFinish: fn => { on.finish = fn; }, onSignOut: fn => { on.signOut = fn; }, onUpload: fn => { on.upload = fn; }};
 })();
