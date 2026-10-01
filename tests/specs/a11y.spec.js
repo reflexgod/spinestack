@@ -86,3 +86,11 @@ for (const [name, path] of [['Activity', '/u/?mira#activity'], ['Network', '/u/?
   });
 }
 
+// members with people found
+test('axe: members, with people found', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/members/?q=m');
+  await expect(page.locator('#found .person')).toHaveCount(1);
+  await clean(page);
+});
+

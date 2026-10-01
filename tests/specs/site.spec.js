@@ -169,7 +169,7 @@ test.describe('account menu', () => {
 test('every sign-out is for this device only', () => {
   test.skip(isPhone(), 'reads files, no browser: once is enough');
   const fs = require('fs'), path = require('path'), { ROOT } = require('../site');
-  for (const f of ['index.html', 'build/index.html', 'feed/index.html', 'u/index.html', 'settings/index.html', 'admin.html']) {
+  for (const f of ['index.html', 'build/index.html', 'feed/index.html', 'u/index.html', 'settings/index.html', 'shelves/index.html', 'members/index.html', 'admin.html']) {
     const calls = fs.readFileSync(path.join(ROOT, f), 'utf8').match(/auth\.signOut\([^)]*\)/g) || [];
     expect(calls.length, f).toBeGreaterThan(0);
     for (const c of calls) expect(c, f).toBe("auth.signOut({scope: 'local'})");
@@ -189,30 +189,57 @@ test('the ▾ next to + SHELF has one item: Upload a scan…', async ({ page }) 
 });
 
 /* ---------- home ---------- */
-test('signed-out home: the welcome, the newest shelves, and Get started opens sign-in', async ({ page }) => {
+test('signed-out home: one line, a small grey one under it, Make a shelf, then the newest shelves', async ({ page }) => {
   await mockNetwork(page);
   await open(page, '/');
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your shelf, but the real spines.');
+  const hero = page.locator('.hero');
+  await expect(hero.locator('p')).toHaveCount(1);
+  expect(await hero.locator('p').evaluate(el => { const s = getComputedStyle(el); return [s.fontSize, s.color]; })).toEqual(['11px', 'rgb(107, 107, 107)']);
+  const make = hero.getByRole('link', { name: 'Make a shelf' });
+  await expect(make).toBeVisible();
+  await expect(make).toHaveAttribute('href', 'build/');
+  await expect(page.getByText(/lets you/i)).toHaveCount(0);   // the six tiles are gone
+  await expect(page.locator('#out h2:visible')).toHaveText([/^Just shelved/, /^Recently active/]);
   await expect(page.locator('#heroRow li')).toHaveCount(6);
   await expect(page.locator('#outGrid li')).toHaveCount(12);
   await expect(page.locator('#stackers li')).toHaveCount(3);
-  await page.locator('#start').click();
+  await page.locator('#signInBtn').click();   // SIGN IN in the bar opens the sheet
   await expect(page.locator('#signSheet')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.locator('#signSheet')).toBeHidden();
-  await page.locator('#signInBtn').click();   // SIGN IN in the bar opens it too
-  await expect(page.locator('#signSheet')).toBeVisible();
+  await make.click();
+  await expect(page).toHaveURL(/\/build\/$/);
 });
 
-test('signed-in home: a welcome by name and the two shelf sections', async ({ page }) => {
+test('signed-in home: a welcome by name, the row from people you follow with All activity, then Just shelved', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/');
-  await expect(page.locator('#hello')).toHaveText('Welcome back, @tester.');
+  await expect(page.locator('#hello')).toHaveText('Welcome back, @tester. Here’s what people you follow have been shelving…');
+  await expect(page.locator('#hello a')).toHaveAttribute('href', 'u/?tester');
   await expect(page.locator('main').getByRole('link', { name: /new shelf/i })).toHaveCount(0);   // + SHELF in the bar is the way to a new shelf
+  await expect(page.locator('#in h2')).toHaveText([/^New from people you follow/, /^Just shelved/]);
+  const all = page.locator('#in').getByRole('link', { name: 'All activity' });
+  await expect(all).toHaveAttribute('href', 'feed/?following');
+  await expect(all.locator('svg')).toHaveCount(1);   // ⚡
+  const h2 = await page.locator('#in h2').first().boundingBox(), link = await all.boundingBox();
+  expect(Math.abs(h2.x + h2.width - (link.x + link.width))).toBeLessThanOrEqual(1);   // at the right of the heading
   await expect(page.locator('#folRow li')).toHaveCount(6);
   await expect(page.locator('#inGrid li')).toHaveCount(12);
 });
+
+// the copy: no em dashes, and no line that lists three things
+for (const signedIn of [false, true]) {
+  test(`home's copy has no em dash and no rule-of-three line, signed ${signedIn ? 'in' : 'out'}`, async ({ page }) => {
+    await mockNetwork(page, { signedIn });
+    await open(page, '/');
+    const text = await page.locator('main').innerText();
+    expect(text).not.toContain('—');
+    for (const line of text.split('\n')) expect(line, line).not.toMatch(/\w[^.,\n]*, [^.,\n]+,? (and|or) /);   // a, b and c
+    expect(await page.locator('meta[name="description"]').getAttribute('content')).not.toMatch(/—|, [^,]+, /);
+  });
+}
 
 test('old builder links at the root go on to /build/', async ({ page }) => {
   await mockNetwork(page);

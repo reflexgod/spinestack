@@ -5,11 +5,13 @@ Live at https://shelfstackd.com (this repository and its folders keep the old wo
 Type a film or a book, get its real spine, put it on a shelf, save the shelf as an Instagram story.
 
 ```
-index.html            the home page (GitHub Pages serves this). Signed out: a welcome and the newest public shelves; signed in: new shelves from people you follow. Links to the old builder here (/?open=, /#shelf) go on to build/
+index.html            the home page (GitHub Pages serves this). Signed out: one line about the site, Make a shelf, and the newest public shelves; signed in: a welcome, new shelves from people you follow (⚡ All activity), then Just shelved. Links to the old builder here (/?open=, /#shelf) go on to build/
 build/index.html      the shelf builder (New shelf / Edit shelf): Add, the spines as a list (drag one there or on the preview to move it), Style, the preview; at the bottom its name, who can view it, Cancel · Save · Save story
 add.js                + SHELF on every page: the Add to your shelf… dialog (suggestions as you type, then the spine choices and Add to shelf); the spine finder lives here
 shelf.js              draws the spines and the story (and says where it drew each book); build/ and u/ both use it, so a shelf looks the same everywhere
 u/index.html          profiles: /u/?username with its tabs Profile (the main shelf first) · Shelves · Activity · Network (Following, Followers), and one shelf: /u/?username&shelf=<id>
+shelves/index.html    every public shelf as a card, newest first, 24 at a time (Load more); Start a new shelf
+members/index.html    Find @username (people by the start of a username or name, each with FOLLOW), and Recently active: the people behind the newest shelves
 settings/index.html   your settings (signed in only): PROFILE (display name, bio, main shelf), PHOTO (cut square, made small, sent to the Worker), ACCOUNT (private profile). A profile's Edit profile comes here
 feed/index.html       the feed: /feed/, FOLLOWING · YOU · EVERYONE, a line for each shelf saved ("@abc shelved my films · 2h") with its card, newest first
 worker-address.js     sends Worker requests to its workers.dev address on networks that block api.shelfstackd.com
@@ -88,7 +90,7 @@ In `worker/`:
 5. `npx wrangler secret put BRAVE_API_KEY` and paste the Brave Search API key (api-dashboard.search.brave.com).
    `npx wrangler secret put ADMIN_TOKEN` and paste a long random string of your own. It's the password for `admin.html`; keep it only in a password manager.
 6. `npx wrangler deploy`. It prints the Worker address, e.g. `https://spinestack.NAME.workers.dev`.
-7. In `index.html`, `build/index.html`, `u/index.html`, `feed/index.html`, `settings/index.html` and `admin.html`, `window.SPINESTACK_WORKER` is the Worker's address
+7. In `index.html`, `build/index.html`, `u/index.html`, `feed/index.html`, `shelves/index.html`, `members/index.html`, `settings/index.html` and `admin.html`, `window.SPINESTACK_WORKER` is the Worker's address
    (`https://api.shelfstackd.com`) and `window.SPINESTACK_WORKER_FALLBACK` its workers.dev address. Keep
    `window.SPINESTACK_TMDB` empty.
 
@@ -160,7 +162,7 @@ signed-out visitors never load the Supabase library.
 - **Where things live:** text rows (profiles, shelves, shelf items) in the Supabase project "shelfstackd"
   (Mumbai, free plan). Images a saved shelf needs, and each shelf's small preview, in the Worker's KV
   (`ub:<user id>/...`); archive spines and TMDB / Open Library covers are pointed at, not copied.
-- **Keys:** only the Project URL and the *publishable* key are used, in `index.html`, `build/index.html`, `u/index.html`, `feed/index.html`, `settings/index.html` and in `worker/wrangler.toml`
+- **Keys:** only the Project URL and the *publishable* key are used, in `index.html`, `build/index.html`, `u/index.html`, `feed/index.html`, `shelves/index.html`, `members/index.html`, `settings/index.html` and in `worker/wrangler.toml`
   `[vars]`. Both are public; Row Level Security protects every table. The secret / service_role key isn't used
   anywhere and must never be added to the page, the repo or the Worker.
 - **Database:** run each file in `supabase/migrations/` once, in order, in the dashboard's SQL Editor. Then run the
@@ -247,10 +249,15 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   middle of their card with room round them, the caption and the "made with" line clipped off, on the story's colour;
   a picture is looked at once (kept per preview key); a picture with no plain background, or one that comes without
   CORS, still shows with the stylesheet's cut.
+- **Home's copy** (in `specs/site.spec.js`): signed out, the one line, the small grey one and Make a shelf, with no
+  "lets you" tiles; signed in, the welcome and ⚡ All activity; no em dash and no rule-of-three line.
+- **Shelves and Members** (`specs/shelves.spec.js`, `specs/members.spec.js`): every shelf as a card, 24 at a time and
+  what Load more asks for; one people search 300 ms after the last key, Enter at once, the search kept in the address,
+  FOLLOW and UNFOLLOW, FOLLOW signed out (sign-in, then finished once back), Recently active.
 - **The feed** (`specs/feed.spec.js`): the three tabs and which one opens, what a line says (with the clock held still,
   so "2h" and "1w" are known), You, signed out, and ← → between the tabs.
 
-`npm run shots` (in `tests/`) saves screenshots of home, the builder, a profile's tabs, the feed and settings at 1280px and 390px into
+`npm run shots` (in `tests/`) saves screenshots of home, the builder, a profile's tabs, the feed, shelves, members and settings at 1280px and 390px into
 `tests/shots/`, with the tests' made-up data and the real fonts.
 - **axe** (`specs/a11y.spec.js`) runs on every page, `privacy.html` and `admin.html` too: nothing serious or critical.
 - **html-validate** reads every HTML file with its recommended rules, except that inline `style` is allowed and the

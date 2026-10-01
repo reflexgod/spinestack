@@ -16,6 +16,8 @@ const SHOTS = [
   { name: 'own-profile', path: '/u/?tester', signedIn: true },
   { name: 'feed', path: '/feed/?everyone', signedIn: true },
   { name: 'feed-you', path: '/feed/?you', signedIn: true },
+  { name: 'shelves', path: '/shelves/', signedIn: true },
+  { name: 'members', path: '/members/?q=m', signedIn: true },
   { name: 'settings', path: '/settings/', signedIn: true },
   { name: 'settings-photo', path: '/settings/#photo', signedIn: true, photo: true },
   { name: 'settings-account', path: '/settings/#account', signedIn: true },

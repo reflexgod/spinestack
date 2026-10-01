@@ -9,13 +9,15 @@ const setting = name => (new RegExp(`window\\.${name}\\s*=\\s*"([^"]*)"`).exec(h
 const SB_URL = setting('SPINESTACK_SUPABASE_URL'), WORKER = setting('SPINESTACK_WORKER'), WORKER_FALLBACK = setting('SPINESTACK_WORKER_FALLBACK');
 const SESSION_KEY = `sb-${new URL(SB_URL).hostname.split('.')[0]}-auth-token`;   // where supabase-js keeps the session
 
-/* the pages with the site's top bar. A later stage adds its pages here. */
+/* the pages with the site's top bar */
 const PAGES = [
   { name: 'home', path: '/' },
   { name: 'build', path: '/build/' },
   { name: 'feed', path: '/feed/?everyone' },
   { name: 'profile', path: '/u/?mira' },
   { name: 'settings', path: '/settings/' },
+  { name: 'shelves', path: '/shelves/' },
+  { name: 'members', path: '/members/' },
 ];
 /* pages without it */
 const OTHER_PAGES = [
@@ -60,7 +62,10 @@ function rest(url, method, body, signedIn, named){
   if (what === 'rpc/profile_stats') return [{ shelf_count: SHELVES.filter(s => s.owner === body.uid).length, spine_count: 12 }];
   if (what === 'rpc/follow_stats') return [{ following: 1, followers: 2 }];
   if (what === 'rpc/profile_card') return PEOPLE.filter(p => p.username === body.p_username).map(p => card(p, signedIn));
-  if (what === 'rpc/find_people') return PEOPLE.filter(p => p.username.startsWith(String(body.q || '').toLowerCase())).map(p => card(p, signedIn));
+  if (what === 'rpc/find_people'){   // by the start of a username or a display name, an @ in front or not
+    const w = String(body.q || '').trim().replace(/^@+/, '').toLowerCase();
+    return w ? PEOPLE.filter(p => p.username.startsWith(w) || p.display_name.toLowerCase().startsWith(w)).map(p => card(p, signedIn)) : [];
+  }
   if (what === 'rpc/follow_list') return PEOPLE.filter(p => p.id !== body.uid).map(p => card(p, signedIn));
   if (what === 'rpc/follow') return 'following';
   if (what === 'rpc/unfollow') return 'none';
@@ -194,4 +199,4 @@ async function open(page, pathname){
   await page.waitForLoadState('networkidle');
 }
 
-module.exports = { ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, PICTURE, STORY, CAPTION, MADE_WITH, CORS, WORKER, storyPicture, mockNetwork, watchErrors, open };
+module.exports = { ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, PICTURE, STORY, CAPTION, MADE_WITH, CORS, WORKER, SB_URL, feedRow, storyPicture, mockNetwork, watchErrors, open };
