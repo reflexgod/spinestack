@@ -81,17 +81,29 @@ const PICTURE = (() => {
   const head = Buffer.alloc(13); head.writeUInt32BE(w, 0); head.writeUInt32BE(h, 4); head[8] = 8; head[9] = 2;
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', head), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
 })();
-// what a search for a title finds: a film and a book
+// what the Worker's /identify knows: a search finds the ones whose title or maker has what was typed, films first
+// and then books, each in this order (so the page's own ordering, closest title first, has something to do)
 const MATCHES = [
   { kind: 'movie', title: 'Gummo', year: '1997', creator: 'Harmony Korine', cover: 'https://image.tmdb.org/t/p/w500/gummo.jpg' },
+  { kind: 'movie', title: 'Waves', year: '2019', creator: 'Trey Edward Shults', cover: 'https://image.tmdb.org/t/p/w500/waves.jpg' },
+  { kind: 'movie', title: 'Spy Kids', year: '2001', creator: 'Robert Rodriguez', cover: 'https://image.tmdb.org/t/p/w500/spykids.jpg' },
+  { kind: 'movie', title: 'Kids in America', year: '2005', creator: 'Josh Stolberg', cover: 'https://image.tmdb.org/t/p/w500/kia.jpg' },
+  { kind: 'movie', title: 'Kids', year: '1995', creator: 'Larry Clark', cover: 'https://image.tmdb.org/t/p/w500/kids.jpg' },
+  { kind: 'movie', title: 'The Kids Are All Right', year: '2010', creator: 'Lisa Cholodenko', cover: 'https://image.tmdb.org/t/p/w500/tkaar.jpg' },
+  { kind: 'movie', title: 'Honey, I Shrunk the Kids', year: '1989', creator: 'Joe Johnston', cover: 'https://image.tmdb.org/t/p/w500/hisk.jpg' },
   { kind: 'book', title: 'The Waves', year: '1931', creator: 'Virginia Woolf', cover: 'https://covers.openlibrary.org/b/id/1-L.jpg' },
+  { kind: 'book', title: 'Just Kids', year: '2010', creator: 'Patti Smith', cover: 'https://covers.openlibrary.org/b/id/2-L.jpg' },
+  { kind: 'book', title: 'Kids', year: '2021', creator: 'Michael Chabon', cover: 'https://covers.openlibrary.org/b/id/3-L.jpg' },
 ];
+const plain = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' };
 
 /* Answers everything that isn't the site itself. Returns {unknown}: requests nothing here knew how to answer. */
-/* signedIn: a session for the made-up account; named: false leaves that account without a username yet */
-async function mockNetwork(page, { signedIn = false, named = true } = {}){
-  const unknown = [];
+/* signedIn: a session for the made-up account; named: false leaves that account without a username yet;
+   slow: how long /identify takes to answer, in ms.
+   Returns {unknown, asked}: requests nothing here could answer, and every search /identify was asked for. */
+async function mockNetwork(page, { signedIn = false, named = true, slow = 0 } = {}){
+  const unknown = [], asked = [];
   if (signedIn){
     const exp = Math.floor(Date.now() / 1000) + 3600, b64 = o => Buffer.from(JSON.stringify(o)).toString('base64url');
     const token = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: ME.id, role: 'authenticated', aud: 'authenticated', exp })}.test`;
@@ -115,7 +127,12 @@ async function mockNetwork(page, { signedIn = false, named = true } = {}){
       const json = o => route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify(o) });
       if (method === 'POST') return json({ key: `${ME.id}/${url.pathname.replace(/\W+/g, '-')}` });   // something saved: the key it's kept under
       if (/^\/(u\/preview|u\/blob|m\/img|archive\/img|img)$/.test(url.pathname)) return route.fulfill({ status: 200, headers: CORS, contentType: 'image/png', body: PICTURE });
-      if (url.pathname === '/identify'){ const want = url.searchParams.get('want') || 'all'; return json({ results: MATCHES.filter(m => want === 'all' || m.kind === want) }); }
+      if (url.pathname === '/identify'){
+        const want = url.searchParams.get('want') || 'all', q = plain(url.searchParams.get('q'));
+        asked.push(url.searchParams.get('q') + (url.searchParams.get('suggest') ? ' (typed)' : ''));
+        if (slow) await new Promise(r => setTimeout(r, slow));
+        return json({ results: MATCHES.filter(m => (want === 'all' || m.kind === want) && q && (plain(m.title).includes(q) || plain(m.creator).includes(q))) });
+      }
       return json({ results: [], more: false });   // /scans: no scans of anything, so a spine is made from the cover
     }
     if (url.hostname === 'fonts.googleapis.com') return route.fulfill({ status: 200, contentType: 'text/css', body: '' });
@@ -131,7 +148,7 @@ async function mockNetwork(page, { signedIn = false, named = true } = {}){
     unknown.push(`${method} ${url.href}`);
     return route.fulfill({ status: 404, headers: CORS, contentType: 'text/plain', body: 'not mocked' });
   });
-  return { unknown };
+  return { unknown, asked };
 }
 
 /* what a page says is wrong while it runs: console errors and uncaught exceptions */

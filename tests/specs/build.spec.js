@@ -12,9 +12,8 @@ const spines = d => d.getByRole('radiogroup', { name: 'Which spine' }).getByRole
 // through the dialog: search, pick the first match, wait for its spines, Add to shelf
 async function addGummo(page) {
   const d = dialog(page);
-  await d.getByRole('textbox', { name: 'Film or book name' }).fill('gummo');
-  await page.keyboard.press('Enter');
-  await d.locator('#addRows tr').first().click();
+  await d.getByRole('combobox', { name: 'Film or book name' }).fill('gummo');
+  await d.getByRole('option', { name: /Gummo/ }).click();   // the suggestions come by themselves
   await expect(spines(d)).toHaveCount(2);                      // no scans in the tests: Generated, and Cover
   await expect(spines(d).first()).toHaveAttribute('aria-checked', 'true');
   await d.getByRole('button', { name: 'Add to shelf' }).click();
@@ -28,7 +27,7 @@ for (const pg of PAGES) {
     await page.locator('header.top .add').click();
     const d = dialog(page);
     await expect(d).toBeVisible();
-    await expect(d.getByRole('textbox', { name: 'Film or book name' })).toBeFocused();
+    await expect(d.getByRole('combobox', { name: 'Film or book name' })).toBeFocused();
     await expect(d.getByRole('radiogroup', { name: 'Search in' }).getByRole('radio')).toHaveCount(3);   // All · Films · Books
     await expect(d.locator('#addSpines')).toBeHidden();
     await expect(d.getByRole('button', { name: 'Add to shelf' })).toBeHidden();
@@ -50,14 +49,12 @@ test('on the builder: search, pick, Add to shelf puts the spine on the shelf wit
   await page.evaluate(() => { window.__same = true; });
   await page.locator('header.top .add').click();
   const d = dialog(page);
-  await d.getByRole('textbox', { name: 'Film or book name' }).fill('gummo');
-  await page.keyboard.press('Enter');
-  await expect(d.locator('#addRows tr')).toHaveCount(2);
+  await d.getByRole('combobox', { name: 'Film or book name' }).fill('waves');
+  await expect(d.getByRole('option')).toHaveCount(2);   // the film Waves and the book The Waves
   await d.getByRole('radio', { name: 'Books' }).check();
-  await page.keyboard.press('Enter');
-  await d.getByRole('textbox', { name: 'Film or book name' }).press('Enter');
-  await expect(d.locator('#addRows tr')).toHaveCount(1);
+  await expect(d.getByRole('option')).toHaveCount(1);
   await d.getByRole('radio', { name: 'All' }).check();
+  await expect(d.getByRole('option')).toHaveCount(2);
   await addGummo(page);
   await expect(d).toBeHidden();
   expect(await titles(page)).toEqual(['Gummo']);   // the sample cleared, and the film is on
@@ -86,8 +83,8 @@ test('the Add field on the builder opens the same dialog, searching for what was
   await page.keyboard.press('Enter');
   const d = dialog(page);
   await expect(d).toBeVisible();
-  await expect(d.getByRole('textbox', { name: 'Film or book name' })).toHaveValue('waves');
-  await expect(d.locator('#addRows tr')).toHaveCount(2);
+  await expect(d.getByRole('combobox', { name: 'Film or book name' })).toHaveValue('waves');
+  await expect(d.getByRole('option')).toHaveCount(2);
 });
 
 /* ---------- the builder ---------- */
@@ -243,9 +240,8 @@ test('the shelf being made is still there after leaving the page and coming back
   await open(page, '/feed/?everyone');
   await page.locator('header.top .add').click();
   const d = dialog(page);
-  await d.getByRole('textbox', { name: 'Film or book name' }).fill('waves');
-  await page.keyboard.press('Enter');
-  await d.locator('#addRows tr').nth(1).click();
+  await d.getByRole('combobox', { name: 'Film or book name' }).fill('waves');
+  await d.getByRole('option', { name: /The Waves/ }).click();
   await expect(spines(d)).toHaveCount(2);
   await d.getByRole('button', { name: 'Add to shelf' }).click();
   await expect(page).toHaveURL(/\/build\/$/);

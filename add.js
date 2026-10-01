@@ -1,5 +1,6 @@
 /* + SHELF: the "Add to your shelf…" dialog, the same on every page. Step 1 is a search box (All / Films / Books under
-   it); picking a result goes to step 2, which finds that title's spines (the Worker finds DVD and book scans, the
+   it) that suggests titles as you type: up to six, films and books together, the closest titles first; ↑ ↓ move
+   through them and Enter picks. Picking a result goes to step 2, which finds that title's spines (the Worker finds DVD and book scans, the
    browser cuts the spine out of each) and shows the choices with an Add to shelf button. On the builder that puts the
    spine on the shelf being made. Anywhere else the choice is handed to the builder (sessionStorage), which opens with
    it on the shelf.
@@ -185,15 +186,15 @@ css.textContent = `
 #addDialog .addopts input{accent-color:var(--ink,#000);margin:0}
 #addDialog .addstatus{min-height:18px;margin-top:14px}
 #addDialog .addstatus.err{font-weight:700}
-#addDialog table{border-collapse:collapse;width:100%}
-#addDialog .addtbl{overflow-x:auto;margin-top:6px}
-#addDialog th,#addDialog td{text-align:left;padding:9px 8px 9px 0;border-bottom:1px solid var(--ink,#000);white-space:nowrap;vertical-align:top}
-#addDialog th{font-weight:400;color:var(--grey,#6B6B6B);text-transform:uppercase;font-size:11px}
-#addDialog td.t{white-space:normal;font-weight:700;text-transform:uppercase}
-#addDialog td.t,#addDialog td.by{white-space:normal;overflow-wrap:anywhere}
-#addDialog tbody tr{cursor:pointer}
-#addDialog tbody tr:hover td,#addDialog tbody tr:focus-visible td{background:#F2F2F2}
-#addDialog td.no{color:var(--grey,#6B6B6B);font-variant-numeric:tabular-nums}
+#addDialog .addlist{list-style:none;margin:8px 0 0;padding:0;border-top:1px solid var(--ink,#000)}
+#addDialog .addlist li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 14px;align-items:baseline;padding:9px 8px;border-bottom:1px solid var(--ink,#000);cursor:pointer}
+#addDialog .addlist li:hover{background:#F7F7F7}
+#addDialog .addlist li[aria-selected="true"]{background:var(--ink,#000);color:var(--paper,#fff)}
+#addDialog .addlist .t{font-weight:700;text-transform:uppercase;overflow-wrap:anywhere}
+#addDialog .addlist .y{font-weight:400;margin-left:2px;font-variant-numeric:tabular-nums}
+#addDialog .addlist .k{font-size:11px;text-transform:uppercase;white-space:nowrap}
+#addDialog .addlist .by{grid-column:1/-1;font-size:11px;color:var(--grey,#6B6B6B);overflow-wrap:anywhere}
+#addDialog .addlist li[aria-selected="true"] .by{color:inherit}
 #addDialog #addSpines{margin-top:18px}
 #addDialog .addfound{--th:300px;--tw:104px;display:flex;gap:16px;overflow-x:auto;padding:8px 4px 4px;margin-bottom:8px;align-items:flex-start}
 #addDialog .pick{flex:none;display:grid;grid-template-rows:var(--th) 18px;gap:8px;justify-items:center;width:max-content;min-width:var(--tw)}
@@ -205,7 +206,8 @@ css.textContent = `
 #addDialog .pick .lbl a{color:inherit}
 #addDialog .addfound .rule{flex:none;width:1px;height:var(--th);background:var(--hair,#D9D9D9)}
 #addDialog .addbar{display:flex;justify-content:flex-end;margin-top:14px}
-@media (max-width:520px){ #addDialog{padding:22px 16px 18px} #addDialog .addfound{--th:220px;--tw:84px} }`;
+/* on a phone it sits at the top, so the box and its suggestions stay above the keyboard */
+@media (max-width:520px){ #addDialog{padding:22px 16px 18px;margin-top:12px} #addDialog .addfound{--th:220px;--tw:84px} }`;
 document.head.appendChild(css);
 const dlg = document.createElement('dialog');
 dlg.id = 'addDialog'; dlg.setAttribute('aria-labelledby', 'addTitle');
@@ -213,7 +215,7 @@ dlg.innerHTML = `
   <button class="addx" id="addClose" type="button" aria-label="Close">${ICON('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>')}</button>
   <h2 id="addTitle">Add to your shelf…</h2>
   <form class="addsearch" id="addForm" autocomplete="off">
-    <input type="text" id="addQ" placeholder="Gummo, The Waves, Kids..." aria-label="Film or book name" maxlength="120">
+    <input type="text" id="addQ" placeholder="Gummo, The Waves, Kids..." aria-label="Film or book name" maxlength="120" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="addRows">
     <button type="submit" aria-label="Search">${ICON('<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>')}</button>
   </form>
   <div class="addopts" role="radiogroup" aria-label="Search in">
@@ -225,10 +227,7 @@ dlg.innerHTML = `
   <p class="grey" id="addRecent" hidden>Recently found: <span></span></p>
   <div class="addstatus" id="addStatus" role="status"></div>
   <div id="addMatches" hidden>
-    <div class="addtbl"><table>
-      <thead><tr><th>No.</th><th>Title</th><th>Year</th><th>Type</th><th>By</th></tr></thead>
-      <tbody id="addRows"></tbody>
-    </table></div>
+    <ul class="addlist" id="addRows" role="listbox" aria-label="Films and books"></ul>
   </div>
   <div id="addSpines" hidden>
     <h3><span id="addSpinesTitle">Spines</span> <small id="addSpinesBy"></small> <button class="dash sm" id="addChange" type="button">Change</button></h3>
@@ -278,30 +277,98 @@ async function identifyDirect(q, want){
   if ((!films || f.status === 'rejected') && (!books || b.status === 'rejected')) throw new Error('no answer');
   return [...(f.value || []), ...(b.value || [])];
 }
-let matches = [];
+/* Suggestions while you type: a search starts 300 ms after the last key (Enter starts it at once), and a newer one
+   cancels the one before, whose answer is dropped if it still comes. Up to six results, films and books together,
+   by how well the title matches what was typed: the same, then starting with it, then containing it. */
+const SHOWN = 6, WAIT = 300;
+let matches = [], active = -1;   // active: the highlighted result
+let shownFor = null;             // "<kind>|<text>" the results on screen answer
+let typing = 0, run = 0, asking = null;
+const seen = new Map();          // answers already had in this dialog, so going back over a word asks nothing
 const wanted = () => ($('input[name=addKind]:checked') || {}).value || 'all';
-$('#addForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  const q = $('#addQ').value.trim(); if (!q) return;
-  const want = wanted(), noFilms = !server && !WORKER && !TMDB && want !== 'book';
+const plain = s => String(s || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
+// 0: the title is what was typed, 1: it starts with it, 2: it has it, 3: neither (a near miss the search still found)
+function closeness(title, q){
+  const t = plain(title), want = plain(q.replace(/[\s,(]+(?:19|20)\d\d\)?$/, ''));   // "kids 1995": the year isn't part of the title
+  if (!want) return 3;
+  return t === want ? 0 : t.startsWith(want + ' ') || t.startsWith(want) ? 1 : (' ' + t + ' ').includes(' ' + want + ' ') || t.includes(want) ? 2 : 3;
+}
+function rank(results, q){
+  const nth = {movie: 0, book: 0};   // each kind keeps the order it came in; a film and a book as close as each other take turns
+  return results.map(m => ({m, c: closeness(m.title, q), i: nth[m.kind === 'movie' ? 'movie' : 'book']++}))
+    .sort((a, b) => a.c - b.c || a.i - b.i || (a.m.kind === 'movie' ? 0 : 1) - (b.m.kind === 'movie' ? 0 : 1)).slice(0, SHOWN).map(x => x.m);
+}
+async function lookUp(q, want, typed, signal){
+  if (server) return (await fetch(API + '/api/identify?q=' + encodeURIComponent(q), {signal}).then(r => r.json())).results;
+  // suggest=1: an answer for a half-typed title isn't kept by the Worker the way a finished search is
+  if (WORKER) return getJSON(`${WORKER}/identify?want=${want}&q=${encodeURIComponent(q)}${typed ? '&suggest=1' : ''}`, {signal}).then(r => r.results)
+    .catch(err => { if (err && err.name === 'AbortError') throw err; return identifyDirect(q, want); });
+  return identifyDirect(q, want);
+}
+function paintActive(){
+  const rows = [...dlg.querySelectorAll('#addRows [role=option]')];
+  rows.forEach((li, i) => li.setAttribute('aria-selected', String(i === active)));
+  const q = $('#addQ'), on = rows[active];
+  if (on){ q.setAttribute('aria-activedescendant', on.id); on.scrollIntoView({block: 'nearest'}); } else q.removeAttribute('aria-activedescendant');
+  q.setAttribute('aria-expanded', String(!$('#addMatches').hidden && rows.length > 0));
+}
+function showMatches(){
+  $('#addRows').innerHTML = matches.map((m, i) => `<li role="option" id="addOpt${i}" data-i="${i}" aria-selected="false"><span class="t">${esc(m.title)}${m.year ? ` <span class="y">${esc(m.year)}</span>` : ''}</span> <span class="k">${m.kind === 'movie' ? 'Film' : 'Book'}</span>${m.creator ? ` <span class="by">${esc(m.creator)}</span>` : ''}</li>`).join('');
+  $('#addMatches').hidden = !matches.length;
+  active = matches.length ? 0 : -1; paintActive();
+}
+// typed: asked for by the typing itself, not by Enter
+async function search(typed){
+  clearTimeout(typing);
+  const q = $('#addQ').value.trim(), want = wanted(), key = want + '|' + q.toLowerCase(), mine = ++run;
+  if (asking){ asking.abort(); asking = null; }
+  if (!q){ matches = []; shownFor = null; showMatches(); sstatus(''); return; }
+  const noFilms = !server && !WORKER && !TMDB && want !== 'book';
   if (!server && !direct){ sstatus('Search runs on the shelfstackd server, which this preview doesn’t have. Upload a scan on the builder instead.', true); return; }
-  if (noFilms && want === 'movie'){ sstatus('Film search needs a TMDB key. Books work without one.', true); $('#addMatches').hidden = true; return; }
-  current = null; $('#addSpines').hidden = true; sstatus('Looking up “' + esc(q) + '”…');
-  try {
-    let results;
-    if (server) results = (await fetch(API + '/api/identify?q=' + encodeURIComponent(q)).then(r => r.json())).results;
-    else if (WORKER) results = await getJSON(`${WORKER}/identify?want=${want}&q=` + encodeURIComponent(q)).then(r => r.results).catch(() => identifyDirect(q, want));
-    else results = await identifyDirect(q, want);
-    matches = results.filter(m => want === 'all' || m.kind === want);
-    if (!matches.length){ sstatus('Nothing matched “' + esc(q) + '”. Check the spelling, or upload a scan on the builder.', true); $('#addMatches').hidden = true; return; }
-    sstatus(matches.length + ' match' + (matches.length > 1 ? 'es' : '') + '.' + (noFilms ? ' Film search needs a TMDB key.' : ''));
-    $('#addRows').innerHTML = matches.map((m,i) => `<tr tabindex="0" data-i="${i}"><td class="no">${String(i+1).padStart(3,'0')}</td><td class="t">${esc(m.title)}</td><td>${esc(m.year || '—')}</td><td><span class="kind ${m.kind}">${m.kind === 'movie' ? 'Film' : 'Book'}</span></td><td class="by">${esc(m.creator || '—')}</td></tr>`).join('');
-    $('#addMatches').hidden = false;
-  } catch { sstatus((server ? 'The search server' : 'The search') + ' didn’t answer. Try again in a moment.', true); }
+  if (noFilms && want === 'movie'){ sstatus('Film search needs a TMDB key. Books work without one.', true); $('#addMatches').hidden = true; paintActive(); return; }
+  current = null; $('#addSpines').hidden = true;
+  let results = seen.get(key);
+  if (!results){
+    sstatus('Searching…');
+    const ctl = asking = new AbortController();
+    try { results = await lookUp(q, want, typed, ctl.signal); }
+    catch (err){
+      if (mine !== run || (err && err.name === 'AbortError')) return;   // a newer search took over
+      sstatus((server ? 'The search server' : 'The search') + ' didn’t answer. Try again in a moment.', true); return;
+    }
+    finally { if (asking === ctl) asking = null; }
+    if (mine !== run) return;
+    results = (results || []).filter(m => want === 'all' || m.kind === want);
+    seen.set(key, results);
+  }
+  matches = rank(results, q); shownFor = key;
+  showMatches();
+  sstatus(matches.length ? (noFilms ? 'Film search needs a TMDB key.' : '') : 'Nothing found for "' + esc(q) + '". Try the original title or the author.', !matches.length);
+}
+$('#addQ').addEventListener('input', () => {
+  clearTimeout(typing);
+  if ($('#addQ').value.trim().length < 2){   // one letter: nothing is suggested yet (Enter still searches it)
+    run++; if (asking){ asking.abort(); asking = null; }
+    matches = []; shownFor = null; showMatches(); sstatus(''); return;
+  }
+  typing = setTimeout(() => search(true), WAIT);
 });
-const pickMatch = tr => tr && findSpines(matches[+tr.dataset.i]);
-$('#addRows').addEventListener('click', e => pickMatch(e.target.closest('tr')));
-$('#addRows').addEventListener('keydown', e => { if (e.key === 'Enter') pickMatch(e.target.closest('tr')); });
+dlg.querySelectorAll('input[name=addKind]').forEach(r => r.addEventListener('change', () => { if ($('#addQ').value.trim()) search(false); }));
+const pick = i => { const m = matches[i]; if (m) findSpines(m); };
+// Enter: picks the highlighted result when the results on screen answer what's in the box; otherwise it searches now
+$('#addForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const key = wanted() + '|' + $('#addQ').value.trim().toLowerCase();
+  if (shownFor === key && active >= 0 && !$('#addMatches').hidden) pick(active); else search(false);
+});
+$('#addQ').addEventListener('keydown', e => {
+  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+  if ($('#addMatches').hidden || !matches.length) return;
+  e.preventDefault();
+  active = (active + (e.key === 'ArrowDown' ? 1 : -1) + matches.length) % matches.length; paintActive();
+});
+$('#addRows').addEventListener('click', e => { const li = e.target.closest('[role=option]'); if (li) pick(+li.dataset.i); });
+$('#addRows').addEventListener('pointermove', e => { const li = e.target.closest('[role=option]'); if (li && +li.dataset.i !== active){ active = +li.dataset.i; paintActive(); } });
 
 /* An image that fails this would stop Save story from working, so it never goes on the shelf. */
 const canvasSafe = img => { try { const c = document.createElement('canvas'); c.width = c.height = 1; const x = c.getContext('2d'); x.drawImage(img, 0, 0, 1, 1); c.toDataURL(); return true; } catch { return false; } };
@@ -394,7 +461,7 @@ async function cutScans(cur, english){
 }
 async function findSpines(m, again){
   const key = keyOf(m), cur = current = {m, key, real:[], res:{spines:[]}, img:null, busy:true, choice:null}, noun = m.kind === 'movie' ? 'poster' : 'cover';
-  $('#addSpines').hidden = false; $('#addMatches').hidden = true;
+  $('#addSpines').hidden = false; $('#addMatches').hidden = true; paintActive();
   $('#addSpinesTitle').textContent = m.title + (m.year ? ' (' + m.year + ')' : ''); $('#addSpinesBy').textContent = m.creator ? '· ' + m.creator : '';
   $('#addNote').hidden = server || !!WORKER; $('#addFound').innerHTML = ''; $('#addNoReal').hidden = true; $('#addDup').hidden = true; paintGo();
   if (!again && shelf && shelf.has(key)){
@@ -461,8 +528,9 @@ $('#addFound').addEventListener('click', e => {
   paintGo();
 });
 $('#addDupAdd').addEventListener('click', () => { if (current) findSpines(current.m, true); });
-$('#addDupCancel').addEventListener('click', () => { $('#addDup').hidden = true; $('#addSpines').hidden = true; $('#addMatches').hidden = !matches.length; current = null; });
-$('#addChange').addEventListener('click', () => { $('#addMatches').hidden = false; $('#addMatches').scrollIntoView({behavior:'smooth', block:'nearest'}); });
+$('#addDupCancel').addEventListener('click', () => { $('#addDup').hidden = true; $('#addSpines').hidden = true; $('#addMatches').hidden = !matches.length; current = null; paintActive(); $('#addQ').focus(); });
+// Change: back to the results, with the box ready for the arrow keys
+$('#addChange').addEventListener('click', () => { current = null; $('#addSpines').hidden = true; $('#addMatches').hidden = !matches.length; sstatus(''); paintActive(); $('#addQ').focus(); });
 const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./,''); } catch { return 'source'; } };
 
 /* ---------- Add to shelf ---------- */
@@ -499,8 +567,9 @@ async function resolve(p){
 
 /* ---------- opening and closing ---------- */
 function reset(){
-  current = null; matches = [];
-  $('#addQ').value = ''; $('#addMatches').hidden = true; $('#addSpines').hidden = true; $('#addRows').innerHTML = ''; $('#addFound').innerHTML = ''; sstatus('');
+  clearTimeout(typing); run++; if (asking){ asking.abort(); asking = null; }
+  current = null; matches = []; active = -1; shownFor = null;
+  $('#addQ').value = ''; $('#addMatches').hidden = true; $('#addSpines').hidden = true; $('#addRows').innerHTML = ''; $('#addFound').innerHTML = ''; sstatus(''); paintActive();
   $('#addMode').hidden = server || !!WORKER;
   if (!server && !WORKER && direct) $('#addMode').textContent = TMDB ? 'Search works here. Real DVD and book spines need the shelfstackd server.' : 'Book search works here. Films need a TMDB key, and real spines need the shelfstackd server.';
 }
@@ -508,11 +577,11 @@ function reset(){
 function open(opt){
   if (!dlg.open){ reset(); if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', ''); }
   const q = opt && opt.query ? String(opt.query).trim() : '';
-  if (q){ $('#addQ').value = q; $('#addForm').requestSubmit ? $('#addForm').requestSubmit() : $('#addForm').dispatchEvent(new Event('submit', {cancelable: true})); }
+  if (q){ $('#addQ').value = q; search(false); }
   $('#addQ').focus();
 }
 function close(){ if (dlg.open){ if (typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open'); } }
-dlg.addEventListener('close', () => { current = null; });   // whatever was being looked for stops
+dlg.addEventListener('close', () => { current = null; clearTimeout(typing); run++; if (asking){ asking.abort(); asking = null; } });   // whatever was being looked for stops
 $('#addClose').addEventListener('click', close);
 dlg.addEventListener('click', e => {   // a click on the dimmed page behind it
   const r = dlg.getBoundingClientRect();

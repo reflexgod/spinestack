@@ -53,11 +53,10 @@ for (const step of ['the search results', 'the spine choices']) {
     await open(page, '/');
     await page.locator('header.top .add').click();
     const d = page.getByRole('dialog', { name: /add to your shelf/i });
-    await d.getByRole('textbox', { name: 'Film or book name' }).fill('gummo');
-    await page.keyboard.press('Enter');
-    await expect(d.locator('#addRows tr')).toHaveCount(2);
+    await d.getByRole('combobox', { name: 'Film or book name' }).fill('kids');
+    await expect(d.getByRole('option')).toHaveCount(6);
     if (step === 'the spine choices') {
-      await d.locator('#addRows tr').first().click();
+      await d.getByRole('option').first().click();
       await expect(d.getByRole('button', { name: 'Add to shelf' })).toBeEnabled();
     }
     await clean(page);
