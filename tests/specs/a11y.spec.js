@@ -62,3 +62,18 @@ for (const step of ['the search results', 'the spine choices']) {
     await clean(page);
   });
 }
+
+// Settings: each tab, and the Photo tab with a photo being cut
+for (const tab of ['Photo', 'Account']) {
+  test(`axe: settings, the ${tab} tab`, async ({ page }) => {
+    await mockNetwork(page, { signedIn: true });
+    await open(page, '/settings/');
+    await page.getByRole('tab', { name: tab }).click();
+    if (tab === 'Photo') {
+      await page.locator('#photoFile').setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: require('../site').PICTURE });
+      await expect(page.locator('#cropBox .cropper-container')).toBeVisible();
+    }
+    await clean(page);
+  });
+}
+

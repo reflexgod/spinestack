@@ -169,7 +169,7 @@ test.describe('account menu', () => {
 test('every sign-out is for this device only', () => {
   test.skip(isPhone(), 'reads files, no browser: once is enough');
   const fs = require('fs'), path = require('path'), { ROOT } = require('../site');
-  for (const f of ['index.html', 'build/index.html', 'feed/index.html', 'u/index.html', 'admin.html']) {
+  for (const f of ['index.html', 'build/index.html', 'feed/index.html', 'u/index.html', 'settings/index.html', 'admin.html']) {
     const calls = fs.readFileSync(path.join(ROOT, f), 'utf8').match(/auth\.signOut\([^)]*\)/g) || [];
     expect(calls.length, f).toBeGreaterThan(0);
     for (const c of calls) expect(c, f).toBe("auth.signOut({scope: 'local'})");

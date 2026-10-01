@@ -10,6 +10,7 @@ build/index.html      the shelf builder (New shelf / Edit shelf): Add, the spine
 add.js                + SHELF on every page: the Add to your shelf… dialog (suggestions as you type, then the spine choices and Add to shelf); the spine finder lives here
 shelf.js              draws the spines and the story (and says where it drew each book); build/ and u/ both use it, so a shelf looks the same everywhere
 u/index.html          profiles: /u/?username, and one shelf: /u/?username&shelf=<id>
+settings/index.html   your settings (signed in only): PROFILE (display name, bio, main shelf), PHOTO (cut square, made small, sent to the Worker), ACCOUNT (private profile). A profile's Edit profile comes here
 feed/index.html       the feed: /feed/, FOLLOWING · YOU · EVERYONE, a line for each shelf saved ("@abc shelved my films · 2h") with its card, newest first
 worker-address.js     sends Worker requests to its workers.dev address on networks that block api.shelfstackd.com
 site.css              the look every page shares: one :root block of variables (the 950px column, the type scale, the 4/8/12/16/24/40 spacing, the 3px radius) and what uses them everywhere (the top bar, headings, buttons, fields, shelf cards, tabs, sheets, the footer). A page's own <style> holds only what that page alone needs
@@ -86,7 +87,7 @@ In `worker/`:
 5. `npx wrangler secret put BRAVE_API_KEY` and paste the Brave Search API key (api-dashboard.search.brave.com).
    `npx wrangler secret put ADMIN_TOKEN` and paste a long random string of your own. It's the password for `admin.html`; keep it only in a password manager.
 6. `npx wrangler deploy`. It prints the Worker address, e.g. `https://spinestack.NAME.workers.dev`.
-7. In `index.html`, `build/index.html`, `u/index.html`, `feed/index.html` and `admin.html`, `window.SPINESTACK_WORKER` is the Worker's address
+7. In `index.html`, `build/index.html`, `u/index.html`, `feed/index.html`, `settings/index.html` and `admin.html`, `window.SPINESTACK_WORKER` is the Worker's address
    (`https://api.shelfstackd.com`) and `window.SPINESTACK_WORKER_FALLBACK` its workers.dev address. Keep
    `window.SPINESTACK_TMDB` empty.
 
@@ -158,7 +159,7 @@ signed-out visitors never load the Supabase library.
 - **Where things live:** text rows (profiles, shelves, shelf items) in the Supabase project "shelfstackd"
   (Mumbai, free plan). Images a saved shelf needs, and each shelf's small preview, in the Worker's KV
   (`ub:<user id>/...`); archive spines and TMDB / Open Library covers are pointed at, not copied.
-- **Keys:** only the Project URL and the *publishable* key are used, in `index.html`, `build/index.html`, `u/index.html`, `feed/index.html` and in `worker/wrangler.toml`
+- **Keys:** only the Project URL and the *publishable* key are used, in `index.html`, `build/index.html`, `u/index.html`, `feed/index.html`, `settings/index.html` and in `worker/wrangler.toml`
   `[vars]`. Both are public; Row Level Security protects every table. The secret / service_role key isn't used
   anywhere and must never be added to the page, the repo or the Worker.
 - **Database:** run each file in `supabase/migrations/` once, in order, in the dashboard's SQL Editor. Then run the
@@ -199,8 +200,10 @@ the browser's own `<dialog>` and `popover`; relative times use `Intl.RelativeTim
 | browser-image-compression 2.0.2 | shrinks the photo before upload (the Worker takes 2 MB at most) | `browser-image-compression@2.0.2/dist/browser-image-compression.js` | `sha384-dHP9fwqd9BAiDh9uJ0p10khgbbcFMh34bVEiCnJ1Ah/AT2T2k4t572VEo3WXzxXp` |
 | Lucide 1.49.0 | icons (zap, search, chevron-down, x, plus) | pasted into the pages as inline SVG, not loaded | |
 
-Loaded so far: Supabase, Floating UI (by `nav.js`, only for someone signed in, who has the menus) and SortableJS (by the
-builder). Each of the others is added to a page when the page starts using it. To change a
+Supabase loads on a page only for someone signed in or signing in; Floating UI by `nav.js`, only for someone signed
+in, who has the menus; SortableJS by the builder; Cropper.js and browser-image-compression by `settings/`, when a photo
+is first chosen there (the compression runs on the page itself, not in its web worker, which would fetch the library
+again with no integrity check). To change a
 version: `curl -s <file's address> | openssl dgst -sha384 -binary | openssl base64 -A` gives the new hash.
 
 ## Tests
@@ -233,6 +236,9 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **The look** (`specs/look.spec.js`): the content and the bar's contents in one 950px column on every page, the type
   scale, one black button a screen, shelf cards six across at 150px (three on a phone) cut 2:3, the profile's name,
   numbers and tabs.
+- **Settings** (`specs/settings.spec.js`): signed out and with no username yet; the three tabs and their addresses;
+  Profile's Save sending the name, bio and main shelf; a photo cut square, made small (WebP, under the Worker's 2 MB),
+  sent to the Worker and saved, then removed; Cancel; the private profile switch; a profile's links here.
 - **The feed** (`specs/feed.spec.js`): the three tabs and which one opens, what a line says (with the clock held still,
   so "2h" and "1w" are known), You, signed out, and ← → between the tabs.
 

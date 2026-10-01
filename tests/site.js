@@ -15,6 +15,7 @@ const PAGES = [
   { name: 'build', path: '/build/' },
   { name: 'feed', path: '/feed/?everyone' },
   { name: 'profile', path: '/u/?mira' },
+  { name: 'settings', path: '/settings/' },
 ];
 /* pages without it */
 const OTHER_PAGES = [
@@ -67,6 +68,8 @@ function rest(url, method, body, signedIn, named){
   if (what === 'rpc/am_i_pro') return false;
   if (what === 'rpc/save_shelf') return body.shelf.id;
   if (what.startsWith('rpc/')) return [];
+  // a change to a profile answers with the row as it would be then (nothing here is kept)
+  if (what === 'profiles' && method === 'PATCH') return PEOPLE.filter(p => p.id === eq('id')).map(p => ({ ...p, ...body }));
   if (what === 'profiles') return PEOPLE.filter(p => (named || p.id !== ME.id) && (!q.has('id') || p.id === eq('id')) && (!q.has('username') || p.username === eq('username')));
   if (what === 'shelves'){
     const ids = (q.get('id') || '').startsWith('in.(') ? q.get('id').slice(4, -1).split(',') : q.has('id') ? [eq('id')] : null;   // id=eq.x or id=in.(x,y)
@@ -171,4 +174,4 @@ async function open(page, pathname){
   await page.waitForLoadState('networkidle');
 }
 
-module.exports = { ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, mockNetwork, watchErrors, open };
+module.exports = { ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, PICTURE, WORKER, mockNetwork, watchErrors, open };

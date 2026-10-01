@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Your shelfstackd settings.">
+<meta name="robots" content="noindex">
+<title>Settings · shelfstackd</title>
+<script>
+  /* The same public addresses as build/ (see the notes there). */
+  window.SPINESTACK_WORKER = "https://api.shelfstackd.com";
+  window.SPINESTACK_WORKER_FALLBACK = "https://spinestack.spinestack-worker.workers.dev";
+  window.SPINESTACK_SUPABASE_URL = "https://fiukspnovrlzlcdekcnb.supabase.co";
+  window.SPINESTACK_SUPABASE_KEY = "sb_publishable_cZeUDJXk-nCbSJ4VZWn_GQ_6xNFyBo2";
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&display=swap">
+<link rel="stylesheet" href="../site.css?v=20261002c">
+<style>
+/* settings: three tabs, each a short form in a narrow column (site.css has the tabs, the fields, the buttons and the
+   rest) */
+.set{min-height:60vh}
+.gate{display:grid;justify-items:start;gap:var(--s3)}
+.gate p{margin:0}
+.panel{max-width:420px;margin-top:var(--s5)}
+.panel,.panel form,#cropWrap{display:grid;gap:var(--s4)}
+.panel p{margin:0}
+.row{display:flex;gap:var(--s3) var(--s4);align-items:center;flex-wrap:wrap}
+/* the photo as it is now, round as it's shown everywhere */
+.photo-row{display:flex;gap:var(--s4);align-items:center}
+.photo-row .ava{width:96px;height:96px;flex:none;border-radius:50%;border:1px solid var(--ink);background:var(--wash);display:grid;place-items:center;overflow:hidden;font:400 36px var(--mono);text-transform:uppercase}
+.photo-row .ava img{width:100%;height:100%;object-fit:cover;display:block}
+/* the new photo, to be cut square: Cropper.js draws inside .cropbox. Its frame stays where it is and the photo moves
+   under it; the frame is round, as the photo will be shown, and white where Cropper's own is blue */
+.cropbox{width:100%;aspect-ratio:1;background:var(--wash);border:1px solid var(--ink);border-radius:var(--radius);overflow:hidden}
+.cropbox img{display:block;max-width:100%}
+.cropbox .cropper-view-box,.cropbox .cropper-face{border-radius:50%}
+.cropbox .cropper-view-box{outline:1px solid #FFFFFF}
+.btn.zoom{min-width:32px;padding:var(--s1) var(--s2);font-size:var(--fs-body)}
+/* a switch: a checkbox drawn as one */
+.switch{display:flex;gap:var(--s3);align-items:center;cursor:pointer;justify-self:start}
+.switch input{appearance:none;-webkit-appearance:none;flex:none;width:36px;height:20px;margin:0;border:1px solid var(--ink);border-radius:10px;background:var(--paper);position:relative;cursor:pointer}
+.switch input::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--ink);transition:transform .15s}
+.switch input:checked{background:var(--ink)}
+.switch input:checked::after{transform:translateX(16px);background:var(--paper)}
+.switch input:disabled{opacity:.5;cursor:default}
+@media (prefers-reduced-motion:reduce){ .switch input::after{transition:none} }
+</style>
+</head>
+<body>
+<header class="top" id="top">
+  <!-- icons: Lucide 1.49.0 (ISC), pasted in -->
+  <a class="mark" href="../" aria-label="shelfstackd, home">SHELFSTACKD</a>
+  <button class="acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false" hidden><span class="ava" aria-hidden="true"></span><span class="who"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+  <nav class="links" aria-label="shelfstackd">
+    <a href="../shelves/">Shelves</a><a href="../members/">Members</a>
+    <a class="zap" href="../feed/" aria-label="Activity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z"/></svg></a>
+    <a class="find" href="../members/" aria-label="Search" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
+  </nav>
+  <a class="signin" id="signInBtn" href="#" hidden>Sign in</a>
+  <span class="addwrap"><a class="btn primary add" href="../build/" aria-label="New shelf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Shelf</span></a><button class="btn primary addmore" id="addMore" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More ways to add" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></span>
+</header>
+
+<main class="set">
+  <h1>Settings</h1>
+  <p class="grey" id="state" role="status">Loading…</p>
+  <!-- signed out, or signed in with no username yet -->
+  <div class="gate" id="gate" hidden>
+    <p id="gateText">Sign in to change your settings.</p>
+    <button class="btn" id="gateBtn" type="button">Sign in</button>
+    <a class="btn" id="gateLink" href="../build/" hidden>Finish sign-up</a>
+  </div>
+  <div id="page" hidden>
+    <nav class="tabs" role="tablist" aria-label="Settings">
+      <button type="button" role="tab" id="tabP" data-tab="profile" aria-selected="true" aria-controls="panelP">Profile</button>
+      <button type="button" role="tab" id="tabH" data-tab="photo" aria-selected="false" aria-controls="panelH">Photo</button>
+      <button type="button" role="tab" id="tabA" data-tab="account" aria-selected="false" aria-controls="panelA">Account</button>
+    </nav>
+
+    <div class="panel" id="panelP" role="tabpanel" aria-labelledby="tabP">
+      <form id="profForm">
+        <label class="field"><span class="lbl">Display name</span><input type="text" id="nameIn" maxlength="40" autocomplete="name"></label>
+        <label class="field"><span class="lbl">Bio</span><textarea id="bioIn" maxlength="160" rows="3"></textarea><span class="note" id="bioCount"></span></label>
+        <label class="field"><span class="lbl">Main shelf</span><select id="pinIn"></select><span class="note">The shelf at the top of your profile.</span></label>
+        <p class="note">Your username, <b id="unameRO"></b>, stays as it is.</p>
+        <div class="row"><button class="btn" id="saveBtn" type="submit">Save</button><a class="dash sm" id="viewLink" href="../u/">View profile</a></div>
+        <p class="note" id="editNote" role="status"></p>
+      </form>
+    </div>
+
+    <div class="panel" id="panelH" role="tabpanel" aria-labelledby="tabH" hidden>
+      <div class="photo-row">
+        <div class="ava" id="ava"></div>
+        <div class="row"><button class="btn" id="photoPick" type="button">Choose photo</button><button class="dash sm" id="photoRemove" type="button" hidden>Remove</button></div>
+        <input type="file" id="photoFile" accept="image/jpeg,image/png,image/webp" aria-label="Choose photo" hidden>
+      </div>
+      <p class="note">JPG, PNG or WEBP, up to 20 MB. You cut it to a square here, and it's made small before it's sent.</p>
+      <div id="cropWrap" hidden>
+        <div class="cropbox" id="cropBox" tabindex="0" role="group" aria-label="Your new photo. Arrow keys move it, plus and minus zoom."></div>
+        <div class="row">
+          <button class="btn zoom" id="zoomOut" type="button" aria-label="Zoom out">−</button>
+          <button class="btn zoom" id="zoomIn" type="button" aria-label="Zoom in">+</button>
+          <span class="note">Drag the photo to move it. Pinch, scroll or use − and + to zoom.</span>
+        </div>
+        <div class="row"><button class="btn" id="photoSave" type="button">Save photo</button><button class="dash sm" id="photoCancel" type="button">Cancel</button></div>
+      </div>
+      <p class="note" id="photoNote" role="status"></p>
+    </div>
+
+    <div class="panel" id="panelA" role="tabpanel" aria-labelledby="tabA" hidden>
+      <label class="switch"><input type="checkbox" role="switch" id="privIn"><span>Private profile</span></label>
+      <p class="note">A private profile shows only its photo and name to people who don't follow it, and they ask to follow it.</p>
+      <p class="note" id="privNote" role="status"></p>
+      <p class="note">To delete your account, email <a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a> from the address you signed in with. <a href="../privacy.html">Privacy</a></p>
+    </div>
+  </div>
+</main>
+
+<div class="sheet" id="signSheet" hidden role="dialog" aria-modal="true" aria-label="Sign in">
+  <div class="sheetbox">
+    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <div>
+      <h2>Sign in</h2>
+      <p>Save your shelves to your account and open them again on any device.</p>
+      <button class="btn primary full" id="googleBtn" type="button">Continue with Google</button>
+      <p class="note">Accounts are for people 18 or older. <a href="../privacy.html">Privacy</a></p>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="fgrid">
+    <div id="how">
+      <h3>How it works</h3>
+      <ol>
+        <li>You type a name. Films come from TMDB, books from Open Library.</li>
+        <li>We look for full DVD and book scans of that title.</li>
+        <li>The strip between back and front is the spine. We cut it out.</li>
+        <li>No clean scan? You get a spine made from the poster or cover.</li>
+      </ol>
+    </div>
+    <div id="sources">
+      <h3>Sources</h3>
+      <p>Film data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB. Book data from Open Library. Scans belong to their studios and publishers, and every spine links back to where it was found.</p>
+    </div>
+    <div>
+      <h3>Shelf</h3>
+      <p>Build it, then post it.</p>
+      <a class="fbtn" href="../build/#shelf">Open shelf</a>
+    </div>
+  </div>
+  <div class="fbase"><span>© 2026 SHELFSTACKD. All rights reserved.</span><span><a href="https://search.brave.com/" target="_blank" rel="noopener">Search by Brave</a></span><span>Not affiliated with any studio or publisher.</span></div>
+</footer>
+<div class="toast" id="toast" hidden></div>
+
+<script src="../shelf.js?v=20261002a"></script>
+<script src="../worker-address.js?v=20261001a"></script>
+<script src="../nav.js?v=20261001e"></script>
+<script>
+(() => {
+/* Settings: /settings/ (#photo and #account pick the tab). Yours only: signed out, it asks you to sign in.
+   PROFILE: display name, bio, main shelf. PHOTO: a new photo, cut square (Cropper.js) and made small
+   (browser-image-compression) before it goes to the Worker, which takes 2 MB at most. ACCOUNT: private profile.
+   Each saves with the database calls the profile page's Edit profile sheet made, one tab's fields at a time. */
+const $ = s => document.querySelector(s);
+const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
+const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
+const SB_LIB = {src:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
+// the photo's tools, loaded when a photo is first chosen
+const PHOTO_LIBS = [
+  {href:'https://cdn.jsdelivr.net/npm/cropperjs@1.6.3/dist/cropper.min.css', integrity:'sha384-4B0iRmDz7QrXJK2xob77YvAC46zoUOJDr2MOKrkWWR7QoJg9i63rGSnCwIjGYGHs'},
+  {src:'https://cdn.jsdelivr.net/npm/cropperjs@1.6.3/dist/cropper.min.js', integrity:'sha384-aKBOyDyHi7nysLl4xSArmbTpotGkhOQNGnSQaljyIveY3ofQZ3GWak4U9F5NcPxI'},
+  {src:'https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js', integrity:'sha384-dHP9fwqd9BAiDh9uJ0p10khgbbcFMh34bVEiCnJ1Ah/AT2T2k4t572VEo3WXzxXp'},
+];
+const PROFILE_COLS = 'id,username,display_name,bio,avatar_key,pinned_shelf_id,is_private,created_at';
+
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtDate = s => new Date(s).toLocaleDateString(undefined, {day:'numeric', month:'short', year:'numeric'});
+let toastT = 0; function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 4200); }
+function friendly(e){
+  const m = (e && e.message) || '';
+  if (/fetch|network/i.test(m)) return 'Couldn’t reach shelfstackd. Check your connection and try again.';
+  return m || 'Something went wrong. Try again in a moment.';
+}
+
+/* ---------- signing in (the same Supabase client and settings as u/) ---------- */
+const me = {sb:null, user:null, profile:null};
+let sbLoading = null;
+function supa(){
+  return sbLoading || (sbLoading = new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = SB_LIB.src; s.integrity = SB_LIB.integrity; s.crossOrigin = 'anonymous';
+    s.onload = () => { me.sb = window.supabase.createClient(SB_URL, SB_KEY, {auth:{flowType:'pkce', persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}}); res(me.sb); };
+    s.onerror = () => { sbLoading = null; s.remove(); rej(new Error('Sign-in couldn’t load. Check your connection and try again.')); };
+    document.head.appendChild(s);
+  }));
+}
+const hasSession = () => { try { return Object.keys(localStorage).some(k => /^sb-.+-auth-token$/.test(k)); } catch { return false; } };
+const returning = () => /[?&](code|error|error_description)=/.test(location.search);
+async function token(){
+  if (!me.sb) return null;
+  const {data:{session}} = await me.sb.auth.getSession();
+  return session ? session.access_token : null;
+}
+// Supabase's REST API, as the signed-in person
+async function api(path, opt = {}){
+  const t = await token(), r = await fetch(`${SB_URL}/rest/v1/${path}`, {...opt,
+    headers: {apikey: SB_KEY, 'Content-Type': 'application/json', ...(t ? {Authorization: 'Bearer ' + t} : {}), ...(opt.headers || {})}});
+  const j = r.status === 204 ? null : await r.json().catch(() => null);
+  if (!r.ok) throw new Error((j && j.message) || 'Couldn’t load your settings. Try again in a moment.');
+  return j;
+}
+async function workerPost(path, body){
+  const t = await token();
+  if (!t) throw new Error('Sign in again to save.');
+  const r = await fetch(WORKER + path, {method:'POST', headers:{Authorization:'Bearer ' + t, 'Content-Type': body ? body.type : 'text/plain'}, body: body || ''});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'Saving didn’t work. Try again in a moment.');
+  return j;
+}
+async function startSession(){
+  const back = returning();   // asked before Supabase takes ?code= off
+  if (!hasSession() && !back) return;
+  try {
+    const err = new URLSearchParams(location.search).get('error_description');
+    const sb = await supa(), {data:{session}} = await sb.auth.getSession();   // finishes a Google sign-in coming back with ?code=
+    if (back) history.replaceState(null, '', location.pathname + location.hash);
+    if (err) toast('Sign-in didn’t finish: ' + err);
+    me.user = session && session.user;
+    if (me.user){
+      const rows = await api(`profiles?select=${PROFILE_COLS}&id=eq.${me.user.id}`);
+      me.profile = rows[0] || null;
+    }
+    sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') location.href = '../'; });   // these are someone's settings: signed out, there's nothing here
+  } catch (e){ toast(friendly(e)); }
+}
+const signIn = () => openSheet('#signSheet', '#googleBtn');
+Nav.onSignIn(signIn);
+// Sign out, from the account menu (nav.js): then home
+Nav.onSignOut(async () => { try { const {error} = await (await supa()).auth.signOut({scope: 'local'}); if (error) throw error; } catch (e){ toast(friendly(e)); } });
+$('#gateBtn').addEventListener('click', signIn);
+$('#googleBtn').addEventListener('click', async () => {
+  const btn = $('#googleBtn'); btn.disabled = true;
+  try {
+    const sb = await supa();
+    const {error} = await sb.auth.signInWithOAuth({provider:'google', options:{redirectTo: location.origin + location.pathname}});
+    if (error) throw error;
+  } catch (e){ btn.disabled = false; toast(friendly(e)); }
+});
+
+/* sheets */
+let sheetFrom = null;
+function openSheet(id, focus){ sheetFrom = document.activeElement; $(id).hidden = false; const f = $(focus); if (f) f.focus(); }
+function closeSheets(){ document.querySelectorAll('.sheet').forEach(s => s.hidden = true); if (sheetFrom && sheetFrom.focus) sheetFrom.focus(); }
+document.querySelectorAll('.sheet').forEach(s => s.addEventListener('click', e => { if (e.target === s || e.target.closest('[data-close]')) closeSheets(); }));
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.querySelector('.sheet:not([hidden])')) closeSheets(); });
+
+/* ---------- the tabs: Profile, Photo (#photo), Account (#account) ---------- */
+const tabs = [...document.querySelectorAll('.tabs button')];
+function paintTabs(){
+  const now = {'#photo': 'photo', '#account': 'account'}[location.hash] || 'profile';
+  for (const b of tabs){ const on = b.dataset.tab === now; b.setAttribute('aria-selected', String(on)); $('#' + b.getAttribute('aria-controls')).hidden = !on; }
+}
+tabs.forEach(b => b.addEventListener('click', () => {
+  history.replaceState(null, '', location.pathname + (b.dataset.tab === 'profile' ? '' : '#' + b.dataset.tab));
+  paintTabs();
+}));
+// ← → move between the tabs
+document.querySelector('.tabs').addEventListener('keydown', e => {
+  const i = tabs.indexOf(document.activeElement); if (i < 0 || (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft')) return;
+  const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]; next.focus(); next.click();
+});
+addEventListener('hashchange', paintTabs);
+
+// one change to your profile's row, and what the database has afterwards; the bar's name and photo follow
+async function patchProfile(patch){
+  const rows = await api(`profiles?id=eq.${me.profile.id}&select=${PROFILE_COLS}`, {method:'PATCH', headers:{Prefer:'return=representation'}, body: JSON.stringify(patch)});
+  if (!rows || !rows[0]) throw new Error('Couldn’t save. Sign in again and try once more.');
+  me.profile = rows[0]; Nav.paint(me);
+}
+
+/* ---------- Profile: display name, bio, main shelf ---------- */
+let shelves = [];   // your public shelves: one of them can be the main shelf
+function fillProfile(){
+  const p = me.profile;
+  $('#nameIn').value = p.display_name; $('#bioIn').value = p.bio; $('#unameRO').textContent = '@' + p.username; $('#viewLink').href = '../u/?' + p.username;
+  $('#pinIn').innerHTML = '<option value="">Your most recent shelf</option>' + shelves.map(s => `<option value="${s.id}"${s.id === p.pinned_shelf_id ? ' selected' : ''}>${esc(Shelf.shelfName(s))} · ${esc(fmtDate(s.updated_at))}</option>`).join('');
+  bioCount();
+}
+function bioCount(){ $('#bioCount').textContent = `${$('#bioIn').value.length} / 160`; }
+$('#bioIn').addEventListener('input', bioCount);
+$('#profForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = $('#saveBtn'), note = $('#editNote');
+  btn.disabled = true; note.textContent = 'Saving…';
+  try {
+    await patchProfile({display_name: $('#nameIn').value.trim().slice(0, 40), bio: $('#bioIn').value.trim().slice(0, 160), pinned_shelf_id: $('#pinIn').value || null});
+    fillProfile(); note.textContent = ''; toast('Profile saved.');
+  } catch (err){ note.textContent = friendly(err); }
+  finally { btn.disabled = false; }
+});
+
+/* ---------- Photo ---------- */
+function paintPhoto(){
+  const p = me.profile, a = $('#ava');
+  if (p.avatar_key) a.innerHTML = `<img src="${esc(WORKER + '/m/img?k=' + encodeURIComponent(p.avatar_key))}" alt="Your photo">`;
+  else a.textContent = ((p.display_name || p.username).trim()[0] || '·');
+  $('#photoRemove').hidden = !p.avatar_key;
+}
+let photoLibs = null;
+function loadPhotoLibs(){
+  if (photoLibs) return photoLibs;
+  const added = [];
+  return photoLibs = Promise.all(PHOTO_LIBS.map(lib => new Promise((res, rej) => {
+    const el = document.createElement(lib.href ? 'link' : 'script');
+    if (lib.href){ el.rel = 'stylesheet'; el.href = lib.href; } else el.src = lib.src;
+    el.integrity = lib.integrity; el.crossOrigin = 'anonymous';
+    el.onload = res; el.onerror = () => rej(new Error('The photo tools couldn’t load. Check your connection and try again.'));
+    added.push(el); document.head.appendChild(el);
+  }))).catch(err => { photoLibs = null; for (const el of added) el.remove(); throw err; });
+}
+const crop = {cropper: null, url: null};
+function closeCrop(){
+  if (crop.cropper){ crop.cropper.destroy(); crop.cropper = null; }
+  if (crop.url){ URL.revokeObjectURL(crop.url); crop.url = null; }
+  $('#cropBox').replaceChildren(); $('#cropWrap').hidden = true;
+}
+$('#photoPick').addEventListener('click', () => $('#photoFile').click());
+$('#photoFile').addEventListener('change', async e => {
+  const f = e.target.files[0], note = $('#photoNote'); e.target.value = ''; if (!f) return;
+  if (!/^image\/(jpeg|png|webp)$/.test(f.type)){ note.textContent = 'Pick a JPG, PNG or WEBP photo.'; return; }
+  if (f.size > 20*1024*1024){ note.textContent = 'That photo is larger than 20 MB.'; return; }
+  note.textContent = 'Opening…';
+  try {
+    await loadPhotoLibs();
+    closeCrop();
+    const im = new Image(); im.alt = '';
+    crop.url = URL.createObjectURL(f);
+    await new Promise((res, rej) => { im.onload = res; im.onerror = () => rej(new Error('That photo couldn’t be read.')); im.src = crop.url; });
+    $('#cropBox').replaceChildren(im); $('#cropWrap').hidden = false;
+    // a square frame, as large as the photo allows, that stays put; the photo moves and zooms under it
+    crop.cropper = new Cropper(im, {aspectRatio: 1, viewMode: 1, dragMode: 'move', autoCropArea: 1, cropBoxMovable: false, cropBoxResizable: false, guides: false, center: false, background: false,
+      rotatable: false, scalable: false, toggleDragModeOnDblclick: false});
+    note.textContent = '';
+  } catch (err){ closeCrop(); note.textContent = friendly(err); }
+});
+$('#photoCancel').addEventListener('click', () => { closeCrop(); $('#photoNote').textContent = ''; $('#photoPick').focus(); });
+$('#zoomIn').addEventListener('click', () => { if (crop.cropper) crop.cropper.zoom(.1); });
+$('#zoomOut').addEventListener('click', () => { if (crop.cropper) crop.cropper.zoom(-.1); });
+$('#cropBox').addEventListener('keydown', e => {
+  const c = crop.cropper; if (!c) return;
+  const by = e.shiftKey ? 20 : 5, move = {ArrowLeft: [-by, 0], ArrowRight: [by, 0], ArrowUp: [0, -by], ArrowDown: [0, by]}[e.key];
+  if (move){ e.preventDefault(); c.move(...move); }
+  else if (e.key === '+' || e.key === '='){ e.preventDefault(); c.zoom(.1); }
+  else if (e.key === '-'){ e.preventDefault(); c.zoom(-.1); }
+});
+// What's in the frame, 400 x 400 on white (drawn again, which drops EXIF and location), then made small: WebP where
+// the browser can write it, JPEG where it can't. A photo this size is well under the Worker's 2 MB.
+async function framed(c){
+  const canvas = c.getCroppedCanvas({width: 400, height: 400, fillColor: '#FFFFFF', imageSmoothingEnabled: true, imageSmoothingQuality: 'high'});
+  const png = canvas && await new Promise(r => canvas.toBlob(r, 'image/png'));
+  if (!png) throw new Error('That photo couldn’t be read.');
+  const type = canvas.toDataURL('image/webp').startsWith('data:image/webp') ? 'image/webp' : 'image/jpeg';
+  // useWebWorker false: its worker would fetch the library from the CDN again, with no integrity check
+  const out = await imageCompression(new File([png], 'photo.png', {type: 'image/png'}), {maxSizeMB: .3, maxWidthOrHeight: 400, useWebWorker: false, fileType: type, initialQuality: .9});
+  if (!out || out.size > 2*1024*1024) throw new Error('That photo couldn’t be made small enough.');
+  return out;
+}
+$('#photoSave').addEventListener('click', async () => {
+  const c = crop.cropper, btn = $('#photoSave'), note = $('#photoNote'); if (!c) return;
+  btn.disabled = true; note.textContent = 'Saving…';
+  const old = me.profile.avatar_key; let added = null;
+  try {
+    added = (await workerPost('/m/upload?kind=avatar', await framed(c))).key;
+    await patchProfile({avatar_key: added});
+    if (old && old !== added) workerPost('/m/delete?k=' + encodeURIComponent(old)).catch(() => {});   // the old photo goes for good
+    closeCrop(); paintPhoto(); note.textContent = ''; toast('Photo saved.');
+  } catch (err){
+    if (added && me.profile.avatar_key !== added) workerPost('/m/delete?k=' + encodeURIComponent(added)).catch(() => {});   // the new photo isn't used after all
+    note.textContent = friendly(err);
+  } finally { btn.disabled = false; }
+});
+// Remove: a second press does it
+$('#photoRemove').addEventListener('click', async () => {
+  const b = $('#photoRemove'), note = $('#photoNote'), old = me.profile.avatar_key; if (!old) return;
+  if (!b.dataset.sure){ b.dataset.sure = '1'; b.textContent = 'Sure? Remove'; setTimeout(() => { delete b.dataset.sure; b.textContent = 'Remove'; }, 4000); return; }
+  delete b.dataset.sure; b.textContent = 'Remove'; b.disabled = true; note.textContent = 'Saving…';
+  try {
+    await patchProfile({avatar_key: null});
+    workerPost('/m/delete?k=' + encodeURIComponent(old)).catch(() => {});
+    paintPhoto(); note.textContent = ''; toast('Photo removed.'); $('#photoPick').focus();
+  } catch (err){ note.textContent = friendly(err); }
+  finally { b.disabled = false; }
+});
+
+/* ---------- Account: private profile (it saves as it's switched) ---------- */
+$('#privIn').addEventListener('change', async () => {
+  const box = $('#privIn'), want = box.checked, note = $('#privNote');
+  box.disabled = true; note.textContent = 'Saving…';
+  try { await patchProfile({is_private: want}); note.textContent = ''; toast(want ? 'Your profile is private now.' : 'Your profile is public now.'); }
+  catch (err){ note.textContent = friendly(err); }
+  finally { box.checked = me.profile.is_private; box.disabled = false; box.focus(); }   // what the database has
+});
+
+(async () => {
+  await startSession();
+  Nav.paint(me);
+  $('#state').hidden = true;
+  if (!me.user){ $('#gate').hidden = false; signIn(); return; }
+  if (!me.profile){   // signed in, no username yet: the builder asks for one
+    $('#gateText').textContent = 'Pick a username first, then your settings are here.'; $('#gateBtn').hidden = true; $('#gateLink').hidden = false; $('#gate').hidden = false; return;
+  }
+  shelves = await api(`shelves?select=id,caption,name,updated_at&owner=eq.${me.profile.id}&is_public=is.true&hidden=is.false&order=updated_at.desc&limit=200`).catch(() => []);
+  fillProfile(); paintPhoto(); $('#privIn').checked = me.profile.is_private;
+  $('#page').hidden = false; paintTabs();
+})();
+})();
+</script>
+</body>
+</html>
