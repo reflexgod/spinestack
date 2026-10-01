@@ -82,3 +82,18 @@ test('profile: the name, the numbers and their labels, and the tabs', async ({ p
     expect(row.filter(y => y === row[0]).length).toBe(4);
   }
 });
+
+test('the feed shows each shelf as the same 2:3 card as home, under the line about it, not the whole story', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/feed/?everyone');
+  const card = await box(page.locator('.item .pic').first()), line = await box(page.locator('.item .line').first());
+  expect(Math.round(card.width)).toBe(150);
+  expect(Math.round(card.height)).toBe(225);
+  expect(Math.abs(card.left - line.left)).toBeLessThanOrEqual(1);   // in line with the text above it
+  expect(await css(page.locator('.item .pic').first(), 'borderTopLeftRadius')).toEqual({ borderTopLeftRadius: '3px' });
+  // and it's the home card's cut of the picture: drawn 1.2 times the card's width, moved up
+  const img = await page.locator('.item .pic img').first().evaluate(el => { const r = el.getBoundingClientRect(), c = el.parentElement.getBoundingClientRect(); return { w: r.width / c.width, top: (r.top - c.top) / c.height }; });
+  expect(img.w).toBeCloseTo(1.2, 2);
+  expect(img.top).toBeCloseTo(-0.33, 2);
+});
+

@@ -15,10 +15,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261001a">
+<link rel="stylesheet" href="../site.css?v=20261002a">
 <style>
-/* the feed: the tabs, then each shelf under the line that says who saved it (site.css has the tabs and the rest) */
-.items{list-style:none;margin:var(--s5) 0 0;padding:0;display:grid;gap:var(--s6)}
+/* the feed: the tabs, then each shelf's card under the line that says who saved it (site.css has the tabs, the card
+   and the rest) */
+.items{list-style:none;margin:var(--s5) 0 0;padding:0;display:grid;gap:var(--s5)}
 .item{display:grid;gap:var(--s3);min-width:0}
 .ihead{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:var(--s3);align-items:center}
 .fa{width:32px;height:32px;border-radius:50%;border:1px solid var(--ink);background:var(--wash);overflow:hidden;display:grid;place-items:center;font-size:var(--fs-body);text-transform:uppercase;text-decoration:none;color:var(--ink)}
@@ -27,10 +28,8 @@
 .line a,.line b{font-weight:500;text-decoration:none}
 .line a:hover,.line a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
 .ago{color:var(--grey);font-size:var(--fs-small);font-variant-numeric:tabular-nums;white-space:nowrap}
-/* the shelf's picture, under the text: the whole story, with a hairline inside its edge */
-.pic{display:block;position:relative;margin-left:44px;width:min(360px, calc(100% - 44px));background:var(--wash);border-radius:var(--radius);aspect-ratio:9/16;overflow:hidden}
-.pic::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12);pointer-events:none}
-.pic img{width:100%;height:100%;object-fit:cover;display:block}
+/* the shelf's card, under the text and in line with it: the same 2:3 cut of its picture as on home */
+.item .pic{margin-left:44px;width:var(--card)}
 .fnone{display:grid;justify-items:start;gap:var(--s3);margin:var(--s5) 0 0}
 .fnone p{margin:0}
 .linkish{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
@@ -40,7 +39,7 @@
 @media (max-width:640px){
   .ihead{grid-template-columns:28px minmax(0,1fr) auto;gap:var(--s2)}
   .fa{width:28px;height:28px;font-size:var(--fs-card)}
-  .pic{margin-left:36px;width:min(360px, calc(100% - 36px))}
+  .item .pic{margin-left:36px}
 }
 </style>
 </head>
