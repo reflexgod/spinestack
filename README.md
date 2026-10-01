@@ -245,7 +245,7 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **The feed** (`specs/feed.spec.js`): the three tabs and which one opens, what a line says (with the clock held still,
   so "2h" and "1w" are known), You, signed out, and ← → between the tabs.
 
-`npm run shots` (in `tests/`) saves screenshots of home, the builder, a profile and the feed at 1280px and 390px into
+`npm run shots` (in `tests/`) saves screenshots of home, the builder, a profile's tabs, the feed and settings at 1280px and 390px into
 `tests/shots/`, with the tests' made-up data and the real fonts.
 - **axe** (`specs/a11y.spec.js`) runs on every page, `privacy.html` and `admin.html` too: nothing serious or critical.
 - **html-validate** reads every HTML file with its recommended rules, except that inline `style` is allowed and the
