@@ -108,6 +108,10 @@ p{margin:0 0 12px}
 .addform input[type=text]{padding-right:46px}
 .addform button{position:absolute;right:1px;bottom:1px;height:40px;width:44px;display:grid;place-items:center;background:none;border:0;padding:0;color:var(--ink);cursor:pointer;border-radius:0 7px 7px 0}
 .addform button svg{width:17px;height:17px}
+/* the shelf is full: Add and upload are off, and the line under them says why */
+.addrow .note{flex-basis:100%;margin:0}
+.addform input:disabled,.addform button:disabled{opacity:.45;cursor:not-allowed}
+.drop.off{opacity:.45;pointer-events:none}
 
 /* the dashed underline from the reference: chunky dashes under uppercase text */
 .dash{display:inline-block;background:none;border:0;padding:0 0 9px;font:500 16px var(--mono);text-transform:uppercase;color:var(--ink);cursor:pointer;text-decoration:none;
@@ -173,9 +177,11 @@ details.style summary svg{width:14px;height:14px;flex:none;align-self:center}
 details.style[open] summary svg{transform:rotate(180deg)}
 .stylebox{display:grid;gap:16px;padding:4px 0 22px}
 .opts{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
-/* the live preview: beside the form, and it stays in view while the form scrolls */
+/* the live preview: beside the form, and it stays in view while the form scrolls. Its height leaves room for the
+   top bar above it and, below it, its note and the Cancel · Save · Save story bar */
 .mkside{position:sticky;top:72px;display:grid;gap:10px;justify-items:center}
-.phone{border:1px solid var(--ink);border-radius:26px;padding:6px;width:min(100%, 330px, calc((100vh - 190px)*9/16));min-width:200px;margin:0 auto}
+.phone{border:1px solid var(--ink);border-radius:26px;padding:6px;width:min(100%, 330px, calc((100vh - 250px)*9/16));min-width:200px;margin:0 auto}
+.mkside .note{margin:0;text-align:center}
 #story{display:block;width:100%;aspect-ratio:9/16;border-radius:20px;background:#fff}
 .ctl{display:grid;gap:6px}
 .lbl{font-size:11px;color:var(--grey);text-transform:uppercase}
@@ -290,7 +296,7 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
   <div class="mkgrid">
     <div class="mkform">
       <div class="fieldrow">
-        <label class="field"><span class="lbl">Name</span><input type="text" id="shelfName" maxlength="60" autocomplete="off" spellcheck="false"></label>
+        <label class="field"><span class="lbl">Name</span><input type="text" id="shelfName" placeholder="e.g. 2am films" maxlength="60" autocomplete="off" spellcheck="false"></label>
         <fieldset class="field who"><legend class="lbl">Who can view</legend>
           <div class="seg2"><label><input type="radio" name="vis" value="public" checked>Public</label><label><input type="radio" name="vis" value="private">Private</label></div>
         </fieldset>
@@ -299,10 +305,11 @@ input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--pa
       <div class="addrow" id="search">
         <form class="addform" id="findForm" autocomplete="off">
           <label class="lbl" for="findQ">Add</label>
-          <input type="text" id="findQ" placeholder="find a film or book…" maxlength="120">
+          <input type="text" id="findQ" placeholder="find a film or book…" maxlength="120" aria-describedby="findNote">
           <button type="submit" aria-label="Find it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></button>
         </form>
         <label class="drop" id="drop"><span class="grey">or</span> <span class="dash sm" id="upload">upload a scan</span><input type="file" id="file" accept="image/*" multiple></label>
+        <p class="note" id="findNote" role="status"></p>
       </div>
 
       <section id="shelf">
@@ -542,11 +549,11 @@ const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAI
 let openId = null;   // the spine whose controls show: press a row to open it, and the one that was open shuts
 const byLine = b => [b.author, b.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · ');
 function renderList(){
-  $('#count').textContent = books.length ? `(${books.length})` : '';
+  paintLimit();
   $('#sampleNote').hidden = !isSample || !books.length;
   $('#clear').hidden = !books.length;
   const ol = $('#books');
-  if (!books.length){ ol.innerHTML = '<li class="empty">Nothing here yet. Find a film or book above.</li>'; redraw(); return; }
+  if (!books.length){ ol.innerHTML = '<li class="empty">Your shelf is empty. Add a film or a book above.</li>'; redraw(); return; }
   if (!books.some(b => b.id === openId)) openId = null;
   ol.innerHTML = books.map((b,i) => { const open = b.id === openId; return `
   <li class="book${open ? ' open' : ''}" data-id="${b.id}">
@@ -580,6 +587,15 @@ function renderList(){
     </div>
   </li>`; }).join('');
   books.forEach(setNote); redraw();
+}
+// how many spines are on the shelf, of how many it holds; when it's full, Add and upload are off and say why
+function paintLimit(){
+  const n = books.length, max = spineMax(), full = !isSample && n >= max, note = $('#findNote');   // the sample shelf goes when a title is added
+  $('#count').textContent = `(${n} of ${max})`;
+  $('#findQ').disabled = full; $('#findForm button').disabled = full; $('#file').disabled = full; $('#drop').classList.toggle('off', full);
+  if (!full) note.textContent = '';
+  else if (isPro()) note.textContent = `A shelf holds ${max} spines. Remove one to add another.`;
+  else proNote(note, `Free shelves hold ${max} spines. Pro holds ${SPINES_PRO}. Remove one to add another.`);
 }
 function paintOpen(){
   for (const li of document.querySelectorAll('#books .book')){
@@ -1090,6 +1106,7 @@ function paintAcct(){
   const p = acct.profile;
   if (!EMBED) Nav.paint({user: acct.user, profile: p});   // the bar (nav.js): Sign in, Finish sign-up, or you and the account menu
   $('#pageTitle').textContent = acct.shelfId ? 'Edit shelf' : 'New shelf';
+  paintLimit();   // Pro holds more
   $('#saveNew').hidden = !acct.shelfId;
   $('#saveNote').textContent = acct.user ? '' : 'Sign in to keep this shelf and open it again later.';
 }
