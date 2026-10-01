@@ -17,6 +17,10 @@ workers_dev = true
 [vars]
 SUPABASE_URL = "https://fiukspnovrlzlcdekcnb.supabase.co"
 SUPABASE_KEY = "sb_publishable_cZeUDJXk-nCbSJ4VZWn_GQ_6xNFyBo2"
+# The most Brave searches the Worker makes in a day, across everyone (Brave bills after about 1,000 a month:
+# 30 a day is at most 930). Once it's reached, /scans answers only from the archive and from what was kept
+# before, and the page makes a spine from the cover. Change it here and deploy.
+BRAVE_DAILY_CAP = "30"
 
 # One tiny Supabase read a day, so the free project isn't paused for inactivity.
 [triggers]

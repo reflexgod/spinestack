@@ -440,7 +440,7 @@ async function cutOne(s, kind){
 const ROUNDS = 4;
 async function cutScans(cur, english){
   const q = `${WORKER}/scans?kind=${cur.m.kind}&title=${encodeURIComponent(cur.m.title)}&year=${encodeURIComponent(cur.m.year || '')}&creator=${encodeURIComponent(cur.m.creator || '')}`;
-  const seen = new Set(), cuts = []; let scans = 0, rounds = 0, busy = false;
+  const seen = new Set(), cuts = []; let scans = 0, rounds = 0, busy = false, capped = false;
   for (let round = 0; round < ROUNDS && cur === current; round++){
     if (round) sstatus(`Looking for more scans (${round + 1} of ${ROUNDS})…`);
     let r;
@@ -448,6 +448,9 @@ async function cutScans(cur, english){
     catch (err){ if (!cuts.length && !rounds) throw err; busy = /429/.test(err.message); break; }   // keep what the earlier rounds found
     const fresh = (r.results || []).filter(s => !seen.has(s.img) && seen.add(s.img));
     scans += fresh.length;
+    // capped: today's Brave searches are used up, so this round held only archive spines and scans kept from before.
+    // With nothing in it there's no more to ask for.
+    if (r.capped){ capped = true; if (!fresh.length) break; }
     if (fresh.length && cur === current) sstatus(`Cutting spines from ${scans} scan${scans > 1 ? 's' : ''}…`);
     cuts.push(...(await Promise.all(fresh.map(s => cutOne(s, cur.m.kind)))).filter(Boolean));
     if (cuts.filter(c => c.score >= AUTO_SCORE && (!english || isEnglish(c))).length >= 2 || !r.more) break;
@@ -457,7 +460,7 @@ async function cutScans(cur, english){
   const show = cur.m.kind === 'book' ? 20 : SHOW_SCORE;   // a book cut has already passed the strict flat-scan checks in findSpine
   for (const c of cuts.filter(c => c.score >= show && c.spine.width <= c.spine.height/5).sort((a,b) => rankCut(b, english) - rankCut(a, english)))
     if (!best.has(c.source)) best.set(c.source, c);
-  return {scans, rounds, busy, cuts:[...best.values()].slice(0, 8)};
+  return {scans, rounds, busy, capped, cuts:[...best.values()].slice(0, 8)};
 }
 async function findSpines(m, again){
   const key = keyOf(m), cur = current = {m, key, real:[], res:{spines:[]}, img:null, busy:true, choice:null}, noun = m.kind === 'movie' ? 'poster' : 'cover';
@@ -508,7 +511,8 @@ async function findSpines(m, again){
   else if (best) sstatus(`${spines} found. Pick the one that looks right.`);
   else if (cur.img){
     cur.choice = 'spine';   // the grey line under the tiles asks for a photo of a real one (books)
-    sstatus(!WORKER ? 'Pick Cover to show the ' + noun + ' face out instead.' : failed === 'busy' ? 'Scan search is busy. This spine is made from the ' + noun + '; try again in a minute.'
+    if (found.capped) sstatus('Spine search is resting for today. Here’s one made from the cover.');
+    else sstatus(!WORKER ? 'Pick Cover to show the ' + noun + ' face out instead.' : failed === 'busy' ? 'Scan search is busy. This spine is made from the ' + noun + '; try again in a minute.'
       : failed ? 'Scan search didn’t answer, so this spine is made from the ' + noun + '.' : 'No clean spine in the scans found online, so this one is made from the ' + noun + '.', !!WORKER);
   }
   else sstatus('No scans and no ' + noun + ' found for this title. Upload a scan on the builder.', true);

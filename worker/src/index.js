@@ -5,9 +5,11 @@
    GET  /identify?q=&want=all|movie|book[&suggest=1]  -> {results:[{kind,title,year,creator,cover}]}
         suggest=1 is a half-typed title (the page suggests as you type): answered the same, but not kept in KV.
    GET  /scans?title=&year=&kind=movie|book&creator=&round=0-3
-        -> {results:[{img,source,title,width,height, archive?,id?}], round, more}
+        -> {results:[{img,source,title,width,height, archive?,id?}], round, more, capped?}
         One Brave query per round, so the page asks for the next round only when it still needs spines.
         Round 0 starts with approved spines from the archive.
+        At most BRAVE_DAILY_CAP Brave searches a day (wrangler.toml; 30 when it's missing), across everyone. After
+        that a round answers only from the archive and from what was kept before, with capped: true.
    GET  /img?url=  -> the image, with CORS
    POST /archive?kind=&title=&year=&author=  (body: PNG of one spine) -> {ok, id, status:'pending'}
    GET  /archive/img?id=  -> an approved spine (pending ones only with the admin token)
@@ -79,6 +81,7 @@ export default {
         if (post && path === '/admin/approve') return await approve(p.get('id'), env, cors);
         if (post && path === '/admin/delete') return await remove(p.get('id'), env, cors);
         // what Brave returns before any filtering, to tune the filters (costs one search)
+        if (!post && path === '/admin/brave' && !(await braveAllowed(env))) return json({error: 'Brave has had today’s searches (BRAVE_DAILY_CAP).'}, 429, cors);
         if (!post && path === '/admin/brave') return json({results: (await brave(clean(p.get('q'), 200), env.BRAVE_API_KEY)).map(r => ({title: r.title, url: r.url, img: r.properties && r.properties.url,
           w: (r.properties && r.properties.width) || (r.thumbnail && r.thumbnail.width), h: (r.properties && r.properties.height) || (r.thumbnail && r.thumbnail.height)}))}, 200, cors, {'Cache-Control': 'no-store'});
         return json({error: 'Not found.'}, 404, cors);
@@ -88,7 +91,7 @@ export default {
       if (!post && path === '/scans') return await scans(p, env, cors, ctx);
       if (post && path === '/archive') return await upload(req, p, ip, env, cors);
       if (post && path === '/report') return await report(p.get('id'), ip, env, cors);
-      if (!post && (path === '/' || path === '/health')) return json({ok: true, tmdb: !!env.TMDB_TOKEN, brave: !!env.BRAVE_API_KEY, archive: !!(env.ADMIN_TOKEN && env.ARCHIVE), accounts: !!(env.SUPABASE_URL && env.SUPABASE_KEY), userStore: env.USER_R2 ? 'r2' : 'kv'}, 200, cors);
+      if (!post && (path === '/' || path === '/health')) return json({ok: true, tmdb: !!env.TMDB_TOKEN, brave: !!env.BRAVE_API_KEY, braveDailyCap: braveCap(env), archive: !!(env.ADMIN_TOKEN && env.ARCHIVE), accounts: !!(env.SUPABASE_URL && env.SUPABASE_KEY), userStore: env.USER_R2 ? 'r2' : 'kv'}, 200, cors);
       return json({error: 'Not found.'}, 404, cors);
     } catch (e) {
       return json({error: 'Something went wrong. Try again in a moment.', detail: String(e && e.message || e).slice(0, 200)}, 502, cors);
@@ -223,6 +226,15 @@ function queryFor(kind, round, title, year, creator) {
     : [`"${title}" ${creator} book cover spine`, `"${title}" ${creator} book spine`, `"${title}" spine`, `${title} ${creator} full cover wrap`];
   return q[round].replace(/\s+/g, ' ').trim();
 }
+/* Brave bills after about 1,000 searches a month, so there is a hard cap on searches a day, across everyone:
+   BRAVE_DAILY_CAP ([vars] in wrangler.toml; 30 when it's missing or not a number). Each search is counted in the
+   Archive Durable Object before it's made, in one step, so two requests can't both take the last one. If it can't be
+   counted (no Durable Object, or it doesn't answer), the search isn't made. */
+const braveCap = env => { const n = parseInt(env.BRAVE_DAILY_CAP, 10); return Number.isFinite(n) && n >= 0 ? n : 30; };
+async function braveAllowed(env) {
+  if (!env.ARCHIVE) return false;
+  try { return (await store(env).spendBrave(new Date().toISOString().slice(0, 10), braveCap(env))).ok; } catch { return false; }
+}
 async function brave(q, key) {
   const r = await fetch('https://api.search.brave.com/res/v1/images/search?count=100&safesearch=strict&q=' + encodeURIComponent(q), {
     headers: {'Accept': 'application/json', 'X-Subscription-Token': key},
@@ -255,6 +267,7 @@ async function rawScans(env, ctx, kind, title, year, creator, round, cacheOnly) 
     return {list, from: v};
   }
   if (cacheOnly || !env.BRAVE_API_KEY) return {list: [], from: 'miss'};
+  if (!(await braveAllowed(env))) return {list: [], from: 'capped'};   // today's searches are used up
   const list = slim(await brave(queryFor(kind, round, title, year, creator), env.BRAVE_API_KEY));
   ctx.waitUntil(env.SPINE_CACHE.put(key, JSON.stringify(list), keep(list.length)));
   return {list, from: 'brave'};
@@ -300,7 +313,8 @@ async function scans(p, env, cors, ctx) {
     out.sort((a, b) => b.rank - a.rank);
     return {results: out.slice(0, 10).map(({rank, ...r}) => r)};
   })();
-  return json({results: [...archived, ...body.results], round, more: round < ROUNDS - 1}, 200, cors, {'X-Cache': from});
+  // capped: this round would have needed a Brave search and today's are used up; the page makes a spine from the cover
+  return json({results: [...archived, ...body.results], round, more: round < ROUNDS - 1, ...(from === 'capped' ? {capped: true} : {})}, 200, cors, {'X-Cache': from});
 }
 
 /* ---------- /img: CORS image proxy ---------- */
@@ -390,6 +404,15 @@ export class Archive extends DurableObject {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS reports (id TEXT, who TEXT, PRIMARY KEY (id, who))`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS userwrites (who TEXT, day TEXT, n INTEGER, PRIMARY KEY (who, day))`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS mediawrites (who TEXT, day TEXT, n INTEGER, PRIMARY KEY (who, day))`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS bravecalls (day TEXT PRIMARY KEY, n INTEGER)`);
+  }
+  // one more Brave search today, if the day's cap leaves room (see braveAllowed)
+  spendBrave(day, cap) {
+    const n = (this.one('SELECT n FROM bravecalls WHERE day = ?', day) || {}).n || 0;
+    if (n >= cap) return {ok: false, n};
+    this.sql.exec('INSERT INTO bravecalls (day, n) VALUES (?, 1) ON CONFLICT (day) DO UPDATE SET n = n + 1', day);
+    this.sql.exec('DELETE FROM bravecalls WHERE day < ?', day);
+    return {ok: true, n: n + 1};
   }
   // one more photo, wall or PNG for this account today, if there's room (per account and in all)
   spendMedia(who, day) {
