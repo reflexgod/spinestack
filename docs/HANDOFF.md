@@ -145,9 +145,8 @@ never reached a commit isn't here, so ask before assuming the list is complete.
 
 0. **Review `docs/proposed-0007-logs-watchlist.sql`** (the owner). `docs/proposed-0007.md` lists what to decide: the
    watchlist's 6, whether visitors see a watchlist, 50 logs a day, From friends' 180 days, and whether to make one shelf
-   each a rule in the database. Once agreed: move it to `supabase/migrations/0007_logs_watchlist.sql` and the test to
-   `supabase/tests/rls_phase4.sql`, and run both in the SQL Editor. Until then Log it and Watchlist say they aren't open
-   yet, and the feed and profiles show shelves only.
+   each a rule in the database. Once agreed, `docs/RUN-0007.md` has the exact steps in the SQL Editor and the checks.
+   Until then Log it and Watchlist say they aren't open yet, and the feed and profiles show shelves only.
 
 1. **Deploy the Worker with the Serper fix** (the owner does this): `cd worker && npx wrangler deploy`. Then, with the
    admin token, `/admin/raw?provider=serper&q=%22gummo%22+1997+dvd+cover` should answer with results, not

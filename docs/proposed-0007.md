@@ -67,8 +67,9 @@ browser reporting them; the pages carry on.
 1. **Run it as it is, or change it.** Questions worth a look: is 6 the right size for a watchlist (it's a hard limit
    in the database, like a free shelf's 6 spines), should a watchlist be visible to visitors (it is now, like a shelf),
    50 logs a day (by the UTC day: it starts again at midnight UTC), and 180 days for From friends.
-2. **Once it's agreed:** move the SQL to `supabase/migrations/0007_logs_watchlist.sql` and the test to
-   `supabase/tests/rls_phase4.sql`, run both in the SQL Editor, and say so in the README's Accounts section.
+2. **Once it's agreed:** `docs/RUN-0007.md` has the steps: check the database is ready, run it, check it worked, run
+   the tests, then move the SQL to `supabase/migrations/0007_logs_watchlist.sql` and the test to
+   `supabase/tests/rls_phase4.sql`. It also has a tested way to take it out again.
 3. **One shelf each, in the database too (optional).** The pages show and save one shelf per person; the database
    still allows 200. The end of the SQL has the query that lists accounts with more than one, and the unique index that
    would make one a rule. It's commented out: it fails while anyone has two, so what happens to their other shelves
