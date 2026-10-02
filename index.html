@@ -32,6 +32,11 @@
       location.replace('build/' + q + h);
     }
   })();
+  /* Signed out, home's one black button is Make a shelf, so the bar's + is outlined here (as it is on the builder,
+     where the black one is Save). Said now, before anything is drawn, so the + doesn't change as the page loads. */
+  try {
+    if (!Object.keys(localStorage).some(function(k){ return /^sb-.+-auth-token$/.test(k); }) && !/[?&](code|error|error_description)=/.test(location.search)) document.documentElement.classList.add('signedout');
+  } catch (e) {}
   /* The same public addresses as build/ (see the notes there). */
   window.SPINESTACK_WORKER = "https://api.shelfstackd.com";
   window.SPINESTACK_WORKER_FALLBACK = "https://spinestack.spinestack-worker.workers.dev";
@@ -46,15 +51,32 @@
 /* home: a welcome, then rows and grids of shelf cards (site.css has the cards, the bar and everything shared) */
 .home section{margin-top:var(--s6)}
 .home section:first-child{margin-top:0}
-/* signed out: one line, a small grey one under it, one button */
-.hero{text-align:center;padding-top:var(--s5)}
-.hero h1{font-size:24px;margin:0 0 var(--s2)}
-.hero .note{margin:0 0 var(--s5)}
-.hero .thumbs{margin-top:var(--s6);text-align:left}
-/* no public shelves yet: one picture of a shelf, so the page still shows what one is */
-.sample{margin:var(--s6) 0 0;display:grid;justify-items:center;gap:var(--s2)}
-.sample img{display:block;width:220px;max-width:60%;height:auto}
-.sample figcaption{font-size:var(--fs-small);color:var(--grey)}
+/* signed out: a real shelf, large, then one line and the one black button, from the left like the rest of the site */
+.hero{display:grid;justify-items:start;gap:var(--s4)}
+.hero h1{margin:var(--s2) 0 0}
+/* the shelf: the newest public one, its picture cut to the band its books stand in, on the story's own background
+   colour, with the hairline shelf cards have. The panel keeps its height, so nothing moves when the picture comes.
+   While there are no public shelves it holds the builder's sample shelf, so the page still shows what one is */
+.lead{margin:0;justify-self:stretch;display:grid;gap:var(--s2);min-width:0}
+.stand{position:relative;display:grid;place-items:center;height:460px;padding:var(--s5) var(--s4);background:var(--wash);border-radius:var(--radius);overflow:hidden;container-type:inline-size;--hmax:412px}
+.stand::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12);pointer-events:none}
+.stand.plain{background:var(--paper)}
+.stand a{display:block;line-height:0}
+.cut{display:block;position:relative;overflow:hidden;aspect-ratio:var(--r, .5625);width:min(100cqw, calc(var(--hmax) * var(--r, .5625)), 540px)}   /* 540px: one and a half times the picture, which is 360px wide */
+.cut img{position:absolute;left:0;top:0;width:100%;height:auto;display:block}
+.stand #sample{display:block;width:auto;height:auto;max-width:100%;max-height:var(--hmax)}
+.lead figcaption{display:flex;gap:var(--s2);align-items:baseline;font-size:var(--fs-card);min-height:1.55em;min-width:0}
+.lead figcaption a{text-decoration:none}
+.lead figcaption a:hover,.lead figcaption a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
+.lead figcaption > a{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}   /* a long name is cut short; who made it always shows */
+.lead figcaption span{flex:none;color:var(--grey);font-size:var(--fs-small)}
+.signedout .top .add.primary{background:var(--paper);color:var(--ink)}
+.signedout .top .add.primary:hover{background:var(--wash)}
+/* how it works, short: only here */
+.how ol{margin:0;padding-left:1.6em;display:grid;gap:var(--s1);max-width:72ch}
+@media (max-width:640px){ .stand{height:340px;padding:var(--s4) var(--s3);--hmax:308px} }
+/* a touch screen: the shelf's name under the panel takes a press 44px tall (it's cut with an ellipsis, so it's padded out) */
+@media (pointer:coarse){ .lead figcaption > a{position:relative;padding:13px 0;margin:-13px 0} }
 .welcome h1{margin:0}
 /* ⚡ All activity, at the right of the row's heading */
 h2 .more.zapped{display:inline-flex;align-items:center;gap:var(--s1)}
@@ -92,15 +114,24 @@ h2 .more.zapped svg{width:12px;height:12px;flex:none}
   <!-- signed out -->
   <div id="out" hidden>
     <section class="hero">
-      <h1>Your shelf, but the real spines.</h1>
-      <p class="note">Search a film or a book and its real spine goes on your shelf.</p>
-      <a class="btn" id="start" href="build/">Make a shelf</a>
-      <ul class="thumbs row" id="heroRow" aria-label="Recent shelves"></ul>
-      <!-- the builder's sample shelf (tests/art.js makes the picture), shown only while there are no public shelves -->
-      <figure class="sample" id="sample" hidden>
-        <img src="sample-shelf.jpg" alt="Four book spines standing side by side: The Waves, Delta of Venus, Journey by Moonlight and Kuasa Rahim." width="440" height="733">
-        <figcaption>a shelf, for example</figcaption>
+      <!-- a real shelf, large: the newest public one (the script puts it in). The builder's sample shelf (tests/art.js
+           makes the picture) is shown only while there are no public shelves -->
+      <figure class="lead" id="lead">
+        <div class="stand" id="stand">
+          <img id="sample" src="sample-shelf.jpg" alt="Four book spines standing side by side: The Waves, Delta of Venus, Journey by Moonlight and Kuasa Rahim." width="440" height="733" loading="lazy" hidden>
+        </div>
+        <figcaption id="leadCap"></figcaption>
       </figure>
+      <h1>Shelve the films and books you love, with their real spines.</h1>
+      <a class="btn primary" id="start" href="build/">Make a shelf</a>
+    </section>
+    <section class="how">
+      <h2>How it works</h2>
+      <ol>
+        <li>Type a film or a book.</li>
+        <li>We find a scan of its DVD or book cover and cut out the spine.</li>
+        <li>No clean scan? You get a spine made from the poster or cover.</li>
+      </ol>
     </section>
     <section id="outJust">
       <h2>Just shelved <a class="more" href="shelves/">More</a></h2>
@@ -175,9 +206,9 @@ h2 .more.zapped svg{width:12px;height:12px;flex:none}
 <script src="nav.js?v=20261003b"></script>
 <script>
 (() => {
-/* Home. Signed out: one line about the site and a way to the builder, then the newest public shelves and the people
-   who made them. Signed in: a welcome, the newest shelves of the people you follow, then everyone's. The shelves come
-   from feed() (0006), as on feed/. */
+/* Home. Signed out: the newest public shelf, large, one line about the site and Make a shelf, how it works, then the
+   next newest shelves and the people who made them. Signed in: a welcome, the newest shelves of the people you follow,
+   then everyone's. The shelves come from feed() (0006), as on feed/. */
 const $ = s => document.querySelector(s);
 const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
 const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
@@ -274,23 +305,50 @@ function person(x){
 }
 const everyone = n => rpc('feed', {scope: 'everyone', before: null, before_id: null, n});
 
+/* The lead: a real shelf, large. Its picture is the whole 9:16 story (360 x 640), so it's cut to the band the books
+   stand in (cards.js finds them, as it does for a card) and stands on the story's own background colour, as large as
+   the panel allows and no more than one and a half times its size. A picture that can't be read is shown whole. */
+function lead(x){
+  const shelf = Shelf.shelfName({name: x.name, caption: x.caption}), to = profileUrl(x.username, x.shelf_id), stand = $('#stand');
+  const a = document.createElement('a'); a.id = 'leadLink'; a.href = to; a.hidden = true; a.setAttribute('aria-label', `${shelf} by @${x.username}`);
+  a.innerHTML = `<span class="cut" data-shelf="${esc(x.shelf_id)}"><img alt="" crossorigin="anonymous" width="360" height="640"></span>`;
+  const cut = a.firstChild, im = cut.firstChild;
+  im.addEventListener('load', () => {
+    let m = null; try { m = window.Cards ? Cards.measure(im) : null; } catch {}   // without CORS it can't be looked at
+    const top = m ? m.ct : 0, bottom = m ? m.cb : 1, r = 9 / (16 * (bottom - top));   // the band's width over its height
+    cut.style.setProperty('--r', r.toFixed(4)); im.style.top = (-100 * top * 16 / 9 * r).toFixed(2) + '%';
+    stand.style.backgroundColor = m ? `rgb(${m.bg.join(',')})` : '';
+    a.hidden = false;
+  });
+  // the picture didn't come: the sample shelf. (worker-address.js may first try the Worker's other address: then the
+  // picture's address has changed, and this waits for that one.)
+  let tried = '';
+  im.addEventListener('error', () => { if (im.src !== tried){ tried = im.src; return; } a.remove(); sample(); });
+  im.src = tried = `${WORKER}/u/preview?k=${encodeURIComponent(x.preview_key)}&v=${encodeURIComponent(x.updated_at)}`;
+  stand.prepend(a);
+  $('#leadCap').innerHTML = `<a href="${esc(to)}">${esc(shelf)}</a> <span>by <a href="${esc(profileUrl(x.username))}">@${esc(x.username)}</a></span>`;
+}
+// no public shelf to show: the builder's sample shelf, so the page still shows what one is
+function sample(){ $('#sample').hidden = false; $('#stand').classList.add('plain'); $('#leadCap').textContent = 'a shelf, for example'; }
+
 let outShown = false;
 async function showOut(){
   if (outShown) return; outShown = true;
+  document.documentElement.classList.add('signedout');   // the bar's + is outlined: Make a shelf is the black button here
   $('#state').hidden = true; $('#in').hidden = true; $('#out').hidden = false;
   let rows;
-  try { rows = await everyone(ROW + GRID); }
-  catch (e){ $('#outState').textContent = friendly(e); return; }
-  $('#heroRow').replaceChildren(...rows.slice(0, ROW).map(x => tile(x, false)));
-  $('#sample').hidden = !!rows.length;   // an empty site: a shelf, for example
-  const rest = rows.slice(ROW);
+  try { rows = await everyone(1 + GRID); }
+  catch (e){ $('#outState').textContent = friendly(e); sample(); return; }
+  if (rows[0] && rows[0].preview_key) lead(rows[0]); else sample();   // an empty site: a shelf, for example
+  const rest = rows.slice(1);
   $('#outGrid').replaceChildren(...rest.map(x => tile(x, true)));
-  $('#outState').hidden = true; $('#outJust').hidden = !rest.length;   // few shelves so far: they're all in the row above
+  $('#outState').hidden = true; $('#outJust').hidden = !rest.length;   // one shelf so far: it's the one above
   // the people behind the newest shelves, each once
   const seen = new Set(), who = rows.filter(x => !seen.has(x.owner) && seen.add(x.owner));
   $('#stackers').replaceChildren(...who.map(person)); $('#stackersSec').hidden = !who.length;
 }
 async function showIn(){
+  document.documentElement.classList.remove('signedout');
   $('#state').hidden = true; $('#out').hidden = true; $('#in').hidden = false;
   // welcome back, with what the people you follow have been shelving; with no one to show yet (a new account, or
   // nobody followed), what to do first

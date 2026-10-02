@@ -22,7 +22,7 @@ for (const at of ['/nope', '/shelves/nothing/here/', '/u/mira/shelf.html']) {
     expect(sideways).toBeLessThanOrEqual(0);
     await home.click();
     await expect(page).toHaveURL(/:\d+\/$/);
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your shelf, but the real spines.');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Shelve the films and books you love, with their real spines.');
     expect(errors.filter(e => !/404/.test(e))).toEqual([]);   // the browser itself notes the 404 of the address typed
     expect(net.unknown).toEqual([]);
   });

@@ -1,7 +1,7 @@
 // Every page with the top bar, signed out and signed in: the bar is there, the page doesn't scroll sideways, nothing
 // is logged as an error, and nothing asks the network for something the tests don't know about.
 const { test, expect } = require('@playwright/test');
-const { PAGES, mockNetwork, watchErrors, open } = require('../site');
+const { PAGES, SHELVES, STORY, CAPTION, MADE_WITH, mockNetwork, watchErrors, open } = require('../site');
 
 const pathOf = link => link.evaluate(a => new URL(a.href).pathname);
 const isPhone = () => test.info().project.name.startsWith('phone');
@@ -191,20 +191,49 @@ test('the ▾ next to + ADD has one item: Upload a scan…', async ({ page }) =>
 });
 
 /* ---------- home ---------- */
-test('signed-out home: one line, a small grey one under it, Make a shelf, then the newest shelves', async ({ page }) => {
+test('signed-out home: a real shelf, large, then one line and Make a shelf in black, from the left; how it works; then the newest shelves', async ({ page }) => {
   await mockNetwork(page);
   await open(page, '/');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your shelf, but the real spines.');
-  const hero = page.locator('.hero');
-  await expect(hero.locator('p')).toHaveCount(1);
-  expect(await hero.locator('p').evaluate(el => { const s = getComputedStyle(el); return [s.fontSize, s.color]; })).toEqual(['11px', 'rgb(107, 107, 107)']);
+  const hero = page.locator('.hero'), h1 = page.getByRole('heading', { level: 1 }), main = await page.locator('main').boundingBox();
+  // it leads with a shelf, not words: the newest public one, large, a link to it, with its name and who made it
+  const lead = hero.locator('#leadLink'), stand = await hero.locator('#stand').boundingBox();
+  await expect(lead).toBeVisible();
+  await expect(lead).toHaveAttribute('href', `u/?tester&shelf=${SHELVES[0].id}`);
+  await expect(lead).toHaveAccessibleName('a much longer shelf name that has to be cut short by @tester');
+  await expect(hero.locator('#leadCap')).toHaveText('a much longer shelf name that has to be cut short by @tester');
+  expect(Math.abs(stand.width - main.width)).toBeLessThanOrEqual(1);   // across the column
+  const pic = await hero.locator('#leadLink .cut').boundingBox();
+  expect(pic.height).toBeGreaterThan(isPhone() ? 250 : 350);           // large: a card's picture is 225px tall at most
+  expect(pic.y).toBeGreaterThanOrEqual(stand.y); expect(pic.y + pic.height).toBeLessThanOrEqual(stand.y + stand.height);
+  expect(Math.abs(pic.x + pic.width / 2 - (stand.x + stand.width / 2))).toBeLessThanOrEqual(1);
+  // cut to its books: the story's caption (at the top of the picture) and its "made with" line are outside the cut
+  const cut = await hero.locator('#leadLink img').evaluate(im => { const c = im.parentElement.getBoundingClientRect(), r = im.getBoundingClientRect(); return { top: (c.top - r.top) / r.height, bottom: (c.bottom - r.top) / r.height }; });
+  expect(cut.top).toBeGreaterThan(CAPTION[3] / 640);
+  expect(cut.bottom).toBeLessThan(MADE_WITH[1] / 640);
+  expect(cut.top).toBeLessThanOrEqual(STORY.row[1] / 640); expect(cut.bottom).toBeGreaterThanOrEqual(STORY.row[3] / 640);   // and all of the books are in it
+  expect(await hero.locator('#stand').evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(255, 255, 255)');   // on the story's own background
+  // one line, under the shelf, from the left like the rest of the site; no second, grey line
+  await expect(h1).toHaveText('Shelve the films and books you love, with their real spines.');
+  const line = await h1.boundingBox();
+  expect(Math.abs(line.x - main.x)).toBeLessThanOrEqual(1);
+  expect(await h1.evaluate(el => getComputedStyle(el).textAlign)).toMatch(/^(start|left)$/);
+  expect(line.y).toBeGreaterThan(stand.y + stand.height);
+  await expect(hero.locator('p')).toHaveCount(0);
+  // Make a shelf: the one black button (the bar's + is outlined here), at the left, on the first screen
   const make = hero.getByRole('link', { name: 'Make a shelf' });
   await expect(make).toBeVisible();
   await expect(make).toHaveAttribute('href', 'build/');
+  const bg = el => getComputedStyle(el).backgroundColor, at = await make.boundingBox();
+  expect(await make.evaluate(bg)).toBe('rgb(0, 0, 0)');
+  expect(await page.locator('header.top .add').evaluate(bg)).toBe('rgb(255, 255, 255)');
+  expect(Math.abs(at.x - main.x)).toBeLessThanOrEqual(1);
+  expect(at.y + at.height).toBeLessThanOrEqual(page.viewportSize().height);
   await expect(page.getByText(/lets you/i)).toHaveCount(0);   // the six tiles are gone
-  await expect(page.locator('#out h2:visible')).toHaveText([/^Just shelved/, /^Recently active/]);
-  await expect(page.locator('#heroRow li')).toHaveCount(6);
+  // how it works, short, here (it was in every page's footer)
+  await expect(page.locator('#out h2:visible')).toHaveText([/^How it works/, /^Just shelved/, /^Recently active/]);
+  await expect(page.locator('main .how li')).toHaveText(['Type a film or a book.', 'We find a scan of its DVD or book cover and cut out the spine.', 'No clean scan? You get a spine made from the poster or cover.']);
   await expect(page.locator('#outGrid li')).toHaveCount(12);
+  await expect(page.locator('#outGrid li').first().locator('.cap')).toHaveText('shelf number 1');   // the newest is the one above
   await expect(page.locator('#stackers li')).toHaveCount(3);
   await page.locator('#signInBtn').click();   // SIGN IN in the bar opens the sheet
   await expect(page.locator('#signSheet')).toBeVisible();

@@ -54,7 +54,7 @@ const LAYOUTS = Object.fromEntries(SHELVES.map(s => [s.id, s.layout]));
 async function drawPreviews(page) {
   await page.evaluate(async LAYOUTS => {
     if (!window.Shelf) return;
-    const imgs = [...document.querySelectorAll('.thumbs .pic img, .items .pic img')]; if (!imgs.length) return;
+    const imgs = [...document.querySelectorAll('.thumbs .pic img, .items .pic img, #leadLink img')]; if (!imgs.length) return;   // #leadLink: signed-out home's large shelf
     await Promise.all(['500 52px "Geist Mono"', '600 40px Oswald'].map(f => document.fonts.load(f).catch(() => {})));
     const pal = [['#161616', '#F1EEE6'], ['#F2B6C5', '#1F2E26'], ['#1C1B21', '#E8D23C'], ['#EFE7D6', '#3B2E25'], ['#24456B', '#F3E9D2'], ['#7A1F1F', '#F5E6C8']];
     const cover = (bg, fg) => { const c = document.createElement('canvas'); c.width = 400; c.height = 600; const x = c.getContext('2d'); x.fillStyle = bg; x.fillRect(0, 0, 400, 600); x.fillStyle = fg; x.beginPath(); x.arc(200, 220, 80, 0, 7); x.fill(); return c; };
@@ -64,7 +64,7 @@ async function drawPreviews(page) {
         title: names[(i + at) % names.length], img: cover(bg, fg), bg, fg, accent: fg, style: (i + at) % 2 ? 'solid' : 'classic', font: 'oswald' }; });
     const counts = [5, 1, 8, 3, 20, 6, 2, 12, 4, 7, 10, 3], themes = ['paper', 'paper', 'ink', 'paper', 'blush', 'paper'], made = new Map();
     imgs.forEach((im, i) => {
-      const layout = LAYOUTS[im.closest('.pic').dataset.shelf] || 'row';
+      const layout = LAYOUTS[im.closest('[data-shelf]').dataset.shelf] || 'row';
       const key = im.getAttribute('src') + layout;
       if (!made.has(key)) {
         const n = made.size, c = document.createElement('canvas'); c.width = 1080; c.height = 1920;

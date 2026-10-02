@@ -3,23 +3,24 @@
 const { test, expect } = require('@playwright/test');
 const { mockNetwork, watchErrors, open } = require('../site');
 
-test('signed-out home with no shelves: one sample shelf under the hero, "a shelf, for example"', async ({ page }) => {
+test('signed-out home with no shelves: the sample shelf where the newest one would be, "a shelf, for example"', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { empty: true });
   await open(page, '/');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your shelf, but the real spines.');
-  const sample = page.locator('#sample');
-  await expect(sample).toBeVisible();
-  await expect(sample.locator('figcaption')).toHaveText('a shelf, for example');
-  const img = sample.locator('img');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Shelve the films and books you love, with their real spines.');
+  const img = page.locator('#sample');
+  await expect(img).toBeVisible();
+  await expect(page.locator('#leadCap')).toHaveText('a shelf, for example');
   await expect(img).toHaveAttribute('src', 'sample-shelf.jpg');
   await expect(img).toHaveAttribute('alt', /The Waves/);
   await expect.poll(() => img.evaluate(im => im.complete && im.naturalWidth)).toBe(440);   // the picture is in the repo, and loads
-  // under the hero's button, in the middle of the page
-  const make = await page.locator('#start').boundingBox(), pic = await img.boundingBox(), main = await page.locator('main').boundingBox();
-  expect(pic.y).toBeGreaterThan(make.y + make.height);
-  expect(Math.abs(pic.x + pic.width / 2 - (main.x + main.width / 2))).toBeLessThanOrEqual(1);
-  await expect(page.locator('#heroRow li')).toHaveCount(0);
+  // whole, in the middle of the panel, above the line and the button
+  const make = await page.locator('#start').boundingBox(), pic = await img.boundingBox(), stand = await page.locator('#stand').boundingBox();
+  expect(pic.y).toBeGreaterThanOrEqual(stand.y); expect(pic.y + pic.height).toBeLessThanOrEqual(stand.y + stand.height);
+  expect(pic.width / pic.height).toBeCloseTo(440 / 733, 1);
+  expect(Math.abs(pic.x + pic.width / 2 - (stand.x + stand.width / 2))).toBeLessThanOrEqual(1);
+  expect(make.y).toBeGreaterThan(stand.y + stand.height);
+  await expect(page.locator('#leadLink')).toHaveCount(0);
   await expect(page.locator('#outJust')).toBeHidden();
   await expect(page.locator('#stackersSec')).toBeHidden();
   const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -30,7 +31,7 @@ test('signed-out home with no shelves: one sample shelf under the hero, "a shelf
 test('with shelves on the site, home has no sample shelf', async ({ page }) => {
   await mockNetwork(page);
   await open(page, '/');
-  await expect(page.locator('#heroRow li')).toHaveCount(6);
+  await expect(page.locator('#leadLink')).toBeVisible();
   await expect(page.locator('#sample')).toBeHidden();
 });
 
