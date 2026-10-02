@@ -5,7 +5,7 @@ const { test, expect } = require('@playwright/test');
 const { PAGES, mockNetwork, watchErrors, open } = require('../site');
 
 const isPhone = () => test.info().project.name.startsWith('phone');
-const dialog = page => page.getByRole('dialog', { name: /add to your shelf/i });
+const dialog = page => page.getByRole('dialog', { name: /^add to (your|the) shelf$/i });   // "the" signed out
 const box = d => d.getByRole('combobox', { name: 'Film or book name' });
 const options = d => d.getByRole('option');
 const names = d => d.locator('#addRows .t').evaluateAll(els => els.map(e => e.firstChild.textContent.trim()));

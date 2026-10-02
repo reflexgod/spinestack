@@ -52,7 +52,7 @@ for (const step of ['the search results', 'the spine choices']) {
     await mockNetwork(page, { signedIn: true });
     await open(page, '/');
     await page.locator('header.top .add').click();
-    const d = page.getByRole('dialog', { name: /add to your shelf/i });
+    const d = page.getByRole('dialog', { name: /^add to (your|the) shelf$/i });
     await d.getByRole('combobox', { name: 'Film or book name' }).fill('kids');
     await expect(d.getByRole('option')).toHaveCount(6);
     if (step === 'the spine choices') {

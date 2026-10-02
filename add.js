@@ -644,6 +644,9 @@ async function resolve(p){
 
 /* ---------- Put on shelf, Log it, Watchlist ---------- */
 const TITLES = {shelf: 'Add to your shelf', log: 'Log a film or book', watch: 'Add to your watchlist'};   // no ellipsis: on a title it reads as cut off
+// signed out there's no "your" yet: the shelf being made, and a watchlist to sign in for
+const VISITOR_TITLES = {shelf: 'Add to the shelf', log: 'Log a film or book', watch: 'Watchlist'};
+const visitor = () => { if (account().user) return false; try { return !Object.keys(localStorage).some(k => /^sb-.+-auth-token$/.test(k)); } catch { return true; } };
 const what = () => ($('input[name=addWhat]:checked') || {}).value || 'shelf';
 // who is signed in, as the page's bar knows it (nav.js)
 const account = () => (window.Nav && Nav.account ? Nav.account() : {}) || {};
@@ -660,7 +663,7 @@ function paintNeed(){
 $('#addNeedGo').addEventListener('click', () => { close(); if (window.Nav && Nav.signIn) Nav.signIn(); });
 // another choice: the title already picked goes to that choice's step 2
 function paintWhat(switched){
-  $('#addTitle').textContent = TITLES[what()];
+  $('#addTitle').textContent = (visitor() ? VISITOR_TITLES : TITLES)[what()];
   if (paintNeed() || !switched) return;
   if (!picked){ $('#addQ').focus(); return; }
   if (what() === 'shelf'){ $('#addPost').hidden = true; findSpines(picked); } else showPost(picked);

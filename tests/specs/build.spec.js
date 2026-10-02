@@ -4,7 +4,7 @@ const { test, expect } = require('@playwright/test');
 const { PAGES, SHELVES, ME, mockNetwork, watchErrors, open } = require('../site');
 
 const isPhone = () => test.info().project.name.startsWith('phone');
-const dialog = page => page.getByRole('dialog', { name: /add to your shelf/i });
+const dialog = page => page.getByRole('dialog', { name: /^add to (your|the) shelf$/i });   // "the" signed out
 const rows = page => page.locator('#books .book');
 const titles = page => page.locator('#books .book .bt').allTextContents();
 const spines = d => d.getByRole('radiogroup', { name: 'Which spine' }).getByRole('radio');   // the choices in step 2
