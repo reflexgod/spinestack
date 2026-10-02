@@ -214,7 +214,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
           <div class="menu" id="menu" role="menu" hidden><button type="button" role="menuitem" id="copyLink">Copy link</button><button type="button" role="menuitem" id="reportProfile" hidden>Report</button></div>
         </div>
       </div>
-      <div class="bio-m" id="bioWrap" hidden><p id="bioM"></p><p class="mutual" id="mutualM" hidden></p></div>
+      <div class="bio-m" id="bioWrap" hidden><p id="bioM"></p><a class="addbio" id="addBioM" href="../settings/" hidden>add a bio</a><p class="mutual" id="mutualM" hidden></p></div>
       <div class="statcol" id="statCol">
         <dl class="stats">
           <div><dt>Spines</dt><dd id="nSpines">0</dd></div>
@@ -686,14 +686,14 @@ function paintHead(){
   $('#editBtn').hidden = !mine;
   $('#reportProfile').hidden = mine;
   $('#privNote').hidden = !(mine && p.is_private);
-  $('#bioM').textContent = p.bio; bioWrap();
+  $('#bioM').textContent = p.bio; $('#addBioM').hidden = !(mine && !p.bio); bioWrap();   // on a phone, the bio's place under you
   $('#bio').textContent = p.bio; $('#bio').hidden = !p.bio;
   $('#addBio').hidden = !(mine && !p.bio);
   $('#bioSec').hidden = !p.bio && !mine;
   $('#since').textContent = 'on shelfstackd since ' + new Date(p.created_at).toLocaleDateString('en-US', {month:'short', year:'numeric'});
 }
 // on a phone the bio sits under the name, with the "Followed by" line under it; the box they share shows when either does
-function bioWrap(){ $('#bioWrap').hidden = !(view.profile && view.profile.bio) && $('#mutualM').hidden; }
+function bioWrap(){ $('#bioWrap').hidden = !(view.profile && view.profile.bio) && $('#mutualM').hidden && $('#addBioM').hidden; }
 /* the hero: their shelf, big, across the column, the way the builder draws it (shelf.js), cut down to the books.
    Pressing it opens the shelf's page. Its name under it (yours: press it to rename it), and Edit on your own. */
 let heroRun = 0;

@@ -24,6 +24,10 @@ test('your empty profile: the shelf, the watchlist, From friends, Activity and N
   await open(page, '/u/?tester');
   await expect(page.locator('#hero')).toContainText('Your shelf is empty.');
   await expect(page.locator('#hero').getByRole('link', { name: 'Make your shelf' })).toBeVisible();
+  // no bio: "add a bio", beside the profile on a wide window and under you on a phone
+  await expect(page.getByRole('link', { name: 'add a bio' })).toHaveCount(1);
+  await expect(page.getByRole('link', { name: 'add a bio' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'add a bio' })).toHaveAttribute('href', '../settings/');
   await expect(page.locator('#watchNone')).toHaveText('Nothing here yet. Pick Watchlist in + Add to keep a film or a book for later.');
   await expect(page.locator('#friendsNone')).toHaveText('Nothing from friends yet. What people you follow log shows up here. Find people');
   await expect(page.locator('#friendsNone').getByRole('link', { name: 'Find people' })).toHaveAttribute('href', '../members/');
