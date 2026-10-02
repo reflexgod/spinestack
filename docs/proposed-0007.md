@@ -35,6 +35,11 @@ through `profile_is_public()` and `approved_follower_of()`, as `feed()` does.
   (`'hides:'`), lets removals older than 180 days go, then refuses the 501st with "That's 500 titles removed from From
   friends, the most it keeps." The profile shows that as its message. (Letting the oldest go instead of refusing is a
   one-line change, if that's preferred.)
+- **Unfollowing someone takes their name off what you kept from them.** A trigger on `follows` (after delete) clears
+  `watchlist.from_user` for that pair; the titles stay on your watchlist.
+- **A log hidden by moderation can't be deleted by its owner.** The logs delete policy is now `owner = auth.uid() and
+  not hidden`, so it stays for us to look at. (The page's Delete then does nothing for a hidden log; the owner no longer
+  sees it anywhere but their own Activity.)
 
 ## What the pages ask for
 

@@ -5,7 +5,8 @@
 -- The last result says "ALL PHASE 4 CHECKS PASSED". Any failed check stops with an error that starts "FAIL:".
 -- Real accounts can be in the database, so every check looks only at the test's own rows.
 --
--- The people:  A public (follows B, and private D, who accepted)   B public (logs two titles)   C public (an outsider,
+-- The people:  A public (follows B, then unfollows; and private D, who accepted)   B public (logs two titles, one
+--              hidden later by moderation)   C public (an outsider,
 --              who also logs on a new day)   D private (logs one title)   E public (hits the daily limit, then deletes
 --              and tries again)   H hidden by moderation (logs one title)
 
@@ -165,6 +166,17 @@ do $$ declare i int; begin
     raise exception 'FAIL: A put a title on C''s watchlist';
   exception when insufficient_privilege then null; end;
 end $$;
+-- ---------- unfollowing someone takes their name off what you kept from them ----------
+do $$ begin
+  delete from public.watchlist where owner = '00000000-0000-4000-8000-0000000004a0' and title = 'Book 5';   -- room for one
+  insert into public.watchlist (kind, title, from_user) values ('book', 'Kept from B', '00000000-0000-4000-8000-0000000004b0');
+  if (select from_user from public.watchlist where title = 'Kept from B') is distinct from '00000000-0000-4000-8000-0000000004b0' then
+    raise exception 'FAIL: a title kept from B doesn''t say so'; end if;
+  perform public.unfollow('00000000-0000-4000-8000-0000000004b0');
+  if not exists (select 1 from public.watchlist where title = 'Kept from B') then raise exception 'FAIL: unfollowing B took the title off A''s watchlist'; end if;
+  if (select from_user from public.watchlist where title = 'Kept from B') is not null then raise exception 'FAIL: the title still says it came from B after A unfollowed B'; end if;
+end $$;
+
 -- ---------- From friends keeps 500 removals a person at most; ones older than 180 days go first ----------
 reset role;
 insert into public.friend_hides (owner, item_key)
@@ -191,7 +203,15 @@ do $$ begin
   if (select count(*) from public.friend_hides) <> 500 then raise exception 'FAIL: A doesn''t have 500 removals'; end if;
 end $$;
 
+-- moderation hides one of B's logs: B can't delete it (it stays, for us to see)
+reset role;
+update public.logs set hidden = true where owner = '00000000-0000-4000-8000-0000000004b0' and title = 'The  Waves ';
+set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000004b0","role":"authenticated"}', true);
+do $$ declare n int; begin
+  delete from public.logs where owner = '00000000-0000-4000-8000-0000000004b0' and title = 'The  Waves ';
+  get diagnostics n = row_count; if n <> 0 then raise exception 'FAIL: B deleted a log moderation had hidden'; end if;
+end $$;
 do $$ declare n int; begin
   delete from public.watchlist where owner = '00000000-0000-4000-8000-0000000004a0';
   get diagnostics n = row_count; if n <> 0 then raise exception 'FAIL: B emptied A''s watchlist'; end if;

@@ -18,7 +18,8 @@
 --   * logs: a film or a book you watched or read, with a caption if you want one (280 characters at most). The feed
 --     shows it as "@you watched Gummo · today" with its cover. 50 a day per person at most, counted as they're posted
 --     (log_counts), so deleting one doesn't make room for another. You can delete your own.
---   * watchlist: up to 6 titles, each title once. Logging a title takes it off your watchlist.
+--   * watchlist: up to 6 titles, each title once. Logging a title takes it off your watchlist. A title kept from
+--     someone's log says whose it was until you unfollow them; then it's just yours.
 --   * friend_hides: the titles you pressed Remove on in From friends, so they don't come back (kept 180 days, as long
 --     as From friends looks back; 500 at most).
 --   * title_key(): one key per title (film or book, its title in lower case with its spaces tidied, its year), so the
@@ -137,6 +138,17 @@ revoke execute on function public.logs_off_watchlist() from public, anon, authen
 create trigger logs_off_watchlist after insert on public.logs
   for each row execute function public.logs_off_watchlist();
 
+-- unfollowing someone takes their name off what you kept from their logs (the titles stay on your watchlist)
+create function public.follows_unkeep() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  update public.watchlist w set from_user = null where w.owner = old.follower and w.from_user = old.followee;
+  return null;
+end $$;
+revoke execute on function public.follows_unkeep() from public, anon, authenticated;
+create trigger follows_unkeep after delete on public.follows
+  for each row execute function public.follows_unkeep();
+
 -- ---------- From friends: the titles you removed ----------
 create table public.friend_hides (
   owner uuid not null default auth.uid() references public.profiles (id) on delete cascade,
@@ -168,7 +180,7 @@ create policy "logs: read public" on public.logs for select to anon, authenticat
 create policy "logs: read as follower" on public.logs for select to authenticated using (not hidden and public.approved_follower_of(owner));
 create policy "logs: read own" on public.logs for select to authenticated using (owner = (select auth.uid()));
 create policy "logs: post own" on public.logs for insert to authenticated with check (owner = (select auth.uid()));
-create policy "logs: delete own" on public.logs for delete to authenticated using (owner = (select auth.uid()));
+create policy "logs: delete own" on public.logs for delete to authenticated using (owner = (select auth.uid()) and not hidden);   -- one hidden by moderation stays, for us to see
 
 create policy "watchlist: read public" on public.watchlist for select to anon, authenticated using (public.profile_is_public(owner));
 create policy "watchlist: read as follower" on public.watchlist for select to authenticated using (public.approved_follower_of(owner));
