@@ -54,7 +54,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261002f">
+<link rel="stylesheet" href="../site.css?v=20261003a">
 <style>
 /* the builder, laid out like a new-list page: Add, the spines as a list, Style, and the live preview beside them.
    The bottom area stays in view: the shelf's name and who can view it, with Cancel and Save (beside them
@@ -205,6 +205,23 @@ footer{margin-top:0}
   .toast{bottom:calc(env(safe-area-inset-bottom,0px) + 144px)}
 }
 @media (max-width:520px){ .row2{grid-template-columns:1fr} }
+/* a touch screen: this page's own controls take a press in the 44 x 44px round their middle too (see site.css) */
+@media (pointer:coarse){
+  .seg button,.chip,.ib,.sw,.opts label,.opts input,.who label,details.style summary,.swatch{position:relative}
+  :is(.seg button,.chip,.ib,.sw,.opts label,.who label,details.style summary,.swatch,.addform button)::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))}
+  .who .seg2{overflow:visible}
+  .who label:first-child{border-radius:2px 0 0 2px} .who label:last-child{border-radius:0 2px 2px 0}
+  .ib{width:32px;height:32px}
+  .swatch{width:32px;height:32px}
+  .swatches{gap:var(--s3)}
+  .range input{min-height:44px}
+  .colours input[type=text]{font-size:16px}
+  .check{min-height:40px}   /* ticks, rows of choices and the row's arrows sit a press apart */
+  .seg{row-gap:26px}
+  .pngadd{margin-top:24px}
+  .acts{gap:12px}
+  .mkbar{row-gap:14px}
+}
 </style>
 </head>
 <body>
@@ -356,8 +373,8 @@ footer{margin-top:0}
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../spinetip.js?v=20261002a"></script>
-<script src="../nav.js?v=20261003a"></script>
-<script src="../add.js?v=20261002b"></script>
+<script src="../nav.js?v=20261003b"></script>
+<script src="../add.js?v=20261003a"></script>
 <script>
 (() => {
 const $ = s => document.querySelector(s);

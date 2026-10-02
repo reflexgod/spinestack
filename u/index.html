@@ -29,7 +29,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261002f">
+<link rel="stylesheet" href="../site.css?v=20261003a">
 <style>
 /* the profile (site.css has the cards, the tabs, the sheets and everything shared) */
 .phead{display:grid;grid-template-columns:96px minmax(0,1fr) auto;grid-template-areas:"ava who stats";gap:0 var(--s5);align-items:center}
@@ -157,6 +157,14 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 
 @media (max-width:820px){
   .pgrid{grid-template-columns:minmax(0,1fr)}
+}
+/* a touch screen: 44 x 44px to press (see site.css): the share button and "add a bio" reach out with a clear ::before,
+   the menus' rows are 44px, and a shelf's name (cut with an ellipsis, so nothing can reach past it) is padded out */
+@media (pointer:coarse){
+  .iconbtn,.addbio{position:relative}
+  :is(.iconbtn,.addbio)::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))}
+  .menu button,.menu a{padding-top:15px;padding-bottom:15px}
+  .name{position:relative;padding-top:10px;padding-bottom:10px;margin-top:-10px;margin-bottom:-10px}   /* over the date under it, under Edit and Share */
 }
 @media (max-width:640px){
   .phead{grid-template-columns:72px minmax(0,1fr);grid-template-areas:"ava who" "bio bio" "stats stats";gap:var(--s4)}
@@ -383,7 +391,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 <script src="../cards.js?v=20261002a"></script>
 <script src="../spinetip.js?v=20261002a"></script>
 <script src="../wear.js?v=20261002a"></script>
-<script src="../nav.js?v=20261003a"></script>
+<script src="../nav.js?v=20261003b"></script>
 <script>
 (() => {
 /* A profile: /u/?username, and its shelf on its own page: /u/?username&shelf (one shelf each), or a shelf by its id,

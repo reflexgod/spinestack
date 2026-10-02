@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700&display=swap">
-<link rel="stylesheet" href="site.css?v=20261002f">
+<link rel="stylesheet" href="site.css?v=20261003a">
 <style>
 /* a page to read: the shared column, with the text kept to a comfortable width in it */
 body{line-height:1.65}
@@ -32,6 +32,7 @@ main > *{max-width:680px}
 .ptop{display:flex;justify-content:space-between;align-items:center;gap:var(--s4);max-width:none;margin-bottom:var(--s6)}
 .ptop a{text-decoration:none;font-size:var(--fs-nav);font-weight:500;letter-spacing:var(--track);text-transform:uppercase}
 .ptop .r{display:flex;gap:var(--s5)}
+@media (pointer:coarse){ .ptop a,p.grey > a{position:relative} :is(.ptop a,p.grey > a)::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))} }   /* 44 x 44px to press (see site.css) */
 h1{margin-bottom:var(--s1)}
 h2{margin-top:var(--s6)}
 li{margin:0 0 var(--s2)}

@@ -388,6 +388,11 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   and a profile say "Couldn’t reach shelfstackd", the bar offers no Finish sign-up, and the builder's Save says the
   account couldn't load instead of asking for a username. A page tells "couldn't read your account" (`unreachable`)
   apart from "no username yet".
+- **Press areas on a phone** (`specs/taps.spec.js`, phone only): on every page, in the Add dialog, the menus, the
+  sign-in sheet and the builder's Style, a press 21px up, down, left or right of a control's middle still lands on it,
+  as `elementFromPoint` finds it. On a touch screen (`pointer:coarse`) a small control takes its press in the 44 x 44px
+  round its middle (a see-through `::before`), and close rows are a press apart; on a mouse nothing changes. Left out:
+  links inside a sentence, and the logo (its row is 32px above the places' row, which `docs/DESIGN-REVIEW.md` has).
 - **A log's worn cover** (`specs/wear.spec.js`): 2:3, the top right corner folded away, nothing ever written on it,
   nearly new on the day, more faded after a week and more worn after a month, and the same log worn the same way every
   time.

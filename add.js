@@ -235,6 +235,14 @@ css.textContent = `
 #addDialog .addsay .lbl{font-size:var(--fs-label,10px);text-transform:uppercase;letter-spacing:var(--track,1px);color:var(--grey,#6B6B6B)}
 #addDialog .addsay .lbl i{font-style:normal;text-transform:none;letter-spacing:0}
 #addDialog .addfeedline{margin:0;font-size:var(--fs-small,11px);color:var(--grey,#6B6B6B);overflow-wrap:anywhere}
+/* a touch screen: every control takes a press in the 44 x 44px round its middle (as site.css does), and the fields
+   are 16px so the phone doesn't zoom in */
+@media (pointer:coarse){
+  #addDialog .addopts label,#addDialog .addopts input,#addDialog .pick .art{position:relative}   /* a box or circle stays on top of its own press area */
+  :is(#addDialog .addx,#addDialog .addsearch button,#addDialog .addopts label,#addDialog .addwhat label,#addDialog .pick .art)::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))}
+  #addDialog .addsearch input{height:44px;font-size:16px}
+  #addDialog .addsay textarea{font-size:16px}
+}
 /* on a phone it sits at the top, so the box and its suggestions stay above the keyboard */
 @media (max-width:520px){ #addDialog{padding:var(--s4,16px);margin-top:var(--s3,12px)} #addDialog .addfound{--th:220px;--tw:84px}
   #addDialog .addpost{grid-template-columns:88px minmax(0,1fr);gap:var(--s3,12px)} #addDialog .addcov{width:88px} }`;

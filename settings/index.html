@@ -31,7 +31,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261002f">
+<link rel="stylesheet" href="../site.css?v=20261003a">
 <style>
 /* settings: three tabs, each a short form in a narrow column (site.css has the tabs, the fields, the buttons and the
    rest) */
@@ -61,6 +61,7 @@
 .switch input:checked::after{transform:translateX(16px);background:var(--paper)}
 .switch input:disabled{opacity:.5;cursor:default}
 @media (prefers-reduced-motion:reduce){ .switch input::after{transition:none} }
+@media (pointer:coarse){ .switch{position:relative} .switch::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))} }   /* 44 x 44px to press (see site.css) */
 </style>
 </head>
 <body>
@@ -170,7 +171,7 @@
 
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
-<script src="../nav.js?v=20261003a"></script>
+<script src="../nav.js?v=20261003b"></script>
 <script>
 (() => {
 /* Settings: /settings/ (#photo and #account pick the tab). Yours only: signed out, it asks you to sign in.

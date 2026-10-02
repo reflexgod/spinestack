@@ -201,3 +201,19 @@ footer ol{margin:0;padding-left:1.3em;display:grid;gap:var(--s1)}
 .fbtn{display:inline-block;font:600 var(--fs-btn)/1.35 var(--mono);text-transform:uppercase;letter-spacing:.04em;text-decoration:none;color:var(--paper);border:1px solid var(--paper);border-radius:var(--radius);padding:var(--btn-pad)}
 .fbase{margin-top:var(--s5);border-top:1px solid #555;padding-top:var(--s3);display:flex;justify-content:space-between;gap:var(--s2) var(--s4);flex-wrap:wrap;font-size:var(--fs-small)}
 @media (max-width:820px){ .fgrid{grid-template-columns:1fr;gap:var(--s5)} }
+
+/* ---------- a touch screen: every control takes a press anywhere in the 44 x 44px round its middle (Apple asks for
+   44, Google for 48), and looks just the same: a clear ::before reaches past any edge nearer than 22px to its middle.
+   A link inside a sentence is left as it is. Fields are 44px tall, in 16px type, so a phone doesn't zoom in when one
+   is pressed. A page adds its own controls to this in its own <style>, with the same ::before. ---------- */
+@media (pointer:coarse){
+  .top a,.acct,.tabs button,.btn,.dash,h2 .more,.fbtn,.fbase a,.items .fa,.person .pa,.person .pn,.statlink button,.check,.linkish{position:relative}
+  :is(.top a,.acct,.tabs button,.btn,.dash,h2 .more,.fbtn,.fbase a,.items .fa,.person .pa,.person .pn,.statlink button,.check,.linkish,.x)::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))}
+  .check input{position:relative}   /* the box stays on top of its own press area */
+  .items .fa,.person .pa{overflow:visible}   /* the round photo is cut by its own corners instead, so the press area isn't */
+  .items .fa img,.person .pa img{position:absolute;inset:0;border-radius:50%}
+  .top .add,.top .addmore{min-width:44px;justify-content:center}
+  input[type=text],input[type=email],input[type=search],input[type=url],select,textarea{font-size:16px;min-height:44px}
+}
+/* the second row of the bar scrolls sideways inside itself, so its links' press areas need room inside it */
+@media (pointer:coarse) and (max-width:820px){ .links{padding:var(--s2) 14px;margin:calc(-1 * var(--s2)) -14px 0;flex-basis:calc(100% + 28px)} }

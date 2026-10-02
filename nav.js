@@ -38,7 +38,8 @@
   font:500 var(--fs-nav,12px)/1.4 var(--mono,monospace);text-transform:uppercase;letter-spacing:var(--track,1px);color:inherit;text-decoration:none;white-space:nowrap;cursor:pointer}
 .navmenu a:hover,.navmenu button:hover,.navmenu a:focus-visible,.navmenu button:focus-visible{background:var(--wash,#F3F3F3);outline:0}
 .navmenu a[aria-current]{font-weight:700}
-.navmenu hr{border:0;border-top:1px solid var(--hair,#D9D9D9);margin:var(--s1,4px) 0}`;
+.navmenu hr{border:0;border-top:1px solid var(--hair,#D9D9D9);margin:var(--s1,4px) 0}
+@media (pointer:coarse){ .navmenu a,.navmenu button{padding-top:14px;padding-bottom:14px} }   /* 44px rows to press on a touch screen */`;
   document.head.appendChild(css);
 
   /* ---------- the menus ---------- */
@@ -176,7 +177,7 @@
     if (window.Add){ window.Add.open(opt); return Promise.resolve(true); }
     if (!window.Shelf) return Promise.resolve(false);
     adding = adding || new Promise(res => {
-      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261002b';
+      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261003a';
       s.onload = () => res(!!window.Add); s.onerror = () => { adding = null; s.remove(); res(false); };
       document.head.appendChild(s);
     });
