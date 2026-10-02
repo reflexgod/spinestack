@@ -149,11 +149,7 @@
 .spines .st b span{font-weight:400;color:var(--grey)}
 .spines .st > span{color:var(--grey);font-size:var(--fs-small);overflow-wrap:anywhere}
 .spines .onmine{color:var(--grey);font-size:var(--fs-small);white-space:nowrap}
-/* signed out, a shelf's page has no + Add to my shelf: under the list, Make a shelf is the black button, and the
-   bar's + is outlined (as on home) */
-#oneMake{margin-top:var(--s4)}
-.signedout .top .add.primary{background:var(--paper);color:var(--ink)}
-.signedout .top .add.primary:hover{background:var(--wash)}   /* "On your shelf", where + Add to my shelf would be */
+   /* "On your shelf", where + Add to my shelf would be */
 .row{display:flex;gap:var(--s3) var(--s4);align-items:center;flex-wrap:wrap}
 /* a shelf's name that renames it when pressed (the hero's, and a shelf page's heading) */
 .name{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;cursor:text;text-align:left;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
@@ -331,7 +327,6 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
         <section class="onshelf" id="oneOn" hidden>
           <h2>On this shelf</h2>
           <ol class="spines" id="oneItems"></ol>
-          <a class="btn primary" id="oneMake" href="../build/" hidden>Make a shelf</a>
         </section>
       </div>
     </section>
@@ -397,7 +392,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 <script src="../cards.js?v=20261002a"></script>
 <script src="../spinetip.js?v=20261004a"></script>
 <script src="../wear.js?v=20261004a"></script>
-<script src="../nav.js?v=20261008c"></script>
+<script src="../nav.js?v=20261009a"></script>
 <script>
 (() => {
 /* A profile: /u/?username, and its shelf on its own page: /u/?username&shelf (one shelf each), or a shelf by its id,
@@ -804,11 +799,11 @@ document.addEventListener('shelfstackd:added', () => {
 });
 /* ---------- one shelf on its own page: its name, who made it and when, what can be done with it, the shelf itself
    (as the profile's hero draws it), and under it what's on the shelf, a row for each spine with + Add to my shelf
-   (signed out, none, and Make a shelf under the list) ---------- */
+   (signed out, it's the sign-in sheet first) ---------- */
 const shown = {shelf: null, rows: [], list: [], wall: null, pngs: [], onMine: null};   // the shelf on the page: its saved rows, the books made from them (the same order), its wall and PNGs; onMine: the titles on your own shelf (see titlesOnMine)
 /* What's already on your own shelf, so a title that's there isn't offered to it again. Your shelf is the main one if
    one was picked before, otherwise the one saved last (as theShelf() has it, and the builder). A title is the same
-   title by its kind, its name and its year (the builder's sameTitle). */
+   title by its kind, its name and its year. */
 const titleKey = r => [r.kind, String(r.title || '').trim().toLowerCase(), r.year || ''].join('|');
 async function myShelfId(){
   if (!me.profile) return '';
@@ -870,27 +865,26 @@ async function showShelf(id){
 // that's on your shelf already isn't offered to it again: on someone else's shelf it says "On your shelf" there, and on
 // your own it says nothing (every title on your own shelf is on your shelf)
 function paintItems(){
-  const ol = $('#oneItems'), have = r => !!shown.onMine && shown.onMine.has(titleKey(r)), visitor = !me.user;   // signed out: no shelf to add to
+  const ol = $('#oneItems'), have = r => !!shown.onMine && shown.onMine.has(titleKey(r));
   ol.replaceChildren(...shown.rows.map((r, i) => {
     const li = document.createElement('li'); li.dataset.i = i;
     li.innerHTML = `<span class="sthumb" aria-hidden="true"></span>
       <span class="st"><b>${esc(r.title || 'Untitled')}${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${esc([r.author, r.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · '))}</span></span>
-      ${visitor ? '' : !have(r) ? `<button class="dash sm" type="button" data-add="${i}">+ Add to my shelf</button>` : view.mine ? '' : '<span class="onmine">On your shelf</span>'}`;
+      ${!have(r) ? `<button class="dash sm" type="button" data-add="${i}">+ Add to my shelf</button>` : view.mine ? '' : '<span class="onmine">On your shelf</span>'}`;
     return li;
   }));
   const draw = () => smallSpines(shown.list, 56).forEach((sp, i) => { const at = ol.children[i]; if (at) at.querySelector('.sthumb').replaceChildren(sp); });
   draw(); view.drawn.push(draw);
   $('#oneOn').hidden = !shown.rows.length;
-  $('#oneMake').hidden = !visitor;
-  document.documentElement.classList.toggle('signedout', visitor);
 }
 // + Add to my shelf: the saved row itself goes to the builder (the same pictures, nothing searched for again), which
-// puts it on the shelf being made there
+// puts it on your shelf there. Signed out, the sign-in sheet comes first, and the row waits in this tab until then
 const ADD_ROW = 'shelfstackd-add-row';
 $('#oneItems').addEventListener('click', e => {
   const b = e.target.closest('[data-add]'), r = b && shown.rows[+b.dataset.add]; if (!r) return;
   try { sessionStorage.setItem(ADD_ROW, JSON.stringify({at: Date.now(), row: {kind: r.kind, title: r.title, author: r.author, year: r.year, spine_src: r.spine_src, cover_src: r.cover_src, look: r.look}})); }
   catch { toast('Couldn’t take it to the builder. Try again.'); return; }
+  if (Nav.visitor()){ Nav.needAccount('build'); return; }
   location.href = '../build/';
 });
 // a spine on the picture: hovering it says what it is ("Title (year) · creator"), pressing it goes to its row

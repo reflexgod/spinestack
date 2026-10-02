@@ -15,7 +15,7 @@ test('the privacy page covers follows, the feed, private profiles, settings and 
     'Switch on Private profile in Settings, under Account', '400 by 400', 'removes its location and camera data', 'Signing out signs out this device only', 'within 7 days'])
     expect(text, says).toContain(says);
   expect(text).not.toContain('—');
-  expect(text).toContain('Saving a shelf needs an account, and so does sharing it as a story');
+  expect(text).toContain('Making a shelf needs an account, and so does sharing it as a story');
   expect(text).not.toMatch(/save a story|use everything on the site without an account/);   // a story comes from a saved shelf now
   expect(text).not.toMatch(/Edit profile|coming soon/i);   // the sheet that Settings replaced, and promises
   await expect(page.locator('main').getByRole('link', { name: 'Settings' }).first()).toHaveAttribute('href', 'settings/#account');

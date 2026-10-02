@@ -39,21 +39,6 @@ test('three choices, Put on shelf first; the dialog\'s title says which', async 
   expect(errors).toEqual([]);
 });
 
-// Signed out there's no "your" in the dialog's title: Put on shelf adds to the shelf being made, and Watchlist (like
-// Log it) asks you to sign in
-test('signed out, the dialog\'s titles don\'t say "your", and Log it and Watchlist ask to sign in', async ({ page }) => {
-  await mockNetwork(page);
-  await open(page, '/feed/?everyone');
-  await page.locator('header.top .add').click();
-  await expect(dialog(page)).toHaveAccessibleName('Add to the shelf');
-  for (const [choice, title, ask] of [['Log it', 'Log a film or book', 'Sign in to log films and books.'], ['Watchlist', 'Watchlist', 'Sign in to keep a watchlist.'], ['Put on shelf', 'Add to the shelf', null]]) {
-    await dialog(page).getByRole('radio', { name: choice }).check();
-    await expect(dialog(page)).toHaveAccessibleName(title);
-    if (ask) { await expect(page.locator('#addNeedText')).toHaveText(ask); await expect(page.locator('#addNeedGo')).toHaveText('Sign in'); }
-    expect(await dialog(page).innerText()).not.toMatch(/\byour\b/i);
-  }
-});
-
 test('Log it: the cover as the feed shows it, an optional caption, and Post; no spine is searched for', async ({ page }) => {
   const errors = watchErrors(page), net = await mockNetwork(page, { signedIn: true });
   let scans = 0; page.on('request', r => { if (r.url().includes('/scans?')) scans++; });
@@ -136,24 +121,23 @@ test('a title picked keeps its place when the choice changes', async ({ page }) 
   await expect(d.getByRole('button', { name: 'Add to watchlist' })).toBeHidden();
 });
 
-test('signed out, Log it and Watchlist ask you to sign in first; Put on shelf works as it did', async ({ page }) => {
-  await mockNetwork(page);
-  await open(page, '/feed/?everyone');
-  await page.locator('header.top .add').click();
-  const d = dialog(page);
-  await d.getByRole('radio', { name: 'Log it' }).check();
-  await expect(d.locator('#addNeed')).toHaveText('Sign in to log films and books. Sign in');
-  await expect(d.getByRole('combobox', { name: 'Film or book name' })).toBeHidden();
-  await d.getByRole('radio', { name: 'Watchlist' }).check();
-  await expect(d.locator('#addNeed')).toHaveText('Sign in to keep a watchlist. Sign in');
-  await d.getByRole('radio', { name: 'Put on shelf' }).check();
-  await expect(d.getByRole('combobox', { name: 'Film or book name' })).toBeVisible();
-  await expect(d.locator('#addNeed')).toBeHidden();
-  // Sign in: the dialog shuts and the page's sign-in opens
-  await d.getByRole('radio', { name: 'Log it' }).check();
-  await d.getByRole('button', { name: 'Sign in' }).click();
-  await expect(d).toBeHidden();
-  await expect(page.locator('#signSheet')).toBeVisible();
+// Signed out the site is read only: + ADD is the sign-in sheet, not the Add dialog, and nothing is searched for
+test('signed out, + ADD opens the sign-in sheet ("Sign in to start your shelf."), not the Add dialog', async ({ page }) => {
+  const errors = watchErrors(page), net = await mockNetwork(page);
+  for (const path of ['/', '/feed/?everyone', '/shelves/', '/members/', '/u/?mira', '/u/?mira&shelf']) {
+    await open(page, path);
+    await page.locator('header.top .add').click();
+    await expect(page.locator('#signSheet'), path).toBeVisible();
+    await expect(page.locator('#signSheet .sheetbox p:not(.note)').first()).toHaveText('Sign in to start your shelf.');
+    await expect(page.locator('#signSheet').getByRole('button', { name: 'Continue with Google' })).toBeVisible();
+    await expect(page.locator('#addDialog')).toHaveCount(0);   // add.js isn't even loaded
+    await page.keyboard.press('Escape');
+  }
+  // the bar's own Sign in keeps the sheet's usual line
+  await page.locator('#signInBtn').click();
+  await expect(page.locator('#signSheet .sheetbox p:not(.note)').first()).toHaveText('Keep your shelf and everything you log on any device.');
+  expect(net.asked).toEqual([]);
+  expect(errors).toEqual([]);
 });
 
 test('signed in with no username yet, Log it asks for one first', async ({ page }) => {

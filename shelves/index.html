@@ -94,7 +94,7 @@
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../cards.js?v=20261002a"></script>
-<script src="../nav.js?v=20261008c"></script>
+<script src="../nav.js?v=20261009a"></script>
 <script>
 (() => {
 /* Shelves: /shelves/. Every public shelf of a public profile, newest saved first, as cards: 24 at a time, then Load
@@ -215,6 +215,8 @@ function paintMine(signedIn){
   document.documentElement.classList.toggle('signedout', !signedIn);
 }
 paintMine(!document.documentElement.classList.contains('signedout'));
+// signed out, Make a shelf is the sign-in sheet, then the builder
+$('#mine').addEventListener('click', e => { if (Nav.visitor()){ e.preventDefault(); Nav.needAccount('build'); } });
 more();   // the shelves don't wait on the account
 (async () => { await startSession(); Nav.paint(me); paintMine(!!me.user); })();
 })();

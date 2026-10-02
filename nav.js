@@ -5,6 +5,9 @@
    read, so the bar offers neither Sign in nor Finish sign-up), and says what its own Sign in, Finish sign-up and Sign out do:
    Nav.onSignIn(fn), Nav.onFinish(fn), Nav.onSignOut(fn). + ADD opens the Add dialog (add.js, loaded the first time
    it's pressed), which reads who is signed in with Nav.account() and asks to sign in with Nav.signIn().
+   Signed out the site is read only: + ADD, and anything a page sends to Nav.needAccount('build' | 'add'), opens the
+   page's sign-in sheet ("Sign in to start your shelf.") instead, and once signed in the person is taken where they
+   were going: the builder, or the Add dialog.
    Load it after shelf.js and worker-address.js, before the page's own script. */
 (() => {
   const ROOT = new URL('.', document.currentScript.src).href;   // the site's root: this file sits there
@@ -149,6 +152,7 @@
       return;
     }
     buildMenus(); fillAccount(p); loadLibs();
+    goOn();
     acctBtn.querySelector('.who').textContent = '@' + p.username;
     acctBtn.setAttribute('aria-label', '@' + p.username + ', your account');   // on a phone only the photo shows
     const ava = acctBtn.querySelector('.ava'), key = p.avatar_key || '';
@@ -162,7 +166,7 @@
     }
   }
   signBtn.addEventListener('click', e => {
-    if (!state.user){ e.preventDefault(); if (on.signIn) on.signIn(); }
+    if (!state.user){ e.preventDefault(); plainSignIn(); if (on.signIn) on.signIn(); }
     else if (on.finish){ e.preventDefault(); on.finish(); }   // signed in, no username yet (elsewhere the link goes to the builder, which asks)
   });
 
@@ -175,17 +179,44 @@
     if (window.Add){ window.Add.open(opt); return Promise.resolve(true); }
     if (!window.Shelf) return Promise.resolve(false);
     adding = adding || new Promise(res => {
-      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261008c';
+      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261009a';
       s.onload = () => res(!!window.Add); s.onerror = () => { adding = null; s.remove(); res(false); };
       document.head.appendChild(s);
     });
     return adding.then(ok => { if (ok) window.Add.open(opt); return ok; });
   }
   addLink.addEventListener('click', e => {
+    if (visitor()){ e.preventDefault(); needAccount('add'); return; }   // signed out: nothing is added, or searched for
     if (e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;   // a new tab or window still gets the builder
     e.preventDefault();
     openAdd().then(ok => { if (!ok) location.href = addLink.href; });
   });
+
+  /* ---------- signed out: look, don't add ---------- */
+  // signed out: no one is signed in on this page and no session is kept on this device (a page signed in paints the
+  // bar a moment after it opens; until then the kept session says so)
+  const kept = () => { try { return Object.keys(localStorage).some(k => /^sb-.+-auth-token$/.test(k)); } catch { return false; } };
+  const visitor = () => !state.user && !kept();
+  const GO = 'shelfstackd-after-signin', LINE = '#signSheet .sheetbox p:not(.note), #signinPane > p:not(.note)';
+  // where they were going ('build' or 'add'), kept in this tab while Google signs them in; the sheet says why it's open
+  function needAccount(go){
+    try { sessionStorage.setItem(GO, JSON.stringify({go, at: Date.now()})); } catch {}
+    const line = document.querySelector(LINE);
+    if (line){ if (line.dataset.was == null) line.dataset.was = line.textContent; line.textContent = 'Sign in to start your shelf.'; }
+    if (on.signIn) on.signIn(); else location.href = ROOT + 'build/';
+  }
+  // the bar's own Sign in: going nowhere in particular, with the sheet's usual line
+  function plainSignIn(){
+    try { sessionStorage.removeItem(GO); } catch {}
+    const line = document.querySelector(LINE); if (line && line.dataset.was != null) line.textContent = line.dataset.was;
+  }
+  // signed in now (with a username): on to where they were going, once
+  function goOn(){
+    let g = null; try { g = JSON.parse(sessionStorage.getItem(GO) || 'null'); sessionStorage.removeItem(GO); } catch {}
+    if (!g || Date.now() - g.at > 30 * 60e3) return;
+    if (g.go === 'build' && !/\/build\/$/.test(location.pathname)) location.href = ROOT + 'build/';
+    else if (g.go === 'add') openAdd();
+  }
 
   // for the Add dialog: who is signed in, and the page's own way to sign in (or, with no username yet, to pick one)
   const account = () => ({...state});
@@ -194,5 +225,5 @@
     else if (on.finish) on.finish(); else location.href = ROOT + 'build/';
   }
 
-  window.Nav = {paint, add: openAdd, account, signIn, onSignIn: fn => { on.signIn = fn; }, onFinish: fn => { on.finish = fn; }, onSignOut: fn => { on.signOut = fn; }, onUpload: fn => { on.upload = fn; }};
+  window.Nav = {paint, add: openAdd, account, signIn, needAccount, visitor, onSignIn: fn => { on.signIn = fn; }, onFinish: fn => { on.finish = fn; }, onSignOut: fn => { on.signOut = fn; }, onUpload: fn => { on.upload = fn; }};
 })();

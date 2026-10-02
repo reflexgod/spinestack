@@ -7,12 +7,12 @@ Type a film or a book, get its real spine, put it on your shelf (one each), save
 ```
 index.html            the home page (GitHub Pages serves this). Signed out: the spine wall (one strip of the newest spines from different public shelves, a few from each person, up to 24, standing on a thin shelf line, each shelf's spines a link to it; 280px tall at most, 200px on a phone, where the rest scroll sideways; the sample shelf while there are none), then one line about the site and Make a shelf (the black button on that screen), How it works in three steps, and the newest shelves; signed in: a welcome, New from people you follow (⚡ All activity: a row of cards, one for each person you follow with the newest thing they shelved or logged, a log's worn cover or a shelf's spines on the grey panel, their photo and @username in a thin bar under it, and under the card watched, read or shelved and the date; six across, three on a phone and the rest sideways), then Just shelved. Links to the old builder here (/?open=, /#shelf) go on to build/
 build/index.html      the shelf builder (its Add box is the + ADD dialog's search: typing in it opens the dialog and suggests as you type) (Your shelf: there's one shelf each, and signed in it opens yours; signed out it's New shelf and says "the shelf", not "your shelf"): Add, the spines as a list (drag one there or on the preview to move it), Style, the preview; at the bottom its name (one name: it's the caption on the story too), who can view it, Cancel · Save. Clear asks first
-add.js                + ADD on every page: the Add dialog (signed out its titles are Add to the shelf and Watchlist, not "your"). Titles are suggested 250 ms after the last key, a newer search cancelling the one before. Picking one shows the spine made from the poster or cover and the Cover at once (Add to shelf works then), each real spine as soon as it's cut; rounds the Worker already keeps come at once, and a round that has to search is still asked only when the ones before weren't enough (LIVE in add.js lets more search at once). Three choices at the top: Put on shelf (suggestions as you type, then the spine choices and Add to shelf; the spine finder lives here), Log it (the cover as the feed will show it, a caption if you want one, Post) and Watchlist (Add to watchlist)
+add.js                + ADD on every page: the Add dialog (for someone signed in: signed out, + ADD is the sign-in sheet). Titles are suggested 250 ms after the last key, a newer search cancelling the one before. Picking one shows the spine made from the poster or cover and the Cover at once (Add to shelf works then), each real spine as soon as it's cut; rounds the Worker already keeps come at once, and a round that has to search is still asked only when the ones before weren't enough (LIVE in add.js lets more search at once). Three choices at the top: Put on shelf (suggestions as you type, then the spine choices and Add to shelf; the spine finder lives here), Log it (the cover as the feed will show it, a caption if you want one, Post) and Watchlist (Add to watchlist)
 bare.js               saved shelves drawn small from their rows in shelf_items: each row back into a book (its pictures through the Worker), then the shelf cut out of a bare story, as the profile's hero draws it (home's cards), or its spines one by one, all at one scale (home's spine wall). The same as u/'s own: keep them in step
 wear.js               a log's cover, worn: one corner dog-eared (a hairline round the fold and a soft shadow under it, so it reads on a white poster), fine scratches, rubbed edges and a little fade, drawn on a canvas from how long ago it was logged (lightly worn that day, with two or three scratches to see; faded after a week, worn after a month). No stamp and nothing written on it
 shelf.js              draws the spines and the story (and says where it drew each book); build/ and u/ both use it, so a shelf looks the same everywhere
 u/index.html          profiles: /u/?username with its tabs Profile (their shelf, big, then Watchlist and, on your own, From friends) · Activity · Network (Following, Followers), and the shelf's own page: /u/?username&shelf (or &shelf=<id>, the older links): its name with Share beside it (Share to story, Download image, Copy link), who made it, the shelf itself (its books on the grey panel, as the profile has them; the 9:16 story is only made for Share), and On this shelf with + Add to my shelf (to the right of the shelf on a wide window; a title that's already on your own shelf says "On your shelf" instead, and on your own shelf nothing is offered; signed out none is, and Make a shelf in black is under the list); for its owner Edit, Make private or public, Delete
-shelves/index.html    every public shelf as a card, newest first, 24 at a time (Load more); Your shelf, or signed out Make a shelf in black (the bar's + outlined, as on home)
+shelves/index.html    every public shelf as a card, newest first, 24 at a time (Load more); Your shelf, or signed out Make a shelf in black (the bar's + outlined, as on home), which asks to sign in
 members/index.html    Find @username (people by the start of a username or name, each with FOLLOW), and Recently active: the people behind the newest shelves
 settings/index.html   your settings (signed in only): PROFILE (display name, bio), PHOTO (cut square, made small, sent to the Worker), ACCOUNT (private profile). A profile's Edit profile comes here
 feed/index.html       the feed: /feed/, FOLLOWING · YOU · EVERYONE, a line for each shelf saved ("@abc shelved my films · 2h") with its card, and for each film or book logged ("@abc watched Gummo · today") with its worn cover, small (72 x 108px), and the caption beside it, newest first
@@ -197,14 +197,21 @@ the people you follow logged lately and you haven't, up to 6); the bio beside th
 shelf's own page, and `/u/?username&shelf=<id>` still opens a shelf by its id. The owner gets Edit profile (photo,
 name, bio, Private profile). The header's @username and the Profile link lead there.
 
+**Signed out, the site is read only** (as on Letterboxd). A visitor can look: home (the spine wall, Just shelved),
+`/shelves/`, `/members/`, public profiles and shelf pages, the feed's Everyone, privacy. Nothing can be made or added:
++ ADD, Make a shelf (home, `/shelves/`) and + Add to my shelf open the page's sign-in sheet ("Sign in to start your
+shelf." and Continue with Google), and `/build/` is only "Sign in to make your shelf." with the Google button. The pages
+never ask `/identify` or `/scans` signed out. After signing in, `nav.js` (`Nav.needAccount`) takes them where they were
+going: the builder (with the spine, from + Add to my shelf), or the Add dialog. No shelf is kept in the browser before
+signing in.
+
 **One shelf each.** A person's shelf is the main one (`pinned_shelf_id`) if one was picked before, otherwise the one
 saved last; the builder opens and saves that same one (`yourShelf()` in `build/`, `theShelf()` in `u/`). There's no
 Shelves tab, no "+ new shelf", no Make main and no main shelf in Settings any more. Accounts that made more than one
 before keep the others in the database: nothing lists them, and their old links still open them (`?open=<id>` in the
 builder too). The database doesn't enforce one shelf; `supabase/migrations/0007_logs_watchlist.sql` ends with the query and
 the index that would, for the owner to decide. On your own profile, Edit under your shelf goes to the builder; with no
-shelf yet it says "Your shelf is empty." with Make your shelf. Spines put on a shelf before signing in (or before
-your shelf had loaded) go on yours, after what's there, once you're signed in. (The builder used to open in a frame
+shelf yet it says "Your shelf is empty." with Make your shelf. (The builder used to open in a frame
 over the profile, `?embed`; old links of that kind are sent on to the builder itself.)
 
 **Watchlist and From friends.** On your own profile each watchlist title has Remove and Watched (Read for a book),
@@ -328,17 +335,17 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **The builder and + ADD** (`specs/build.spec.js`): + ADD opens the dialog on every page and Esc closes it;
   search, pick, Add to shelf on the builder (no reload) and from another page (which goes to the builder, where your
   shelf opens with the spine after what was there, or starts it); the builder's fields, Style shut with its one line,
-  a row's controls opening one at a time, ↑ ↓ and dragging; Save signed out, signed in before you have a shelf, and
-  signed in with one (saved over, never a second shelf); spines put on before signing in going on your shelf after,
+  a row's controls opening one at a time, ↑ ↓ and dragging; signed out, the builder closed ("Sign in to make your
+  shelf." and Continue with Google, nothing searched); Save signed in before you have a shelf, and signed in with one
+  (saved over, never a second shelf);
   `?open=<id>`, `?new`, old `?embed` links, Edit under your shelf and Make your shelf on your profile, your shelf being
   changed surviving a trip to another page (and giving way to an older shelf that's opened by its link), Cancel; the order of the
   page, dragging a spine on the preview (mouse, and hold-then-drag with a finger), and the caption: it follows the
   Name, and with no name the preview's faint "your shelf" is not in the picture saved with the shelf. A shelf has one
   name: Style has no Caption, and a shelf that had a caption of its own is saved with its name as both. The bar has
-  only Cancel and Save, side by side at 360 to 430px. Signed out the page is New shelf and nothing on it says "your
-  shelf". Clear asks first (Cancel and Esc leave the spines); the sample
+  only Cancel and Save, side by side at 360 to 430px.  Clear asks first (Cancel and Esc leave the spines); the sample
   shelf just goes.
-- **The dialog's search** (`specs/add.spec.js`; signed out, its titles without "your" in `specs/log.spec.js`): suggestions while typing with one search for a word typed quickly, a
+- **The dialog's search** (`specs/add.spec.js`; signed out, + ADD is the sign-in sheet on every page, in `specs/log.spec.js`): suggestions while typing with one search for a word typed quickly, a
   slower earlier answer dropped, six results in order of closeness, ↑ ↓ Enter Esc, Enter searching at once, the
   loading and nothing-found lines, at the right of the All · Films · Books row (nothing held open, nothing moving);
   the capped answer from `/scans` and its message; "Search by Brave", small and grey, under the spines a search found
@@ -358,8 +365,8 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   and its Shelf going to your shelf's page. Your watchlist (Remove, Watched or Read) and From friends (Keep, Remove,
   Watched or Read), what each sends, and Watched opening Log it on that title; and both left out, with Activity
   shelves only, before the database has them.
-- **A shelf's page** (`specs/shelf.spec.js`): signed out, no + Add to my shelf, no "On your shelf", and Make a shelf
-  under the list as the black button; its heading, Share (the story to a share sheet or saved, the picture,
+- **A shelf's page** (`specs/shelf.spec.js`): signed out, + Add to my shelf opens the sign-in sheet, and once signed
+  in the builder opens with that spine on your shelf; its heading, Share (the story to a share sheet or saved, the picture,
   the link), the "Saved." line once after Save, the shelf itself on the grey panel (not the story: nothing drawn behind
   the books, and on the first screen on a phone), and the list of what's on it, to its right on a wide window and
   under it on a phone; the way back as plain grey text, a small action dashed, Delete dashed in grey; + Add to my shelf putting that same spine on your shelf with nothing searched for, and not offered for a title your shelf
