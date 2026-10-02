@@ -1,6 +1,6 @@
--- shelfstackd, proposed phase 4: checks logs, the watchlist, From friends and activity() after the proposed 0007.
--- NOT RUN ON THE LIVE DATABASE. It goes with docs/proposed-0007-logs-watchlist.sql: once that is agreed and run, this
--- moves to supabase/tests/rls_phase4.sql and is run in the Supabase dashboard (SQL Editor -> New query -> paste -> Run).
+-- shelfstackd, phase 4: checks logs, the watchlist, From friends and activity() after migration 0007
+-- (supabase/migrations/0007_logs_watchlist.sql). Run it in the Supabase dashboard (SQL Editor -> New query -> paste ->
+-- Run). It passed on the live database on 2 October 2026.
 -- It makes throwaway users inside a transaction and rolls everything back at the end: nothing is kept.
 -- The last result says "ALL PHASE 4 CHECKS PASSED". Any failed check stops with an error that starts "FAIL:".
 -- Real accounts can be in the database, so every check looks only at the test's own rows.

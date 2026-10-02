@@ -213,7 +213,7 @@ test('your watchlist: up to 6, each with Remove and Watched (or Read); From frie
   expect(errors).toEqual([]);
 });
 
-test('before the database has logs (the proposed 0007 not run yet): no watchlist, no From friends, and Activity is shelves', async ({ page }) => {
+test('a database without logs (0007 not run on it): no watchlist, no From friends, and Activity is shelves', async ({ page }) => {
   await mockNetwork(page, { signedIn: true, logs: false });
   await open(page, '/u/?tester');
   await expect(page.locator('#hero canvas')).toHaveCount(1);

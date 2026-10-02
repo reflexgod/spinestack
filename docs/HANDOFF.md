@@ -8,7 +8,7 @@ every file is and how the Worker, the accounts and the tests are set up.
 
 ## Where things stand
 
-- **Branch:** `letterboxd-flow`, pushed to `origin` (github.com/reflexgod/spinestack). It is 84 commits ahead of
+- **Branch:** `letterboxd-flow`, pushed to `origin` (github.com/reflexgod/spinestack). It is 85 commits ahead of
   `main` and has everything from the older local branches in it (`phase2-profiles`, `phase3-feed`, `profile-polish`,
   `domain-move`, `drop-fallback`), so no other branch needs pushing.
 - **`main` is the live site.** GitHub Pages serves shelfstackd.com from `main`, which is still at `064ac13`. Nothing on
@@ -18,9 +18,14 @@ every file is and how the Worker, the accounts and the tests are set up.
   deployed and checked live the same day, and nothing in `worker/` has changed since: **nothing is waiting to be
   deployed.**
 - **The working tree was clean** when this was written.
-- **Logs, the watchlist and From friends need SQL that hasn't been run.** It's in `docs/proposed-0007-logs-watchlist.sql`
-  for the owner to review, not in `supabase/migrations/`. The pages work without it (shelves only, as before) and use
-  it once it's there. See `docs/proposed-0007.md`.
+- **Migration `0007` is in the live database.** The owner ran it on 2 October 2026 (`docs/RUN-0007.md`, steps 1 to 5:
+  the checks all `true`, then `ALL PHASE 4 CHECKS PASSED` and `ALL PHASE 3 CHECKS PASSED`), and a session did step 6
+  from outside with the publishable key: `activity()` answers a visitor with the feed, and `from_friends()` and
+  `log_counts` answer "permission denied". The SQL is `supabase/migrations/0007_logs_watchlist.sql` and its test
+  `supabase/tests/rls_phase4.sql`. This branch's pages use logs, the watchlist and From friends as soon as the
+  database has them, so they do now; the live pages are `main`, which doesn't ask for them, until the merge. Not tried
+  yet: a signed-in page of this branch against the live database (nobody has logged anything; `docs/LAUNCH.md` step 7
+  does it on a phone after the merge). `docs/proposed-0007.md` says what each page asks.
 
 ## Rules
 
@@ -33,7 +38,7 @@ These are the owner's standing rules. They apply to every change, in any session
    from `cdn.jsdelivr.net` at an exact version with an `integrity` hash. Copy is plain English: no em dashes, no
    rule-of-three lines, no "lets you" tiles. `tests/specs/look.spec.js`, `libraries.spec.js` and the copy checks in
    `site.spec.js` hold most of this in place; keep them passing rather than changing them to fit.
-2. **No new migrations without asking.** `supabase/migrations/` stops at `0006` (there is no `0003`). If a feature
+2. **No new migrations without asking.** `supabase/migrations/` stops at `0007` (there is no `0003`). If a feature
    seems to need a new table, column, policy or function, stop and ask first. Several features on this branch were
    built to read what is already there for that reason (the feed's You tab, "Follows you", "Followed by").
 3. **Don't touch the drawing in `shelf.js`.** It draws the spines and the story, and the builder and the profiles both
@@ -93,7 +98,7 @@ What the owner asked for, and where it is:
    shelf adds after what's there; spines put on before signing in go on your shelf once you are. The account menu's
    Shelves is Shelf (`/u/?you&shelf`). Your shelf is the main one if one was picked before, otherwise the one saved last
    (the same rule in `build/` and `u/`). No migration: accounts with more than one shelf keep them in the database, and
-   the end of the proposed SQL has the (commented out) index that would make one a rule.
+   the end of `0007`'s SQL has the (commented out) index that would make one a rule.
 2. **Logs on the feed.** `+ ADD → Log it`: the cover, a caption if you want one, Post. The feed says "@user watched
    Gummo · today" (or "read"), with the cover drawn by `wear.js`: a dog-eared corner, fine scratches, rubbed edges and a
    little fade, nearly new that day, more faded after a week, more worn after a month, worked out from the log's date on
@@ -114,10 +119,10 @@ overflow on your own profile at 390px).
 
 Each item is its own commit, so any one can be reverted.
 
-- **A. The proposed 0007, hardened** (still not run): the logs and watchlist triggers take a per-person advisory lock
+- **A. The proposed 0007, hardened** (run since, on 2 October): the logs and watchlist triggers take a per-person advisory lock
   before counting (two tabs at once can't beat a limit); 50 logs a day counts what was posted (`log_counts`, an upsert
   under the lock), not what's left; From friends keeps 500 removals a person; unfollowing clears `watchlist.from_user`;
-  a hidden log can't be deleted by its owner. Each has a check in `docs/proposed-rls_phase4.sql` that fails against
+  a hidden log can't be deleted by its owner. Each has a check in `supabase/tests/rls_phase4.sql` that fails against
   the SQL without it, all run on a local Postgres. `docs/RUN-0007.md`: the exact SQL Editor steps and checks, and an
   undo.
 - **B. The launch pass** as a new account on a 390px phone and at 1280px, fixes only:
@@ -167,6 +172,8 @@ Also in this session:
   one commit at the end, not item by item, so that the item commits revert cleanly. After reverting an item, its lines
   in the README need putting back by hand.
 - `docs/review/after/` has pictures of 1, 2, 3, 6, 7 and 8 as they are now.
+- After the owner ran `0007` the same day: `docs/RUN-0007.md` steps 6 and 7 (the three checks from outside as a
+  visitor, then the SQL and its test moved into `supabase/`, with only their headers changed).
 
 Left as it was, for the owner to decide: renaming a shelf on its own page or on the profile still changes only its
 name, so its story keeps the old caption until the shelf is next saved in the builder (12 made the two one there).
@@ -196,8 +203,10 @@ Both suites were run on 2 October 2026 on the laptop (Windows 11, Node 26).
 - **After the third session** (the laptop: Windows 11, Node 26, the Chromium that Playwright 1.63 asks for):
   html-validate clean, then Playwright 484 passed, 20 skipped, none failed, `requests.spec.js` included, and
   `npm run shots` made all 50. The Worker's suite wasn't run: nothing in `worker/` changed.
-- **The proposed SQL** was run on a local Postgres 16 (a stand-in for Supabase's `auth` schema, then `0001` to `0006`,
-  then the proposal): no errors; `rls_phase3.sql` and `docs/proposed-rls_phase4.sql` both passed. Not on Supabase.
+- **`0007`'s SQL** was run on a local Postgres 16 first (a stand-in for Supabase's `auth` schema, then `0001` to
+  `0006`, then `0007`): no errors; `rls_phase3.sql` and `rls_phase4.sql` both passed. Then on Supabase, by the owner, on
+  2 October: the same two tests passed in the SQL Editor, and the three visitor checks of `docs/RUN-0007.md` step 6
+  answered as they should (the feed as a list; "permission denied", code 42501, for `from_friends` and `log_counts`).
 - **Not tested by anything here:**
   - The real providers. That Serper answers 400 to quotes and 200 without them is what the owner saw calling it with
     their own key. The fix is deployed, and the owner checked it against the real Serper on 2 October; no session has.
@@ -212,15 +221,14 @@ Both suites were run on 2 October 2026 on the laptop (Windows 11, Node 26).
 This list is what the repo and the last session show. Anything the owner asked for in an earlier conversation that
 never reached a commit isn't here, so ask before assuming the list is complete.
 
-0. **Launch: `docs/LAUNCH.md`** (the owner) has the order: run 0007, publish the Google sign-in, hello@ with
+0. **Launch: `docs/LAUNCH.md`** (the owner) has the order: run 0007 (done), publish the Google sign-in, hello@ with
    Cloudflare Email Routing, a Brave spending limit, merge into `main`, test on a phone (the Worker needs no deploy:
    step 5 there only checks that). Tasks 6
    and 7 below are steps in it. **The design review** (`docs/DESIGN-REVIEW.md`) is applied, all but 4 (see "Done in
    the third session").
-   Before then, review `docs/proposed-0007-logs-watchlist.sql` (the owner). `docs/proposed-0007.md` lists what to decide: the
-   watchlist's 6, whether visitors see a watchlist, 50 logs a day, From friends' 180 days, and whether to make one shelf
-   each a rule in the database. Once agreed, `docs/RUN-0007.md` has the exact steps in the SQL Editor and the checks.
-   Until then Log it and Watchlist say they aren't open yet, and the feed and profiles show shelves only.
+   `0007` was run as it was written: a watchlist of 6 that visitors can see, 50 logs a day, 180 days of From friends.
+   Still open in `docs/proposed-0007.md`: whether to make one shelf each a rule in the database (the index at the end
+   of the SQL is commented out, and wasn't run).
 
 1. **Done: the Worker with the Serper fix is deployed** (the owner, 2 October 2026) and checked live. Nothing in
    `worker/` has changed since, so there is nothing to deploy. After any later change to `worker/`, the owner runs
@@ -242,8 +250,8 @@ never reached a commit isn't here, so ask before assuming the list is complete.
    Whether the credit line should change is the owner's call. `tests/specs/add.spec.js` checks the line, so the test
    changes with it.
 6. **Merging into `main`** makes all of the above the live site. Not until the owner says so. Before it: the owner
-   confirms the live database has `0004`, `0005` and `0006` (the pages on this branch need them), and `0007` once it's
-   agreed, and both test suites pass.
+   confirms both test suites pass. (The live database has `0004` to `0007`: `docs/RUN-0007.md`'s first check found
+   `0004`, `0005` and `0006`, and `0007` was run after it, on 2 October.)
 7. **Done: the page tests were run on the laptop** on 2 October, and `requests.spec.js` passes with the Chromium
    Playwright 1.63 asks for (it failed in the cloud container only because of an older Chromium). Run them again
    before the merge, as `docs/LAUNCH.md` step 6 says.
@@ -286,6 +294,6 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   `chromium-1243/chrome-linux64` and `chromium_headless_shell-1243/chrome-headless-shell-linux64` linked to the 1194
   folders (and a `chrome-headless-shell` link beside `headless_shell`). With it, everything runs except the 4
   `requests.spec.js` checks above.
-- Postgres 16 is installed (`/usr/lib/postgresql/16/bin`), which is how the proposed SQL was checked: a throwaway
+- Postgres 16 is installed (`/usr/lib/postgresql/16/bin`), which is how `0007`'s SQL was checked before it was run: a throwaway
   cluster run as the `postgres` user, outside the repo.
 - The folders `design/`, `textures/raw/`, `worker/debug/` and `tests/shots/` are not in the repo (`.gitignore`).

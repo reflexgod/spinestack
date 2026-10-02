@@ -97,9 +97,9 @@
 <script>
 (() => {
 /* The feed: /feed/ (?following, ?you or ?everyone picks the tab). A line for each shelf saved and each film or book
-   logged, newest first, 20 at a time. The database decides what shows (activity(), docs/proposed-0007-logs-watchlist.sql):
-   EVERYONE is public profiles, FOLLOWING the people you follow, YOU your own (a private shelf too). Until that's in the
-   database the feed is shelves only, as feed() in 0006 has them (YOU read from the shelves table), and asks no more.
+   logged, newest first, 20 at a time. The database decides what shows (activity(), supabase/migrations/0007_logs_watchlist.sql):
+   EVERYONE is public profiles, FOLLOWING the people you follow, YOU your own (a private shelf too). On a database
+   without 0007 the feed is shelves only, as feed() in 0006 has them (YOU read from the shelves table), and asks no more.
    Only saving a shelf in the builder moves it up; renaming it doesn't. */
 const $ = s => document.querySelector(s);
 const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');

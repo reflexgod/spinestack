@@ -725,8 +725,8 @@ async function paintHero(){
 }
 
 /* ---------- the watchlist (up to 6, anyone who can see the profile) and From friends (yours only): what the people
-   you follow logged lately, that you haven't. Both read the tables docs/proposed-0007-logs-watchlist.sql makes; until
-   they're in the database, neither shows. ---------- */
+   you follow logged lately, that you haven't. Both read the tables supabase/migrations/0007_logs_watchlist.sql makes;
+   on a database without them, neither shows. ---------- */
 const lists = {watch: [], friends: []};
 const coverOf = ref => ref ? `${WORKER}/img?url=${encodeURIComponent(String(ref).replace(/^url:/, ''))}` : '';
 const asItem = r => ({kind: r.kind, title: r.title, year: r.year ? String(r.year) : '', creator: r.author || '', cover: r.cover_src ? String(r.cover_src).replace(/^url:/, '') : ''});
@@ -1173,8 +1173,8 @@ for (const a of document.querySelectorAll('#cFollowing, #cFollowers')) a.addEven
 
 /* ---------- the Activity tab: a line for each shelf saved and each film or book logged, newest first (the feed's
    lines, without the photo: they're all this person's). On your own profile a private shelf is there too, marked, and
-   each log has Delete. Logs come 20 at a time from the logs table (docs/proposed-0007-logs-watchlist.sql); until it's
-   there, the shelves alone. ---------- */
+   each log has Delete. Logs come 20 at a time from the logs table (supabase/migrations/0007_logs_watchlist.sql); where
+   it isn't there, the shelves alone. ---------- */
 const ACTS = 20;
 const COVER = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cover')) || 72;   // how wide a log's cover is (site.css)
 const acts = {logs: [], done: false, shown: 0, run: 0};

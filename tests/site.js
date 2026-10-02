@@ -52,7 +52,7 @@ const feedRow = s => { const p = PEOPLE.find(x => x.id === s.owner);
     owner: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key, updated: new Date(s.saved_at) - new Date(s.created_at) > 60000 }; };
 const card = (p, me) => ({ id: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key, is_private: p.is_private, i_follow: !!me && p.username === 'mira', i_requested: false });
 
-/* logs, the watchlist and From friends: the tables docs/proposed-0007-logs-watchlist.sql makes. Mira's logs are what
+/* logs, the watchlist and From friends: the tables supabase/migrations/0007_logs_watchlist.sql makes. Mira's logs are what
    the people the made-up account follows logged lately; the made-up account has one of its own. Times are from the
    newest shelf's (day(0), 30 September at noon UTC). */
 const at = (days, hours = 0) => new Date(Date.UTC(2026, 8, 30, 12) - days * 864e5 + hours * 36e5).toISOString();
@@ -77,7 +77,7 @@ const shelfRow = s => { const f = feedRow(s); return { what: 'shelf', id: s.id, 
 const logRow = l => { const p = PEOPLE.find(x => x.id === l.owner);
   return { what: 'log', id: l.id, at: l.created_at, owner: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key, caption: l.caption,
     name: null, preview_key: null, created_at: l.created_at, updated_at: l.created_at, updated: false, is_public: true, kind: l.kind, title: l.title, author: l.author, year: l.year, cover_src: l.cover_src }; };
-// what PostgREST says for a table or a function that isn't in the database (before the proposed 0007 is run)
+// what PostgREST says for a table or a function that isn't in the database (one without 0007)
 const NOT_THERE = { __status: 404, body: { code: 'PGRST202', message: 'Could not find the function in the schema cache', details: null, hint: null } };
 
 /* ---------- Supabase's REST API, answered from the data above ---------- */
@@ -181,8 +181,8 @@ const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers
 /* signedIn: a session for the made-up account; named: false leaves that account without a username yet;
    slow: how long /identify takes to answer, in ms; capped: the Worker's Brave searches for today are used up;
    realFonts: the fonts come from Google Fonts as they do on the site (for screenshots; the tests go without);
-   empty: no one has shelved anything yet, so the feed has nothing in it; logs: false answers as the database does
-   before the proposed 0007 is run (no logs, watchlist or From friends, and no activity()); ownShelf: false is the
+   empty: no one has shelved anything yet, so the feed has nothing in it; logs: false answers as a database does
+   without migration 0007 (no logs, watchlist or From friends, and no activity()); ownShelf: false is the
    made-up account before it has saved its shelf; fresh: it has just picked its username, with nothing yet (no name,
    bio, shelf, log, watchlist or follow).
    Returns {unknown, asked}: requests nothing here could answer, and every search /identify was asked for. */

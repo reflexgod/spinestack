@@ -6,29 +6,22 @@ Nothing below prints a key.
 
 Before starting, read `docs/FOUND-NOT-FIXED.md` (what's known and left) and, if it's agreed, `docs/DESIGN-REVIEW.md`.
 
-## 1. Run 0007 on the live database
+## 1. Run 0007 on the live database (done on 2 October 2026)
 
-`docs/RUN-0007.md` has every step, with the queries to paste and what they should answer. In short:
+Nothing to do here. All seven steps of `docs/RUN-0007.md` are done:
 
-1. SQL Editor: the readiness query, all four `true` (0004, 0005 and 0006 are in; 0007 isn't).
-2. Paste all of `docs/proposed-0007-logs-watchlist.sql`, **Run**: "Success. No rows returned".
+1. The readiness query: all four `true`.
+2. `0007` run in the SQL Editor.
 3. `notify pgrst, 'reload schema';`
 4. The check query: all six `true`.
-5. `docs/proposed-rls_phase4.sql`, then `supabase/tests/rls_phase3.sql`: each ends `ALL ... CHECKS PASSED`.
-6. The three `curl` checks as a visitor.
-7. Move the files where migrations live, and push:
+5. `rls_phase4.sql`, then `rls_phase3.sql`: `ALL PHASE 4 CHECKS PASSED`, `ALL PHASE 3 CHECKS PASSED`.
+6. The three `curl` checks as a visitor: the feed came back as a list, and `from_friends` and `log_counts` answered
+   "permission denied".
+7. The files are where migrations live: `supabase/migrations/0007_logs_watchlist.sql` and
+   `supabase/tests/rls_phase4.sql`.
 
-```bash
-git checkout letterboxd-flow && git pull
-git mv docs/proposed-0007-logs-watchlist.sql supabase/migrations/0007_logs_watchlist.sql
-git mv docs/proposed-rls_phase4.sql supabase/tests/rls_phase4.sql
-git commit -m "0007 is run on the live database: its SQL and test move into supabase/"
-git push origin letterboxd-flow
-```
-
-(Or tell a session "0007 is run": it makes that commit with the README and `docs/HANDOFF.md` brought up to date.)
-
-The live pages don't change yet: they're still `main`, which doesn't ask for logs.
+The live pages haven't changed: they're still `main`, which doesn't ask for logs. If 0007 ever has to come out again,
+`docs/RUN-0007.md` step 8 has the SQL.
 
 ## 2. Publish the Google sign-in
 

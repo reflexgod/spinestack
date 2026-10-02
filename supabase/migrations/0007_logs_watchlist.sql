@@ -1,13 +1,13 @@
--- shelfstackd, proposed 0007: logs on the feed, the watchlist, and From friends.
+-- shelfstackd, 0007: logs on the feed, the watchlist, and From friends.
 --
--- NOT RUN, AND NOT A MIGRATION YET. This file is in docs/ for the owner to read first. Once it's agreed: move it to
--- supabase/migrations/0007_logs_watchlist.sql, run it once, after 0006, in the Supabase dashboard (SQL Editor -> New
--- query -> paste all of this -> Run), and write its test (supabase/tests/rls_phase4.sql, like rls_phase3.sql).
--- It all runs in one transaction: if anything fails, nothing is changed.
+-- Run once, after 0006, in the Supabase dashboard (SQL Editor -> New query -> paste all of this -> Run), then run its
+-- test, supabase/tests/rls_phase4.sql. It all runs in one transaction: if anything fails, nothing is changed.
+-- It was run on the live database on 2 October 2026; docs/RUN-0007.md has the steps, the checks and a way to take it
+-- out again.
 --
--- The pages on letterboxd-flow already use what this adds, and do without it until it's there: + ADD's Log it and
--- Watchlist say they aren't open yet, the feed shows shelves only (feed() from 0006), and a profile has no Watchlist
--- and no From friends. Nothing in the pages changes when this is run. docs/proposed-0007.md says what each page asks.
+-- The pages use what this adds, and do without it on a database that hasn't got it: + ADD's Log it and Watchlist say
+-- they aren't open yet, the feed shows shelves only (feed() from 0006), and a profile has no Watchlist and no From
+-- friends. Nothing in the pages changes when this is run. docs/proposed-0007.md says what each page asks.
 --
 -- Who sees what (the same rules as a shelf, from 0002 and 0006):
 --   * a log, and a watchlist: everyone when the profile is public; its followers when it's private; always its owner.

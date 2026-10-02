@@ -109,7 +109,7 @@ test('signed out: Everyone shows; Following and You ask you to sign in', async (
   await expect(page.locator('#signSheet')).toBeVisible();
 });
 
-test('before the database has logs (the proposed 0007 not run yet): shelves only, as before', async ({ page }) => {
+test('a database without logs (0007 not run on it): shelves only, as before', async ({ page }) => {
   await mockNetwork(page, { signedIn: true, logs: false });
   const asked = [];
   page.on('request', r => { if (r.url().includes('/rest/v1/rpc/')) asked.push(new URL(r.url()).pathname.split('/').pop()); });

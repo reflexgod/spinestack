@@ -6,7 +6,7 @@
    the spine on your shelf there. Anywhere else the choice is handed to the builder (sessionStorage), which opens your
    shelf with it on.
    Log it: the cover as the feed will show it (worn, wear.js), a caption if you want one, and Post, which saves a log
-   (the logs table, docs/proposed-0007-logs-watchlist.sql). Watchlist: the cover and Add to watchlist. Both need you
+   (the logs table, supabase/migrations/0007_logs_watchlist.sql). Watchlist: the cover and Add to watchlist. Both need you
    signed in, with a username; Nav.account() says who that is. Nothing is searched for spines in either.
    After a log or a watchlist add, the dialog shuts and says so on document as "shelfstackd:added" ({what: 'log' or
    'watch', item}), so a page can show it. Add.open({mode, item}) opens on a mode, and with an item ({kind, title,

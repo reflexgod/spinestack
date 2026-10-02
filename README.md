@@ -198,7 +198,7 @@ name, bio, Private profile). The header's @username and the Profile link lead th
 saved last; the builder opens and saves that same one (`yourShelf()` in `build/`, `theShelf()` in `u/`). There's no
 Shelves tab, no "+ new shelf", no Make main and no main shelf in Settings any more. Accounts that made more than one
 before keep the others in the database: nothing lists them, and their old links still open them (`?open=<id>` in the
-builder too). The database doesn't enforce one shelf; `docs/proposed-0007-logs-watchlist.sql` ends with the query and
+builder too). The database doesn't enforce one shelf; `supabase/migrations/0007_logs_watchlist.sql` ends with the query and
 the index that would, for the owner to decide. On your own profile, Edit under your shelf goes to the builder; with no
 shelf yet it says "Your shelf is empty." with Make your shelf. Spines put on a shelf before signing in (or before
 your shelf had loaded) go on yours, after what's there, once you're signed in. (The builder used to open in a frame
@@ -221,17 +221,20 @@ nothing written on it. The time on a log's line is by the day: today, yesterday,
 on your profile's Activity. Log it and Watchlist never search for spines, and need an account with a username (signed
 out, the dialog says so with Sign in).
 
-These need new tables, which aren't in the database yet. **`docs/proposed-0007-logs-watchlist.sql` is the SQL, for the
-owner to review; it is not in `supabase/migrations/` and hasn't been run on the live database.** It adds `logs`,
-`watchlist` (6 at most, each title once), `friend_hides` (what you removed from From friends), `title_key()`, and two
-functions: `activity()` (the feed: shelves and logs together) and `from_friends()`. `docs/proposed-rls_phase4.sql` is
-its test, written like `rls_phase3.sql`. Both were run on a local Postgres 16 with migrations `0001` to `0006` and a
-stand-in for Supabase's `auth` schema: all phase 3 and phase 4 checks passed. `docs/proposed-0007.md` says what each page
-asks the database for.
+These use tables that migration `0007` adds. **`supabase/migrations/0007_logs_watchlist.sql` was run on the live
+database on 2 October 2026**, by the owner, in the SQL Editor. It adds `logs`, `watchlist` (6 at most, each title
+once), `friend_hides` (what you removed from From friends), `log_counts` (the day's count of logs, the database's
+own), `title_key()`, and two functions: `activity()` (the feed: shelves and logs together) and `from_friends()`.
+`supabase/tests/rls_phase4.sql` is its test, written like `rls_phase3.sql`. Both tests passed on the live database
+after the run (`ALL PHASE 4 CHECKS PASSED`, `ALL PHASE 3 CHECKS PASSED`), as they had on a local Postgres 16 before
+it. From outside, a visitor gets the feed from `activity()`, and "permission denied" for `from_friends()` and for
+`log_counts`. `docs/RUN-0007.md` has the steps that were followed and a way to take it out again;
+`docs/proposed-0007.md` says what each page asks the database for.
 
-Until it's run, the pages do without: the feed asks for `activity()` once, and on "not found" uses `feed()` from `0006`
-(shelves only, as before); a profile shows no Watchlist and no From friends, and Activity is shelves only; Log it and
-Watchlist say "Logging isn’t open yet" and "The watchlist isn’t open yet". Nothing in the pages changes when it's run.
+The live pages are still `main`, which doesn't ask for any of this: logs and the watchlist reach the site when
+`letterboxd-flow` is merged. On a database without `0007` the pages do without: the feed asks for `activity()` once,
+and on "not found" uses `feed()` from `0006` (shelves only); a profile shows no Watchlist and no From friends, and
+Activity is shelves only; Log it and Watchlist say "Logging isn’t open yet" and "The watchlist isn’t open yet".
 
 ## Follows and the feed
 
@@ -239,8 +242,8 @@ FOLLOW on a profile follows a public profile at once and sends a request to a pr
 REQUESTS on their profile). FOLLOWING and FOLLOWERS open the lists, 30 at a time. 100 follows and unfollows an hour
 per account, counted in the database. `/feed/` shows public shelves and logs, 20 at a time: EVERYONE from public
 profiles, FOLLOWING from the people you follow, YOU your own. A shelf moves up only when it's saved in the builder
-(`shelves.saved_at`); renaming it doesn't. All of it is decided in the database (`0006`, and `activity()` once the
-proposed `0007` is in), not in the page. A log posted with + ADD on the feed puts the tab back at the top, with it there.
+(`shelves.saved_at`); renaming it doesn't. All of it is decided in the database (`0006`, and `activity()` from
+`0007`), not in the page. A log posted with + ADD on the feed puts the tab back at the top, with it there.
 
 Photos, walls and PNGs live in the R2 bucket `shelfstackd-media` (binding `MEDIA`). Create it once, in `worker/`:
 `npx wrangler r2 bucket create shelfstackd-media`, then `npx wrangler deploy`. Keep `USER_R2` commented out: binding it
@@ -257,8 +260,9 @@ signed-out visitors never load the Supabase library.
 - **Keys:** only the Project URL and the *publishable* key are used, in `index.html`, `build/index.html`, `u/index.html`, `feed/index.html`, `shelves/index.html`, `members/index.html`, `settings/index.html` and in `worker/wrangler.toml`
   `[vars]`. Both are public; Row Level Security protects every table. The secret / service_role key isn't used
   anywhere and must never be added to the page, the repo or the Worker.
-- **Database:** run each file in `supabase/migrations/` once, in order, in the dashboard's SQL Editor. Then run the
-  test for the newest one (`supabase/tests/rls_phase3.sql` after `0006`): it plays two users and a signed-out visitor,
+- **Database:** run each file in `supabase/migrations/` once, in order, in the dashboard's SQL Editor (the live
+  database has them all, `0001` to `0007`; there is no `0003`). Then run the test for the newest one
+  (`supabase/tests/rls_phase4.sql` after `0007`, `rls_phase3.sql` after `0006`): it plays a few users and a signed-out visitor,
   undoes everything, and ends with `ALL ... CHECKS PASSED` (or stops at the first `FAIL:`). `rls_phase1.sql` is for a
   database with `0001` only.
 - **Pro:** two switches that must agree: `SHELFSTACKD_PRO_REQUIRED` in `build/index.html` (what the page offers) and
@@ -271,7 +275,7 @@ signed-out visitors never load the Supabase library.
   `https://fiukspnovrlzlcdekcnb.supabase.co/auth/v1/callback`.
 - **Email sign-in** is built but off (`SPINESTACK_EMAIL_LOGIN = false` in `build/index.html`, and the Email provider is
   off in Supabase) until email can be sent from shelfstackd.com.
-- **Limits:** one shelf each on the site (the database still allows 200 an account: see Profiles), 6 spines a shelf (20 with Pro; over 10 they stand in two rows), 50 logs a day and 6 on a watchlist (once the proposed 0007 is in); the Worker saves at most 150 images a day per account and
+- **Limits:** one shelf each on the site (the database still allows 200 an account: see Profiles), 6 spines a shelf (20 with Pro; over 10 they stand in two rows), 50 logs a day and 6 on a watchlist (the database holds both, since 0007); the Worker saves at most 150 images a day per account and
   600 a day in all (KV's free plan allows 1,000 writes a day). To move images to R2 later, create a bucket and
   uncomment the `USER_R2` binding in `wrangler.toml`; the same keys are used there.
 - **Staying awake:** Supabase pauses free projects after a week without activity; the Worker's daily cron

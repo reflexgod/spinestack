@@ -151,7 +151,7 @@ test('signed in with no username yet, Log it asks for one first', async ({ page 
   await expect(page).toHaveURL(/\/build\/$/);   // where a username is picked
 });
 
-test('before the database has logs (the proposed 0007 not run yet), Post says logging isn\'t open yet', async ({ page }) => {
+test('a database without logs (0007 not run on it): Post says logging isn\'t open yet', async ({ page }) => {
   await mockNetwork(page, { signedIn: true, logs: false });
   await open(page, '/feed/?everyone');
   await pick(page, 'Log it');

@@ -10,9 +10,8 @@ below are fixed, and 8 was confirmed on the laptop.
    know who `/u/?mira` is. The fix is in the Worker: answer `/u/` for link-preview bots (WhatsApp, iMessage, Slack, X)
    with the person's name, their shelf's name and its picture as `og:` tags over the static page. That needs a Worker
    change and a deploy, which a session doesn't do. Worth doing soon after launch: these are the links people share.
-2. **Before 0007 is run**, the feed and profiles ask for logs, the watchlist and From friends, get 404s, and the
-   browser writes "Failed to load resource: 404" in the console. The pages carry on with shelves only. It goes when
-   0007 is run, which `docs/LAUNCH.md` does before the merge.
+2. **Gone** (0007 was run on 2 October): before it, the feed and profiles asked for logs, the watchlist and From
+   friends, got 404s, and the browser wrote "Failed to load resource: 404" in the console.
 3. **Fixed** (design review 11): the logo was the one control on a phone without a 44px press area. The bar's two
    rows are 12px further apart now, and `specs/taps.spec.js` checks the logo like everything else.
 4. **Links inside a sentence** (Privacy in a note, @names and shelf names in a feed line) are a line tall, not 44px.
