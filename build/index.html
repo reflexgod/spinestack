@@ -245,7 +245,7 @@ footer{margin-top:0}
       <div class="addrow" id="search">
         <form class="addform" id="findForm" autocomplete="off">
           <label class="lbl" for="findQ">Add</label>
-          <input type="text" id="findQ" placeholder="find a film or book…" maxlength="120" aria-describedby="findNote">
+          <input type="text" id="findQ" placeholder="find a film or book" maxlength="120" aria-describedby="findNote">
           <button type="submit" aria-label="Find it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></button>
         </form>
         <label class="drop" id="drop"><span class="grey">or</span> <span class="dash sm" id="upload">upload a scan</span><input type="file" id="file" accept="image/*" multiple></label>
@@ -631,7 +631,7 @@ const timeout = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(()
 Add.setShelf({has: key => books.some(b => b.key === key), count: key => books.filter(b => (b.key || '').split('#')[0] === key).length,
   add: f => { const ok = shelve(newBook(f)); if (ok) toast(f.title + ' added to your shelf.'); return ok; }});
 $('#findForm').addEventListener('submit', e => { e.preventDefault(); const q = $('#findQ').value.trim(); $('#findQ').value = ''; Add.open({query: q}); });
-Nav.onUpload(() => $('#file').click());   // "Upload a scan…" in the ▾ next to + ADD
+Nav.onUpload(() => $('#file').click());   // "Upload a scan" in the ▾ next to + ADD
 
 /* ---------- uploads ---------- */
 function titleFromName(name){ let t = (name||'').replace(/\.[a-z0-9]+$/i,'').replace(/[_\-+]+/g,' ').replace(/\s+/g,' ').trim(); if (/^(image|img|download|images|screenshot|photo|unnamed|pasted)\b/i.test(t) || /^[\d\s]+$/.test(t) || t.length > 60) t = ''; return t; }

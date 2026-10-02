@@ -267,7 +267,7 @@ dlg.innerHTML = `
   <p class="addneed" id="addNeed" hidden><span id="addNeedText"></span> <button class="dash sm" id="addNeedGo" type="button"></button></p>
   <div id="addFind">
   <form class="addsearch" id="addForm" autocomplete="off">
-    <input type="text" id="addQ" placeholder="Gummo, The Waves, Kids..." aria-label="Film or book name" maxlength="120" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="addRows">
+    <input type="text" id="addQ" placeholder="Gummo, The Waves, Kids" aria-label="Film or book name" maxlength="120" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="addRows">
     <button type="submit" aria-label="Search">${ICON('<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>')}</button>
   </form>
   <div class="addunder">

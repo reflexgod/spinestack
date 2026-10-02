@@ -178,13 +178,13 @@ test('every sign-out is for this device only', () => {
   }
 });
 
-test('the ▾ next to + ADD has one item: Upload a scan…', async ({ page }) => {
+test('the ▾ next to + ADD has one item: Upload a scan', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/feed/?everyone');
   const menu = page.getByRole('menu', { name: 'More ways to add' });
   await page.locator('#addMore').click();
   await expect(menu).toBeVisible();
-  await expect(menu.getByRole('menuitem')).toHaveText(['Upload a scan…']);
+  await expect(menu.getByRole('menuitem')).toHaveText(['Upload a scan']);
   expect(await menu.getByRole('menuitem').evaluate(a => new URL(a.href).pathname + new URL(a.href).hash)).toBe('/build/#upload');
   await page.keyboard.press('Escape');
   await expect(menu).toBeHidden();
@@ -278,4 +278,22 @@ test('old builder links at the root go on to /build/', async ({ page }) => {
   await expect(page).toHaveURL(/\/build\/(\?open=aaaaaaaa-aaaa-4aaa-8aaa-000000000000)?#shelf$/);
   await page.goto('/#how');
   await expect(page).toHaveURL(/\/build\/#how$/);
+});
+
+// An ellipsis stays on home's welcome line, and on lines that say something is under way ("Loading…"). On a
+// placeholder or a menu item it reads as text that didn't fit.
+test('no placeholder or menu item ends in an ellipsis; home\'s welcome line keeps its one', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/build/');
+  const cut = /…|\.\.\./, placeholders = () => page.locator('input[placeholder], textarea[placeholder]').evaluateAll(els => els.map(e => e.placeholder));
+  expect((await placeholders()).length).toBeGreaterThan(1);
+  for (const p of await placeholders()) expect(p).not.toMatch(cut);
+  await expect(page.getByRole('textbox', { name: 'Add' })).toHaveAttribute('placeholder', 'find a film or book');
+  await page.locator('#addMore').click();
+  for (const t of await page.getByRole('menu', { name: 'More ways to add' }).getByRole('menuitem').allTextContents()) expect(t).not.toMatch(cut);
+  await page.keyboard.press('Escape');
+  await page.locator('header.top .add').click();   // the Add dialog
+  await expect(page.locator('#addQ')).toHaveAttribute('placeholder', 'Gummo, The Waves, Kids');   // it had three full stops
+  await open(page, '/');
+  await expect(page.locator('#hello')).toHaveText(/have been shelving…$/);
 });

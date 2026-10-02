@@ -124,7 +124,7 @@
     // a link to another tab of the page you're on (Activity, on your own profile) loads nothing, so the menu shuts itself
     acctMenu.menu.addEventListener('click', e => { if (e.target.closest('a')) acctMenu.hide(false); });
     addMenu = makeMenu('addMenu', 'More ways to add', moreBtn, {placement: 'bottom-end'});
-    addMenu.menu.append(item('Upload a scan…', ROOT + 'build/#upload'));
+    addMenu.menu.append(item('Upload a scan', ROOT + 'build/#upload'));
     // on the builder it opens the file picker; from anywhere else the link goes to the builder's upload
     addMenu.menu.addEventListener('click', e => { addMenu.hide(false); if (on.upload){ e.preventDefault(); on.upload(); } });
   }

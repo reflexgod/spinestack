@@ -362,10 +362,10 @@ test('upload a scan: the link and the ▾ menu both open the file picker, and th
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true, ownShelf: false });
   await open(page, '/build/');
-  // "Upload a scan…" in the ▾ next to + ADD
+  // "Upload a scan" in the ▾ next to + ADD
   await page.locator('#addMore').click();
   const fromMenu = page.waitForEvent('filechooser');
-  await page.getByRole('menuitem', { name: 'Upload a scan…' }).click();
+  await page.getByRole('menuitem', { name: 'Upload a scan' }).click();
   await fromMenu;
   await expect(page).toHaveURL(/\/build\/$/);
   // "or upload a scan" under Add
