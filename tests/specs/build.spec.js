@@ -1,5 +1,5 @@
 // + ADD (the Add to your shelf… dialog) and the builder: New shelf / Edit shelf, the spines as a list, Style, the
-// preview, and Cancel · Save · Save story.
+// preview, and Cancel · Save · Share to Instagram.
 const { test, expect } = require('@playwright/test');
 const { PAGES, SHELVES, ME, mockNetwork, watchErrors, open } = require('../site');
 
@@ -111,8 +111,9 @@ test('the builder is a new-shelf page: name, who can view, Add, the list, Style 
   await style.getByRole('button', { name: 'Stacked' }).click();
   await style.getByRole('checkbox', { name: 'Wood shelf' }).check();
   await expect(style.locator('#styleLine')).toHaveText('Stacked · Clean · Paper · Wood shelf');
-  // the bar: Cancel, Save, Save story, in that order
-  expect(await page.locator('.mkbar > button:visible').allTextContents()).toEqual(['Cancel', 'Save', 'Save story']);
+  // the bar: Cancel, Save, Share to Instagram, in that order; only Save is the black button
+  expect(await page.locator('.mkbar > button:visible').allTextContents()).toEqual(['Cancel', 'Save', 'Share to Instagram']);
+  expect(await page.locator('.mkbar > button.primary:visible').allTextContents()).toEqual(['Save']);
   const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(sideways).toBeLessThanOrEqual(0);
   expect(errors).toEqual([]);
@@ -330,7 +331,7 @@ test('upload a scan: the link and the ▾ menu both open the file picker, and th
   expect(errors).toEqual([]);
 });
 
-test('the order: Add, the spines, Style; then Name and Who can view right above Cancel · Save · Save story', async ({ page }) => {
+test('the order: Add, the spines, Style; then Name and Who can view right above Cancel · Save · Share to Instagram', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/build/');
   const top = async sel => (await page.locator(sel).boundingBox()).y, bottom = async sel => { const b = await page.locator(sel).boundingBox(); return b.y + b.height; };
@@ -437,7 +438,7 @@ test('the caption on the preview follows the Name; with no name it is a faint "y
   expect(hint.faint).toBeGreaterThan(200);
   // the story that's saved has nothing there
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Save story' }).click();
+  await page.getByRole('button', { name: 'Share to Instagram' }).click();
   const file = await (await download).path();
   const saved = await captionBand(page, 'data:image/png;base64,' + require('fs').readFileSync(file).toString('base64'));
   expect(saved).toEqual({ dark: 0, faint: 0 });

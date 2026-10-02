@@ -461,7 +461,7 @@ function bareShelf(list, s, wall){
   out.setAttribute('aria-label', shelfName(s) + ': ' + list.map(b => b.title).filter(Boolean).join(', '));
   return out;
 }
-// the whole story, as Save story makes it in the builder: caption, background or wall, PNGs, the books
+// the whole story, as Share to Instagram makes it in the builder: caption, background or wall, PNGs, the books
 function storyCanvas(list, s, wall, pngs){
   const pro = s.pro || {}, st = {caption: s.caption || '', theme: wall ? 'wall' : s.background || 'paper', layout: s.layout || 'row', varied: s.varied !== false, wood: !!s.wood,
     filter: s.filter || 'clean', intensity: s.intensity == null ? 70 : s.intensity, plank: !!pro.plank, shelfColour: pro.shelf_colour || '#FFFFFF'};
