@@ -4,8 +4,8 @@
 
    GET  /identify?q=&want=all|movie|book[&suggest=1]  -> {results:[{kind,title,year,creator,cover}]}
         suggest=1 is a half-typed title (the page suggests as you type): answered the same, but not kept in KV.
-   GET  /scans?title=&year=&kind=movie|book&creator=&round=0-3
-        -> {results:[{img,source,title,width,height, archive?,id?}], round, more, capped?}
+   GET  /scans?title=&year=&kind=movie|book&creator=&round=0-3[&cacheonly=1]
+        -> {results:[{img,source,title,width,height, archive?,id?}], round, more, capped?, cached? (with cacheonly)}
         One query per round, so the page asks for the next round only when it still needs spines.
         Round 0 starts with approved spines from the archive. What isn't already kept is looked for with Serper, then
         SerpApi, then Brave, then archive.org, stopping at the first that gives a usable scan. Each has a cap on
@@ -453,10 +453,13 @@ async function scans(p, env, cors, ctx) {
   const kind = p.get('kind') === 'book' ? 'book' : 'movie', round = Math.max(0, Math.min(ROUNDS - 1, parseInt(p.get('round'), 10) || 0));
   if (!title) return json({error: 'A title is needed.'}, 400, cors);
   const archived = round === 0 ? await archiveFor(env, kind, title, year, creator) : [];
-  // cacheonly=1: never search, answer from what's stored (for tests)
-  const {list: found, from} = await rawScans(env, ctx, kind, title, year, creator, round, p.get('cacheonly') === '1');
+  // cacheonly=1: never search, answer from what's stored. The page asks this for the later rounds while the first is
+  // searching, so a round kept from before costs nothing and comes at once; cached says whether there was one
+  const cacheOnly = p.get('cacheonly') === '1';
+  const {list: found, from} = await rawScans(env, ctx, kind, title, year, creator, round, cacheOnly);
   // capped: nothing usable was found and a provider was at its cap or out for the day; the page makes a spine from the cover
-  return json({results: [...archived, ...pick(found, kind, title, year, creator)], round, more: round < ROUNDS - 1, ...(from === 'capped' ? {capped: true} : {})}, 200, cors, {'X-Cache': from});
+  return json({results: [...archived, ...pick(found, kind, title, year, creator)], round, more: round < ROUNDS - 1, ...(from === 'capped' ? {capped: true} : {}),
+    ...(cacheOnly ? {cached: from !== 'miss'} : {})}, 200, cors, {'X-Cache': from});
 }
 /* ---------- admin: today's searches, and one provider's raw answer ---------- */
 async function usage(env) {

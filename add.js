@@ -357,10 +357,10 @@ async function identifyDirect(q, want){
   if ((!films || f.status === 'rejected') && (!books || b.status === 'rejected')) throw new Error('no answer');
   return [...(f.value || []), ...(b.value || [])];
 }
-/* Suggestions while you type: a search starts 300 ms after the last key (Enter starts it at once), and a newer one
+/* Suggestions while you type: a search starts 250 ms after the last key (Enter starts it at once), and a newer one
    cancels the one before, whose answer is dropped if it still comes. Up to six results, films and books together,
    by how well the title matches what was typed: the same, then starting with it, then containing it. */
-const SHOWN = 6, WAIT = 300;
+const SHOWN = 6, WAIT = 250;
 let matches = [], active = -1;   // active: the highlighted result
 let shownFor = null;             // "<kind>|<text>" the results on screen answer
 let typing = 0, run = 0, asking = null;
@@ -481,7 +481,7 @@ function bookFields(cur, choice){
   return Object.assign(base, {img, thumb:img.src, bg, fg, accent:pal.accent, titleImg:t && t.img, style:choice === 'cover' ? 'cover' : film ? 'dvd' : 'art'});
 }
 const tileCanvas = (b, w, H0) => { const dpr = Math.min(2, window.devicePixelRatio || 1), sp = makeSpine(b, w*dpr, H0*dpr); sp.style.width = sp.width/dpr + 'px'; sp.setAttribute('aria-hidden', 'true'); return sp; };
-function paintGo(){ const cur = current; $('#addGo').disabled = !cur || cur.busy || !cur.choice; }
+function paintGo(){ const cur = current; $('#addGo').disabled = !cur || !cur.choice; }   // while scans load too: the spine made from the cover is ready
 function showTiles(cur){
   const m = cur.m, noun = m.kind === 'movie' ? 'poster' : 'cover';
   // every option in one row at one height: the spine (press it to pick it), then one line saying where it's from
@@ -519,31 +519,50 @@ async function cutOne(s, kind){
   } catch { return null; }
 }
 /* Asks the Worker for scans one round (one search) at a time and stops once two good spines turn up,
-   so most titles cost one or two searches. Returns the cuts, best first. */
-const ROUNDS = 4;
-async function cutScans(cur, english){
+   so most titles cost one or two searches. While round 0 searches, the later rounds are asked for what the Worker
+   already keeps (cacheonly: no search spent), so a round kept from before is there at once; a round that has to
+   search is still asked only when the ones before it weren't enough. LIVE rounds may search at the same time (1: one
+   after another, as the search budget wants; more makes a slow title quicker and can spend searches that weren't
+   needed). Each spine is passed to onCut as soon as it's cut. Returns the cuts, best first: the same ones, in the same
+   order, as asking one round after another. */
+const ROUNDS = 4, LIVE = 1;
+async function cutScans(cur, english, onCut){
   const q = `${WORKER}/scans?kind=${cur.m.kind}&title=${encodeURIComponent(cur.m.title)}&year=${encodeURIComponent(cur.m.year || '')}&creator=${encodeURIComponent(cur.m.creator || '')}`;
+  const get = (round, cacheOnly) => timeout(getJSON(q + '&round=' + round + (cacheOnly ? '&cacheonly=1' : '')), 20000);
+  const kept = [Promise.resolve(null)];   // per round: what's kept, or null (a Worker from before cached= says nothing, so it's asked)
+  for (let r = 1; r < ROUNDS; r++) kept.push(get(r, true).then(x => x && x.cached === true ? x : null, () => null));
+  const live = [], ask = round => live[round] || (live[round] = get(round, false));
   const seen = new Set(), cuts = []; let scans = 0, rounds = 0, busy = false, capped = false;
   for (let round = 0; round < ROUNDS && cur === current; round++){
     if (round) sstatus(`Looking for more scans (${round + 1} of ${ROUNDS})…`);
-    let r;
-    try { r = await timeout(getJSON(q + '&round=' + round), 20000); rounds++; }
-    catch (err){ if (!cuts.length && !rounds) throw err; busy = /429/.test(err.message); break; }   // keep what the earlier rounds found
+    let r = await kept[round];
+    if (!r){
+      for (let k = round + 1; k < Math.min(ROUNDS, round + LIVE); k++) if (!(await kept[k])) ask(k);   // the next ones that would search, together
+      try { r = await ask(round); }
+      catch (err){ if (!cuts.length && !rounds) throw err; busy = /429/.test(err.message); break; }   // keep what the earlier rounds found
+    }
+    rounds++;
     const fresh = (r.results || []).filter(s => !seen.has(s.img) && seen.add(s.img));
     scans += fresh.length;
     // capped: today's Brave searches are used up, so this round held only archive spines and scans kept from before.
     // With nothing in it there's no more to ask for.
     if (r.capped){ capped = true; if (!fresh.length) break; }
     if (fresh.length && cur === current) sstatus(`Cutting spines from ${scans} scan${scans > 1 ? 's' : ''}…`);
-    cuts.push(...(await Promise.all(fresh.map(s => cutOne(s, cur.m.kind)))).filter(Boolean));
+    // cut at once, each shown as it's done; kept in the order they came, as before
+    const got = new Array(fresh.length);
+    await Promise.all(fresh.map((s, i) => cutOne(s, cur.m.kind).then(c => { got[i] = c; if (c && onCut && cur === current) onCut(bestCuts(cur.m.kind, [...cuts, ...got.filter(Boolean)], english)); })));
+    cuts.push(...got.filter(Boolean));
     if (cuts.filter(c => c.score >= AUTO_SCORE && (!english || isEnglish(c))).length >= 2 || !r.more) break;
   }
-  // one option per page: the same scan often comes at several sizes (reddit previews, eBay listings)
+  return {scans, rounds, busy, capped, cuts: bestCuts(cur.m.kind, cuts, english)};
+}
+// one option per page, best first: the same scan often comes at several sizes (reddit previews, eBay listings)
+function bestCuts(kind, cuts, english){
   const best = new Map();
-  const show = cur.m.kind === 'book' ? 20 : SHOW_SCORE;   // a book cut has already passed the strict flat-scan checks in findSpine
+  const show = kind === 'book' ? 20 : SHOW_SCORE;   // a book cut has already passed the strict flat-scan checks in findSpine
   for (const c of cuts.filter(c => c.score >= show && c.spine.width <= c.spine.height/5).sort((a,b) => rankCut(b, english) - rankCut(a, english)))
     if (!best.has(c.source)) best.set(c.source, c);
-  return {scans, rounds, busy, capped, cuts:[...best.values()].slice(0, 8)};
+  return [...best.values()].slice(0, 8);
 }
 async function findSpines(m, again){
   const key = keyOf(m), cur = current = {m, key, real:[], res:{spines:[]}, img:null, busy:true, choice:null}, noun = m.kind === 'movie' ? 'poster' : 'cover';
@@ -560,15 +579,26 @@ async function findSpines(m, again){
   const poster = m.cover ? timeout(loadImg(server ? API + '/api/image?url=' + encodeURIComponent(m.cover) : viaWorker(m.cover)), 15000).catch(() => null) : Promise.resolve(null);
   let found = {scans:0, cuts:[]}, failed = false;
   const english = englishOnly();
+  // while the scans load there's already something to pick: the spine made from the poster or cover, and the Cover,
+  // as soon as the picture comes; each real spine joins them as soon as it's cut. A pick stays picked
+  const realPicked = () => /^real:/.test(cur.choice || '') ? cur.real[+cur.choice.slice(5)] : null;
+  const repaint = list => {
+    const was = realPicked(); cur.real = list;
+    if (was){ const at = list.indexOf(was); cur.choice = at >= 0 ? 'real:' + at : cur.img ? 'spine' : null; }
+    showTiles(cur);
+  };
+  const posterIn = poster.then(img => {
+    if (cur !== current) return;
+    if (img && canvasSafe(img)){ cur.img = img; if (m.kind === 'movie') cur.title = posterTitle(img); if (!cur.choice) cur.choice = 'spine'; if (cur.busy) showTiles(cur); }
+    else if (m.cover) toast('The ' + noun + ' from ' + hostOf(m.cover) + ' can’t be used in a story. Try another match.');
+  });
   if (!server && WORKER){
     sstatus('Searching ' + (m.kind === 'movie' ? 'DVD' : 'book') + ' scans of “' + esc(m.title) + '”…');
-    try { found = await cutScans(cur, english); } catch (err){ failed = /429/.test(err.message) ? 'busy' : true; }
+    try { found = await cutScans(cur, english, repaint); } catch (err){ failed = /429/.test(err.message) ? 'busy' : true; }
   }
-  const img = await poster;
+  await posterIn;
   if (cur !== current) return;
-  if (img && canvasSafe(img)){ cur.img = img; if (m.kind === 'movie') cur.title = posterTitle(img); }
-  else if (m.cover) toast('The ' + noun + ' from ' + hostOf(m.cover) + ' can’t be used in a story. Try another match.');
-  cur.real = found.cuts;
+  repaint(found.cuts);
   const best = cur.real[0];
   if (server){
     // the Spinestack backend (backend/): unchanged, it cuts the spines itself
@@ -589,12 +619,12 @@ async function findSpines(m, again){
   // and a film (book scans are rarer and less reliable) or a spine from the checked archive
   const n = found.cuts.length, spines = n + ' possible spine' + (n > 1 ? 's' : '');
   if (best && best.score >= AUTO_SCORE && (!english || isEnglish(best)) && (m.kind === 'movie' || best.archive)){
-    cur.choice = 'real:0'; sstatus(n > 1 ? `Real spine found. ${n - 1} more here if it’s the wrong edition.` : 'Real spine found.');
+    if (!cur.touched) cur.choice = 'real:0';   // unless something was picked while the scans loaded sstatus(n > 1 ? `Real spine found. ${n - 1} more here if it’s the wrong edition.` : 'Real spine found.');
   }
   else if (best && english && !found.cuts.some(isEnglish)) sstatus(`${spines} found, but none looks like the English edition. Pick one, or set Edition to Any (in Style, on the builder).`);
   else if (best) sstatus(`${spines} found. Pick the one that looks right.`);
   else if (cur.img){
-    cur.choice = 'spine';   // the grey line under the tiles asks for a photo of a real one (books)
+    if (!cur.touched) cur.choice = 'spine';   // the grey line under the tiles asks for a photo of a real one (books)
     if (found.capped) sstatus('Spine search is resting for today. Here’s one made from the cover.');
     else sstatus(!WORKER ? 'Pick Cover to show the ' + noun + ' face out instead.' : failed === 'busy' ? 'Scan search is busy. This spine is made from the ' + noun + '; try again in a minute.'
       : failed ? 'Scan search didn’t answer, so this spine is made from the ' + noun + '.' : 'No clean spine in the scans found online, so this one is made from the ' + noun + '.', !!WORKER);
@@ -611,7 +641,7 @@ $('#addFound').addEventListener('click', e => {
     return;
   }
   const u = e.target.closest('[data-use]'), cur = current; if (!u || !cur) return;
-  cur.choice = u.dataset.use;
+  cur.choice = u.dataset.use; cur.touched = true;
   for (const b of dlg.querySelectorAll('#addFound [data-use]')) b.setAttribute('aria-checked', String(b.dataset.use === cur.choice));
   paintGo();
 });
@@ -627,7 +657,7 @@ const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./,''); } c
    it was cut from (the builder loads that scan again and cuts it the same way). */
 const PENDING = 'shelfstackd-add';
 $('#addGo').addEventListener('click', () => {
-  const cur = current; if (!cur || cur.busy || !cur.choice) return;
+  const cur = current; if (!cur || !cur.choice) return;   // while scans load too
   if (shelf){ if (shelf.add(bookFields(cur, cur.choice)) !== false) close(); return; }
   const r = cur.choice.startsWith('real:') ? cur.real[+cur.choice.slice(5)] : null;
   try {

@@ -36,7 +36,7 @@ test('the builder\'s search box suggests as you type, the same search as + ADD\'
 
 test('suggestions come while typing, with one search for a word typed quickly', async ({ page }) => {
   const errors = watchErrors(page), net = await openDialog(page, { signedIn: true }), d = dialog(page);
-  await box(d).pressSequentially('gummo', { delay: 30 });   // faster than the 300 ms wait
+  await box(d).pressSequentially('gummo', { delay: 30 });   // faster than the 250 ms wait
   await expect(options(d)).toHaveCount(1);
   expect(await names(d)).toEqual(['Gummo']);
   expect(net.asked).toEqual(['gummo (typed)']);   // not one search a letter, and marked as typed (not kept by the Worker)
@@ -99,7 +99,7 @@ test('the keyboard: ↑ ↓ move through the results, Enter picks the highlighte
 test('Enter still searches at once, without waiting for the suggestions', async ({ page }) => {
   const net = await openDialog(page, { slow: 200 }), d = dialog(page);
   await box(d).fill('waves');
-  await page.keyboard.press('Enter');   // before the 300 ms are up
+  await page.keyboard.press('Enter');   // before the 250 ms are up
   await expect(options(d)).toHaveCount(2);
   expect(net.asked).toEqual(['waves']);   // one search, and a finished one (not marked as typed)
   await page.keyboard.press('Enter');     // the results are for what's in the box now: Enter picks the highlighted one
@@ -189,6 +189,67 @@ for (const pg of [...PAGES, { name: 'privacy', path: '/privacy.html' }, { name: 
     await expect(page.getByRole('heading', { name: 'Credits' })).toBeInViewport();
   });
 }
+
+/* ---------- 3. speed: what shows while the spines are looked for ---------- */
+// /scans answered by the test: round 0 searches slowly; later rounds come from what's kept (cached), or aren't kept
+function slowScans(page, { kept }) {
+  const asked = [];
+  page.route(u => u.pathname === '/scans', async route => {
+    const u = new URL(route.request().url()), round = +u.searchParams.get('round'), only = u.searchParams.get('cacheonly') === '1';
+    asked.push({ round, only, at: Date.now() });
+    if (only) return route.fulfill({ status: 200, headers: { 'Access-Control-Allow-Origin': '*' }, contentType: 'application/json', body: JSON.stringify({ results: [], round, more: round < 3, cached: kept }) });
+    await new Promise(r => setTimeout(r, round === 0 ? 1500 : 300));   // a search takes a while
+    return route.fulfill({ status: 200, headers: { 'Access-Control-Allow-Origin': '*' }, contentType: 'application/json', body: JSON.stringify({ results: [], round, more: round < 3 }) });
+  });
+  return asked;
+}
+test('while the scans load, the spine made from the cover and the Cover are there to pick, and Add to shelf works', async ({ page }) => {
+  const errors = watchErrors(page), net = await openDialog(page, { signedIn: true }), d = dialog(page);
+  const asked = slowScans(page, { kept: false });
+  await box(d).fill('gummo');
+  await d.getByRole('option', { name: /Gummo/ }).click();
+  const tiles = d.locator('#addFound [data-use]');
+  await expect(tiles).toHaveCount(2, { timeout: 1200 });   // before round 0's search has answered
+  expect(asked.filter(a => !a.only && a.round === 0)).toHaveLength(1);
+  await expect(d.locator('#addFound [data-use="spine"]')).toHaveAttribute('aria-checked', 'true');
+  await expect(d.locator('#addFound [data-use="cover"]')).toBeVisible();
+  await expect(d.getByRole('button', { name: 'Add to shelf' })).toBeEnabled();
+  await d.locator('#addFound [data-use="cover"]').click();   // picked while it's still looking: it stays picked
+  await expect.poll(() => asked.filter(a => !a.only).length, { timeout: 8000 }).toBe(4);   // all four rounds, nothing kept
+  await expect(d.locator('#addFound [data-use="cover"]')).toHaveAttribute('aria-checked', 'true');
+  expect(errors).toEqual([]);
+});
+test('rounds kept from before are asked for at once, without a search, while round 0 searches; none is searched again', async ({ page }) => {
+  await openDialog(page, { signedIn: true });
+  const d = dialog(page), asked = slowScans(page, { kept: true });
+  await box(d).fill('gummo');
+  await d.getByRole('option', { name: /Gummo/ }).click();
+  await expect.poll(() => asked.filter(a => a.only).map(a => a.round).sort()).toEqual([1, 2, 3]);
+  const first = asked.find(a => !a.only && a.round === 0);
+  expect(asked.filter(a => a.only).every(a => a.at - first.at < 500)).toBe(true);   // at the same time as round 0, not after it
+  await page.waitForTimeout(2500);
+  expect(asked.filter(a => !a.only).map(a => a.round)).toEqual([0]);   // the others came from what was kept
+});
+test('rounds that aren\'t kept are still searched one after another, each only when the one before wasn\'t enough', async ({ page }) => {
+  await openDialog(page, { signedIn: true });
+  const d = dialog(page), asked = slowScans(page, { kept: false });
+  await box(d).fill('gummo');
+  await d.getByRole('option', { name: /Gummo/ }).click();
+  await expect.poll(() => asked.filter(a => !a.only).length, { timeout: 8000 }).toBe(4);
+  const live = asked.filter(a => !a.only);
+  expect(live.map(a => a.round)).toEqual([0, 1, 2, 3]);
+  for (let i = 1; i < live.length; i++) expect(live[i].at - live[i - 1].at).toBeGreaterThanOrEqual(250);   // after the one before answered
+});
+test('a title search starts 250 ms after the last key, not before', async ({ page }) => {
+  const d = dialog(page);
+  await openDialog(page, { signedIn: true });
+  let at = 0; page.on('request', r => { if (r.url().includes('/identify?') && !at) at = Date.now(); });
+  await box(d).pressSequentially('gummo', { delay: 20 });
+  const typed = Date.now();
+  await expect(options(d)).toHaveCount(1);
+  expect(at - typed).toBeGreaterThanOrEqual(150);
+  expect(at - typed).toBeLessThan(600);
+});
 
 test('the Add dialog says "Search by Brave", small and grey, under the spines a search found', async ({ page }) => {
   await openDialog(page, {}, '/feed/?everyone');

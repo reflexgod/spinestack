@@ -125,6 +125,13 @@ try {
   assert.deepEqual([r.from, calls, r.body.results.length], ['raw', [], 1]);
   ok('the same title again comes from what was kept: no search');
 
+  fresh();
+  r = await ask(mf, `/scans?kind=movie&title=${encodeURIComponent('alpha one')}&year=1999&round=0&cacheonly=1`);
+  assert.deepEqual([r.body.cached, r.body.results.length, calls], [true, 1, []]);
+  r = await ask(mf, `/scans?kind=movie&title=${encodeURIComponent('alpha one')}&year=1999&round=1&cacheonly=1`);
+  assert.deepEqual([r.body.cached, r.body.results.length, calls], [false, 0, []]);
+  ok('cacheonly=1 never searches, and says whether that round was kept (cached: true or false)');
+
   plan = {serper: 'junk', serpapi: 'wrap'};
   r = await scans(mf, 'beta two');
   assert.deepEqual([r.from, calls, r.body.results.length], ['serpapi', ['serper', 'serpapi'], 1]);
