@@ -21,6 +21,11 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://shelfstackd.com/og.jpg">
 <script>
+  /* Signed out, this page's one black button is Make a shelf, so the bar's + is outlined (as on home). Said now, before
+     anything is drawn, so nothing changes as the page loads. */
+  try {
+    if (!Object.keys(localStorage).some(function(k){ return /^sb-.+-auth-token$/.test(k); }) && !/[?&](code|error|error_description)=/.test(location.search)) document.documentElement.classList.add('signedout');
+  } catch (e) {}
   /* The same public addresses as build/ (see the notes there). */
   window.SPINESTACK_WORKER = "https://api.shelfstackd.com";
   window.SPINESTACK_WORKER_FALLBACK = "https://spinestack.spinestack-worker.workers.dev";
@@ -38,6 +43,9 @@
 .lead p{margin:0}
 #state,#none{margin:0}
 #more{margin-top:var(--s6)}
+/* signed out: Make a shelf is the black button, and the bar's + is outlined */
+.signedout .top .add.primary{background:var(--paper);color:var(--ink)}
+.signedout .top .add.primary:hover{background:var(--wash)}
 </style>
 </head>
 <body>
@@ -58,7 +66,7 @@
   <h1>Shelves</h1>
   <div class="lead">
     <p class="grey">Every public shelf, newest first.</p>
-    <a class="btn" href="../build/">Your shelf</a>
+    <a class="btn primary" id="mine" href="../build/">Make a shelf</a>
   </div>
   <p class="grey" id="state" role="status">Loading…</p>
   <ul class="thumbs" id="grid" aria-label="Shelves"></ul>
@@ -200,8 +208,15 @@ async function more(){
 }
 $('#more').addEventListener('click', more);
 
+// the button by the line: signed in, Your shelf (outlined: + ADD is the black one); signed out, Make a shelf in black
+function paintMine(signedIn){
+  const a = $('#mine');
+  a.textContent = signedIn ? 'Your shelf' : 'Make a shelf'; a.classList.toggle('primary', !signedIn);
+  document.documentElement.classList.toggle('signedout', !signedIn);
+}
+paintMine(!document.documentElement.classList.contains('signedout'));
 more();   // the shelves don't wait on the account
-(async () => { await startSession(); Nav.paint(me); })();
+(async () => { await startSession(); Nav.paint(me); paintMine(!!me.user); })();
 })();
 </script>
 </body>

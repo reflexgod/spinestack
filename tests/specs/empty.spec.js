@@ -43,7 +43,7 @@ test('shelves, members and the feed each say it in one line when there is nothin
   await expect(page.locator('#none')).toHaveText('Nothing shelved yet. The first shelf here could be yours.');
   await expect(page.locator('#grid li')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Load more' })).toBeHidden();
-  await expect(page.locator('main').getByRole('link', { name: 'Your shelf' })).toBeVisible();   // the way to be the first
+  await expect(page.locator('main').getByRole('link', { name: 'Make a shelf' })).toBeVisible();   // the way to be the first
   await open(page, '/members/');
   await expect(page.locator('#activeState')).toHaveText('It’s quiet in here. Shelve something and yours is the first face on this page.');
   await expect(page.locator('#active li')).toHaveCount(0);

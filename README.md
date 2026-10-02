@@ -12,7 +12,7 @@ bare.js               saved shelves drawn small from their rows in shelf_items: 
 wear.js               a log's cover, worn: one corner dog-eared (a hairline round the fold and a soft shadow under it, so it reads on a white poster), fine scratches, rubbed edges and a little fade, drawn on a canvas from how long ago it was logged (lightly worn that day, with two or three scratches to see; faded after a week, worn after a month). No stamp and nothing written on it
 shelf.js              draws the spines and the story (and says where it drew each book); build/ and u/ both use it, so a shelf looks the same everywhere
 u/index.html          profiles: /u/?username with its tabs Profile (their shelf, big, then Watchlist and, on your own, From friends) · Activity · Network (Following, Followers), and the shelf's own page: /u/?username&shelf (or &shelf=<id>, the older links): its name with Share beside it (Share to story, Download image, Copy link), who made it, the shelf itself (its books on the grey panel, as the profile has them; the 9:16 story is only made for Share), and On this shelf with + Add to my shelf (to the right of the shelf on a wide window; a title that's already on your own shelf says "On your shelf" instead, and on your own shelf nothing is offered); for its owner Edit, Make private or public, Delete
-shelves/index.html    every public shelf as a card, newest first, 24 at a time (Load more); Your shelf
+shelves/index.html    every public shelf as a card, newest first, 24 at a time (Load more); Your shelf, or signed out Make a shelf in black (the bar's + outlined, as on home)
 members/index.html    Find @username (people by the start of a username or name, each with FOLLOW), and Recently active: the people behind the newest shelves
 settings/index.html   your settings (signed in only): PROFILE (display name, bio), PHOTO (cut square, made small, sent to the Worker), ACCOUNT (private profile). A profile's Edit profile comes here
 feed/index.html       the feed: /feed/, FOLLOWING · YOU · EVERYONE, a line for each shelf saved ("@abc shelved my films · 2h") with its card, and for each film or book logged ("@abc watched Gummo · today") with its worn cover, small (72 x 108px), and the caption beside it, newest first
@@ -384,7 +384,8 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   it, no captions; 2:3, a 1px border, no shadow, six across or three on a phone and the rest sideways; shelves only,
   from `feed()`, on a database without logs; an empty panel when a shelf's spines can't be read); no em dash and no
   rule-of-three line; no ellipsis on a placeholder or a menu item (home's welcome line keeps its one).
-- **Shelves and Members** (`specs/shelves.spec.js`, `specs/members.spec.js`): every shelf as a card, 24 at a time and
+- **Shelves and Members** (`specs/shelves.spec.js`, `specs/members.spec.js`): Make a shelf in black signed out (no "Your
+  shelf") and Your shelf signed in; every shelf as a card, 24 at a time and
   what Load more asks for; one people search 300 ms after the last key, Enter at once, the search kept in the address,
   FOLLOW and UNFOLLOW, FOLLOW signed out (sign-in, then finished once back), Recently active.
 - **Titles and icons** (`specs/meta.spec.js`): every page has its own title and a description of a sensible length,
