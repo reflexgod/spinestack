@@ -290,10 +290,11 @@ test('someone else\'s shelf: a title already on your shelf says "On your shelf" 
   expect(await offered(page)).toEqual(['On your shelf', '+ Add to my shelf']);   // The Waves is on yours; Journey by Moonlight isn't
   const said = rows(page).first().locator('.onmine');
   expect(await said.evaluate(el => { const s = getComputedStyle(el); return [s.color, s.fontSize, s.textTransform]; })).toEqual(['rgb(107, 107, 107)', '11px', 'none']);
-  await expect(rows(page).first().getByRole('button')).toHaveCount(0);
-  // where the button would be: at the right of its row
-  const row = await rows(page).first().boundingBox(), at = await said.boundingBox();
-  expect(Math.abs(at.x + at.width - (row.x + row.width))).toBeLessThanOrEqual(1);
+  await expect(rows(page).first().getByRole('button', { name: /add to my shelf/i })).toHaveCount(0);   // only its watchlist button (specs/watchlist.spec.js)
+  // where the button would be: at the right of its row (on a touch screen, just before its •••)
+  const more = rows(page).first().locator('.wmorewrap'), end = await more.isVisible() ? (await more.boundingBox()).x : (await rows(page).first().boundingBox()).x + (await rows(page).first().boundingBox()).width;
+  const at = await said.boundingBox();
+  expect(Math.abs(at.x + at.width - end)).toBeLessThanOrEqual(13);
   // the same film in another year is another title
   await myShelfHolds(page, [['book', 'The Waves', 2019], ['movie', 'The Waves', 1931]]);
   await open(page, `/u/?mira&shelf=${theirs.id}`);

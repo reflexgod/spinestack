@@ -40,6 +40,10 @@
 .linkish{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
 #state{margin:var(--s5) 0 0}
 #more{margin-top:var(--s6)}
+/* a log's ••• (a touch screen: Add to watchlist) at the top right of the log, so the caption keeps its width */
+.items .item.log{position:relative}
+.items .item.log>.wmorewrap{position:absolute;top:-12px;right:0}
+@media (pointer:coarse){.items .item.log .line{padding-right:44px}}
 </style>
 </head>
 <body>
@@ -92,7 +96,7 @@
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../cards.js?v=20261002a"></script>
 <script src="../wear.js?v=20261004a"></script>
-<script src="../nav.js?v=20261009a"></script>
+<script src="../nav.js?v=20261010a"></script>
 <script>
 (() => {
 /* The feed: /feed/ (?following, ?you or ?everyone picks the tab). A line for each shelf saved and each film or book
@@ -215,6 +219,8 @@ function item(x){
       <div class="logbody"><span class="cover"></span>${x.caption ? `<p class="say">${esc(x.caption)}</p>` : ''}</div>`;
     li.querySelector('.cover').append(Wear.cover({src: x.cover_src ? `${WORKER}/img?url=${encodeURIComponent(x.cover_src.replace(/^url:/, ''))}` : '', seed: x.id, at: x.at,
       label: `${label}, ${verb} by @${x.username}`, width: COVER}));
+    // someone else's log: onto your watchlist from its cover (signed out, the sign-in sheet first)
+    if (!(me.user && x.owner === me.user.id)) Nav.watchable(li.querySelector('.cover'), {kind: x.kind, title: x.title, year: x.year ? String(x.year) : '', creator: x.author || '', cover: x.cover_src ? x.cover_src.replace(/^url:/, '') : ''}, {moreIn: li});
     return li;
   }
   const to = esc(profileUrl(x.username, x.id)), shelf = Shelf.shelfName({name: x.name, caption: x.caption});

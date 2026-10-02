@@ -92,10 +92,11 @@ test('profile: the name, the numbers and their labels, and the tabs', async ({ p
   expect((await css(page.locator('.stats div').nth(1), 'borderLeftWidth')).borderLeftWidth).toBe('1px');   // a thin line between the numbers (a wide window)
   expect(await css(page.locator('#tabP'), 'fontSize', 'textTransform', 'color', 'borderBottomWidth', 'borderBottomColor')).toEqual({ fontSize: '13px', textTransform: 'none', color: 'rgb(0, 0, 0)', borderBottomWidth: '1px', borderBottomColor: 'rgb(0, 0, 0)' });
   expect((await css(page.locator('#tabA'), 'color')).color).toBe('rgb(107, 107, 107)');
-  // its shelf: one, big, across the column, on the wash, with the 3px radius
-  const hero = await box(page.locator('#hero')), main = await box(page.locator('main'));
-  expect(Math.abs(hero.width - main.width)).toBeLessThanOrEqual(1);
-  expect(await css(page.locator('#hero'), 'backgroundColor', 'borderTopLeftRadius')).toEqual({ backgroundColor: 'rgb(243, 243, 243)', borderTopLeftRadius: '3px' });
+  // its shelf: no panel, standing on a 1px black shelf line across the column (as home's spine wall)
+  const line = await box(page.locator('#featWrap')), main = await box(page.locator('main'));
+  expect(Math.abs(line.width - main.width)).toBeLessThanOrEqual(1);
+  expect(await css(page.locator('#hero'), 'backgroundColor')).toEqual({ backgroundColor: 'rgba(0, 0, 0, 0)' });
+  expect(await css(page.locator('#featWrap'), 'borderBottomWidth', 'borderBottomStyle', 'borderBottomColor')).toEqual({ borderBottomWidth: '1px', borderBottomStyle: 'solid', borderBottomColor: 'rgb(0, 0, 0)' });
 });
 
 test('the feed shows each shelf as the same 2:3 card as home, under the line about it, not the whole story', async ({ page }) => {

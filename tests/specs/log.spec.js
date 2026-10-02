@@ -93,7 +93,7 @@ test('Watchlist: the cover and Add to watchlist; the database\'s answers when it
   await refuse(page, 'watchlist', 400, { code: 'P0001', message: 'Your watchlist holds 6. Log one or remove one first.' });
   await pick(page, 'Watchlist');
   await d.getByRole('button', { name: 'Add to watchlist' }).click();
-  await expect(d.locator('#addStatus')).toHaveText('Your watchlist holds 6. Log one or remove one first.');
+  await expect(d.locator('#addStatus')).toHaveText('Your watchlist is full (6). Remove one to add another.');
   await expect(d).toBeVisible();
   await expect(d.getByRole('button', { name: 'Add to watchlist' })).toBeEnabled();
   // already on it

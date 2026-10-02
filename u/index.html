@@ -51,11 +51,15 @@
 .menu button:hover,.menu a:hover,.menu button:focus-visible,.menu a:focus-visible{background:var(--wash);outline:0}
 /* the ··· menu of one of your shelf cards: one menu for them all, put by the button that was pressed */
 .menu.cardmenu{position:fixed;top:0;left:0;z-index:20}
-.bio-m{grid-area:bio;display:none}
-.bio-m p{margin:0}
-.bio-m #bioM{white-space:pre-line;overflow-wrap:anywhere}
-.bio-m #bioM:empty{display:none}
-.bio-m .mutual{margin-top:var(--s2)}
+/* the bio, in the header under the name: three lines at most, the rest behind "more"; then who you both know, and
+   since when, small and grey */
+.pbio{margin-top:var(--s2);max-width:62ch}
+.pbio .bio{margin:0;white-space:pre-line;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden}
+.pbio.open .bio{display:block;overflow:visible}
+.pbio .bmore{margin-top:var(--s1)}
+.who .addbio{display:inline-block;margin-top:var(--s2)}
+.who .mutual{margin-top:var(--s2)}
+.since{margin:var(--s1) 0 0;font-size:var(--fs-small);color:var(--grey)}
 /* the numbers: bold, their labels tiny under them, a thin line between each */
 .statcol{grid-area:stats;display:grid;justify-items:end;gap:var(--s2)}
 .stats{display:flex;margin:0}
@@ -80,20 +84,53 @@
 .privmsg{margin:var(--s6) 0 0}
 #people{padding-right:2px;max-height:min(60vh,520px);overflow:auto}   /* in the Requests sheet the list scrolls */
 .tabs{margin-top:var(--s5)}
-/* the Profile tab: their shelf, big, across the column; under it the watchlist and From friends on the left, the bio
-   on the right */
-.hero{display:grid;grid-template-columns:minmax(0,1fr);justify-items:center;gap:var(--s3);margin-top:var(--s5);padding:var(--s6) var(--s4);background:var(--wash);border-radius:var(--radius);--fk:.5;--hmax:420px}
+/* the Profile tab: their shelf, standing on a thin shelf line across the column as home's spine wall does, at one
+   spine height (240px; 180px on a phone) from the left, so two spines make a short shelf and twenty fill the row.
+   The picture is shelf.js's, cut at the foot of the books and shown at that size (--wr: its width over the longest
+   book; --ar: its width over its height down to the books' feet). Its name, count, date and Edit under it, small.
+   Then the watchlist and From friends, across the column */
+.hero{display:grid;grid-template-columns:minmax(0,1fr);justify-items:start;gap:var(--s2);margin-top:var(--s5)}
 .hero > *{max-width:100%;min-width:0}
-/* the picture is sized from the band's width (a container), so it sits in the middle whatever its size in pixels */
-#featWrap{justify-self:stretch;container-type:inline-size;display:grid;justify-items:center}
-.hero .pic1{display:block;line-height:0}
-.hero .pic1 canvas{display:block;height:auto;width:min(calc(var(--w, 600) * var(--fk) * 1px), 100cqw, calc(var(--hmax) * var(--w, 600) / var(--h, 600)))}
-.featmeta{display:flex;gap:var(--s1) var(--s3);flex-wrap:wrap;align-items:baseline;justify-content:center;text-align:center;max-width:100%}
-.featmeta b{font-weight:500;font-size:var(--fs-dialog);min-width:0;max-width:100%}
-.pgrid{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:var(--s6);margin-top:var(--s6);align-items:start}
-.pgrid.solo{grid-template-columns:minmax(0,1fr)}
-.pgrid.solo .pmain{display:none}
+#featWrap{justify-self:stretch;border-bottom:1px solid var(--ink);line-height:0;padding-top:var(--s2);--sh:240px}
+.hero .pic1{display:block;line-height:0;overflow:hidden;width:min(calc(var(--sh) * var(--wr, 1)), 100%);aspect-ratio:var(--ar, 1)}
+.hero .pic1 canvas{display:block;width:100%;height:auto}
+.featmeta{display:flex;gap:var(--s1) var(--s3);flex-wrap:wrap;align-items:baseline;max-width:100%;font-size:var(--fs-small)}
+.featmeta b{font-weight:500;font-size:var(--fs-card);min-width:0;max-width:100%}
+.hero .none{justify-self:stretch}
+.pgrid{display:grid;gap:var(--s6);margin-top:var(--s6)}
 .pmain{display:grid;gap:var(--s6);min-width:0}
+/* the watchlist on the Profile tab: up to four of its covers, and See all */
+.wstrip{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(var(--cards),minmax(0,1fr));gap:var(--card-gap)}
+.wstrip:empty{display:none}
+.wstrip a{display:block;line-height:0}
+.wstrip canvas{display:block;width:100%;height:auto;aspect-ratio:2/3}
+/* the Watchlist tab: what they want to see and read, the box to add one (yours), then the covers, worn (wear.js), as
+   shelf cards are laid out. The title shows on the cover when a mouse is over it, and under it on a phone */
+.whead{display:flex;gap:var(--s2) var(--s4);align-items:baseline;flex-wrap:wrap;margin-bottom:var(--s4)}
+.wline{margin:0}
+.wsearch{position:relative;display:grid;gap:var(--s1);max-width:420px;margin-bottom:var(--s5)}
+.wsearch .note{margin:0;min-height:1.5em}
+.wsugg{list-style:none;margin:0;padding:var(--s1) 0;position:absolute;top:calc(100% - 1.5em);left:0;right:0;z-index:7;background:var(--paper);border:1px solid var(--ink);border-radius:var(--radius)}
+.wsugg li{padding:var(--s2) var(--s3);cursor:pointer;display:flex;gap:var(--s1) var(--s2);flex-wrap:wrap;align-items:baseline}
+.wsugg li[aria-selected="true"]{background:var(--ink);color:var(--paper)}
+.wsugg .y,.wsugg .k,.wsugg .by{color:var(--grey);font-size:var(--fs-small)}
+.wsugg li[aria-selected="true"] :is(.y,.k,.by){color:inherit}
+.wgrid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(var(--cards),minmax(0,1fr));gap:var(--s4) var(--card-gap)}
+.wt{min-width:0;display:grid;gap:var(--s1);align-content:start}
+.wc{display:block;position:relative;aspect-ratio:2/3;line-height:0}
+.wc canvas{display:block;width:100%;height:100%}
+.wcap{font-size:var(--fs-small);overflow-wrap:anywhere}
+.wcap b{font-weight:500}
+.wcap span{color:var(--grey)}
+.wacts{display:flex;gap:var(--s1) var(--s3);flex-wrap:wrap}
+.wplus{display:grid;place-items:center;width:100%;aspect-ratio:2/3;border:1px dashed var(--ink);border-radius:var(--radius);background:var(--paper);color:var(--ink);font:400 32px var(--mono);cursor:pointer;padding:0}
+.wplus:hover{background:var(--wash)}
+@media (hover:hover) and (pointer:fine){   /* over the cover, at its foot: the two share the tile's first row */
+  .wt .wc,.wt .wcap{grid-row:1;grid-column:1}
+  .wt .wcap{align-self:end;z-index:1;padding:var(--s1) var(--s2);background:var(--ink);color:var(--paper);line-height:1.4;opacity:0;transition:opacity .12s;pointer-events:none}
+  .wt .wcap span{color:inherit}
+  .wt:hover .wcap,.wt:focus-within .wcap{opacity:1}
+}
 /* the watchlist and From friends: a row each, as On this shelf has them */
 .titles{list-style:none;margin:0;padding:0}
 .titles li{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:var(--s3);align-items:center;padding:var(--s2) 0;border-bottom:1px solid var(--hair)}
@@ -141,6 +178,7 @@
 .sacts{display:flex;gap:var(--s3) var(--s4);align-items:center;flex-wrap:wrap;margin-top:var(--s2)}
 .onshelf{max-width:680px;min-width:0}
 .spines{list-style:none;margin:0;padding:0}
+.sact{display:flex;align-items:center;gap:var(--s1)}
 .spines li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:var(--s3);align-items:center;padding:var(--s2) 0;border-bottom:1px solid var(--hair)}
 .spines .sthumb{display:grid;place-items:center;height:56px}
 .spines .sthumb canvas{display:block}
@@ -158,8 +196,6 @@
 /* exactly the height of the name it replaces, so nothing below it moves (a link that moves mid-press misses its click) */
 input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1);min-width:0;width:100%;max-width:320px}
 .tag{vertical-align:1px}
-.side{display:grid;gap:var(--s6);min-width:0}
-.side .bio{white-space:pre-line;overflow-wrap:anywhere;margin:0}
 .addbio{color:var(--grey);text-decoration:none}
 .addbio:hover,.addbio:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
 .none{display:grid;justify-items:center;gap:var(--s3);padding:var(--s5) 0 var(--s2);text-align:center}
@@ -173,9 +209,6 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 .back:hover,.back:focus-visible{color:var(--ink)}
 @media (pointer:coarse){ .back{position:relative} .back::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))} }
 
-@media (max-width:820px){
-  .pgrid{grid-template-columns:minmax(0,1fr)}
-}
 /* a touch screen: 44 x 44px to press (see site.css): the share button and "add a bio" reach out with a clear ::before,
    the menus' rows are 44px, and a shelf's name (cut with an ellipsis, so nothing can reach past it) is padded out */
 @media (pointer:coarse){
@@ -183,21 +216,26 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
   :is(.iconbtn,.addbio)::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))}
   .menu button,.menu a{padding-top:15px;padding-bottom:15px}
   .name{position:relative;padding-top:10px;padding-bottom:10px;margin-top:-10px;margin-bottom:-10px}   /* over the date under it, under Edit and Share */
+  .featmeta{row-gap:var(--s5)}   /* the name's press clears Edit when it goes under */
+  .featmeta .name{z-index:1;padding-top:13px;padding-bottom:13px;margin-top:-13px;margin-bottom:-13px}   /* the hero's, in the small line under the shelf */
 }
 @media (max-width:640px){
-  .phead{grid-template-columns:72px minmax(0,1fr);grid-template-areas:"ava who" "bio bio" "stats stats";gap:var(--s4)}
+  .phead{grid-template-columns:72px minmax(0,1fr);grid-template-areas:"ava who" "stats stats";gap:var(--s4)}
   .ava{width:72px;height:72px;font-size:28px}
-  .bio-m{display:block}
-  .side .biosec,.side .mutual{display:none}
   .statcol{justify-items:stretch}
   .stats{display:none}                              /* the numbers are the one small line under the name */
   .counts{display:block}
   .statcol:has(> #reqBtn[hidden]){display:none}     /* with no requests waiting, nothing is left in it */
   #reqBtn{justify-self:start}
-  .hero{--fk:.36;--hmax:340px;padding:var(--s5) var(--s3)}
+  #featWrap{--sh:180px}
+  .wstrip li:nth-child(n+4){display:none}   /* three across on a phone */
   .titles li{grid-template-columns:40px minmax(0,1fr)}
   .tacts{grid-column:2;justify-content:flex-start}
 }
+/* a log's ••• (a touch screen: Add to watchlist) at the top right of the log, so the caption keeps its width */
+.items .item.log{position:relative}
+.items .item.log>.wmorewrap{position:absolute;top:-12px;right:0}
+@media (pointer:coarse){.items .item.log .line{padding-right:44px}}
 </style>
 </head>
 <body>
@@ -226,6 +264,10 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
           <span class="tag" id="followsYou" hidden>Follows you</span>
         </div>
         <p class="handle" id="handle"></p>
+        <div class="pbio" id="pbio" hidden><p class="bio" id="bio"></p><button class="dash sm grey bmore" id="bioMore" type="button" hidden>more</button></div>
+        <a class="addbio" id="addBio" href="../settings/" hidden>add a bio</a>
+        <p class="mutual" id="mutual" hidden></p>
+        <p class="since" id="since"></p>
         <!-- the numbers on a phone, in one small line (on a wide window they stand at the right: .stats) -->
         <p class="counts" id="counts"><a id="cSpines" href="#"><b>0</b> spines</a> · <a id="cFollowing" href="#network"><b>0</b> following</a> · <a id="cFollowers" href="#followers"><b>0</b> followers</a></p>
         <div class="pbtns">
@@ -235,7 +277,6 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
           <div class="menu" id="menu" role="menu" hidden><button type="button" role="menuitem" id="copyLink">Copy link</button><button type="button" role="menuitem" id="reportProfile" hidden>Report</button></div>
         </div>
       </div>
-      <div class="bio-m" id="bioWrap" hidden><p id="bioM"></p><a class="addbio" id="addBioM" href="../settings/" hidden>add a bio</a><p class="mutual" id="mutualM" hidden></p></div>
       <div class="statcol" id="statCol">
         <dl class="stats">
           <div><dt>Spines</dt><dd id="nSpines">0</dd></div>
@@ -252,6 +293,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
       <nav class="tabs" role="tablist" aria-label="Profile">
         <button type="button" role="tab" id="tabP" data-tab="profile" aria-selected="true" aria-controls="panelP">Profile</button>
         <button type="button" role="tab" id="tabA" data-tab="activity" aria-selected="false" aria-controls="panelA">Activity</button>
+        <button type="button" role="tab" id="tabW" data-tab="watchlist" aria-selected="false" aria-controls="panelW">Watchlist</button>
         <button type="button" role="tab" id="tabN" data-tab="network" aria-selected="false" aria-controls="panelN">Network</button>
       </nav>
       <div id="panelP" role="tabpanel" aria-labelledby="tabP">
@@ -269,9 +311,9 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
         <div class="pgrid" id="pgrid">
           <div class="pmain">
             <section id="watchSec" hidden>
-              <h2>Watchlist <small id="watchCount"></small></h2>
-              <ol class="titles" id="watch"></ol>
-              <p class="grey" id="watchNone" hidden>Nothing here yet. Pick Watchlist in + Add to keep a film or a book for later.</p>
+              <h2>Watchlist <small id="watchCount"></small> <a class="more" id="watchAll" href="#watchlist">See all →</a></h2>
+              <ol class="wstrip" id="watchStrip"></ol>
+              <p class="grey" id="watchNone" hidden>Add a film or book you want to get to. <a class="dash sm" href="#watchlist">Watchlist</a></p>
             </section>
             <section id="friendsSec" hidden>
               <h2>From friends</h2>
@@ -279,11 +321,6 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
               <p class="grey" id="friendsNone" hidden>Nothing from friends yet. What people you follow log shows up here. <a href="../members/">Find people</a></p>
             </section>
           </div>
-          <aside class="side">
-            <section class="biosec" id="bioSec" hidden><h2>Bio</h2><p class="bio" id="bio"></p><a class="addbio" id="addBio" href="../settings/" hidden>add a bio</a></section>
-            <p class="mutual" id="mutual" hidden></p>
-            <p class="grey" id="since"></p>
-          </aside>
         </div>
       </div>
       <div id="panelA" role="tabpanel" aria-labelledby="tabA" hidden>
@@ -291,6 +328,17 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
         <p class="grey" id="actsNone" hidden>No activity yet.</p>
         <p class="grey" id="actsNoneMine" hidden>Nothing here yet. Log a film or a book with + Add, or save your shelf.</p>
         <button class="dash sm" id="actsMore" type="button" hidden>Load more</button>
+      </div>
+      <div id="panelW" role="tabpanel" aria-labelledby="tabW" hidden>
+        <div class="whead"><p class="wline" id="wLine"></p><button class="dash sm" id="wPrivacy" type="button" hidden>Make public</button><span class="note" id="wPrivNote" hidden></span></div>
+        <div class="wsearch" id="wSearch" hidden>
+          <label class="lbl" for="wQ">Add to your watchlist</label>
+          <input type="text" id="wQ" placeholder="find a film or book" maxlength="120" autocomplete="off">
+          <p class="note" id="wSay" role="status"></p>
+          <ul class="wsugg" id="wSugg" hidden></ul>
+        </div>
+        <ol class="wgrid" id="wGrid"></ol>
+        <p class="grey" id="wNone" hidden>Add a film or book you want to get to.</p>
       </div>
       <div id="panelN" role="tabpanel" aria-labelledby="tabN" hidden>
         <nav class="tabs sub" role="tablist" aria-label="Network">
@@ -392,7 +440,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 <script src="../cards.js?v=20261002a"></script>
 <script src="../spinetip.js?v=20261004a"></script>
 <script src="../wear.js?v=20261004a"></script>
-<script src="../nav.js?v=20261009a"></script>
+<script src="../nav.js?v=20261010a"></script>
 <script>
 (() => {
 /* A profile: /u/?username, and its shelf on its own page: /u/?username&shelf (one shelf each), or a shelf by its id,
@@ -694,14 +742,13 @@ function paintHead(){
   $('#editBtn').hidden = !mine;
   $('#reportProfile').hidden = mine;
   $('#privNote').hidden = !(mine && p.is_private);
-  $('#bioM').textContent = p.bio; $('#addBioM').hidden = !(mine && !p.bio); bioWrap();   // on a phone, the bio's place under you
-  $('#bio').textContent = p.bio; $('#bio').hidden = !p.bio;
+  // the bio under the name: three lines, and "more" when there's more
+  $('#bio').textContent = p.bio; $('#pbio').hidden = !p.bio; $('#pbio').classList.remove('open');
   $('#addBio').hidden = !(mine && !p.bio);
-  $('#bioSec').hidden = !p.bio && !mine;
+  requestAnimationFrame(() => { const b = $('#bio'); $('#bioMore').hidden = !p.bio || b.scrollHeight <= b.clientHeight + 1; });
   $('#since').textContent = 'on shelfstackd since ' + new Date(p.created_at).toLocaleDateString('en-US', {month:'short', year:'numeric'});
 }
-// on a phone the bio sits under the name, with the "Followed by" line under it; the box they share shows when either does
-function bioWrap(){ $('#bioWrap').hidden = !(view.profile && view.profile.bio) && $('#mutualM').hidden && $('#addBioM').hidden; }
+$('#bioMore').addEventListener('click', () => { $('#pbio').classList.add('open'); $('#bioMore').hidden = true; });
 /* the hero: their shelf, big, across the column, the way the builder draws it (shelf.js), cut down to the books.
    Pressing it opens the shelf's page. Its name under it (yours: press it to rename it), and Edit on your own. */
 let heroRun = 0;
@@ -718,17 +765,27 @@ async function paintHero(){
   try { [list, wall] = await Promise.all([books(await api(`shelf_items?select=${ITEM_COLS}&shelf_id=eq.${s.id}&order=position`)), wallOf(s)]); } catch { list = []; }
   if (run !== heroRun) return;   // drawn again meanwhile
   const draw = () => {
-    const c = list.length && bareShelf(list, s, wall);
-    if (c) c.style.setProperty('--h', c.height);
-    $('#featLink').replaceChildren(...(c ? [c] : []));
+    const c = list.length && bareShelf(list, s, wall), a = $('#featLink');
+    if (c){
+      // shown at one spine height: the longest book (a spine standing, a book lying in a pile, a cover) is --sh tall
+      // or long, and the picture is cut at the books' feet, which stand on the line under it
+      const sp = c.spots || [], longest = Math.max(1, ...sp.map(b => Math.max(b.w, b.h))), feet = sp.length ? Math.max(...sp.map(b => b.y + b.h)) : c.height;
+      a.style.setProperty('--wr', (c.width / (sp.length ? longest : c.height)).toFixed(4));
+      a.style.setProperty('--ar', (c.width / Math.min(c.height, Math.max(1, feet))).toFixed(4));
+    }
+    a.replaceChildren(...(c ? [c] : []));
   };
   draw(); view.drawn.push(draw);
 }
 
-/* ---------- the watchlist (up to 6, anyone who can see the profile) and From friends (yours only): what the people
-   you follow logged lately, that you haven't. Both read the tables supabase/migrations/0007_logs_watchlist.sql makes;
-   on a database without them, neither shows. ---------- */
-const lists = {watch: [], friends: []};
+/* ---------- the watchlist and From friends. Both read the tables supabase/migrations/0007_logs_watchlist.sql makes; on a
+   database without them, neither shows. The watchlist holds Add.WATCH_CAP titles (add.js; 6). On the Profile tab it's
+   a strip of up to four covers and See all; its own tab (#watchlist) has them all, worn (wear.js), with what they want
+   to see and read over them. Yours has a box to add one (the + ADD dialog's search, add.js), a dotted + first, and
+   Remove and Watched (or Read) on each. From friends (yours only) is what the people you follow logged lately, that you
+   haven't. A watchlist is private once docs/proposed-0008-watchlist-privacy.sql is run (profiles.watchlist_public):
+   until then there's no such column, and it's seen as before, by whoever can see the profile. ---------- */
+const lists = {watch: [], friends: [], privacy: null};   // privacy: null before 0008; then true (public) or false
 const coverOf = ref => ref ? `${WORKER}/img?url=${encodeURIComponent(String(ref).replace(/^url:/, ''))}` : '';
 const asItem = r => ({kind: r.kind, title: r.title, year: r.year ? String(r.year) : '', creator: r.author || '', cover: r.cover_src ? String(r.cover_src).replace(/^url:/, '') : ''});
 const didIt = r => r.kind === 'movie' ? 'Watched' : 'Read';
@@ -740,20 +797,90 @@ function titleRow(r, i, acts, from){
     ${acts ? `<span class="tacts">${acts}</span>` : ''}`;
   return li;
 }
-// the main column shows when either list does; with neither, the bio has the width
-function paintGrid(){ $('#pgrid').classList.toggle('solo', $('#watchSec').hidden && $('#friendsSec').hidden); }
+// a worn cover (wear.js), 2:3, as the feed draws a log's, by how long it's been on the watchlist
+const wornCover = (r, width = 150) => Wear.cover({src: coverOf(r.cover_src), seed: r.id, at: r.created_at, label: `${r.title}${r.year ? ` (${r.year})` : ''}`, width});
+// "You want to see 4 films and read 2 books." / "@mira wants to see 1 film."
+function wantLine(rows, mine){
+  const films = rows.filter(r => r.kind === 'movie').length, books = rows.length - films, n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
+  const parts = [films && 'see ' + n(films, 'film', 'films'), books && 'read ' + n(books, 'book', 'books')].filter(Boolean);
+  return parts.length ? `${mine ? 'You want' : '@' + view.profile.username + ' wants'} to ${parts.join(' and ')}.` : '';
+}
+// 0008 run? (profiles.watchlist_public). Without it the database says the column isn't there
+async function watchPrivacy(){
+  try { const rows = await api(`profiles?select=watchlist_public&id=eq.${view.profile.id}`); return rows && rows[0] && typeof rows[0].watchlist_public === 'boolean' ? rows[0].watchlist_public : null; }
+  catch { return null; }
+}
 async function paintWatch(){
   const mine = view.mine;
   let rows = null;
-  try { rows = await api(`watchlist?select=id,kind,title,author,year,cover_src,from_user,created_at&owner=eq.${view.profile.id}&order=created_at.desc&limit=6`); } catch {}
-  lists.watch = rows || [];
-  $('#watchSec').hidden = !rows || (!rows.length && !mine);
-  $('#watchCount').textContent = mine && lists.watch.length ? `${lists.watch.length} of 6` : '';
-  // yours: Remove, and Watched (or Read), which logs it and so takes it off
-  $('#watch').replaceChildren(...lists.watch.map((r, i) => titleRow(r, i, mine ? `<button class="dash sm grey" type="button" data-w="remove">Remove</button><button class="dash sm" type="button" data-w="log">${didIt(r)}</button>` : '')));
+  const [got, privacy] = await Promise.all([api(`watchlist?select=id,kind,title,author,year,cover_src,from_user,created_at&owner=eq.${view.profile.id}&order=created_at.desc&limit=50`).catch(() => null), watchPrivacy()]);
+  rows = got; lists.watch = rows || []; lists.privacy = privacy;
+  // the tab and the strip: a database with the watchlist; someone else's only when it's public (once 0008 is run)
+  const shown = !!rows && (mine || privacy !== false);
+  $('#tabW').hidden = !shown;
+  $('#watchSec').hidden = !shown || (!lists.watch.length && !mine);
+  $('#watchCount').textContent = mine && lists.watch.length ? `${lists.watch.length} of ${window.Add ? Add.WATCH_CAP : 6}` : '';
+  $('#watchAll').hidden = !lists.watch.length;
+  $('#watchStrip').replaceChildren(...lists.watch.slice(0, 4).map(r => {
+    const li = document.createElement('li'), a = document.createElement('a');
+    a.href = '#watchlist'; a.setAttribute('aria-label', `${r.title}${r.year ? ` (${r.year})` : ''}, on the watchlist`); a.append(wornCover(r));
+    li.append(a); return li;
+  }));
   $('#watchNone').hidden = !!lists.watch.length;
-  paintGrid();
+  if (!$('#panelW').hidden) paintWatchTab();
+  if (!shown && location.hash === '#watchlist') goTab('');
 }
+function paintWatchTab(){
+  const mine = view.mine, rows = lists.watch;
+  $('#wLine').textContent = wantLine(rows, mine) || (mine ? '' : 'Nothing here yet.');
+  $('#wLine').hidden = !$('#wLine').textContent;
+  // yours, once 0008 is run: Make public / Make private
+  const priv = $('#wPrivacy'), note = $('#wPrivNote');
+  priv.hidden = note.hidden = !(mine && lists.privacy !== null);
+  priv.textContent = lists.privacy ? 'Make private' : 'Make public';
+  note.textContent = lists.privacy ? 'Anyone who can see your profile sees it.' : 'Only you see it.';
+  $('#wSearch').hidden = !mine;
+  if (mine) watchSearch();
+  const tiles = rows.map((r, i) => {
+    const li = document.createElement('li'); li.className = 'wt'; li.dataset.i = i;
+    li.innerHTML = `<span class="wc"></span><span class="wcap"><b>${esc(r.title)}</b>${r.year ? ` <span>${esc(r.year)}</span>` : ''}</span>${mine ? `<span class="wacts"><button class="dash sm grey" type="button" data-w="remove">Remove</button><button class="dash sm" type="button" data-w="log">${didIt(r)}</button></span>` : ''}`;
+    const wc = li.querySelector('.wc'); wc.append(wornCover(r));
+    if (!mine) Nav.watchable(wc, asItem(r), {moreIn: li});   // someone else's: on yours too
+    return li;
+  });
+  if (mine){
+    const plus = document.createElement('li'); plus.className = 'wt';
+    plus.innerHTML = '<button class="wplus" type="button" aria-label="Add a film or book to your watchlist">+</button>';
+    tiles.unshift(plus);
+  }
+  $('#wGrid').replaceChildren(...tiles);
+  $('#wNone').hidden = !(mine && !rows.length);
+}
+// the box on your Watchlist tab: the + ADD dialog's search (add.js), and a title picked goes straight on, nothing else
+let searching = null;
+function watchSearch(){
+  if (searching) return;
+  searching = Nav.loadAdd().then(ok => {
+    if (!ok){ $('#wSay').textContent = 'Search couldn’t load. Try again in a moment.'; searching = null; return; }
+    Add.attachSearch({input: $('#wQ'), list: $('#wSugg'), say: t => { $('#wSay').textContent = t; }, onPick: async m => {
+      if (lists.watch.length >= Add.WATCH_CAP){ $('#wSay').textContent = `Your watchlist is full (${Add.WATCH_CAP}). Remove one to add another.`; return; }
+      $('#wSay').textContent = 'Adding…';
+      const r = await Add.watch(m);
+      $('#wSay').textContent = r.ok && !r.already ? '' : r.error;
+      if (r.ok && !r.already) paintWatch();
+    }});
+  });
+}
+$('#wGrid').addEventListener('click', e => { if (e.target.closest('.wplus')){ $('#wQ').focus(); $('#wQ').scrollIntoView({block: 'nearest'}); } });
+$('#wPrivacy').addEventListener('click', async () => {
+  const b = $('#wPrivacy'), next = !lists.privacy; b.disabled = true;
+  try {
+    const rows = await api(`profiles?id=eq.${view.profile.id}&select=watchlist_public`, {method: 'PATCH', headers: {Prefer: 'return=representation'}, body: JSON.stringify({watchlist_public: next})});
+    if (!rows || !rows[0]) throw new Error('That didn’t save. Try again in a moment.');
+    lists.privacy = rows[0].watchlist_public; toast(lists.privacy ? 'Your watchlist is public.' : 'Your watchlist is private.'); paintWatchTab();
+  } catch (err){ toast(friendly(err)); }
+  b.disabled = false;
+});
 async function paintFriends(){
   let rows = null;
   if (view.mine) try { rows = await rpc('from_friends', {n: 6}); } catch {}
@@ -762,11 +889,12 @@ async function paintFriends(){
   // Keep puts it on your watchlist, Remove takes it out of here for good, Watched (or Read) logs it
   $('#friends').replaceChildren(...lists.friends.map((r, i) => titleRow(r, i, `<button class="dash sm" type="button" data-f="keep">Keep</button><button class="dash sm grey" type="button" data-f="remove">Remove</button><button class="dash sm" type="button" data-f="log">${didIt(r)}</button>`, r.from_username)));
   $('#friendsNone').hidden = !!lists.friends.length;
-  paintGrid();
+  // each cover: a watchlist button (kept from whose log it was), as Keep does
+  lists.friends.forEach((r, i) => { const li = $('#friends').children[i]; if (li) Nav.watchable(li.querySelector('.tc'), asItem(r), {from: r.from_id, moreIn: li.querySelector('.tacts')}); });
 }
 function paintLists(){ paintWatch(); paintFriends(); }
 const keptError = e => e && e.code === '23505' ? 'It’s already on your watchlist.' : friendly(e);
-$('#watch').addEventListener('click', async e => {
+$('#wGrid').addEventListener('click', async e => {
   const b = e.target.closest('[data-w]'), r = b && lists.watch[+b.closest('li').dataset.i]; if (!r) return;
   if (b.dataset.w === 'log'){ Nav.add({mode: 'log', item: asItem(r)}); return; }
   b.disabled = true;
@@ -868,12 +996,14 @@ function paintItems(){
   const ol = $('#oneItems'), have = r => !!shown.onMine && shown.onMine.has(titleKey(r));
   ol.replaceChildren(...shown.rows.map((r, i) => {
     const li = document.createElement('li'); li.dataset.i = i;
-    li.innerHTML = `<span class="sthumb" aria-hidden="true"></span>
+    li.innerHTML = `<span class="sthumb"></span>
       <span class="st"><b>${esc(r.title || 'Untitled')}${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${esc([r.author, r.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · '))}</span></span>
-      ${!have(r) ? `<button class="dash sm" type="button" data-add="${i}">+ Add to my shelf</button>` : view.mine ? '' : '<span class="onmine">On your shelf</span>'}`;
+      <span class="sact">${!have(r) ? `<button class="dash sm" type="button" data-add="${i}">+ Add to my shelf</button>` : view.mine ? '' : '<span class="onmine">On your shelf</span>'}</span>`;
+    // someone else's shelf: each spine onto your watchlist too
+    if (!view.mine) Nav.watchable(li.querySelector('.sthumb'), {kind: r.kind, title: r.title, year: r.year ? String(r.year) : '', creator: r.author || '', cover: /^url:/.test(r.cover_src || '') ? r.cover_src.slice(4) : ''}, {moreIn: li.querySelector('.sact')});
     return li;
   }));
-  const draw = () => smallSpines(shown.list, 56).forEach((sp, i) => { const at = ol.children[i]; if (at) at.querySelector('.sthumb').replaceChildren(sp); });
+  const draw = () => smallSpines(shown.list, 56).forEach((sp, i) => { const t = ol.children[i] && ol.children[i].querySelector('.sthumb'); if (!t) return; sp.setAttribute('aria-hidden', 'true'); const old = t.querySelector('canvas'); if (old) old.replaceWith(sp); else t.prepend(sp); });
   draw(); view.drawn.push(draw);
   $('#oneOn').hidden = !shown.rows.length;
 }
@@ -1089,8 +1219,8 @@ async function paintFollow(){
    each person whether you follow them, so it's read from that (the newest 200 followers at most). Nothing new in the
    database. */
 async function paintKnown(){
-  const p = view.profile, tag = $('#followsYou'), lines = [$('#mutual'), $('#mutualM')];
-  tag.hidden = true; for (const el of lines) el.hidden = true; bioWrap();
+  const p = view.profile, tag = $('#followsYou'), lines = [$('#mutual')];
+  tag.hidden = true; for (const el of lines) el.hidden = true;
   if (!me.user || !p || p.id === me.user.id) return;
   api(`follows?select=follower&follower=eq.${p.id}&followee=eq.${me.user.id}`).then(rows => { tag.hidden = !(rows && rows.length); }).catch(() => {});
   const known = []; let last = null, more = true;
@@ -1107,7 +1237,6 @@ async function paintKnown(){
   const html = 'Followed by ' + (known.length === 1 ? at(known[0]) : known.length === 2 ? `${at(known[0])} and ${at(known[1])}`
     : `${at(known[0])}, ${at(known[1])} and <a href="${esc(pageUrl(p.username))}#followers">${rest} ${rest === 1 ? 'other' : 'others'}</a>`);   // the others: their Followers list
   for (const el of lines){ el.innerHTML = html; el.hidden = false; }
-  bioWrap();
 }
 async function paintFollowStats(){
   const st = (await rpc('follow_stats', {uid: view.profile.id}).catch(() => []))[0] || {};
@@ -1127,7 +1256,7 @@ async function showPrivate(card){
   ava.className = 'ava';
   if (card.avatar_key) ava.innerHTML = `<img src="${esc(avatarSrc(card.avatar_key))}" alt="${esc(name || card.username)}">`;
   else { ava.textContent = (name || card.username).trim()[0] || '·'; ava.setAttribute('aria-hidden', 'true'); }
-  $('#editBtn').hidden = true; $('#reportProfile').hidden = false; $('#statCol').hidden = true; $('#counts').hidden = true; $('#bioWrap').hidden = true;
+  $('#editBtn').hidden = true; $('#reportProfile').hidden = false; $('#statCol').hidden = true; $('#counts').hidden = true; $('#pbio').hidden = true; $('#addBio').hidden = true; $('#since').hidden = true;
   paintKnown();   // "Follows you" shows on a private profile's card too
   $('#viewProfile').hidden = true; $('#viewShelf').hidden = true; $('#privateMsg').hidden = false; $('#followBtn').hidden = false;
   $('#state').hidden = true; $('#page').hidden = false;
@@ -1193,7 +1322,8 @@ $('#reqBtn').addEventListener('click', () => { openSheet('#listSheet', '#listShe
 document.querySelectorAll('.statlink').forEach(d => {
   d.addEventListener('click', () => goTab(d.dataset.list === 'followers' ? '#followers' : '#network'));   // its button too: Enter and Space click it
 });
-for (const a of document.querySelectorAll('#cFollowing, #cFollowers')) a.addEventListener('click', e => { e.preventDefault(); goTab(a.getAttribute('href')); });   // the phone's line does the same
+for (const a of document.querySelectorAll('#cFollowing, #cFollowers')) a.addEventListener('click', e => { e.preventDefault(); goTab(a.getAttribute('href')); });
+$('#watchSec').addEventListener('click', e => { const a = e.target.closest('a[href="#watchlist"]'); if (a){ e.preventDefault(); goTab('#watchlist'); scrollTo(0, 0); } });   // the phone's line does the same
 
 /* ---------- the Activity tab: a line for each shelf saved and each film or book logged, newest first (the feed's
    lines, without the photo: they're all this person's). On your own profile a private shelf is there too, marked, and
@@ -1212,6 +1342,7 @@ function actLine(x){
     li.innerHTML = `<p class="line">${who} ${verb} <b>${esc(l.title)}</b> ${when(l.created_at, day(l.created_at))}${view.mine ? ` <button class="dash sm grey" type="button" data-unlog="${esc(l.id)}">Delete</button>` : ''}</p>
       <div class="logbody"><span class="cover"></span>${l.caption ? `<p class="say">${esc(l.caption)}</p>` : ''}</div>`;
     li.querySelector('.cover').append(Wear.cover({src: coverOf(l.cover_src), seed: l.id, at: l.created_at, label: `${l.title}${l.year ? ` (${l.year})` : ''}, ${verb} by @${p.username}`, width: COVER}));
+    if (!view.mine) Nav.watchable(li.querySelector('.cover'), asItem(l), {moreIn: li});   // someone else's log: onto your watchlist
     return li;
   }
   const s = x.shelf, name = shelfName(s), src = previewSrc(s), to = esc(pageUrl(p.username, s.id)), at = savedAt(s);
@@ -1257,15 +1388,17 @@ $('#acts').addEventListener('click', async e => {
   } catch (err){ toast(friendly(err)); if (b.isConnected) b.disabled = false; }
 });
 
-/* ---------- tabs: Profile · Activity (#activity) · Network (#network is Following, #followers is Followers). The
+/* ---------- tabs: Profile · Activity (#activity) · Watchlist (#watchlist) · Network (#network is Following, #followers is Followers). The
    address has the tab, so a reload lands on it, and so do the account menu's links. #shelves, from when there was a
    Shelves tab, is Profile. ---------- */
-const HASH = {'': ['profile'], '#shelves': ['profile'], '#activity': ['activity'], '#network': ['network', 'following'], '#following': ['network', 'following'], '#followers': ['network', 'followers']};
-const PANEL = {profile: '#panelP', activity: '#panelA', network: '#panelN'};
+const HASH = {'': ['profile'], '#shelves': ['profile'], '#activity': ['activity'], '#watchlist': ['watchlist'], '#network': ['network', 'following'], '#following': ['network', 'following'], '#followers': ['network', 'followers']};
+const PANEL = {profile: '#panelP', activity: '#panelA', watchlist: '#panelW', network: '#panelN'};
 function paintTabs(){
-  const [tab, net] = HASH[location.hash] || HASH[''];
+  let [tab, net] = HASH[location.hash] || HASH[''];
+  if (tab === 'watchlist' && $('#tabW').hidden) tab = 'profile';   // a watchlist that isn't shown (private, or no database for it)
   for (const b of document.querySelectorAll('#viewProfile > .tabs button')){ const on = b.dataset.tab === tab; b.setAttribute('aria-selected', String(on)); $(PANEL[b.dataset.tab]).hidden = !on; }
   if (tab === 'activity') paintActivity();
+  if (tab === 'watchlist') paintWatchTab();
   if (tab === 'network'){
     for (const b of document.querySelectorAll('.tabs.sub button')) b.setAttribute('aria-selected', String(b.dataset.net === net));
     if (netShown !== net){ netShown = net; netList.open(net); }
@@ -1273,7 +1406,7 @@ function paintTabs(){
 }
 function goTab(hash){ history.replaceState(null, '', location.pathname + location.search + hash); paintTabs(); }
 document.querySelector('#viewProfile > .tabs').addEventListener('click', e => {
-  const b = e.target.closest('[data-tab]'); if (b) goTab({profile: '', activity: '#activity', network: '#network'}[b.dataset.tab]);
+  const b = e.target.closest('[data-tab]'); if (b) goTab({profile: '', activity: '#activity', watchlist: '#watchlist', network: '#network'}[b.dataset.tab]);
 });
 document.querySelector('.tabs.sub').addEventListener('click', e => { const b = e.target.closest('[data-net]'); if (b) goTab(b.dataset.net === 'followers' ? '#followers' : '#network'); });
 // ← → move between the tabs of a row

@@ -1,6 +1,6 @@
-// A profile's tabs (/u/?name): Profile · Activity · Network. Profile has their shelf, big, then the watchlist and (on
-// your own) From friends; Activity a line for each shelf saved and each film or book logged; Network Following ·
-// Followers.
+// A profile's tabs (/u/?name): Profile · Activity · Watchlist · Network. Profile has their shelf on a shelf line, then
+// a strip of the watchlist and (on your own) From friends; Activity a line for each shelf saved and each film or book
+// logged; Watchlist its covers (specs/watchlist.spec.js); Network Following · Followers.
 const { test, expect } = require('@playwright/test');
 const { SHELVES, PEOPLE, ME, LOGS, WATCHLIST, SB_URL, CORS, mockNetwork, watchErrors, open } = require('../site');
 
@@ -9,24 +9,26 @@ const tabs = page => page.getByRole('tablist', { name: 'Profile' }).getByRole('t
 const selected = (page, name) => expect(page.getByRole('tablist', { name: 'Profile' }).getByRole('tab', { name, exact: true })).toHaveAttribute('aria-selected', 'true');
 const followList = (page, kind) => page.waitForRequest(r => r.url().includes('/rpc/follow_list') && r.postDataJSON().kind === kind);   // the Network tab's list (the page asks for the followers once by itself, for "Followed by")
 
-test('the tabs are Profile · Activity · Network, each with its own address, kept on reload', async ({ page }) => {
+test('the tabs are Profile · Activity · Watchlist · Network, each with its own address, kept on reload', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?mira');
-  await expect(tabs(page)).toHaveText(['Profile', 'Activity', 'Network']);
+  await expect(tabs(page)).toHaveText(['Profile', 'Activity', 'Watchlist', 'Network']);
   await selected(page, 'Profile');
-  for (const [name, hash, panel] of [['Activity', '#activity', '#panelA'], ['Network', '#network', '#panelN'], ['Profile', '', '#panelP']]) {
+  for (const [name, hash, panel] of [['Activity', '#activity', '#panelA'], ['Watchlist', '#watchlist', '#panelW'], ['Network', '#network', '#panelN'], ['Profile', '', '#panelP']]) {
     await tabs(page).filter({ hasText: name }).click();
     await selected(page, name);
     expect(new URL(page.url()).hash).toBe(hash);
     await expect(page.locator(panel)).toBeVisible();
-    await expect(page.locator('#panelP, #panelA, #panelN').locator('visible=true')).toHaveCount(1);
+    await expect(page.locator('#panelP, #panelA, #panelW, #panelN').locator('visible=true')).toHaveCount(1);
   }
   await open(page, '/u/?mira#activity');
   await selected(page, 'Activity');
   await expect(page.locator('#panelA')).toBeVisible();
   // ← → move along the row
   await tabs(page).nth(1).focus();
+  await page.keyboard.press('ArrowRight');
+  await selected(page, 'Watchlist');
   await page.keyboard.press('ArrowRight');
   await selected(page, 'Network');
   await page.keyboard.press('ArrowRight');
@@ -37,7 +39,7 @@ test('the tabs are Profile · Activity · Network, each with its own address, ke
   expect(errors).toEqual([]);
 });
 
-test('Profile: their shelf first, big, across the column; then the watchlist; no Most shelved', async ({ page }) => {
+test('Profile: their shelf first, standing on a shelf line at one spine height from the left; then the watchlist strip; no Most shelved', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?mira');
@@ -51,16 +53,28 @@ test('Profile: their shelf first, big, across the column; then the watchlist; no
   await expect(page.getByText('Most shelved')).toHaveCount(0);
   await expect(page.getByText(/Main shelf|Recent shelves/)).toHaveCount(0);
   const h = await hero.boundingBox(), main = await page.locator('main').boundingBox(), watch = await page.locator('#watchSec').boundingBox();
-  expect(Math.abs(h.width - main.width)).toBeLessThanOrEqual(1);   // the column's width
   expect(watch.y).toBeGreaterThan(h.y + h.height);
-  // drawn big: half the story's size (the builder's preview is about a quarter), unless that's taller than the space
-  const scale = await hero.locator('canvas').evaluate(c => c.getBoundingClientRect().width / c.width);
-  if (test.info().project.name.startsWith('desktop')) expect(scale).toBeGreaterThanOrEqual(.45);
-  // someone else's watchlist shows, with nothing to press; From friends is only ever your own
-  await expect(page.locator('#watch li')).toHaveCount(1);
-  await expect(page.locator('#watch li')).toContainText('Stalker 1979');
-  await expect(page.locator('#watch').getByRole('button')).toHaveCount(0);
+  expect(Math.abs(watch.width - main.width)).toBeLessThanOrEqual(1);   // the watchlist across the column
+  // no grey panel: the books stand on a 1px black line across the column, from the left, the longest 240px (180px on a phone)
+  expect(await hero.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
+  const line = await page.locator('#featWrap').evaluate(el => { const s = getComputedStyle(el), r = el.getBoundingClientRect(); return { b: [s.borderBottomWidth, s.borderBottomStyle, s.borderBottomColor].join(' '), x: r.left, w: r.width, bottom: r.bottom - parseFloat(s.borderBottomWidth) }; });
+  expect(line.b).toBe('1px solid rgb(0, 0, 0)');
+  expect(Math.abs(line.w - main.width)).toBeLessThanOrEqual(1);
+  const pic = await page.locator('#featLink').evaluate(a => { const c = a.querySelector('canvas'), r = a.getBoundingClientRect(), k = c.getBoundingClientRect().width / c.width;
+    return { x: r.left, bottom: r.bottom, longest: Math.max(...c.spots.map(b => Math.max(b.w, b.h))) * k, feet: (Math.max(...c.spots.map(b => b.y + b.h))) * k + c.getBoundingClientRect().top }; });
+  expect(Math.abs(pic.x - main.x)).toBeLessThanOrEqual(1);                                  // from the left
+  expect(Math.abs(pic.longest - (test.info().project.name.startsWith('phone') ? 180 : 240))).toBeLessThanOrEqual(2);
+  expect(Math.abs(pic.feet - line.bottom)).toBeLessThanOrEqual(1.5);                         // the books' feet on the line
+  expect(Math.abs(pic.bottom - line.bottom)).toBeLessThanOrEqual(1.5);
+  // someone else's watchlist: a strip of covers and See all; From friends is only ever your own
+  await expect(page.locator('#watchStrip li')).toHaveCount(1);
+  await expect(page.locator('#watchStrip a')).toHaveAccessibleName('Stalker (1979), on the watchlist');
+  await expect(page.locator('#watchStrip canvas.worn')).toHaveCount(1);
+  await expect(page.locator('#watchAll')).toHaveText('See all →');
   await expect(page.locator('#friendsSec')).toBeHidden();
+  await page.locator('#watchAll').click();
+  await selected(page, 'Watchlist');
+  expect(new URL(page.url()).hash).toBe('#watchlist');
   expect(errors).toEqual([]);
 });
 
@@ -168,19 +182,18 @@ test('on your own profile the account menu\'s Activity and Network change the ta
 const row = (page, list, title) => page.locator(`#${list} li`).filter({ hasText: title });
 const sent = (page, method, table) => page.waitForRequest(r => r.method() === method && new URL(r.url()).pathname === '/rest/v1/' + table);
 
-test('your watchlist: up to 6, each with Remove and Watched (or Read); From friends: Keep · Remove · Watched / Read', async ({ page }) => {
+test('your watchlist: a strip on Profile; on its tab each cover has Remove and Watched (or Read); From friends: Keep · Remove · Watched / Read', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?tester');
-  await expect(page.locator('#watchSec h2')).toHaveText('Watchlist 2 of 6');
-  await expect(page.locator('#watch li')).toHaveCount(2);
-  await expect(row(page, 'watch', 'Paris, Texas').getByRole('button')).toHaveText(['Remove', 'Watched']);
-  await expect(row(page, 'watch', 'Orlando').getByRole('button')).toHaveText(['Remove', 'Read']);
+  await expect(page.locator('#watchSec h2')).toHaveText('Watchlist 2 of 6 See all →');
+  await expect(page.locator('#watchStrip li')).toHaveCount(2);
+  await expect(page.locator('#watchStrip').getByRole('button')).toHaveCount(0);
   await expect(page.locator('#friendsSec h2')).toHaveText('From friends');
   await expect(page.locator('#friends li')).toHaveCount(2);
   await expect(row(page, 'friends', 'Gummo')).toContainText('from @mira');
-  await expect(row(page, 'friends', 'Gummo').getByRole('button')).toHaveText(['Keep', 'Remove', 'Watched']);
-  await expect(row(page, 'friends', 'The Waves').getByRole('button')).toHaveText(['Keep', 'Remove', 'Read']);
+  await expect(row(page, 'friends', 'Gummo').locator('.tacts > button')).toHaveText(['Keep', 'Remove', 'Watched']);
+  await expect(row(page, 'friends', 'The Waves').locator('.tacts > button')).toHaveText(['Keep', 'Remove', 'Read']);
   // Keep: on your watchlist, saying whose log it came from
   let req = sent(page, 'POST', 'watchlist');
   await row(page, 'friends', 'Gummo').getByRole('button', { name: 'Keep' }).click();
@@ -190,13 +203,16 @@ test('your watchlist: up to 6, each with Remove and Watched (or Read); From frie
   req = sent(page, 'POST', 'friend_hides');
   await row(page, 'friends', 'The Waves').getByRole('button', { name: 'Remove' }).click();
   expect((await req).postDataJSON()).toEqual({ item_key: 'book:the waves:1931' });
-  // Remove, on the watchlist
+  // the Watchlist tab: each cover with Remove and Watched (or Read)
+  await page.getByRole('tab', { name: 'Watchlist' }).click();
+  await expect(row(page, 'wGrid', 'Paris, Texas').getByRole('button')).toHaveText(['Remove', 'Watched']);
+  await expect(row(page, 'wGrid', 'Orlando').getByRole('button')).toHaveText(['Remove', 'Read']);
   req = sent(page, 'DELETE', 'watchlist');
-  await row(page, 'watch', 'Orlando').getByRole('button', { name: 'Remove' }).click();
+  await row(page, 'wGrid', 'Orlando').getByRole('button', { name: 'Remove' }).click();
   expect(new URL((await req).url()).searchParams.get('id')).toBe('eq.' + WATCHLIST[1].id);
   await expect(page.locator('#toast')).toHaveText('Orlando is off your watchlist.');
   // Watched: + ADD's Log it, on that title; Post logs it, and the lists are read again
-  await row(page, 'watch', 'Paris, Texas').getByRole('button', { name: 'Watched' }).click();
+  await row(page, 'wGrid', 'Paris, Texas').getByRole('button', { name: 'Watched' }).click();
   const d = page.getByRole('dialog', { name: /log a film or book/i });
   await expect(d).toBeVisible();
   await expect(d.getByRole('radio', { name: 'Log it' })).toBeChecked();
@@ -219,7 +235,7 @@ test('a database without logs (0007 not run on it): no watchlist, no From friend
   await expect(page.locator('#hero canvas')).toHaveCount(1);
   await expect(page.locator('#watchSec')).toBeHidden();
   await expect(page.locator('#friendsSec')).toBeHidden();
-  await expect(page.locator('#pgrid')).toHaveClass(/solo/);   // the bio has the width
+  await expect(page.getByRole('tab', { name: 'Watchlist' })).toBeHidden();
   await tabs(page).nth(1).click();
   await expect(page.locator('#acts .line')).toHaveCount(6);
   await expect(page.locator('#acts .item.log')).toHaveCount(0);
@@ -299,3 +315,35 @@ test('signed out, a profile has neither "Follows you" nor "Followed by"', async 
   expect(asked).toBe(0);
 });
 
+
+/* ---------- the header: the bio under the name, three lines at most ---------- */
+test('the bio sits in the header under @username, three lines at most with "more"; since when, small and grey, under it; no Bio column', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  const long = 'Films, mostly. ' + 'Late at night, on a small screen, with the sound low. '.repeat(8);
+  await page.route(u => u.origin === SB_URL && u.pathname === '/rest/v1/profiles', async route => {
+    if (route.request().method() !== 'GET' || !route.request().url().includes('username=eq.mira')) return route.fallback();
+    return route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify([{ ...PEOPLE[1], bio: long }]) });
+  });
+  await open(page, '/u/?mira');
+  const handle = await page.locator('#handle').boundingBox(), bio = page.locator('#bio');
+  await expect(bio).toBeVisible();
+  expect((await bio.boundingBox()).y).toBeGreaterThan(handle.y);
+  const lines = await bio.evaluate(el => Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight)));
+  expect(lines).toBeLessThanOrEqual(3);
+  const more = page.getByRole('button', { name: 'more', exact: true });
+  await expect(more).toBeVisible();
+  await more.click();
+  await expect(more).toBeHidden();
+  expect(await bio.evaluate(el => el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight))).toBeGreaterThan(3);
+  await expect(page.locator('#since')).toHaveText('on shelfstackd since Aug 2026');
+  expect(await page.locator('#since').evaluate(el => [getComputedStyle(el).fontSize, getComputedStyle(el).color])).toEqual(['11px', 'rgb(107, 107, 107)']);
+  expect((await page.locator('#since').boundingBox()).y).toBeLessThan((await page.locator('.tabs').first().boundingBox()).y);   // in the header
+  await expect(page.locator('.side, #bioSec')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Bio' })).toHaveCount(0);
+});
+test('a short bio has no "more"', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/u/?mira');
+  await expect(page.locator('#bio')).toHaveText('Films, mostly.');
+  await expect(page.getByRole('button', { name: 'more', exact: true })).toBeHidden();
+});

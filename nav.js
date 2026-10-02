@@ -175,16 +175,17 @@
   // plain link to the builder it always was.
   const addLink = q('.add');
   let adding = null;
-  function openAdd(opt){
-    if (window.Add){ window.Add.open(opt); return Promise.resolve(true); }
+  // add.js, loaded once: the dialog, and the watchlist and title search a page can use without it
+  function loadAdd(){
+    if (window.Add) return Promise.resolve(true);
     if (!window.Shelf) return Promise.resolve(false);
-    adding = adding || new Promise(res => {
-      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261009a';
+    return adding = adding || new Promise(res => {
+      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261010a';
       s.onload = () => res(!!window.Add); s.onerror = () => { adding = null; s.remove(); res(false); };
       document.head.appendChild(s);
     });
-    return adding.then(ok => { if (ok) window.Add.open(opt); return ok; });
   }
+  function openAdd(opt){ return loadAdd().then(ok => { if (ok) window.Add.open(opt); return ok; }); }
   addLink.addEventListener('click', e => {
     if (visitor()){ e.preventDefault(); needAccount('add'); return; }   // signed out: nothing is added, or searched for
     if (e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;   // a new tab or window still gets the builder
@@ -199,8 +200,8 @@
   const visitor = () => !state.user && !kept();
   const GO = 'shelfstackd-after-signin', LINE = '#signSheet .sheetbox p:not(.note), #signinPane > p:not(.note)';
   // where they were going ('build' or 'add'), kept in this tab while Google signs them in; the sheet says why it's open
-  function needAccount(go){
-    try { sessionStorage.setItem(GO, JSON.stringify({go, at: Date.now()})); } catch {}
+  function needAccount(go, item){
+    try { sessionStorage.setItem(GO, JSON.stringify({go, item, at: Date.now()})); } catch {}
     const line = document.querySelector(LINE);
     if (line){ if (line.dataset.was == null) line.dataset.was = line.textContent; line.textContent = 'Sign in to start your shelf.'; }
     if (on.signIn) on.signIn(); else location.href = ROOT + 'build/';
@@ -216,6 +217,73 @@
     if (!g || Date.now() - g.at > 30 * 60e3) return;
     if (g.go === 'build' && !/\/build\/$/.test(location.pathname)) location.href = ROOT + 'build/';
     else if (g.go === 'add') openAdd();
+    else if (g.go === 'watch' && g.item) loadAdd().then(ok => { if (ok) window.Add.watch(g.item); });
+  }
+
+  /* ---------- a watchlist button on a cover or a spine ----------
+     Nav.watchable(host, item, {from, label}): a small bookmark on the host (a cover, a spine), shown on hover or focus
+     with a mouse; on a touch screen a ••• beside it with one item, Add to watchlist. One press puts the title on your
+     watchlist (add.js), then it says In watchlist. Signed out it's the sign-in sheet, and the title goes on once you're
+     signed in. item: {kind, title, year, creator, cover}; from: whose log it came from (From friends). */
+  const ICON_ADD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><line x1="12" x2="12" y1="7" y2="13"/><line x1="15" x2="9" y1="10" y2="10"/></svg>';   // Lucide bookmark-plus
+  const ICON_IN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><path d="m9 10 2 2 4-4"/></svg>';   // Lucide bookmark-check
+  const wcss = document.createElement('style');
+  wcss.textContent = `
+.wable{position:relative}
+.wbtn{position:absolute;top:var(--s1,4px);left:var(--s1,4px);z-index:2;display:grid;place-items:center;width:26px;height:26px;padding:0;border:1px solid var(--ink,#000);border-radius:var(--radius,3px);
+  background:var(--paper,#fff);color:var(--ink,#000);cursor:pointer;opacity:0;transition:opacity .12s}
+.wbtn svg{width:14px;height:14px;display:block}
+.wable:hover .wbtn,.wbtn:focus-visible,.wbtn.in{opacity:1}
+.wbtn.in{background:var(--ink,#000);color:var(--paper,#fff);cursor:default}
+.wmorewrap{display:none}
+@media (pointer:coarse){
+  .wbtn{display:none}
+  .wmorewrap{display:inline-block;position:relative;flex:none}
+  .wmore{display:grid;place-items:center;min-width:44px;height:44px;padding:0;border:0;background:none;color:var(--ink,#000);font:700 var(--fs-btn,11px) var(--mono,monospace);letter-spacing:.1em;cursor:pointer}
+  .wmenu.up{top:auto;bottom:100%}
+  .wmenu{position:absolute;top:100%;right:0;z-index:8;background:var(--paper,#fff);border:1px solid var(--ink,#000);border-radius:var(--radius,3px);padding:var(--s1,4px) 0;white-space:nowrap}
+  .wmenu button{display:block;width:100%;min-height:44px;text-align:left;background:none;border:0;padding:0 var(--s4,16px);font:500 var(--fs-nav,12px) var(--mono,monospace);text-transform:uppercase;letter-spacing:var(--track,1px);color:inherit;cursor:pointer}
+}`;
+  document.head.appendChild(wcss);
+  async function addToWatchlist(item, from){
+    if (visitor()){ needAccount('watch', item); return false; }
+    if (!(await loadAdd())) return false;
+    const r = await window.Add.watch(item, {from});
+    if (r.error) say(r.error);   // already on it (then it's In watchlist too), full, or it didn't save
+    return r.ok;
+  }
+  // the page's own toast, when add.js isn't the one saying it
+  function say(msg){ const t = document.getElementById('toast'); if (!t) return; t.textContent = msg; t.hidden = false; clearTimeout(say.t); say.t = setTimeout(() => { t.hidden = true; }, 4200); }
+  function watchable(host, item, opt = {}){
+    const name = item.title + (item.year ? ` (${item.year})` : '');
+    host.classList.add('wable');
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'wbtn'; b.innerHTML = ICON_ADD; b.setAttribute('aria-label', `Add ${name} to watchlist`); b.title = 'Add to watchlist';
+    const more = document.createElement('button');
+    more.type = 'button'; more.className = 'wmore'; more.textContent = '•••'; more.setAttribute('aria-label', `More for ${name}`); more.setAttribute('aria-haspopup', 'menu'); more.setAttribute('aria-expanded', 'false');
+    const menu = document.createElement('div'); menu.className = 'wmenu'; menu.setAttribute('role', 'menu'); menu.hidden = true;
+    const mi = document.createElement('button'); mi.type = 'button'; mi.setAttribute('role', 'menuitem'); mi.textContent = 'Add to watchlist'; menu.append(mi);
+    const done = () => {
+      b.classList.add('in'); b.innerHTML = ICON_IN; b.setAttribute('aria-label', `${name}: in watchlist`); b.title = 'In watchlist'; b.disabled = true;
+      mi.textContent = 'In watchlist'; mi.disabled = true;
+    };
+    const go = async e => { e.preventDefault(); e.stopPropagation(); menu.hidden = true; more.setAttribute('aria-expanded', 'false'); if (b.disabled) return; b.disabled = mi.disabled = true; const ok = await addToWatchlist(item, opt.from); if (ok) done(); else { b.disabled = mi.disabled = false; } };
+    b.addEventListener('click', go); mi.addEventListener('click', go);
+    more.addEventListener('click', e => {
+      e.preventDefault(); e.stopPropagation();
+      const open = menu.hidden; menu.hidden = !open; more.setAttribute('aria-expanded', String(open));
+      if (open){   // no room under it on the screen: over it
+        menu.classList.remove('up');
+        const vv = window.visualViewport, foot = vv ? vv.offsetTop + vv.height : document.documentElement.clientHeight;
+        if (menu.getBoundingClientRect().bottom > foot - 8) menu.classList.add('up');
+      }
+    });
+    document.addEventListener('click', e => { if (!wrap.contains(e.target)){ menu.hidden = true; more.setAttribute('aria-expanded', 'false'); } });
+    const wrap = document.createElement('span'); wrap.className = 'wmorewrap'; wrap.append(more, menu);
+    host.append(b);
+    if (opt.moreIn) opt.moreIn.append(wrap); else host.after(wrap);
+    if (opt.in) done();
+    return {done};
   }
 
   // for the Add dialog: who is signed in, and the page's own way to sign in (or, with no username yet, to pick one)
@@ -225,5 +293,5 @@
     else if (on.finish) on.finish(); else location.href = ROOT + 'build/';
   }
 
-  window.Nav = {paint, add: openAdd, account, signIn, needAccount, visitor, onSignIn: fn => { on.signIn = fn; }, onFinish: fn => { on.finish = fn; }, onSignOut: fn => { on.signOut = fn; }, onUpload: fn => { on.upload = fn; }};
+  window.Nav = {paint, add: openAdd, loadAdd, watchable, account, signIn, needAccount, visitor, onSignIn: fn => { on.signIn = fn; }, onFinish: fn => { on.finish = fn; }, onSignOut: fn => { on.signOut = fn; }, onUpload: fn => { on.upload = fn; }};
 })();
