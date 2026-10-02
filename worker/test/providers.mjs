@@ -4,8 +4,9 @@
      cd worker && npm test        (node test/providers.mjs)
 
    It checks the order (Serper, SerpApi, Brave, archive.org), stopping at the first usable scan, each provider's daily
-   cap, a provider being left alone for the day after a 429, Serper's credit count, what's kept, /admin/usage, and
-   that no key ever comes back in an answer. */
+   cap, a provider being left alone for the day after a 429, Serper's credit count, what's kept, /admin/usage, Serper
+   being asked without double quotes (and once more, more plainly, after a 400), and that no key ever comes back in
+   an answer. */
 import {Miniflare, convertV4MiniflareOptions} from 'miniflare';
 import {build} from 'esbuild';
 import assert from 'node:assert/strict';
@@ -19,6 +20,8 @@ const ADMIN = 'admin-token-for-the-test';
 /* ---------- the made-up providers ---------- */
 let plan = {};          // what each answers next: 'wrap' (a usable scan of the title asked for), 'junk' (pictures the filters drop), or a status
 const calls = [];       // each one asked, in order
+const queries = {serper: [], serpapi: [], brave: []};   // what each was asked for
+const fresh = () => { calls.length = 0; for (const k in queries) queries[k].length = 0; };
 const said = [];        // every answer the Worker gave, to look for keys in
 const titleIn = q => (/"([^"]+)"/.exec(q) || [, q])[1];
 const answer = (name, title) => {
@@ -36,6 +39,9 @@ async function outbound(request) {
     if (request.headers.get('X-API-KEY') !== KEYS.SERPER_KEY) return json({message: 'Unauthorized.'}, 401);
     const {q, num} = await request.json(), a = answer('serper', titleIn(q));
     assert.equal(num, 100);
+    queries.serper.push(q);
+    // like the real one: 400 to a search with double quotes in it (and to whatever else the plan says it won't take)
+    if (q.includes('"') || (plan.serperRefuses && plan.serperRefuses.test(q))) return json({message: 'Bad request'}, 400);
     if (a.status) return json({message: 'no'}, a.status);
     return json({images: a.items.map(i => ({title: i.title, link: i.page, imageUrl: i.img, imageWidth: i.w, imageHeight: i.h, thumbnailWidth: 300, thumbnailHeight: Math.round(300 * i.h / i.w)})), credits: plan.serperCredits || 2});
   }
@@ -43,6 +49,7 @@ async function outbound(request) {
     calls.push('serpapi');
     if (url.searchParams.get('api_key') !== KEYS.SERPAPI_KEY) return json({error: 'Invalid API key.'}, 401);
     assert.equal(url.searchParams.get('engine'), 'google_images');
+    queries.serpapi.push(url.searchParams.get('q'));
     const a = answer('serpapi', titleIn(url.searchParams.get('q')));
     if (a.status) return json({error: 'no'}, a.status);
     return json({images_results: a.items.map(i => ({title: i.title, link: i.page, original: i.img, original_width: i.w, original_height: i.h}))});
@@ -50,6 +57,7 @@ async function outbound(request) {
   if (url.hostname === 'api.search.brave.com') {
     calls.push('brave');
     if (request.headers.get('X-Subscription-Token') !== KEYS.BRAVE_API_KEY) return json({}, 401);
+    queries.brave.push(url.searchParams.get('q'));
     const a = answer('brave', titleIn(url.searchParams.get('q')));
     if (a.status) return json({}, a.status);
     return json({results: a.items.map(i => ({title: i.title, url: i.page, properties: {url: i.img, width: i.w, height: i.h}, thumbnail: {width: 500, height: Math.round(500 * i.h / i.w)}}))});
@@ -81,7 +89,7 @@ async function ask(mf, path, init) {
   said.push(text, JSON.stringify([...r.headers]));
   return {status: r.status, from: r.headers.get('X-Cache'), body: JSON.parse(text)};
 }
-const scans = (mf, title, round = 0) => { calls.length = 0; return ask(mf, `/scans?kind=movie&title=${encodeURIComponent(title)}&year=1999&round=${round}`); };
+const scans = (mf, title, round = 0) => { fresh(); return ask(mf, `/scans?kind=movie&title=${encodeURIComponent(title)}&year=1999&round=${round}`); };
 const usage = async mf => Object.fromEntries((await ask(mf, '/admin/usage', {headers: {Authorization: 'Bearer ' + ADMIN}})).body.providers.map(p => [p.name, p]));
 let n = 0; const ok = what => console.log(`  ok ${++n}  ${what}`);
 
@@ -190,6 +198,56 @@ try {
   const u = await usage(mf);
   assert.deepEqual([u.serper.out, u.serpapi.out], [true, false]);
   ok('a 401 puts a provider out for the day; a 500 only passes this search on to the next');
+} finally { await mf.dispose(); }
+
+/* ---------- Serper and double quotes ---------- */
+mf = worker({SERPER_DAILY_CAP: '20', SERPAPI_DAILY_CAP: '20'});
+try {
+  const admin = {headers: {Authorization: 'Bearer ' + ADMIN}};
+  plan = {serper: 'wrap', serpapi: 'wrap'};
+  let r = await scans(mf, 'xi fourteen');
+  assert.deepEqual([r.from, calls, queries.serper, r.body.results.length], ['serper', ['serper'], ['xi fourteen 1999 dvd cover'], 1]);
+  ok('Serper is asked without the double quotes (it answers 400 to a search that has them)');
+
+  plan = {serper: 'junk', serpapi: 'junk', brave: 'wrap'};
+  r = await scans(mf, 'omicron fifteen');
+  assert.deepEqual([r.from, queries.serper, queries.serpapi, queries.brave], ['brave', ['omicron fifteen 1999 dvd cover'], ['"omicron fifteen" 1999 dvd cover'], ['"omicron fifteen" 1999 dvd cover']]);
+  ok('SerpApi and Brave are still asked for the title in quotes');
+
+  plan = {serper: 'wrap', serpapi: 'wrap', serperRefuses: /english/};
+  r = await scans(mf, 'pi sixteen', 1);
+  assert.deepEqual([r.from, calls, queries.serper, r.body.results.length], ['serper', ['serper', 'serper'], ['pi sixteen 1999 dvd cover english', 'pi sixteen 1999 dvd cover'], 1]);
+  let u = await usage(mf);
+  assert.deepEqual([u.serper.today, u.serper.credits, u.serper.out], [3, 6, false]);
+  ok('Serper still answers 400: it is asked once more with the title, the year and "dvd cover", all counted as one search');
+
+  plan = {serper: 'wrap', serperRefuses: /spine/};
+  fresh();
+  r = await ask(mf, '/scans?kind=book&title=rho%20seventeen&creator=Some%20Writer&year=1950');
+  assert.deepEqual([r.from, queries.serper, r.body.results.length], ['serper', ['rho seventeen Some Writer book cover spine', 'rho seventeen book cover'], 1]);
+  ok('a book is asked for again as its title and "book cover"');
+
+  plan = {serper: 'wrap', serpapi: 'wrap', serperRefuses: /./};
+  r = await scans(mf, 'sigma eighteen', 2);
+  assert.deepEqual([r.from, calls, queries.serper], ['serpapi', ['serper', 'serper', 'serpapi'], ['sigma eighteen dvd cover scan', 'sigma eighteen 1999 dvd cover']]);
+  r = await scans(mf, 'tau nineteen');
+  assert.deepEqual([r.from, calls], ['serpapi', ['serper', 'serpapi']]);   // a film's first round already is the plain search: it isn't sent twice
+  u = await usage(mf);
+  assert.deepEqual([u.serper.today, u.serper.out], [6, false]);
+  plan = {serper: 'wrap', serpapi: 'wrap'};
+  r = await scans(mf, 'upsilon twenty');
+  assert.deepEqual([r.from, calls], ['serper', ['serper']]);
+  ok('400 both times: that search goes to SerpApi, and Serper is not out for the day (the next title asks it again)');
+
+  fresh();
+  r = await ask(mf, '/admin/raw?provider=serper&q=' + encodeURIComponent('"phi twenty-one" 1999 dvd cover'), admin);
+  assert.deepEqual([r.status, queries.serper, r.body.results.length], [200, ['phi twenty-one 1999 dvd cover'], 1]);
+  plan = {serper: 'wrap', serperRefuses: /./};
+  fresh();
+  r = await ask(mf, '/admin/raw?provider=serper&q=' + encodeURIComponent('chi twenty-two'), admin);
+  assert.deepEqual([r.status, r.body.error, calls], [502, 'Serper answered 400', ['serper']]);
+  assert.equal((await usage(mf)).serper.out, false);
+  ok('/admin/raw: the quotes come out there too, and a 400 is shown as it is, asked once');
 } finally { await mf.dispose(); }
 
 /* ---------- no key ever comes back ---------- */

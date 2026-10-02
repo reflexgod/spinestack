@@ -244,7 +244,8 @@ function queryFor(kind, round, title, year, creator) {
    Each has a cap on searches a day, across everyone ([vars] in wrangler.toml), and Serper a cap on credits in all.
    A search is counted in the Archive Durable Object before it's made, in one step, so two requests can't both take
    the last one; if it can't be counted, it isn't made. A provider that answers 401, 402, 403 or 429 (a bad key, no
-   credit left, too many) is left alone for the rest of the day. One with no key is passed over.
+   credit left, too many) is left alone for the rest of the day; any other answer (a 400, a 500) only passes that one
+   search on. One with no key is passed over.
    Every provider's answer is turned into the same list ({title, url, properties: {url, width, height}, thumbnail}),
    which is what the filters read and what's kept. */
 const today = () => new Date().toISOString().slice(0, 10);
@@ -272,8 +273,23 @@ async function spendOn(env, pv) {
   try { return await store(env).spendSearch(pv.name, today(), pv.cap(env), pv.total ? pv.total(env) : null, pv.cost || 1); }
   catch { return {ok: false, why: 'uncounted'}; }
 }
-async function serper(q, key) {
-  const j = await provJSON('Serper', 'https://google.serper.dev/images', {method: 'POST', headers: {'X-API-KEY': key, 'Content-Type': 'application/json'}, body: JSON.stringify({q, num: 100, gl: 'us', hl: 'en'})});
+/* Serper answers 400 to a search with double quotes in it ("gummo" 1997 dvd cover), and 200 to the same one without
+   them. So the quotes come out before it's asked: the filters in pick() look for the whole title in each result
+   anyway. If it still answers 400, it's asked once more with the plainest search there is (the title, a film's year,
+   "dvd cover" or "book cover") before the next provider gets the search. A 400 says something about that search, not
+   about the key or the credits, so it never puts Serper out for the day. /admin/raw (raw) asks once: it's there to
+   show what one search really gets. */
+const unquoted = q => String(q).replace(/"/g, ' ').replace(/\s+/g, ' ').trim();
+const plainQuery = (kind, title, year) => unquoted(kind === 'movie' ? `${title} ${year} dvd cover` : `${title} book cover`);
+async function serper(q, key, {kind, title, year, raw}) {
+  const ask = q => provJSON('Serper', 'https://google.serper.dev/images', {method: 'POST', headers: {'X-API-KEY': key, 'Content-Type': 'application/json'}, body: JSON.stringify({q, num: 100, gl: 'us', hl: 'en'})});
+  const first = unquoted(q), plain = plainQuery(kind, title, year);
+  let j;
+  try { j = await ask(first); }
+  catch (e) {
+    if (e.status !== 400 || raw || plain === first) throw e;   // (a film's first round already is the plain search)
+    j = await ask(plain);
+  }
   return {credits: j.credits, list: (j.images || []).map(r => ({title: r.title, url: r.link, properties: {url: r.imageUrl, width: r.imageWidth, height: r.imageHeight}, thumbnail: {width: r.thumbnailWidth, height: r.thumbnailHeight}}))};
 }
 async function serpapi(q, key) {
@@ -444,7 +460,7 @@ async function rawFrom(name, q, env, cors) {
   const spent = await spendOn(env, pv);
   if (!spent.ok) return json({error: `${pv.name} has had today’s searches, or is out for the day (${spent.why}).`}, 429, cors);
   let got;
-  try { got = await pv.search(q, key, {kind: 'movie', title: q, year: '', creator: '', round: 0}); }
+  try { got = await pv.search(q, key, {kind: 'movie', title: q, year: '', creator: '', round: 0, raw: true}); }
   catch (e) {
     if (OUT_FOR_TODAY.includes(e && e.status)) await store(env).blockSearch(pv.name, today()).catch(() => {});
     return json({error: e instanceof ProviderError ? e.message : `${pv.name} didn’t answer.`}, 502, cors);

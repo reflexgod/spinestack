@@ -96,7 +96,12 @@ wrap and spine filters keep):
   counted in all, not by the day (its answer says what a search cost, and the count follows that): when
   `SERPER_TOTAL_CAP` is reached Serper is passed over for good, until you raise the number.
 - **Out for the day.** A provider that answers 401, 402, 403 or 429 (a bad key, no credit left, too many) is left alone
-  until tomorrow. Any other failure only passes that one search on to the next provider.
+  until tomorrow. Any other failure (a 400, a 500, no answer) only passes that one search on to the next provider.
+- **Serper and quotes.** Serper answers 400 to a search with double quotes in it (`"gummo" 1997 dvd cover`), so it's
+  asked without them; the filters look for the whole title in each result anyway. SerpApi and Brave still get the title
+  in quotes. If Serper answers 400 all the same, it's asked once more with the plainest search there is
+  (`<title> <year> dvd cover`, or `<title> book cover`) before the search goes on to SerpApi; the two count as one
+  search. `/admin/raw` takes the quotes out too, but asks only once, so a 400 shows as it is.
 - **No key, no provider.** One whose secret isn't set is passed over. `0` as its cap turns one off.
 - **Same answer whoever gives it.** Every provider's answer is turned into the same list, the same filters and edition
   rules run on it, and the result has the shape it always had. What was found is kept under `raw1:` as before.
@@ -121,8 +126,8 @@ The second asks one provider alone and shows what it said (it costs one search):
 Brave".
 
 `cd worker && npm test` runs the whole chain in the runtime `wrangler dev` uses, against made-up providers
-(`test/providers.mjs`): the order, the caps, out-for-the-day, Serper's credits, `/admin/usage`, and that no key comes
-back in any answer. It needs no keys and spends nothing. To try the real providers on this machine, put their keys in
+(`test/providers.mjs`): the order, the caps, out-for-the-day, Serper's credits, `/admin/usage`, Serper asked without
+quotes and its second try after a 400, and that no key comes back in any answer. It needs no keys and spends nothing. To try the real providers on this machine, put their keys in
 `worker/.dev.vars` (one `NAME=value` a line; the file is never committed) and run `npx wrangler dev`.
 
 ### Set up once
