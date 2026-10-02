@@ -26,9 +26,9 @@ test('three choices, Put on shelf first; the dialog\'s title says which', async 
   await expect(choices(page)).toHaveCount(3);
   for (const [i, name] of ['Put on shelf', 'Log it', 'Watchlist'].entries()) await expect(choices(page).nth(i)).toHaveAccessibleName(name);
   await expect(choices(page).first()).toBeChecked();
-  await expect(dialog(page)).toHaveAccessibleName('Add to your shelf…');
+  await expect(dialog(page)).toHaveAccessibleName('Add to your shelf');   // no ellipsis on a title: it reads as cut off
   await expect(dialog(page).getByRole('combobox', { name: 'Film or book name' })).toBeFocused();
-  for (const [choice, title] of [['Log it', 'Log a film or a book…'], ['Watchlist', 'Add to your watchlist…'], ['Put on shelf', 'Add to your shelf…']]) {
+  for (const [choice, title] of [['Log it', 'Log a film or book'], ['Watchlist', 'Add to your watchlist'], ['Put on shelf', 'Add to your shelf']]) {
     await dialog(page).getByRole('radio', { name: choice }).check();
     await expect(dialog(page)).toHaveAccessibleName(title);
   }

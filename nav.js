@@ -168,7 +168,7 @@
     else if (on.finish){ e.preventDefault(); on.finish(); }   // signed in, no username yet (elsewhere the link goes to the builder, which asks)
   });
 
-  /* ---------- + ADD: the Add to your shelf… dialog ---------- */
+  /* ---------- + ADD: the Add to your shelf dialog ---------- */
   // add.js draws spines with shelf.js, which every page with the bar loads. If either can't be had, + ADD is the
   // plain link to the builder it always was.
   const addLink = q('.add');

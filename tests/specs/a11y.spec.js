@@ -46,9 +46,9 @@ test('axe: the builder with a row and Style open', async ({ page }) => {
   await clean(page);
 });
 
-// the Add to your shelf… dialog, at each step
+// the Add to your shelf dialog, at each step
 for (const step of ['the search results', 'the spine choices']) {
-  test(`axe: the Add to your shelf… dialog, ${step}`, async ({ page }) => {
+  test(`axe: the Add to your shelf dialog, ${step}`, async ({ page }) => {
     await mockNetwork(page, { signedIn: true });
     await open(page, '/');
     await page.locator('header.top .add').click();

@@ -190,7 +190,7 @@ test('your watchlist: up to 6, each with Remove and Watched (or Read); From frie
   await expect(page.locator('#toast')).toHaveText('Orlando is off your watchlist.');
   // Watched: + ADD's Log it, on that title; Post logs it, and the lists are read again
   await row(page, 'watch', 'Paris, Texas').getByRole('button', { name: 'Watched' }).click();
-  const d = page.getByRole('dialog', { name: /log a film or a book/i });
+  const d = page.getByRole('dialog', { name: /log a film or book/i });
   await expect(d).toBeVisible();
   await expect(d.getByRole('radio', { name: 'Log it' })).toBeChecked();
   await expect(d.locator('#addPostTitle')).toHaveText('Paris, Texas (1984)');

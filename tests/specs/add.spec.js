@@ -1,5 +1,5 @@
-// The Add to your shelf… dialog's search: suggestions as you type, the keyboard, the order of the results, the
-// loading and nothing-found lines; what it says when the day's spine searches are used up; and the builder's
+// The Add to your shelf dialog's search: suggestions as you type, the keyboard, the order of the results, the
+// loading and nothing-found lines and where they sit; what it says when the day's spine searches are used up; and the builder's
 // smaller touches (the count and its limit, the empty shelf, the note under the preview).
 const { test, expect } = require('@playwright/test');
 const { PAGES, mockNetwork, watchErrors, open } = require('../site');
@@ -99,6 +99,35 @@ test('nothing found says so plainly', async ({ page }) => {
   await expect(box(d)).toHaveAttribute('aria-expanded', 'false');
   await box(d).fill('');   // cleared: the line goes too
   await expect(d.locator('#addStatus')).toHaveText('');
+});
+
+test('what the search says sits at the right of the All · Films · Books row: no room is held open for it, and nothing moves when it comes', async ({ page }) => {
+  await openDialog(page, { slow: 900 });
+  const d = dialog(page), row = d.locator('.addunder'), opts = d.getByRole('radiogroup', { name: 'Search in' }), status = d.locator('#addStatus');
+  // nothing said yet: the row is only its choices (it used to be followed by 32px kept open for the line)
+  await expect(status).toBeHidden();
+  const before = await row.boundingBox(), o = await opts.boundingBox(), form = await d.locator('#addForm').boundingBox();
+  expect(before.height).toBeLessThanOrEqual(o.height + 1);
+  expect(await d.locator('#addFind').evaluate(el => el.getBoundingClientRect().bottom)).toBeLessThanOrEqual(before.y + before.height + 1);   // and nothing under it
+  await box(d).fill('waves');
+  await expect(status).toHaveText('Searching…');
+  const during = await row.boundingBox(), s = await status.boundingBox();
+  expect([during.y, during.height]).toEqual([before.y, before.height]);                  // nothing moved
+  expect(Math.abs(s.x + s.width - (form.x + form.width))).toBeLessThanOrEqual(1);       // at the right, in line with the box's edge
+  expect(s.x).toBeGreaterThan(o.x + o.width);
+  expect(Math.abs(s.y + s.height / 2 - (o.y + o.height / 2))).toBeLessThanOrEqual(2);   // on the choices' line
+  // the results come straight under the row
+  await expect(options(d)).toHaveCount(2);
+  await expect(status).toBeHidden();
+  const list = await d.locator('#addRows').boundingBox();
+  expect(list.y - (before.y + before.height)).toBeLessThanOrEqual(12);
+  // a line too long for the row has the next one, whole, from the left, inside the dialog
+  await box(d).fill('zzzz');
+  await expect(status).toHaveText(/^Nothing found/);
+  const long = await status.boundingBox(), o2 = await opts.boundingBox();
+  expect(long.y).toBeGreaterThanOrEqual(o2.y + o2.height);
+  expect(Math.abs(long.x - form.x)).toBeLessThanOrEqual(1);
+  expect(long.x + long.width).toBeLessThanOrEqual(form.x + form.width + 1);
 });
 
 /* ---------- 3. the day's spine searches are used up ---------- */

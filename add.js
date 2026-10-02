@@ -188,11 +188,18 @@ css.textContent = `
 #addDialog .addsearch input::placeholder{color:#767676}
 #addDialog .addsearch button{position:absolute;top:1px;right:1px;bottom:1px;width:var(--s6,40px);display:grid;place-items:center;background:none;border:0;padding:0;color:inherit;cursor:pointer}
 #addDialog .addsearch button svg{width:16px;height:16px}
-#addDialog .addopts{display:flex;flex-wrap:wrap;gap:var(--s2,8px) var(--s4,16px);margin-top:var(--s3,12px);align-items:center}
+/* under the box: All · Films · Books, and at the right of that row what the search says ("Searching…", what it found).
+   Nothing is held open for it, and nothing moves when it comes. A line too long for the row has the next one, from
+   the left: the empty ::before between them takes the room on the row, and stays on it when the line goes under */
+#addDialog .addunder{display:flex;flex-wrap:wrap;gap:var(--s2,8px) var(--s4,16px);margin-top:var(--s3,12px);align-items:center}
+#addDialog .addunder::before{content:"";flex:1 1 0;order:1}
+#addDialog .addopts{display:flex;flex-wrap:wrap;gap:var(--s2,8px) var(--s4,16px);align-items:center}
 #addDialog .addopts label{cursor:pointer;display:flex;gap:var(--s1,4px);align-items:center}
 #addDialog .addopts input{accent-color:var(--ink,#000);margin:0}
-#addDialog .addstatus{min-height:20px;margin-top:var(--s3,12px)}
+#addDialog .addstatus{order:2;min-width:0;max-width:100%;overflow-wrap:anywhere}
+#addDialog .addstatus:empty{display:none}
 #addDialog .addstatus.err{font-weight:500}
+#addDialog #addMode,#addDialog #addRecent{margin:var(--s3,12px) 0 0}
 #addDialog .addlist{list-style:none;margin:var(--s2,8px) 0 0;padding:0;border-top:1px solid var(--hair,#D9D9D9)}
 #addDialog .addlist li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 var(--s3,12px);align-items:baseline;padding:var(--s2,8px);border-bottom:1px solid var(--hair,#D9D9D9);cursor:pointer}
 #addDialog .addlist li:hover{background:var(--wash,#F3F3F3)}
@@ -251,7 +258,7 @@ const dlg = document.createElement('dialog');
 dlg.id = 'addDialog'; dlg.setAttribute('aria-labelledby', 'addTitle');
 dlg.innerHTML = `
   <button class="addx" id="addClose" type="button" aria-label="Close">${ICON('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>')}</button>
-  <h2 id="addTitle">Add to your shelf…</h2>
+  <h2 id="addTitle">Add to your shelf</h2>
   <div class="addwhat" role="radiogroup" aria-label="What to do with it">
     <label><input type="radio" name="addWhat" value="shelf" checked><span>Put on shelf</span></label>
     <label><input type="radio" name="addWhat" value="log"><span>Log it</span></label>
@@ -263,14 +270,16 @@ dlg.innerHTML = `
     <input type="text" id="addQ" placeholder="Gummo, The Waves, Kids..." aria-label="Film or book name" maxlength="120" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="addRows">
     <button type="submit" aria-label="Search">${ICON('<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>')}</button>
   </form>
-  <div class="addopts" role="radiogroup" aria-label="Search in">
-    <label><input type="radio" name="addKind" value="all" checked>All</label>
-    <label><input type="radio" name="addKind" value="movie">Films</label>
-    <label><input type="radio" name="addKind" value="book">Books</label>
+  <div class="addunder">
+    <div class="addopts" role="radiogroup" aria-label="Search in">
+      <label><input type="radio" name="addKind" value="all" checked>All</label>
+      <label><input type="radio" name="addKind" value="movie">Films</label>
+      <label><input type="radio" name="addKind" value="book">Books</label>
+    </div>
+    <div class="addstatus" id="addStatus" role="status"></div>
   </div>
   <p class="grey" id="addMode" hidden>Search needs the shelfstackd server, so it's off in this preview. Uploading a scan on the builder still works.</p>
   <p class="grey" id="addRecent" hidden>Recently found: <span></span></p>
-  <div class="addstatus" id="addStatus" role="status"></div>
   <div id="addMatches" hidden>
     <ul class="addlist" id="addRows" role="listbox" aria-label="Films and books"></ul>
   </div>
@@ -630,7 +639,7 @@ async function resolve(p){
 }
 
 /* ---------- Put on shelf, Log it, Watchlist ---------- */
-const TITLES = {shelf: 'Add to your shelf…', log: 'Log a film or a book…', watch: 'Add to your watchlist…'};
+const TITLES = {shelf: 'Add to your shelf', log: 'Log a film or book', watch: 'Add to your watchlist'};   // no ellipsis: on a title it reads as cut off
 const what = () => ($('input[name=addWhat]:checked') || {}).value || 'shelf';
 // who is signed in, as the page's bar knows it (nav.js)
 const account = () => (window.Nav && Nav.account ? Nav.account() : {}) || {};
