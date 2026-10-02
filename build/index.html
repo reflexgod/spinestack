@@ -268,7 +268,6 @@ footer{margin-top:0}
           <div class="ctl"><span class="lbl">Filter</span>
             <div class="filters" id="filters" role="group" aria-label="Filter"></div>
             <label class="range"><span class="lbl">Intensity</span><input type="range" id="intensity" min="0" max="100" value="70" aria-label="Filter intensity"></label></div>
-          <div class="ctl"><label class="lbl" for="caption">Caption</label><input type="text" id="caption" maxlength="60"></div>
           <div class="ctl" id="themeWrap"><span class="lbl">Background</span>
             <div class="seg" id="theme" role="group" aria-label="Background"><button type="button" data-v="paper">Paper</button><button type="button" data-v="ink">Ink</button><button type="button" data-v="blush">Blush</button><button type="button" data-v="shelf">Shelf</button><button type="button" data-v="dark">Dark</button><button type="button" data-v="forest">Forest</button><button type="button" data-v="wall">Your PNG<em class="pro">PRO</em></button></div>
             <p class="note" id="themeNote"></p>
@@ -735,7 +734,6 @@ $('#colourHex').addEventListener('blur', paintColour);
 $('#plank').addEventListener('change', paintColour);
 $('#woodShelf').addEventListener('change', woodTakesOver);
 $('#theme').addEventListener('click', woodTakesOver);
-$('#caption').addEventListener('input', e => { settings.caption = e.target.value; redraw(); });
 $('#varied').addEventListener('change', e => { settings.varied = e.target.checked; redraw(); });
 
 /* ---------- Your PNG: the wall behind the shelf (Pro) ---------- */
@@ -974,15 +972,12 @@ const edition = () => { try { return localStorage.getItem(Add.EDITION) === 'any'
 document.querySelectorAll('input[name=ed]').forEach(r => { r.checked = r.value === edition(); r.addEventListener('change', () => { if (r.checked) try { localStorage.setItem(Add.EDITION, r.value); } catch {} }); });
 
 /* ---------- the shelf's name, and who can view it ---------- */
-// A shelf's name is also the caption on its story: the caption follows the name (with no name there's no caption)
-// until it's written by hand (Style → Caption). After that they're two things, and the name is kept in shelves.name.
-let mirrored = '';
+// A shelf has one name, and it's the caption on its story too: what's in Name is what the picture says (with no name
+// there's no caption). Style used to have a Caption box as well, so the page could call a shelf one thing and its
+// picture another; a shelf saved like that takes its name for both the next time it's saved here.
 const shelfNameNow = () => $('#shelfName').value.replace(/\s+/g, ' ').trim().slice(0, 60);
-$('#shelfName').addEventListener('input', () => {
-  const v = shelfNameNow();
-  if (settings.caption === DEFAULT_CAPTION || settings.caption === mirrored){ settings.caption = v; mirrored = v; $('#caption').value = v; }
-  redraw();
-});
+const nameIt = () => { settings.caption = shelfNameNow(); };
+$('#shelfName').addEventListener('input', () => { nameIt(); redraw(); });
 const isPublicNow = () => ($('input[name=vis]:checked') || {}).value !== 'private';
 const setVisible = pub => { for (const r of document.querySelectorAll('input[name=vis]')) r.checked = (r.value === 'public') === !!pub; };
 document.querySelectorAll('input[name=vis]').forEach(r => r.addEventListener('change', () => scheduleDraft()));
@@ -1236,6 +1231,7 @@ async function saveShelf(){
   if (!acct.profile){ acct.pendingSave = true; openSheet('name'); return; }
   if (books.length > spineMax()){ proToast('Free shelves hold 6 spines. Pro holds 20.'); return; }
   if (usesPro() && !isPro()){ proToast('Your own wall, PNGs and the floating shelf come with Pro.'); return; }
+  nameIt();   // the story's caption is the Name
   const updating = !!acct.shelfId;
   saving = true; $('#saveShelf').disabled = true; $('#saveNote').textContent = 'Saving…';
   const id = updating ? acct.shelfId : crypto.randomUUID(), was = acct.shelves.find(s => s.id === id);
@@ -1330,7 +1326,7 @@ function applySettings(s){
   Object.assign(settings, {caption: s.caption, filter: s.filter, intensity: s.intensity, theme: s.background || s.theme, wood: !!s.wood, layout: s.layout, varied: s.varied !== false,
     plank: !!(s.pro ? s.pro.plank : s.plank), shelfColour: (s.pro ? s.pro.shelf_colour : s.shelfColour) || '#FFFFFF'});   // a saved shelf keeps these in pro, a draft in its settings
   $('#plank').checked = settings.plank; paintColour();
-  $('#caption').value = settings.caption; $('#intensity').value = settings.intensity; $('#woodShelf').checked = settings.wood; $('#varied').checked = settings.varied;
+  $('#intensity').value = settings.intensity; $('#woodShelf').checked = settings.wood; $('#varied').checked = settings.varied;
   for (const [id, key] of [['#theme', 'theme'], ['#layout', 'layout']]) document.querySelectorAll(id + ' button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === settings[key])));
   $('#variedWrap').hidden = settings.layout === 'covers';
   syncFilter();
@@ -1371,7 +1367,7 @@ async function openShelf(id){
   await putOnShelf(data || [], s);
   // its name (while it has none of its own, its caption) and who can view it
   const named = s.name != null, shown = named ? s.name : s.caption && s.caption !== DEFAULT_CAPTION ? s.caption : '';
-  $('#shelfName').value = shown; mirrored = named ? '' : shown; setVisible(s.is_public);
+  $('#shelfName').value = shown; nameIt(); redraw(); setVisible(s.is_public);   // the preview's caption is that name, whatever caption it was saved with
   acct.shelfId = id; paintAcct(); $('#saveNote').textContent = '';
 }
 
@@ -1398,7 +1394,7 @@ async function stashDraft(){
     let kept = false;
     try { await idb.put(DRAFT, {items, wall: media.wall && {blob: media.wall.blob, key: media.wall.key, name: media.wall.name, small: media.wall.small, dark: media.wall.dark},
       pngs: media.pngs.map(p => ({blob: p.blob, key: p.key, x: p.x, y: p.y, w: p.w, rot: p.rot, opacity: p.opacity}))}); kept = true; } catch {}
-    sessionStorage.setItem(DRAFT, JSON.stringify({at: Date.now(), settings: {...settings}, shelfId: acct.shelfId, save: acct.pendingSave, name: shelfNameNow(), mirrored, isPublic: isPublicNow(), ...(kept ? {} : {items})}));
+    sessionStorage.setItem(DRAFT, JSON.stringify({at: Date.now(), settings: {...settings}, shelfId: acct.shelfId, save: acct.pendingSave, name: shelfNameNow(), isPublic: isPublicNow(), ...(kept ? {} : {items})}));
   } catch { try { sessionStorage.removeItem(DRAFT); } catch {} }
 }
 function dropDraft(){ try { sessionStorage.removeItem(DRAFT); } catch {} idb.del(DRAFT).catch(() => {}); }
@@ -1412,7 +1408,7 @@ async function restoreDraft(d){
   try { drafted = await idb.get(DRAFT); idb.del(DRAFT).catch(() => {}); } catch {}
   await putOnShelf(d.items || (drafted && drafted.items) || [], d.settings || {}, drafted || {});
   acct.shelfId = d.shelfId || null; acct.pendingSave = !!d.save;
-  $('#shelfName').value = d.name || ''; mirrored = d.mirrored || ''; setVisible(d.isPublic !== false);
+  $('#shelfName').value = d.name || ''; nameIt(); redraw(); setVisible(d.isPublic !== false);
 }
 
 Add.setToast(toast);

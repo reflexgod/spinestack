@@ -118,7 +118,7 @@ test('the builder is your shelf\'s page: name, who can view, Add, the list, Styl
   await expect(page.locator('#layout')).toBeHidden();
   await style.locator('summary').click();
   for (const name of ['Layout', 'Filter', 'Background', 'Edition']) await expect(style.getByRole('group', { name }).or(style.getByRole('radiogroup', { name }))).toHaveCount(1);
-  await expect(style.getByRole('textbox', { name: 'Caption' })).toBeVisible();
+  await expect(style.getByRole('textbox', { name: 'Caption' })).toHaveCount(0);   // a shelf has one name, the Name at the bottom: the story's caption is that
   await style.getByRole('button', { name: 'Stacked' }).click();
   await style.getByRole('checkbox', { name: 'Wood shelf' }).check();
   await expect(style.locator('#styleLine')).toHaveText('Stacked · Clean · Paper · Wood shelf');
@@ -244,17 +244,33 @@ test('spines put on a shelf before signing in go on your shelf once you are, aft
   await expect(page.locator('#toast')).toHaveText('Gummo is on your shelf now. Save to keep it.');
 });
 
-test('a name that isn’t the caption is kept as the shelf’s own name', async ({ page }) => {
+test('a shelf has one name: Style has no Caption, and a shelf that had a caption of its own is saved with its name as both', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
-  await open(page, '/build/');
-  await page.locator('header.top .add').click();
-  await addGummo(page);
+  await open(page, '/build/');   // your shelf: its name was given on the profile, and its story's caption is another thing
+  const yours = SHELVES[0], name = page.getByRole('textbox', { name: 'Name' });
+  expect(yours.caption).not.toBe(yours.name);
+  await expect(name).toHaveValue(yours.name);
   await page.locator('#stylePanel summary').click();
-  await page.getByRole('textbox', { name: 'Caption' }).fill('watch these');
-  await page.getByRole('textbox', { name: 'Name' }).fill('my films');
+  await expect(page.locator('#stylePanel').getByText('Caption')).toHaveCount(0);
+  await expect(page.getByLabel('Caption', { exact: true })).toHaveCount(0);
+  await name.fill('my films');
+  const saved = page.waitForRequest(r => r.url().includes('/rpc/save_shelf'));
   const named = page.waitForRequest(r => r.method() === 'PATCH' && r.url().includes('/rest/v1/shelves'));
   await page.getByRole('button', { name: 'Save', exact: true }).click();
-  expect((await named).postDataJSON()).toEqual({ name: 'my films' });
+  expect((await saved).postDataJSON().shelf.caption).toBe('my films');   // what the picture says
+  expect((await named).postDataJSON()).toEqual({ name: 'my films' });     // what the page calls it
+});
+
+test('a shelf that had a caption of its own, saved again untouched: its picture takes its name', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/build/');
+  await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue(SHELVES[0].name);
+  let renamed = 0; page.on('request', r => { if (r.method() === 'PATCH' && r.url().includes('/rest/v1/shelves')) renamed++; });
+  const saved = page.waitForRequest(r => r.url().includes('/rpc/save_shelf'));
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  expect((await saved).postDataJSON().shelf.caption).toBe(SHELVES[0].name.slice(0, 60));
+  await page.waitForURL(/\/u\/\?tester&shelf=/);
+  expect(renamed).toBe(0);   // its name is as it was
 });
 
 test('?open=<id>, an old link, opens that shelf of yours, with its name, who can view it, and its spines', async ({ page }) => {
@@ -492,15 +508,12 @@ test('the caption on the preview follows the Name; with no name it is a faint "y
   const hint = await captionBand(page);
   expect(hint.dark).toBe(0);
   expect(hint.faint).toBeGreaterThan(200);
-  // a name: it's the caption, in ink, and Style's Caption box has it too
+  // a name: it's the caption, in ink
   await page.getByRole('textbox', { name: 'Name' }).fill('2am films');
   await expect.poll(async () => (await captionBand(page)).dark).toBeGreaterThan(500);
-  await page.locator('#stylePanel summary').click();
-  await expect(page.getByRole('textbox', { name: 'Caption' })).toHaveValue('2am films');
   // the name cleared: back to the hint
   await page.getByRole('textbox', { name: 'Name' }).fill('');
   await expect.poll(async () => (await captionBand(page)).dark).toBe(0);
-  await expect(page.getByRole('textbox', { name: 'Caption' })).toHaveValue('');
   // saved like that, the shelf's picture has nothing where the hint was
   const sent = page.waitForRequest(r => r.method() === 'POST' && r.url().includes('/u/preview?shelf='));
   await page.getByRole('button', { name: 'Save', exact: true }).click();
