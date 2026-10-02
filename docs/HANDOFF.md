@@ -1,7 +1,9 @@
 # Handoff: letterboxd-flow
 
-Written on 2 October 2026, before this work moves from the laptop to a cloud session. Read this first, then
-`README.md`, which says what every file is and how the Worker, the accounts and the tests are set up.
+Written on 2 October 2026, before this work moves from the laptop to a cloud session, and brought up to date the same
+day in that cloud session, after one shelf each, logs, the watchlist and From friends (see "Done in the cloud
+session"). Read this first, then `README.md`, which says what every file is and how the Worker, the accounts and the
+tests are set up.
 
 ## Where things stand
 
@@ -14,6 +16,9 @@ Written on 2 October 2026, before this work moves from the laptop to a cloud ses
   listed all four scan providers, so the provider chain (`848541c`) is live. The Serper fix after it (`3774d06`) is
   committed but **not deployed yet**.
 - **The working tree was clean** when this was written.
+- **Logs, the watchlist and From friends need SQL that hasn't been run.** It's in `docs/proposed-0007-logs-watchlist.sql`
+  for the owner to review, not in `supabase/migrations/`. The pages work without it (shelves only, as before) and use
+  it once it's there. See `docs/proposed-0007.md`.
 
 ## Rules
 
@@ -77,6 +82,32 @@ In the order it was built (`git log main..letterboxd-flow` has each step):
   plainer search if it still answers 400, and a 400 never puts it out for the day. See "Where scans come from" in the
   README.
 
+## Done in the cloud session (2 October 2026)
+
+What the owner asked for, and where it is:
+
+1. **One shelf each, "Shelf".** No Shelves tab, no "+ new shelf", no Make main, no main shelf in Settings, no "Save as
+   a new shelf". The builder ("Your shelf") opens your shelf when you're signed in and saves over it; + ADD's Put on
+   shelf adds after what's there; spines put on before signing in go on your shelf once you are. The account menu's
+   Shelves is Shelf (`/u/?you&shelf`). Your shelf is the main one if one was picked before, otherwise the one saved last
+   (the same rule in `build/` and `u/`). No migration: accounts with more than one shelf keep them in the database, and
+   the end of the proposed SQL has the (commented out) index that would make one a rule.
+2. **Logs on the feed.** `+ ADD → Log it`: the cover, a caption if you want one, Post. The feed says "@user watched
+   Gummo · today" (or "read"), with the cover drawn by `wear.js`: a dog-eared corner, fine scratches, rubbed edges and a
+   little fade, nearly new that day, more faded after a week, more worn after a month, worked out from the log's date on
+   a canvas. No stamp, no text on it. Your own logs have Delete on your profile's Activity.
+3. **+ ADD offers three choices:** Put on shelf · Log it · Watchlist, at the top of the dialog, Put on shelf first.
+   Log it and Watchlist never search for spines.
+4. **Profile: Watchlist (6 at most) and From friends (6 at most)**, rows with Keep · Remove · Watched / Read (Keep
+   only in From friends; Watched for a film, Read for a book, which opens Log it on that title). From friends is the
+   people you follow's recent logs, only on your own profile.
+5. **Most shelved is gone; the profile's shelf is a big hero** across the column on the wash; on a wide window the
+   shelf page's On this shelf sits to the right of the story.
+
+Also: `privacy.html` says what logs and the watchlist keep and who sees them; the sign-in sheet's line no longer says
+"shelves"; long shelf names no longer push the profile and the shelf page wider than a phone (that was the 11px
+overflow on your own profile at 390px).
+
 ## What's tested
 
 Both suites were run on 2 October 2026 on the laptop (Windows 11, Node 26).
@@ -88,6 +119,16 @@ Both suites were run on 2 October 2026 on the laptop (Windows 11, Node 26).
   html-validate clean, then 397 passed, 11 skipped, none failed, in about 4 minutes. The skipped ones are checks that
   belong to one width only (a mouse on the phone project, and the like). This run was at `848541c`; the two commits
   after it changed only `worker/`, `README.md` and `docs/`, which the page tests don't read.
+- **In the cloud session, after the work above** (Linux, Node 22): html-validate clean, then Playwright 431 passed,
+  11 skipped, 4 failed. The 4 are `requests.spec.js` at both widths, signed in and out: this container's Chromium
+  cancels the browser's own icon loads when the test goes to the next page, and reports them as failed. Before any
+  change they failed the same way here (with one more: the 11px phone overflow, now fixed), so they're the container's
+  Chromium, not the pages; the laptop's run is the one to confirm them. New specs: `log.spec.js` (+ ADD's three
+  choices), `wear.spec.js` (the worn cover); `build`, `profile`, `shelf`, `feed`, `settings`, `look`, `cards`, `a11y`,
+  `meta`, `privacy`, `site`, `shelves` and `empty` changed with the pages. The Worker's suite wasn't run: nothing in
+  `worker/` changed.
+- **The proposed SQL** was run on a local Postgres 16 (a stand-in for Supabase's `auth` schema, then `0001` to `0006`,
+  then the proposal): no errors; `rls_phase3.sql` and `docs/proposed-rls_phase4.sql` both passed. Not on Supabase.
 - **Not tested by anything here:**
   - The real providers. That Serper answers 400 to quotes and 200 without them is what the owner saw calling it with
     their own key; the fix has not been run against the real Serper yet, because that needs a deploy.
@@ -101,6 +142,12 @@ Both suites were run on 2 October 2026 on the laptop (Windows 11, Node 26).
 
 This list is what the repo and the last session show. Anything the owner asked for in an earlier conversation that
 never reached a commit isn't here, so ask before assuming the list is complete.
+
+0. **Review `docs/proposed-0007-logs-watchlist.sql`** (the owner). `docs/proposed-0007.md` lists what to decide: the
+   watchlist's 6, whether visitors see a watchlist, 50 logs a day, From friends' 180 days, and whether to make one shelf
+   each a rule in the database. Once agreed: move it to `supabase/migrations/0007_logs_watchlist.sql` and the test to
+   `supabase/tests/rls_phase4.sql`, and run both in the SQL Editor. Until then Log it and Watchlist say they aren't open
+   yet, and the feed and profiles show shelves only.
 
 1. **Deploy the Worker with the Serper fix** (the owner does this): `cd worker && npx wrangler deploy`. Then, with the
    admin token, `/admin/raw?provider=serper&q=%22gummo%22+1997+dvd+cover` should answer with results, not
@@ -122,8 +169,10 @@ never reached a commit isn't here, so ask before assuming the list is complete.
    Whether the credit line should change is the owner's call. `tests/specs/add.spec.js` checks the line, so the test
    changes with it.
 6. **Merging into `main`** makes all of the above the live site. Not until the owner says so. Before it: the owner
-   confirms the live database has `0004`, `0005` and `0006` (the pages on this branch need them), and both test suites
-   pass.
+   confirms the live database has `0004`, `0005` and `0006` (the pages on this branch need them), and `0007` once it's
+   agreed, and both test suites pass.
+7. **Run the page tests on the laptop** to confirm `requests.spec.js` passes with the Chromium Playwright 1.63 asks
+   for (it failed in the cloud container only because of an older Chromium, before and after the change).
 
 ## How to run the tests
 
@@ -158,4 +207,11 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   providers, and can't use `/admin/...` on the live Worker. Use the made-up providers in `worker/test/providers.mjs`.
 - No Supabase dashboard. It can read the migrations and the SQL tests but not run them.
 - No `node_modules`: run `npm install` in `worker/` and in `tests/` first.
+- An older Chromium. Playwright 1.63 asks for build 1243; the container has 1194 in `/opt/pw-browsers` (and mustn't run
+  `playwright install`). The cloud session pointed `PLAYWRIGHT_BROWSERS_PATH` at a folder of its own with
+  `chromium-1243/chrome-linux64` and `chromium_headless_shell-1243/chrome-headless-shell-linux64` linked to the 1194
+  folders (and a `chrome-headless-shell` link beside `headless_shell`). With it, everything runs except the 4
+  `requests.spec.js` checks above.
+- Postgres 16 is installed (`/usr/lib/postgresql/16/bin`), which is how the proposed SQL was checked: a throwaway
+  cluster run as the `postgres` user, outside the repo.
 - The folders `design/`, `textures/raw/`, `worker/debug/` and `tests/shots/` are not in the repo (`.gitignore`).
