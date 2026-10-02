@@ -81,39 +81,41 @@ const logRow = l => { const p = PEOPLE.find(x => x.id === l.owner);
 const NOT_THERE = { __status: 404, body: { code: 'PGRST202', message: 'Could not find the function in the schema cache', details: null, hint: null } };
 
 /* ---------- Supabase's REST API, answered from the data above ---------- */
-function rest(url, method, body, signedIn, named, empty, logs, ownShelf){
+function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh){
+  if (fresh) ownShelf = false;
+  const me = signedIn && !fresh;   // the made-up account as it is (follows @mira); fresh: nothing yet
   const what = url.pathname.replace(/^\/rest\/v1\//, ''), q = url.searchParams, eq = k => (q.get(k) || '').replace(/^eq\./, '');
   if (/^(rpc\/(activity|from_friends)|logs|watchlist|friend_hides)$/.test(what)){
     if (!logs) return NOT_THERE;
     if (what === 'rpc/activity'){
       if (empty) return [];
       const mine = r => r.owner === ME.id && (ownShelf || !r.preview_key), mira = r => r.owner === PEOPLE[1].id;
-      const keep = body.scope === 'you' ? mine : body.scope === 'following' ? (signedIn ? mira : () => false) : () => true;
+      const keep = body.scope === 'you' ? (fresh ? () => false : mine) : body.scope === 'following' ? (me ? mira : () => false) : () => true;
       const rows = [...SHELVES.filter(keep).map(shelfRow), ...LOGS.filter(keep).map(logRow)].sort((a, b) => b.at.localeCompare(a.at) || b.id.localeCompare(a.id));
       const from = body.before_id ? rows.findIndex(r => r.id === body.before_id) + 1 : 0;
       return rows.slice(from, from + (body.n || 20));
     }
-    if (what === 'rpc/from_friends') return signedIn ? FROM_FRIENDS : [];
+    if (what === 'rpc/from_friends') return me ? FROM_FRIENDS : [];
     if (method === 'DELETE') return [{ id: eq('id') }];
     if (method !== 'GET') return null;   // a log posted, a title kept, one removed: nothing is kept here
-    if (what === 'logs'){ const from = +(q.get('offset') || 0), n = +(q.get('limit') || 20); return LOGS.filter(l => l.owner === eq('owner')).slice(from, from + n); }
-    if (what === 'watchlist') return WATCHLIST.filter(w => w.owner === eq('owner'));
+    if (what === 'logs'){ const from = +(q.get('offset') || 0), n = +(q.get('limit') || 20); return LOGS.filter(l => l.owner === eq('owner') && !(fresh && l.owner === ME.id)).slice(from, from + n); }
+    if (what === 'watchlist') return WATCHLIST.filter(w => w.owner === eq('owner') && !(fresh && w.owner === ME.id));
     return [];
   }
   if (what === 'rpc/feed'){
     if (empty) return [];
-    const rows = SHELVES.filter(s => body.scope !== 'following' || (signedIn && PEOPLE.find(p => p.id === s.owner).username === 'mira')).map(feedRow);
+    const rows = SHELVES.filter(s => body.scope !== 'following' || (me && PEOPLE.find(p => p.id === s.owner).username === 'mira')).map(feedRow);
     const from = body.before_id ? rows.findIndex(r => r.shelf_id === body.before_id) + 1 : 0;
     return rows.slice(from, from + (body.n || 20));
   }
   if (what === 'rpc/profile_stats') return [{ shelf_count: SHELVES.filter(s => s.owner === body.uid).length, spine_count: 12 }];
-  if (what === 'rpc/follow_stats') return [{ following: 1, followers: 2 }];
-  if (what === 'rpc/profile_card') return PEOPLE.filter(p => p.username === body.p_username).map(p => card(p, signedIn));
+  if (what === 'rpc/follow_stats') return [fresh && body.uid === ME.id ? { following: 0, followers: 0 } : { following: 1, followers: 2 }];
+  if (what === 'rpc/profile_card') return PEOPLE.filter(p => p.username === body.p_username).map(p => card(p, me));
   if (what === 'rpc/find_people'){   // by the start of a username or a display name, an @ in front or not
     const w = String(body.q || '').trim().replace(/^@+/, '').toLowerCase();
-    return w ? PEOPLE.filter(p => p.username.startsWith(w) || p.display_name.toLowerCase().startsWith(w)).map(p => card(p, signedIn)) : [];
+    return w ? PEOPLE.filter(p => p.username.startsWith(w) || p.display_name.toLowerCase().startsWith(w)).map(p => card(p, me)) : [];
   }
-  if (what === 'rpc/follow_list') return PEOPLE.filter(p => p.id !== body.uid).map(p => card(p, signedIn));
+  if (what === 'rpc/follow_list') return fresh && body.uid === ME.id ? [] : PEOPLE.filter(p => p.id !== body.uid).map(p => card(p, me));
   if (what === 'rpc/follow') return 'following';
   if (what === 'rpc/unfollow') return 'none';
   if (what === 'rpc/username_available') return true;
@@ -122,13 +124,14 @@ function rest(url, method, body, signedIn, named, empty, logs, ownShelf){
   if (what.startsWith('rpc/')) return [];
   // a change to a profile answers with the row as it would be then (nothing here is kept)
   if (what === 'profiles' && method === 'PATCH') return PEOPLE.filter(p => p.id === eq('id')).map(p => ({ ...p, ...body }));
-  if (what === 'profiles') return PEOPLE.filter(p => (named || p.id !== ME.id) && (!q.has('id') || p.id === eq('id')) && (!q.has('username') || p.username === eq('username')));
+  if (what === 'profiles') return PEOPLE.filter(p => (named || p.id !== ME.id) && (!q.has('id') || p.id === eq('id')) && (!q.has('username') || p.username === eq('username')))
+    .map(p => fresh && p.id === ME.id ? { ...p, display_name: '', bio: '', created_at: new Date().toISOString() } : p);   // a new account: no name or bio yet
   if (what === 'shelves'){
     const ids = (q.get('id') || '').startsWith('in.(') ? q.get('id').slice(4, -1).split(',') : q.has('id') ? [eq('id')] : null;   // id=eq.x or id=in.(x,y)
     return SHELVES.filter(s => (!q.has('owner') || s.owner === eq('owner')) && (!ids || ids.includes(s.id)) && (ownShelf || s.owner !== ME.id));
   }
   // follows, read from the table: @mira follows the made-up account, and that's the only one it's asked about
-  if (what === 'follows') return signedIn && eq('follower') === PEOPLE[1].id && eq('followee') === ME.id ? [{ follower: PEOPLE[1].id }] : [];
+  if (what === 'follows') return me && eq('follower') === PEOPLE[1].id && eq('followee') === ME.id ? [{ follower: PEOPLE[1].id }] : [];
   if (what === 'shelf_items') return ITEMS;
   return method === 'GET' ? [] : null;
 }
@@ -180,9 +183,10 @@ const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers
    realFonts: the fonts come from Google Fonts as they do on the site (for screenshots; the tests go without);
    empty: no one has shelved anything yet, so the feed has nothing in it; logs: false answers as the database does
    before the proposed 0007 is run (no logs, watchlist or From friends, and no activity()); ownShelf: false is the
-   made-up account before it has saved its shelf.
+   made-up account before it has saved its shelf; fresh: it has just picked its username, with nothing yet (no name,
+   bio, shelf, log, watchlist or follow).
    Returns {unknown, asked}: requests nothing here could answer, and every search /identify was asked for. */
-async function mockNetwork(page, { signedIn = false, named = true, slow = 0, capped = false, realFonts = false, empty = false, logs = true, ownShelf = true } = {}){
+async function mockNetwork(page, { signedIn = false, named = true, slow = 0, capped = false, realFonts = false, empty = false, logs = true, ownShelf = true, fresh = false } = {}){
   const unknown = [], asked = [];
   if (signedIn){
     const exp = Math.floor(Date.now() / 1000) + 3600, b64 = o => Buffer.from(JSON.stringify(o)).toString('base64url');
@@ -198,7 +202,7 @@ async function mockNetwork(page, { signedIn = false, named = true, slow = 0, cap
     if (method === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
     if (url.origin === SB_URL && url.pathname.startsWith('/rest/v1/')){
       let body = {}; try { body = JSON.parse(req.postData() || '{}'); } catch {}
-      let data = rest(url, method, body, signedIn, named, empty, logs, ownShelf);
+      let data = rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh);
       if (data && data.__status) return route.fulfill({ status: data.__status, headers: CORS, contentType: 'application/json', body: JSON.stringify(data.body) });
       if (/vnd\.pgrst\.object/.test(req.headers().accept || '')) data = Array.isArray(data) ? data[0] || null : data;   // .single()
       return route.fulfill({ status: data === null ? 204 : 200, headers: CORS, contentType: 'application/json', body: data === null ? '' : JSON.stringify(data) });

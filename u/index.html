@@ -107,6 +107,8 @@
 .tabs.sub button{font-size:var(--fs-card);padding-bottom:var(--s1)}
 #netPeople{max-width:520px;margin-top:var(--s4)}
 #netNone{margin:var(--s4) 0 0}
+/* a link in an empty list's line (Find people): ink, our dashed underline */
+#friendsNone a,#netNone a{color:var(--ink);text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
 #actsMore,#netMore{margin-top:var(--s5)}
 /* one shelf on its own page: the story itself, bigger; on a wide window what's on it sits to its right */
 .sgrid{display:grid;gap:var(--s6);align-items:start}
@@ -245,7 +247,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
             <section id="friendsSec" hidden>
               <h2>From friends</h2>
               <ol class="titles" id="friends"></ol>
-              <p class="grey" id="friendsNone" hidden>When people you follow log a film or a book, it shows up here.</p>
+              <p class="grey" id="friendsNone" hidden>Nothing from friends yet. What people you follow log shows up here. <a href="../members/">Find people</a></p>
             </section>
           </div>
           <aside class="side">
@@ -258,6 +260,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
       <div id="panelA" role="tabpanel" aria-labelledby="tabA" hidden>
         <ol class="items solo" id="acts"></ol>
         <p class="grey" id="actsNone" hidden>No activity yet.</p>
+        <p class="grey" id="actsNoneMine" hidden>Nothing here yet. Log a film or a book with + Add, or save your shelf.</p>
         <button class="dash sm" id="actsMore" type="button" hidden>Load more</button>
       </div>
       <div id="panelN" role="tabpanel" aria-labelledby="tabN" hidden>
@@ -1095,6 +1098,8 @@ async function showPrivate(card){
 /* ---------- the lists of people: Following and Followers in the Network tab, the requests waiting for you in a sheet;
    30 at a time ---------- */
 const LIST_NONE = {followers: 'No followers yet.', following: 'Not following anyone yet.', requests: 'No requests waiting.'};
+// your own lists say what to do next
+const LIST_NONE_MINE = {followers: 'No followers yet. Share your shelf from its page and they’ll find you.', following: 'You’re not following anyone yet. <a href="../members/">Find people</a>'};
 // one person: photo, name, and FOLLOW (or, for a request, Accept and Decline). list: the list the row is in
 function personRow(x, kind, list){
   const li = document.createElement('li'), name = (x.display_name || '').trim(), href = pageUrl(x.username);
@@ -1123,7 +1128,7 @@ function personRow(x, kind, list){
 }
 function peopleList(ul, noneEl, moreEl){
   const st = {kind: '', last: null, run: 0};
-  const list = {ul, none(){ noneEl.textContent = LIST_NONE[st.kind]; noneEl.hidden = false; }};
+  const list = {ul, none(){ if (view.mine && LIST_NONE_MINE[st.kind]) noneEl.innerHTML = LIST_NONE_MINE[st.kind]; else noneEl.textContent = LIST_NONE[st.kind]; noneEl.hidden = false; }};
   async function more(){
     const kind = st.kind, run = st.run, page = {before: st.last ? st.last.at : null, before_id: st.last ? st.last.id : null, n: 30};
     moreEl.disabled = true;
@@ -1195,7 +1200,7 @@ async function paintActivity(more){
   if (!more) $('#acts').replaceChildren();
   for (const x of list.slice(acts.shown, want)) $('#acts').append(actLine(x));
   acts.shown = Math.min(list.length, want);
-  $('#actsNone').hidden = !!list.length; $('#actsMore').hidden = acts.done && acts.shown >= list.length; $('#actsMore').disabled = false;
+  $('#actsNone').hidden = !!list.length || view.mine; $('#actsNoneMine').hidden = !!list.length || !view.mine; $('#actsMore').hidden = acts.done && acts.shown >= list.length; $('#actsMore').disabled = false;
 }
 $('#actsMore').addEventListener('click', () => paintActivity(true));
 // Delete on one of your logs: it comes off the feed and your profile, after a yes

@@ -292,7 +292,10 @@ async function showOut(){
 }
 async function showIn(){
   $('#state').hidden = true; $('#out').hidden = true; $('#in').hidden = false;
-  if (me.profile) $('#hello').innerHTML = `Welcome back, <a href="${esc(profileUrl(me.profile.username))}">@${esc(me.profile.username)}</a>. <span class="grey">Here’s what people you follow have been shelving…</span>`;
+  // welcome back, with what the people you follow have been shelving; with no one to show yet (a new account, or
+  // nobody followed), what to do first
+  const hello = (back, line) => { if (me.profile) $('#hello').innerHTML = `${back ? 'Welcome back' : 'Welcome'}, <a href="${esc(profileUrl(me.profile.username))}">@${esc(me.profile.username)}</a>. <span class="grey">${line}</span>`; };
+  hello(true, 'Here’s what people you follow have been shelving…');
   const fill = async (get, state, list, lazy, empty) => {
     try {
       const rows = await get();
@@ -301,7 +304,8 @@ async function showIn(){
     } catch (e){ $(state).textContent = friendly(e); }
   };
   await Promise.all([
-    fill(() => rpc('feed', {scope: 'following', before: null, before_id: null, n: ROW}), '#folState', '#folRow', false, () => { $('#folNone').hidden = false; }),
+    fill(() => rpc('feed', {scope: 'following', before: null, before_id: null, n: ROW}), '#folState', '#folRow', false, () => {
+      $('#folNone').hidden = false; hello(false, 'Start your shelf with + Add, then follow a few people to see theirs.'); }),
     fill(() => everyone(GRID), '#inState', '#inGrid', true, () => { $('#inState').textContent = 'Nothing shelved yet. The first shelf here could be yours.'; $('#inState').hidden = false; }),
   ]);
 }
