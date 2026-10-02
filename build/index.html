@@ -369,8 +369,8 @@ footer{margin-top:0}
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../spinetip.js?v=20261004a"></script>
-<script src="../nav.js?v=20261006a"></script>
-<script src="../add.js?v=20261006a"></script>
+<script src="../nav.js?v=20261008a"></script>
+<script src="../add.js?v=20261008a"></script>
 <script>
 (() => {
 const $ = s => document.querySelector(s);
@@ -668,6 +668,9 @@ const timeout = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(()
 Add.setShelf({has: key => books.some(b => b.key === key), count: key => books.filter(b => (b.key || '').split('#')[0] === key).length,
   add: f => { const ok = shelve(newBook(f)); if (ok) toast(`${f.title} added to ${theShelfWord()}.`); return ok; }});
 $('#findForm').addEventListener('submit', e => { e.preventDefault(); const q = $('#findQ').value.trim(); $('#findQ').value = ''; Add.open({query: q}); });
+// typing here is typing in the Add dialog's search: it opens with what's typed so far and suggests titles as you go
+// on typing there, the same search as + ADD's (Enter here still searches at once)
+$('#findQ').addEventListener('input', () => { const q = $('#findQ').value; if (!q.trim()) return; $('#findQ').value = ''; Add.open({query: q, typed: true}); });
 Nav.onUpload(() => $('#file').click());   // "Upload a scan" in the ▾ next to + ADD
 
 /* ---------- uploads ---------- */

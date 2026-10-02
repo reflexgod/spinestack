@@ -18,6 +18,22 @@ async function openDialog(page, opt, path = '/') {
 }
 
 /* ---------- 1. the search ---------- */
+// The builder's own box is the same search: typing in it opens the dialog with what's typed so far, and the rest of the
+// typing goes on there, with suggestions as it goes (no Enter)
+test('the builder\'s search box suggests as you type, the same search as + ADD\'s', async ({ page }) => {
+  const errors = watchErrors(page), net = await mockNetwork(page, { signedIn: true }), d = dialog(page);
+  await open(page, '/build/');
+  await page.locator('#findQ').pressSequentially('gummo', { delay: 30 });
+  await expect(d).toBeVisible();
+  await expect(box(d)).toHaveValue('gummo');
+  await expect(box(d)).toBeFocused();
+  await expect(options(d)).toHaveCount(1);
+  expect(await names(d)).toEqual(['Gummo']);
+  expect(net.asked).toEqual(['gummo (typed)']);   // suggested, as typing in the dialog does; not a search on Enter
+  await expect(page.locator('#findQ')).toHaveValue('');
+  expect(errors).toEqual([]);
+});
+
 test('suggestions come while typing, with one search for a word typed quickly', async ({ page }) => {
   const errors = watchErrors(page), net = await openDialog(page, { signedIn: true }), d = dialog(page);
   await box(d).pressSequentially('gummo', { delay: 30 });   // faster than the 300 ms wait

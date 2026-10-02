@@ -729,8 +729,9 @@ function reset(){
   $('#addMode').hidden = server || !!WORKER;
   if (!server && !WORKER && direct) $('#addMode').textContent = TMDB ? 'Search works here. Real DVD and book spines need the shelfstackd server.' : 'Book search works here. Films need a TMDB key, and real spines need the shelfstackd server.';
 }
-// open({query, mode, item}): with a query it searches at once; mode is 'shelf' (the default), 'log' or 'watch'; an
-// item ({kind, title, year, creator, cover}) goes straight to its step 2
+// open({query, mode, item, typed}): with a query it searches at once (typed: it's what was being typed somewhere else,
+// so it suggests as typing here does, and the caret goes on from it); mode is 'shelf' (the default), 'log' or 'watch';
+// an item ({kind, title, year, creator, cover}) goes straight to its step 2
 function open(opt){
   opt = opt || {};
   if (!dlg.open){ reset(); if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', ''); }
@@ -742,8 +743,9 @@ function open(opt){
     if (mode === 'shelf') findSpines(picked); else { showPost(picked); ($('#addSayWrap').hidden ? $('#addPostGo') : $('#addSay')).focus(); return; }
   }
   const q = opt.query ? String(opt.query).trim() : '';
-  if (q){ $('#addQ').value = q; search(false); }
-  if (!$('#addFind').hidden) $('#addQ').focus(); else $('#addNeedGo').focus();
+  if (q){ $('#addQ').value = q; if (opt.typed) $('#addQ').dispatchEvent(new Event('input')); else search(false); }
+  if (!$('#addFind').hidden){ const box = $('#addQ'); box.focus(); if (opt.typed) box.setSelectionRange(box.value.length, box.value.length); }
+  else $('#addNeedGo').focus();
 }
 function close(){ if (dlg.open){ if (typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open'); } }
 dlg.addEventListener('close', () => { current = null; clearTimeout(typing); run++; if (asking){ asking.abort(); asking = null; } });   // whatever was being looked for stops
