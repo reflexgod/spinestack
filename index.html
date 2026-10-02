@@ -331,10 +331,19 @@ async function showOut(){
 async function showIn(){
   document.documentElement.classList.remove('signedout');
   $('#state').hidden = true; $('#out').hidden = true; $('#in').hidden = false;
-  // welcome back, with what the people you follow have been shelving; with no one to show yet (a new account, or
-  // nobody followed), what to do first
+  // welcome back, with what the people you follow have been shelving. With nothing from them to show: someone who
+  // has a shelf is told to follow people (and it's still "Welcome back"); only someone with no shelf yet is told to
+  // start one (a new account: "Welcome")
   const hello = (back, line) => { if (me.profile) $('#hello').innerHTML = `${back ? 'Welcome back' : 'Welcome'}, <a href="${esc(profileUrl(me.profile.username))}">@${esc(me.profile.username)}</a>. <span class="grey">${line}</span>`; };
   hello(true, 'Here’s what people you follow have been shelving…');
+  // have you a shelf? (Row Level Security lets you read your own.) If that can't be read, you're taken to have one:
+  // better than telling someone with a shelf to start it
+  const hasShelf = () => api(`shelves?select=id&owner=eq.${me.user.id}&hidden=is.false&limit=1`).then(rows => rows.length > 0, () => true);
+  const nobody = async () => {
+    $('#folNone').hidden = false;
+    if (await hasShelf()) hello(true, 'Follow a few people to see their shelves here.');
+    else hello(false, 'Start your shelf with + Add, then follow a few people to see theirs.');
+  };
   const fill = async (get, state, list, lazy, empty) => {
     try {
       const rows = await get();
@@ -343,8 +352,7 @@ async function showIn(){
     } catch (e){ $(state).textContent = friendly(e); }
   };
   await Promise.all([
-    fill(() => rpc('feed', {scope: 'following', before: null, before_id: null, n: ROW}), '#folState', '#folRow', false, () => {
-      $('#folNone').hidden = false; hello(false, 'Start your shelf with + Add, then follow a few people to see theirs.'); }),
+    fill(() => rpc('feed', {scope: 'following', before: null, before_id: null, n: ROW}), '#folState', '#folRow', false, nobody),
     fill(() => everyone(GRID), '#inState', '#inGrid', true, () => { $('#inState').textContent = 'Nothing shelved yet. The first shelf here could be yours.'; $('#inState').hidden = false; }),
   ]);
 }

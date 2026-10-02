@@ -18,6 +18,41 @@ test('home for someone who follows people with shelves still says "Welcome back"
   await expect(page.locator('#hello')).toHaveText('Welcome back, @tester. Here’s what people you follow have been shelving…');
 });
 
+// nothing from the people you follow (or you follow no one), whichever way home asks for it
+const nothingFromFollowing = page => page.route(u => /\/rest\/v1\/rpc\/(feed|activity)$/.test(u.pathname), route => {
+  const req = route.request();
+  if (req.method() === 'POST' && req.postDataJSON().scope === 'following') return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: '[]' });
+  return route.fallback();
+});
+
+test('home for someone who has a shelf but nothing from people they follow: still "Welcome back", and to follow people, not to start a shelf', async ({ page }) => {
+  const errors = watchErrors(page);
+  await mockNetwork(page, { signedIn: true });   // the made-up account has a shelf
+  await nothingFromFollowing(page);
+  const asked = page.waitForRequest(r => r.url().includes('/rest/v1/shelves?') && r.url().includes('owner=eq.'));
+  await open(page, '/');
+  expect(new URL((await asked).url()).searchParams.get('owner')).toMatch(/^eq\.11111111-/);   // its own shelves, to see if it has one
+  await expect(page.locator('#hello')).toHaveText('Welcome back, @tester. Follow a few people to see their shelves here.');
+  await expect(page.locator('#hello')).not.toContainText('Start your shelf');
+  await expect(page.locator('#folNone')).toHaveText('Follow people to see their shelves here. Find members');
+  expect(errors).toEqual([]);
+});
+
+test('home for someone with no shelf yet and nothing from people they follow: "Welcome", and to start the shelf', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, ownShelf: false });
+  await nothingFromFollowing(page);
+  await open(page, '/');
+  await expect(page.locator('#hello')).toHaveText('Welcome, @tester. Start your shelf with + Add, then follow a few people to see theirs.');
+});
+
+test('home when your own shelves can\'t be read: nobody is told to start a shelf they may have', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await nothingFromFollowing(page);
+  await page.route(u => u.pathname === '/rest/v1/shelves', route => route.request().method() === 'OPTIONS' ? route.fallback() : route.fulfill({ status: 500, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: '{"message":"no"}' }));
+  await open(page, '/');
+  await expect(page.locator('#hello')).toHaveText('Welcome back, @tester. Follow a few people to see their shelves here.');
+});
+
 test('your empty profile: the shelf, the watchlist, From friends, Activity and Network each say what to do next', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true, fresh: true });

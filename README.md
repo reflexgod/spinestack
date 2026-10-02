@@ -396,7 +396,8 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   for); Watchlist's Add to watchlist, and the database's answers when it's full or the title is already there; a title
   keeping its place when the choice changes; signed out and with no username yet; before the database has logs.
 - **A new account** (`specs/newuser.spec.js`, with `mockNetwork`'s `fresh`: a username and nothing else): home says
-  "Welcome" (not "Welcome back") and what to do first; your empty shelf, watchlist, From friends, Activity, Following
+  "Welcome" (not "Welcome back") and what to do first (only someone with no shelf is told to start one: with a shelf
+  and nothing from people they follow it's still "Welcome back", and "Follow a few people to see their shelves here."); your empty shelf, watchlist, From friends, Activity, Following
   and Followers each say what to do next, with a link to Members where that's it; someone else's empty lists stay
   plain; the feed's Following and You; the username sheet speaks of one shelf.
 - **No connection** (`specs/offline.spec.js`): signed in, with the database out of reach, Settings, the feed's You tab
