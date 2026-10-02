@@ -783,7 +783,7 @@ async function paintHero(){
    a strip of up to four covers and See all; its own tab (#watchlist) has them all, worn (wear.js), with what they want
    to see and read over them. Yours has a box to add one (the + ADD dialog's search, add.js), a dotted + first, and
    Remove and Watched (or Read) on each. From friends (yours only) is what the people you follow logged lately, that you
-   haven't. A watchlist is private once docs/proposed-0008-watchlist-privacy.sql is run (profiles.watchlist_public):
+   haven't. A watchlist is private once migration 0008 is run (profiles.watchlist_public):
    until then there's no such column, and it's seen as before, by whoever can see the profile. ---------- */
 const lists = {watch: [], friends: [], privacy: null};   // privacy: null before 0008; then true (public) or false
 const coverOf = ref => ref ? `${WORKER}/img?url=${encodeURIComponent(String(ref).replace(/^url:/, ''))}` : '';

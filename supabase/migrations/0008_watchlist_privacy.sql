@@ -1,6 +1,9 @@
--- shelfstackd, PROPOSED 0008: a watchlist is private until its owner makes it public. NOT RUN YET.
--- Asked for on 2 October 2026 (the Watchlist tab). Until the owner runs it, the site behaves as it did with 0007: a
--- watchlist is seen by whoever can see the profile, and the Watchlist tab has no Make public / Make private.
+-- shelfstackd, 0008: a watchlist is private until its owner makes it public.
+--
+-- Run once, after 0007, in the Supabase dashboard (SQL Editor -> New query -> paste all of this -> Run), then run its
+-- test, supabase/tests/rls_phase5.sql. It all runs in one transaction: if anything fails, nothing is changed.
+-- It was run on the live database on 2 October 2026 and its test passed. Before it, a watchlist was seen by whoever
+-- could see the profile; the Watchlist tab has Make public / Make private once the database has it.
 --
 -- What it does:
 --   * profiles.watchlist_public, false for everyone (so every watchlist turns private when this is run: tell people,
@@ -11,13 +14,8 @@
 --   * The owner changes it (Make public / Make private on their Watchlist tab), like is_private: their own row only.
 --   * Nothing else changes: adding, removing, the cap of 6, Keep from From friends.
 --
--- To run: Supabase dashboard -> SQL Editor -> New query -> paste this file -> Run. Then paste and run
--- docs/proposed-0008-watchlist-privacy.test.sql: its last line says "ALL 0008 CHECKS PASSED". Then move this file to
--- supabase/migrations/0008_watchlist_privacy.sql and the test to supabase/tests/rls_phase5.sql (headers only change).
--- After it, supabase/tests/rls_phase4.sql's check "follower A doesn't see private D's watchlist" fails, as it should
--- (D's watchlist is private until D makes it public): in that file, D needs
---   update public.profiles set watchlist_public = true where id = '00000000-0000-4000-8000-0000000004d0';
--- next to the line that makes D private.
+-- After it, supabase/tests/rls_phase4.sql makes D's watchlist public (watchlist_public = true) next to the line that
+-- makes D private, so its follower check still sees it.
 --
 -- Checked on 2 October 2026 on a local Postgres 16 (a stand-in for Supabase's auth schema, then 0001 to 0007):
 -- rls_phase3.sql and rls_phase4.sql passed, then this file ran with no errors and its test passed.

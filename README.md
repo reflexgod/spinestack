@@ -222,9 +222,10 @@ title has Remove and Watched (Read for a book). It holds 6 (`WATCH_CAP` in `add.
 says "Your watchlist is full (6). Remove one to add another." The Profile tab has a strip of up to four of its covers
 and See all. Any cover or spine elsewhere (the feed, someone's shelf page or Activity, their watchlist, From friends)
 has a bookmark on hover, or ••• with Add to watchlist on a phone: one press and it's In watchlist (signed out, the
-sign-in sheet, and it's added once you're signed in). A watchlist becomes private by default with a Make public /
-Make private on your tab once `docs/proposed-0008-watchlist-privacy.sql` is run (not yet: until then there's no
-`profiles.watchlist_public`, and the page behaves as before). Each From friends title has Keep (onto your watchlist,
+sign-in sheet, and it's added once you're signed in). A watchlist is private by default, with Make public / Make
+private on your tab (`profiles.watchlist_public`, from migration `0008`, live since 2 October 2026); someone else's
+Watchlist tab and strip show only when theirs is public. On a database without `0008` the page behaves as before:
+no toggle, and a watchlist is seen by whoever sees the profile. Each From friends title has Keep (onto your watchlist,
 saying whose log it came from), Remove (kept out for good) and
 Watched / Read. Watched / Read opens + ADD's Log it on that title, and logging a title takes it off your watchlist.
 Private shelves (Who can view: Private in the builder) show only to their owner. A private profile shows others only its photo,
@@ -250,6 +251,12 @@ after the run (`ALL PHASE 4 CHECKS PASSED`, `ALL PHASE 3 CHECKS PASSED`), as the
 it. From outside, a visitor gets the feed from `activity()`, and "permission denied" for `from_friends()` and for
 `log_counts`. `docs/RUN-0007.md` has the steps that were followed and a way to take it out again;
 `docs/proposed-0007.md` says what each page asks the database for.
+
+**`supabase/migrations/0008_watchlist_privacy.sql` was run on the live database on 2 October 2026** too. It adds
+`profiles.watchlist_public` (false for everyone, so every watchlist turned private), `watchlist_is_public()`, and the
+watchlist read policies that ask it: the owner always sees theirs, anyone else only when it's public and they could
+see the profile. Its test is `supabase/tests/rls_phase5.sql` (`ALL 0008 CHECKS PASSED`, on the live database and on a
+local Postgres 16). `rls_phase4.sql` now makes its private D's watchlist public, so it needs `0008` too.
 
 The live pages are still `main`, which doesn't ask for any of this: logs and the watchlist reach the site when
 `letterboxd-flow` is merged. On a database without `0007` the pages do without: the feed asks for `activity()` once,
@@ -281,8 +288,8 @@ signed-out visitors never load the Supabase library.
   `[vars]`. Both are public; Row Level Security protects every table. The secret / service_role key isn't used
   anywhere and must never be added to the page, the repo or the Worker.
 - **Database:** run each file in `supabase/migrations/` once, in order, in the dashboard's SQL Editor (the live
-  database has them all, `0001` to `0007`; there is no `0003`). Then run the test for the newest one
-  (`supabase/tests/rls_phase4.sql` after `0007`, `rls_phase3.sql` after `0006`): it plays a few users and a signed-out visitor,
+  database has them all, `0001` to `0008`; there is no `0003`). Then run the test for the newest one
+  (`supabase/tests/rls_phase5.sql` after `0008`, `rls_phase4.sql` after `0007` and `0008`, `rls_phase3.sql` after `0006`): it plays a few users and a signed-out visitor,
   undoes everything, and ends with `ALL ... CHECKS PASSED` (or stops at the first `FAIL:`). `rls_phase1.sql` is for a
   database with `0001` only.
 - **Pro:** two switches that must agree: `SHELFSTACKD_PRO_REQUIRED` in `build/index.html` (what the page offers) and
