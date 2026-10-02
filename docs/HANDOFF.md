@@ -13,8 +13,9 @@ tests are set up.
 - **`main` is the live site.** GitHub Pages serves shelfstackd.com from `main`, which is still at `064ac13`. Nothing on
   this branch is on the live pages yet. **Do not merge into `main`** until the owner says so.
 - **The Worker is deployed by the owner, by hand, from this branch.** On 2 October `https://api.shelfstackd.com/health`
-  listed all four scan providers, so the provider chain (`848541c`) is live. The Serper fix after it (`3774d06`) is
-  committed but **not deployed yet**.
+  listed all four scan providers, so the provider chain (`848541c`) is live. The Serper fix after it (`3774d06`) was
+  deployed and checked live the same day, and nothing in `worker/` has changed since: **nothing is waiting to be
+  deployed.**
 - **The working tree was clean** when this was written.
 - **Logs, the watchlist and From friends need SQL that hasn't been run.** It's in `docs/proposed-0007-logs-watchlist.sql`
   for the owner to review, not in `supabase/migrations/`. The pages work without it (shelves only, as before) and use
@@ -157,7 +158,7 @@ Both suites were run on 2 October 2026 on the laptop (Windows 11, Node 26).
   then the proposal): no errors; `rls_phase3.sql` and `docs/proposed-rls_phase4.sql` both passed. Not on Supabase.
 - **Not tested by anything here:**
   - The real providers. That Serper answers 400 to quotes and 200 without them is what the owner saw calling it with
-    their own key; the fix has not been run against the real Serper yet, because that needs a deploy.
+    their own key. The fix is deployed, and the owner checked it against the real Serper on 2 October; no session has.
   - Whether SerpApi minds quotes. Its documentation says quoted phrases are fine in `q`, and its request is built
     differently (a GET with `q` URL-encoded), but no real call was made: no SerpApi key is on any machine a session can
     read. See the open tasks.
@@ -170,16 +171,17 @@ This list is what the repo and the last session show. Anything the owner asked f
 never reached a commit isn't here, so ask before assuming the list is complete.
 
 0. **Launch: `docs/LAUNCH.md`** (the owner) has the order: run 0007, publish the Google sign-in, hello@ with
-   Cloudflare Email Routing, a Brave spending limit, deploy the Worker, merge into `main`, test on a phone. Tasks 1, 6
+   Cloudflare Email Routing, a Brave spending limit, merge into `main`, test on a phone (the Worker needs no deploy:
+   step 5 there only checks that). Tasks 6
    and 7 below are steps in it. **The design review** (`docs/DESIGN-REVIEW.md`) is waiting on the owner's answers.
    Before then, review `docs/proposed-0007-logs-watchlist.sql` (the owner). `docs/proposed-0007.md` lists what to decide: the
    watchlist's 6, whether visitors see a watchlist, 50 logs a day, From friends' 180 days, and whether to make one shelf
    each a rule in the database. Once agreed, `docs/RUN-0007.md` has the exact steps in the SQL Editor and the checks.
    Until then Log it and Watchlist say they aren't open yet, and the feed and profiles show shelves only.
 
-1. **Deploy the Worker with the Serper fix** (the owner does this): `cd worker && npx wrangler deploy`. Then, with the
-   admin token, `/admin/raw?provider=serper&q=%22gummo%22+1997+dvd+cover` should answer with results, not
-   "Serper answered 400", and `/admin/usage` should show Serper not out for the day.
+1. **Done: the Worker with the Serper fix is deployed** (the owner, 2 October 2026) and checked live. Nothing in
+   `worker/` has changed since, so there is nothing to deploy. After any later change to `worker/`, the owner runs
+   `cd worker && npm test && npx wrangler deploy`, then looks at `/health`.
 2. **Check SerpApi with quotes for real** (the owner, one search of the day's 8):
    `curl -H "Authorization: Bearer <ADMIN_TOKEN>" "https://api.shelfstackd.com/admin/raw?provider=serpapi&q=%22gummo%22+1997+dvd+cover"`.
    `/admin/raw` sends SerpApi the search as it's typed, quotes and all. Results mean it's fine. "SerpApi answered 400"

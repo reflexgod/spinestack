@@ -80,26 +80,23 @@ most), but that doesn't protect the key if it ever leaked.
 (spending) limit, about $5 so it stays within the free credit, and a usage alert at 80%. Check the page shows the
 limit saved.
 
-## 5. Deploy the Worker (it has changed)
+## 5. The Worker: nothing to deploy
 
-The live Worker is the provider chain (`848541c`). The Serper fix after it (`3774d06`, Serper is asked without double
-quotes) is committed and not deployed; nothing since has touched `worker/`. Check that's still true, test, deploy:
+The live Worker already has the Serper fix (`3774d06`, Serper is asked without double quotes): it was deployed and
+checked live on 2 October 2026, and nothing in `worker/` has changed since. So this launch has no Worker deploy. Only
+check that's still true:
 
 ```bash
 git checkout letterboxd-flow && git pull
-git log --oneline 3774d06..HEAD -- worker/    # nothing printed: nothing newer to deploy
-cd worker
-npm test                                      # all checks pass
-npx wrangler deploy
+git log --oneline 3774d06..HEAD -- worker/    # nothing printed: the live Worker is the newest
 curl -s https://api.shelfstackd.com/health; echo
-cd ..
 ```
 
-`/health` should answer `"ok":true` with `serper`, `serpapi` and `brave` all `true` under `scans`. Then the Serper check
-from `docs/HANDOFF.md` (open task 1) with your admin token: `/admin/raw?provider=serper&q=%22gummo%22+1997+dvd+cover`
-should answer with results, not "Serper answered 400".
+`/health` should answer `"ok":true` with `serper`, `serpapi` and `brave` all `true` under `scans`.
 
-If it goes wrong: `npx wrangler rollback` (in `worker/`) puts the previous version back.
+If `git log` does print a commit, the Worker has changed since 2 October and that change needs deploying first:
+`cd worker && npm test` (all checks pass), then `npx wrangler deploy`, then `/health` again. If a deploy goes wrong,
+`npx wrangler rollback` (in `worker/`) puts the previous version back.
 
 ## 6. Merge into main
 
