@@ -20,6 +20,14 @@ The first version of `activity()` and `from_friends()` read `profiles.hidden`, w
 granted (`0002` grants only some of the profile's columns). The test found it; they now leave hidden profiles out
 through `profile_is_public()` and `approved_follower_of()`, as `feed()` does.
 
+## Hardening after the first review
+
+- **Two adds at once can't beat a limit.** The logs and watchlist triggers take a lock for that person
+  (`pg_advisory_xact_lock(hashtext('logs:' || owner))`, and `'watch:'`) before they count. Checked locally with two
+  sessions adding at the same moment, one holding its transaction open: without the lock the watchlist ended at 7 and
+  the logs at 51; with it, 6 and 50, the second add getting the limit's message. The SQL Editor has one session, so
+  `proposed-rls_phase4.sql` checks that an add takes the lock.
+
 ## What the pages ask for
 
 | Page | Asks | Before 0007 is run |

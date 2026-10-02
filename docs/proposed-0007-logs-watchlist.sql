@@ -23,6 +23,8 @@
 --   * title_key(): one key per title (film or book, its title in lower case with its spaces tidied, its year), so the
 --     same title is the same title in logs, the watchlist and From friends.
 --   * functions for the pages: activity() (the feed: shelves and logs together, newest first) and from_friends().
+-- The limits hold when the same person adds from two tabs at once: each one takes a lock for that person first
+-- (pg_advisory_xact_lock, kept to the end of the transaction), so a second add waits, then counts the first.
 -- Not changed: feed(), shelves, shelf_items and everything else from 0001 to 0006.
 
 begin;
@@ -54,10 +56,12 @@ create index logs_new on public.logs (created_at desc, id desc) where not hidden
 create index logs_owner_new on public.logs (owner, created_at desc, id desc) where not hidden;          -- a profile's Activity, From friends
 create index logs_owner_title on public.logs (owner, public.title_key(kind, title, year));             -- "have I logged this?"
 
--- its date is the database's, and 50 a day per person is plenty
+-- its date is the database's, and 50 a day per person is plenty. The lock is this person's alone: another add of
+-- theirs waits here until this one is done, then counts it, so two at once can't both be the 50th.
 create function public.logs_before_insert() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
+  perform pg_advisory_xact_lock(hashtext('logs:' || new.owner));
   new.created_at := now();
   if (select count(*) from public.logs l where l.owner = new.owner and l.created_at > now() - interval '1 day') >= 50 then
     raise exception 'That''s 50 logs today, the most for one day. Log the rest tomorrow.' using errcode = 'P0001';
@@ -84,10 +88,12 @@ alter table public.watchlist enable row level security;
 create unique index watchlist_one_each on public.watchlist (owner, public.title_key(kind, title, year));   -- a second one is 23505
 create index watchlist_owner_new on public.watchlist (owner, created_at desc);
 
--- 6 at most; from_user only when it's someone you follow (otherwise it's left empty, not refused)
+-- 6 at most (under this person's lock, as logs are); from_user only when it's someone you follow (otherwise it's left
+-- empty, not refused)
 create function public.watchlist_before_insert() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
+  perform pg_advisory_xact_lock(hashtext('watch:' || new.owner));
   new.created_at := now();
   if (select count(*) from public.watchlist w where w.owner = new.owner) >= 6 then
     raise exception 'Your watchlist holds 6. Log one or remove one first.' using errcode = 'P0001';

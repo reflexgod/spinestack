@@ -185,6 +185,19 @@ do $$ declare i int; begin
   exception when raise_exception then if sqlerrm like 'FAIL:%' then raise; end if; end;
 end $$;
 
+-- ---------- two adds at once can't beat a limit ----------
+-- Each add takes a lock for its person before it counts, and keeps it to the end of the transaction, so a second add by
+-- the same person waits, then counts the first. A real race needs two sessions at once, which the SQL Editor doesn't
+-- have (docs/RUN-0007.md says how it was checked with two); here, E's adds leave E's locks taken in this one.
+insert into public.watchlist (kind, title) values ('book', 'Locked in');
+do $$
+declare held bigint[] := array(select (l.classid::bigint << 32) | l.objid::bigint from pg_locks l
+                               where l.locktype = 'advisory' and l.pid = pg_backend_pid() and l.objsubid = 1);
+begin
+  if not hashtext('logs:00000000-0000-4000-8000-0000000004e0')::bigint = any (held) then raise exception 'FAIL: adding a log didn''t take its person''s lock'; end if;
+  if not hashtext('watch:00000000-0000-4000-8000-0000000004e0')::bigint = any (held) then raise exception 'FAIL: adding to a watchlist didn''t take its person''s lock'; end if;
+end $$;
+
 -- ---------- deleting an account takes its logs, watchlist and removals along ----------
 reset role;
 delete from auth.users where id = '00000000-0000-4000-8000-0000000004a0';
