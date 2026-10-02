@@ -18,12 +18,14 @@ feed/index.html       the feed: /feed/, FOLLOWING · YOU · EVERYONE, a line for
 worker-address.js     sends Worker requests to its workers.dev address on networks that block api.shelfstackd.com
 favicon.svg           the mark: three spines on a shelf. favicon-32.png, favicon.ico and apple-touch-icon.png are made from it (tests/art.js); every page links them
 favicon.ico           the same mark for a browser that asks for /favicon.ico whatever the page says (without it, that request is a 404 on every page)
+tmdb.svg              TMDB's logo, their own file as it comes (the "primary short" one from themoviedb.org/about/logos-attribution), shown small in privacy.html's Credits: their terms ask for it beside their line
+privacy.html          what the site keeps and who sees it; at its end, Credits (#credits, where About in every footer goes): TMDB's logo and line, Open Library, Search by Brave
 .well-known/appspecific/com.chrome.devtools.json   an empty answer for Chrome, which asks every localhost site for this file while its DevTools are open (the other 404 in the network panel). Nothing reads it
 og.jpg                the picture a shared link shows (1200 x 630: the logo and a shelf); every page names it in its og: and twitter: tags
 sample-shelf.jpg      the builder's sample shelf (it's only at build/?sample now: a new shelf starts empty) as a picture; home shows it ("a shelf, for example") while there are no public shelves. Made by tests/art.js
 spinetip.js           a shelf's picture: hovering a spine shows "Title (year) · creator", pressing it goes to its row in the list (a shelf's page, and the builder's preview). It uses the places shelf.js says it drew each book
 cards.js              shelf cards: finds the books in a shelf's preview picture and cuts the 2:3 card round them (home, the feed, profiles), keeping what it found per preview key
-site.css              the look every page shares: one :root block of variables (the 950px column, the type scale, the 4/8/12/16/24/40 spacing, the 3px radius) and what uses them everywhere (the top bar, headings, buttons, fields, shelf cards, tabs, sheets, the footer: two lines of small print). A page's own <style> holds only what that page alone needs
+site.css              the look every page shares: one :root block of variables (the 950px column, the type scale, the 4/8/12/16/24/40 spacing, the 3px radius) and what uses them everywhere (the top bar, headings, buttons, fields, shelf cards, tabs, sheets, the footer: one line, About · Privacy · hello@shelfstackd.com). A page's own <style> holds only what that page alone needs
 nav.js                the top bar on every page: who is signed in, the account menu (Home, Profile, Shelf, Activity, Network, Settings, Sign out), + ADD and the ▾ next to it. The places are in each page's markup, in one order signed in or out: ⚡ · Shelves · Members · search
 404.html              what GitHub Pages sends for an address that isn't there: a line and the way home. Its links start at the root (/), since it's served at any depth
 admin.html            approve or delete archive uploads (needs the admin token); read reports (Google sign-in, admins only)
@@ -123,8 +125,8 @@ curl -H "Authorization: Bearer <ADMIN_TOKEN>" "https://api.shelfstackd.com/admin
 ```
 
 The second asks one provider alone and shows what it said (it costs one search): the way to check that a key works.
-`/health` says which providers have a key (`scans`), without the admin token. Every page's footer says "Search by
-Brave", after TMDB's line and Open Library.
+`/health` says which providers have a key (`scans`), without the admin token. The Add dialog says "Search by Brave"
+under the spines a search found, and so do the Credits on `privacy.html`, which every page's footer links as About.
 
 `cd worker && npm test` runs the whole chain in the runtime `wrangler dev` uses, against made-up providers
 (`test/providers.mjs`): the order, the caps, out-for-the-day, Serper's credits, `/admin/usage`, Serper asked without
@@ -337,8 +339,9 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **The dialog's search** (`specs/add.spec.js`): suggestions while typing with one search for a word typed quickly, a
   slower earlier answer dropped, six results in order of closeness, ↑ ↓ Enter Esc, Enter searching at once, the
   loading and nothing-found lines, at the right of the All · Films · Books row (nothing held open, nothing moving);
-  the capped answer from `/scans` and its message; every page's footer (TMDB's line, Open Library, Search by Brave,
-  Privacy, hello@shelfstackd.com, and nothing else, in small print); the builder's count and limit, its empty shelf,
+  the capped answer from `/scans` and its message; "Search by Brave", small and grey, under the spines a search found
+  (not before a search, and not in Log it or Watchlist); every page's footer (one line of small grey print: About ·
+  Privacy · hello@shelfstackd.com, About going to the Credits, and no credits in it); the builder's count and limit, its empty shelf,
   and the note under the preview clear of the Save bar.
 - **The look** (`specs/look.spec.js`): the content and the bar's contents in one 950px column on every page, the type
   scale, one black button a screen, shelf cards six across at 150px (three on a phone) cut 2:3, the profile's name,
@@ -384,7 +387,8 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **A page that isn't there** (`specs/notfound.spec.js`): any missing address, however deep, gets `404.html` with the
   status 404 (`tests/serve.js` does what GitHub Pages does), styled, with a link home that works from there.
 - **Privacy** (`specs/privacy.spec.js`): the page's sections, and that it says what the site does now (the feed, being
-  found, follows, private shelves and profiles, Settings, the photo).
+  found, follows, private shelves and profiles, Settings, the photo); and its Credits: TMDB's logo (their file,
+  unchanged, loaded, 14px tall) over their line, Open Library and Search by Brave.
 - **Nothing missing** (`specs/requests.spec.js`): every page, signed out and signed in, gets an answer for everything
   it asks this site for; and the two things a browser asks for by itself (`/favicon.ico`, and Chrome's DevTools file)
   are there.
@@ -476,7 +480,7 @@ Keys go in `backend/.env` only. `.gitignore` already keeps `.env` and `data/` ou
 
 - Search engines sometimes rate-limit SearXNG, so results vary. The cache helps more over time.
 - Scans are the studios' and publishers' artwork; each spine links to where it was found. To remove one, delete its files in `backend/data/media/` and its row in `backend/data/cache.db`.
-- TMDB requires the credit line that's already in the page footer.
+- TMDB requires its credit line and logo: they're in `privacy.html`'s Credits, which every page's footer links as About.
 
 ## To do
 

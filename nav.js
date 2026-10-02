@@ -175,7 +175,7 @@
     if (window.Add){ window.Add.open(opt); return Promise.resolve(true); }
     if (!window.Shelf) return Promise.resolve(false);
     adding = adding || new Promise(res => {
-      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261004a';
+      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261005a';
       s.onload = () => res(!!window.Add); s.onerror = () => { adding = null; s.remove(); res(false); };
       document.head.appendChild(s);
     });

@@ -219,7 +219,9 @@ css.textContent = `
 #addDialog .pick .lbl{font-size:var(--fs-label,10px);letter-spacing:0;text-transform:none;color:var(--grey,#6B6B6B);white-space:nowrap;width:var(--tw);text-align:center;overflow:hidden;text-overflow:ellipsis;align-self:center}
 #addDialog .pick .lbl a{color:inherit}
 #addDialog .addfound .rule{flex:none;width:1px;height:var(--th);background:var(--hair,#D9D9D9)}
-#addDialog .addbar{display:flex;justify-content:flex-end;margin-top:var(--s4,16px)}
+#addDialog .addbar{display:flex;justify-content:flex-end;align-items:center;gap:var(--s3,12px);margin-top:var(--s4,16px)}
+/* under the spines a search found, at the left of the bar: "Search by Brave", small and grey (Brave asks for it where its results show) */
+#addDialog .addby{margin-right:auto;font-size:var(--fs-small,11px);color:var(--grey,#6B6B6B)}
 /* what to do with it: three choices in a row, as the tabs are (the one picked black, a line under it) */
 #addDialog .addwhat{display:flex;flex-wrap:wrap;gap:var(--s2,8px) var(--s5,24px);margin:0 0 var(--s4,16px);border-bottom:1px solid var(--hair,#D9D9D9)}
 #addDialog .addwhat label{position:relative;cursor:pointer}
@@ -246,7 +248,8 @@ css.textContent = `
    are 16px so the phone doesn't zoom in */
 @media (pointer:coarse){
   #addDialog .addopts label,#addDialog .addopts input,#addDialog .pick .art{position:relative}   /* a box or circle stays on top of its own press area */
-  :is(#addDialog .addx,#addDialog .addsearch button,#addDialog .addopts label,#addDialog .addwhat label,#addDialog .pick .art)::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))}
+  #addDialog .addby{position:relative}
+  :is(#addDialog .addx,#addDialog .addsearch button,#addDialog .addopts label,#addDialog .addwhat label,#addDialog .pick .art,#addDialog .addby)::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))}
   #addDialog .addsearch input{height:44px;font-size:16px}
   #addDialog .addsay textarea{font-size:16px}
 }
@@ -289,7 +292,7 @@ dlg.innerHTML = `
     <div class="addfound" id="addFound" role="radiogroup" aria-label="Which spine"></div>
     <p class="grey" id="addNoReal" hidden>No real spine found yet. Upload a photo of yours on the builder to add it to the archive.</p>
     <p class="grey" id="addNote" hidden>Real DVD and book spines show up once the shelfstackd server is connected. Until then, upload a full DVD scan on the builder.</p>
-    <div class="addbar"><button class="btn primary" id="addGo" type="button" disabled>Add to shelf</button></div>
+    <div class="addbar"><a class="addby" id="addBy" href="https://search.brave.com/" target="_blank" rel="noopener">Search by Brave</a><button class="btn primary" id="addGo" type="button" disabled>Add to shelf</button></div>
   </div>
   <div id="addPost" hidden>
     <div class="addpost">
@@ -536,6 +539,7 @@ async function findSpines(m, again){
   $('#addSpines').hidden = false; $('#addMatches').hidden = true; paintActive();
   $('#addSpinesTitle').textContent = m.title + (m.year ? ' (' + m.year + ')' : ''); $('#addSpinesBy').textContent = m.creator ? '· ' + m.creator : '';
   $('#addNote').hidden = server || !!WORKER; $('#addFound').innerHTML = ''; $('#addNoReal').hidden = true; $('#addDup').hidden = true; paintGo();
+  $('#addBy').hidden = server || !WORKER;   // the Worker's scan search is the one that asks Brave
   if (!again && shelf && shelf.has(key)){
     // already on the shelf: ask before adding it a second time
     $('#addDupText').textContent = m.title + ' is already on your shelf.'; $('#addDup').hidden = false; cur.busy = false; sstatus('');
