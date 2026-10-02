@@ -43,7 +43,14 @@ test('every page has its own title and description, the icons and the share pict
     expect(tag(html, /<meta property="og:image" content="([^"]*)">/), f).toBe('https://shelfstackd.com/og.jpg');
     expect(tag(html, /<meta name="twitter:card" content="([^"]*)">/), f).toBe('summary_large_image');
     expect(tag(html, /<meta name="twitter:image" content="([^"]*)">/), f).toBe('https://shelfstackd.com/og.jpg');
+    // WhatsApp draws the big preview at once when it's told the picture's size
+    expect(tag(html, /<meta property="og:image:width" content="([^"]*)">/), f).toBe('1200');
+    expect(tag(html, /<meta property="og:image:height" content="([^"]*)">/), f).toBe('630');
+    // the page's own address; a profile's carries the person (?mira), so it has none and the shared link stands
+    if (f === 'u/index.html') expect(html, f).not.toContain('og:url');
+    else expect(tag(html, /<meta property="og:url" content="([^"]*)">/), f).toBe('https://shelfstackd.com/' + f.replace(/index\.html$/, ''));
   }
+  expect(fs.statSync(path.join(ROOT, 'og.jpg')).size).toBeLessThan(300 * 1024);   // WhatsApp leaves out a bigger picture
   expect(sizeOf('og.jpg')).toEqual([1200, 630]);
   expect(sizeOf('favicon-32.png')).toEqual([32, 32]);
   expect(sizeOf('apple-touch-icon.png')).toEqual([180, 180]);
