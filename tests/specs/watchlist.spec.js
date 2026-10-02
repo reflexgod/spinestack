@@ -1,6 +1,6 @@
 // The watchlist, as Letterboxd's: a tab of its own on a profile (/u/?name#watchlist) with what they want to see and
-// read, the covers (worn), and on your own a box that adds a title straight in (the + ADD dialog's search, no dialog
-// and no spine search), a dotted + first, Remove and Watched / Read. It holds 6. Anywhere else a cover or a spine shows
+// read, the covers (clean and still sealed: wear is for a log), and on your own a box that adds a title straight in (the + ADD dialog's search, no dialog
+// and no spine search), a dotted + first, Remove and ✓ Mark watched / ✓ Mark read. It holds 6. Anywhere else a cover or a spine shows
 // (the feed, someone's shelf, From friends), a bookmark on hover, or ••• on a phone, puts it on your watchlist; signed
 // out that's the sign-in sheet first. Private by default once supabase/migrations/0008_watchlist_privacy.sql is run.
 const { test, expect } = require('@playwright/test');
@@ -25,7 +25,7 @@ const privacyIs = (page, value) => page.route(u => u.origin === SB_URL && u.path
   return route.fallback();
 });
 
-test('your Watchlist tab: what you want to see and read, a dotted + first, then the covers, worn', async ({ page }) => {
+test('your Watchlist tab: what you want to see and read, a dotted + first, then the covers, clean and sealed, never worn', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?tester#watchlist');
@@ -34,7 +34,13 @@ test('your Watchlist tab: what you want to see and read, a dotted + first, then 
   await expect(first.locator('.wplus')).toHaveAccessibleName('Add a film or book to your watchlist');
   expect(await first.locator('.wplus').evaluate(b => [getComputedStyle(b).borderTopStyle, (b.getBoundingClientRect().height / b.getBoundingClientRect().width).toFixed(1)])).toEqual(['dashed', '1.5']);
   await expect(tiles(page)).toHaveCount(2);
-  await expect(tiles(page).locator('canvas.worn')).toHaveCount(2);
+  await expect(tiles(page).locator('canvas.worn')).toHaveCount(0);                 // no wear, no dog-ear: it isn't watched or read yet
+  await expect(tiles(page).locator('canvas.clean')).toHaveCount(2);
+  // the picture reaches every corner (a worn cover's top right is folded away), and a faint sheen of wrap lies over it
+  await expect.poll(() => tiles(page).first().locator('canvas').evaluate(c => { const x = c.getContext('2d'), p = (a, b) => x.getImageData(a, b, 1, 1).data;
+    return [p(c.width - 2, 1), p(c.width - 2, 2)].every(d => d[3] === 255 && !(d[0] === 243 && d[1] === 243)); })).toBe(true);
+  const sheen = await tiles(page).first().locator('.wc').evaluate(el => { const a = getComputedStyle(el, '::after'); return [a.content, a.backgroundImage.startsWith('linear-gradient'), a.pointerEvents]; });
+  expect(sheen).toEqual(['""', true, 'none']);
   const c = await tiles(page).first().locator('.wc').boundingBox();
   expect(c.height / c.width).toBeCloseTo(1.5, 1);                                   // 2:3
   await expect(tiles(page).first().locator('.wcap')).toHaveText('Paris, Texas 1984');
@@ -107,7 +113,7 @@ test('someone else\'s Watchlist tab: their covers and what they want, nothing to
   await expect(page.locator('#wLine')).toHaveText('@mira wants to see 1 film.');
   await expect(page.locator('#wSearch')).toBeHidden();
   await expect(page.locator('#wGrid .wplus')).toHaveCount(0);
-  await expect(page.locator('#wGrid').getByRole('button', { name: /^(Remove|Watched|Read)$/ })).toHaveCount(0);
+  await expect(page.locator('#wGrid').getByRole('button', { name: /^(Remove|Mark watched|Mark read)$/ })).toHaveCount(0);
   const req = posted(page);
   if (isPhone()) { await page.locator('#wGrid').getByRole('button', { name: 'More for Stalker (1979)' }).click(); await page.getByRole('menuitem', { name: 'Add to watchlist' }).click(); }
   else { await page.locator('#wGrid .wc').first().hover(); await page.getByRole('button', { name: 'Add Stalker (1979) to watchlist' }).click(); }

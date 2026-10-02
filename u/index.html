@@ -102,9 +102,13 @@
 /* the watchlist on the Profile tab: up to four of its covers, and See all */
 .wstrip{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,var(--wcov));justify-content:start;gap:var(--s3);--wcov:100px}   /* up to four in one row: 100px covers, 80px on a phone */
 .wstrip:empty{display:none}
-.wstrip a{display:block;line-height:0}
+.wstrip a{display:block;line-height:0;position:relative}
 .wstrip canvas{display:block;width:100%;height:auto;aspect-ratio:2/3}
-/* the Watchlist tab: what they want to see and read, the box to add one (yours), then the covers, worn (wear.js), as
+/* a watchlist cover, still sealed: a faint diagonal sheen of plastic wrap and a hairline at its edge. Nothing drawn on
+   the picture itself */
+.sealed::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);
+  background:linear-gradient(115deg,rgba(255,255,255,0) 28%,rgba(255,255,255,.16) 38%,rgba(255,255,255,0) 50%,rgba(255,255,255,0) 68%,rgba(255,255,255,.08) 74%,rgba(255,255,255,0) 80%)}
+/* the Watchlist tab: what they want to see and read, the box to add one (yours), then the covers, clean, as
    shelf cards are laid out. The title shows on the cover when a mouse is over it, and under it on a phone */
 .whead{display:flex;gap:var(--s2) var(--s4);align-items:baseline;flex-wrap:wrap;margin-bottom:var(--s4)}
 .wline{margin:0}
@@ -122,7 +126,8 @@
 .wcap{font-size:var(--fs-small);overflow-wrap:anywhere}
 .wcap b{font-weight:500}
 .wcap span{color:var(--grey)}
-.wacts{display:flex;gap:var(--s1) var(--s3);flex-wrap:wrap}
+.wacts{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s2)}   /* one under the other: ✓ Mark watched doesn't fit beside Remove under a cover */
+@media (pointer:coarse){ .wacts{gap:calc(var(--s5) + var(--s1))} }   /* and a press apart (44px, middle to middle) */
 .wplus{display:grid;place-items:center;width:100%;aspect-ratio:2/3;border:1px dashed var(--ink);border-radius:var(--radius);background:var(--paper);color:var(--ink);font:400 32px var(--mono);cursor:pointer;padding:0}
 .wplus:hover{background:var(--wash)}
 @media (hover:hover) and (pointer:fine){   /* over the cover, at its foot: the two share the tile's first row */
@@ -780,15 +785,16 @@ async function paintHero(){
 
 /* ---------- the watchlist and From friends. Both read the tables supabase/migrations/0007_logs_watchlist.sql makes; on a
    database without them, neither shows. The watchlist holds Add.WATCH_CAP titles (add.js; 6). On the Profile tab it's
-   a strip of up to four covers and See all; its own tab (#watchlist) has them all, worn (wear.js), with what they want
+   a strip of up to four covers and See all; its own tab (#watchlist) has them all, clean and still sealed (not worn: that is for a log), with what they want
    to see and read over them. Yours has a box to add one (the + ADD dialog's search, add.js), a dotted + first, and
-   Remove and Watched (or Read) on each. From friends (yours only) is what the people you follow logged lately, that you
+   Remove and ✓ Mark watched (or read) on each. From friends (yours only) is what the people you follow logged lately, that you
    haven't. A watchlist is private once migration 0008 is run (profiles.watchlist_public):
    until then there's no such column, and it's seen as before, by whoever can see the profile. ---------- */
 const lists = {watch: [], friends: [], privacy: null};   // privacy: null before 0008; then true (public) or false
 const coverOf = ref => ref ? `${WORKER}/img?url=${encodeURIComponent(String(ref).replace(/^url:/, ''))}` : '';
 const asItem = r => ({kind: r.kind, title: r.title, year: r.year ? String(r.year) : '', creator: r.author || '', cover: r.cover_src ? String(r.cover_src).replace(/^url:/, '') : ''});
-const didIt = r => r.kind === 'movie' ? 'Watched' : 'Read';
+// the action, not a state: it logs the title (+ ADD's Log it). The tick is left out of its name for a screen reader
+const didIt = r => `<span aria-hidden="true">✓ </span>Mark ${r.kind === 'movie' ? 'watched' : 'read'}`;
 // a title: its cover, its name and year, who made it, Film or Book (and whose log it came from), and its buttons
 function titleRow(r, i, acts, from){
   const li = document.createElement('li'); li.dataset.i = i;
@@ -797,8 +803,23 @@ function titleRow(r, i, acts, from){
     ${acts ? `<span class="tacts">${acts}</span>` : ''}`;
   return li;
 }
-// a worn cover (wear.js), 2:3, as the feed draws a log's, by how long it's been on the watchlist
-const wornCover = (r, width = 150) => Wear.cover({src: coverOf(r.cover_src), seed: r.id, at: r.created_at, label: `${r.title}${r.year ? ` (${r.year})` : ''}`, width});
+// a watchlist cover: clean and new, 2:3, the picture cut to fit (no wear and no dog-ear: those say it's been watched
+// or read, and it gets them once it's logged). Its wrapper (.sealed) lays a faint sheen of plastic wrap over it
+const SEALED_PLAIN = ['#2B2B2B', '#4A4540', '#3D4A52', '#5A4A3F', '#47503F', '#6B5B4E'];
+function cleanCover(r, width = 150){
+  const dpr = Math.min(2, window.devicePixelRatio || 1), c = document.createElement('canvas'), x = c.getContext('2d');
+  c.width = Math.round(width * dpr); c.height = Math.round(c.width * 1.5); c.className = 'clean';
+  c.setAttribute('role', 'img'); c.setAttribute('aria-label', `${r.title}${r.year ? ` (${r.year})` : ''}`);
+  const plain = () => { x.fillStyle = SEALED_PLAIN[[...String(r.id || r.title)].reduce((a, ch) => a + ch.charCodeAt(0), 0) % SEALED_PLAIN.length]; x.fillRect(0, 0, c.width, c.height); };
+  const src = coverOf(r.cover_src);
+  if (!src){ plain(); return c; }
+  x.fillStyle = '#F3F3F3'; x.fillRect(0, 0, c.width, c.height);   // until it comes
+  const img = new Image(); img.crossOrigin = 'anonymous'; img.decoding = 'async';
+  img.onload = () => { const k = Math.max(c.width / img.naturalWidth, c.height / img.naturalHeight), w = img.naturalWidth * k, h = img.naturalHeight * k; x.drawImage(img, (c.width - w) / 2, (c.height - h) / 2, w, h); };
+  img.onerror = plain;
+  img.src = src;
+  return c;
+}
 // "You want to see 4 films and read 2 books." / "@mira wants to see 1 film."
 function wantLine(rows, mine){
   const films = rows.filter(r => r.kind === 'movie').length, books = rows.length - films, n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
@@ -823,7 +844,7 @@ async function paintWatch(){
   $('#watchAll').hidden = !lists.watch.length;
   $('#watchStrip').replaceChildren(...lists.watch.slice(0, 4).map(r => {
     const li = document.createElement('li'), a = document.createElement('a');
-    a.href = '#watchlist'; a.setAttribute('aria-label', `${r.title}${r.year ? ` (${r.year})` : ''}, on the watchlist`); a.append(wornCover(r, 100));
+    a.href = '#watchlist'; a.className = 'sealed'; a.setAttribute('aria-label', `${r.title}${r.year ? ` (${r.year})` : ''}, on the watchlist`); a.append(cleanCover(r, 100));
     li.append(a); return li;
   }));
   $('#watchNone').hidden = !!lists.watch.length;
@@ -843,8 +864,8 @@ function paintWatchTab(){
   if (mine) watchSearch();
   const tiles = rows.map((r, i) => {
     const li = document.createElement('li'); li.className = 'wt'; li.dataset.i = i;
-    li.innerHTML = `<span class="wc"></span><span class="wcap"><b>${esc(r.title)}</b>${r.year ? ` <span>${esc(r.year)}</span>` : ''}</span>${mine ? `<span class="wacts"><button class="dash sm grey" type="button" data-w="remove">Remove</button><button class="dash sm" type="button" data-w="log">${didIt(r)}</button></span>` : ''}`;
-    const wc = li.querySelector('.wc'); wc.append(wornCover(r));
+    li.innerHTML = `<span class="wc sealed"></span><span class="wcap"><b>${esc(r.title)}</b>${r.year ? ` <span>${esc(r.year)}</span>` : ''}</span>${mine ? `<span class="wacts"><button class="dash sm grey" type="button" data-w="remove">Remove</button><button class="dash sm" type="button" data-w="log">${didIt(r)}</button></span>` : ''}`;
+    const wc = li.querySelector('.wc'); wc.append(cleanCover(r));
     if (!mine) Nav.watchable(wc, asItem(r), {moreIn: li});   // someone else's: on yours too
     return li;
   });
@@ -886,7 +907,7 @@ async function paintFriends(){
   if (view.mine) try { rows = await rpc('from_friends', {n: 6}); } catch {}
   lists.friends = rows || [];
   $('#friendsSec').hidden = !rows;
-  // Keep puts it on your watchlist, Remove takes it out of here for good, Watched (or Read) logs it
+  // Keep puts it on your watchlist, Remove takes it out of here for good, ✓ Mark watched (or read) logs it
   $('#friends').replaceChildren(...lists.friends.map((r, i) => titleRow(r, i, `<button class="dash sm" type="button" data-f="keep">Keep</button><button class="dash sm grey" type="button" data-f="remove">Remove</button><button class="dash sm" type="button" data-f="log">${didIt(r)}</button>`, r.from_username)));
   $('#friendsNone').hidden = !!lists.friends.length;
   // each cover: a watchlist button (kept from whose log it was), as Keep does
@@ -919,7 +940,7 @@ $('#friends').addEventListener('click', async e => {
     paintLists();
   } catch (err){ toast(keptError(err)); if (b.isConnected) b.disabled = false; }
 });
-// something logged or put on the watchlist with + ADD on this page (a Watched here, too): the lists and Activity again
+// something logged or put on the watchlist with + ADD on this page (a ✓ Mark watched here, too): the lists and Activity again
 document.addEventListener('shelfstackd:added', () => {
   if (!view.mine || ONE) return;
   paintLists();

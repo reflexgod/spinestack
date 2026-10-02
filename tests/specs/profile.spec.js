@@ -69,7 +69,9 @@ test('Profile: their shelf first, standing on a shelf line at one spine height f
   // someone else's watchlist: a strip of covers and See all; From friends is only ever your own
   await expect(page.locator('#watchStrip li')).toHaveCount(1);
   await expect(page.locator('#watchStrip a')).toHaveAccessibleName('Stalker (1979), on the watchlist');
-  await expect(page.locator('#watchStrip canvas.worn')).toHaveCount(1);
+  await expect(page.locator('#watchStrip canvas.clean')).toHaveCount(1);   // clean and sealed, not worn (that's for a log)
+  await expect(page.locator('#watchStrip canvas.worn')).toHaveCount(0);
+  await expect(page.locator('#watchStrip a.sealed')).toHaveCount(1);
   await expect(page.locator('#watchAll')).toHaveText('See all →');
   await expect(page.locator('#friendsSec')).toBeHidden();
   await page.locator('#watchAll').click();
@@ -182,7 +184,7 @@ test('on your own profile the account menu\'s Activity and Network change the ta
 const row = (page, list, title) => page.locator(`#${list} li`).filter({ hasText: title });
 const sent = (page, method, table) => page.waitForRequest(r => r.method() === method && new URL(r.url()).pathname === '/rest/v1/' + table);
 
-test('your watchlist: a strip on Profile; on its tab each cover has Remove and Watched (or Read); From friends: Keep · Remove · Watched / Read', async ({ page }) => {
+test('your watchlist: a strip on Profile; on its tab each cover has Remove and ✓ Mark watched (or read); From friends: Keep · Remove · ✓ Mark watched / read', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?tester');
@@ -198,8 +200,8 @@ test('your watchlist: a strip on Profile; on its tab each cover has Remove and W
   await expect(page.locator('#friendsSec h2')).toHaveText('From friends');
   await expect(page.locator('#friends li')).toHaveCount(2);
   await expect(row(page, 'friends', 'Gummo')).toContainText('from @mira');
-  await expect(row(page, 'friends', 'Gummo').locator('.tacts > button')).toHaveText(['Keep', 'Remove', 'Watched']);
-  await expect(row(page, 'friends', 'The Waves').locator('.tacts > button')).toHaveText(['Keep', 'Remove', 'Read']);
+  await expect(row(page, 'friends', 'Gummo').locator('.tacts > button')).toHaveText(['Keep', 'Remove', '✓ Mark watched']);
+  await expect(row(page, 'friends', 'The Waves').locator('.tacts > button')).toHaveText(['Keep', 'Remove', '✓ Mark read']);
   // Keep: on your watchlist, saying whose log it came from
   let req = sent(page, 'POST', 'watchlist');
   await row(page, 'friends', 'Gummo').getByRole('button', { name: 'Keep' }).click();
@@ -209,16 +211,17 @@ test('your watchlist: a strip on Profile; on its tab each cover has Remove and W
   req = sent(page, 'POST', 'friend_hides');
   await row(page, 'friends', 'The Waves').getByRole('button', { name: 'Remove' }).click();
   expect((await req).postDataJSON()).toEqual({ item_key: 'book:the waves:1931' });
-  // the Watchlist tab: each cover with Remove and Watched (or Read)
+  // the Watchlist tab: each cover with Remove and ✓ Mark watched (or read): an action, not a state
   await page.getByRole('tab', { name: 'Watchlist' }).click();
-  await expect(row(page, 'wGrid', 'Paris, Texas').getByRole('button')).toHaveText(['Remove', 'Watched']);
-  await expect(row(page, 'wGrid', 'Orlando').getByRole('button')).toHaveText(['Remove', 'Read']);
+  await expect(row(page, 'wGrid', 'Paris, Texas').getByRole('button')).toHaveText(['Remove', '✓ Mark watched']);
+  await expect(row(page, 'wGrid', 'Paris, Texas').getByRole('button', { name: 'Mark watched', exact: true })).toHaveCount(1);   // the tick isn't read out
+  await expect(row(page, 'wGrid', 'Orlando').getByRole('button')).toHaveText(['Remove', '✓ Mark read']);
   req = sent(page, 'DELETE', 'watchlist');
   await row(page, 'wGrid', 'Orlando').getByRole('button', { name: 'Remove' }).click();
   expect(new URL((await req).url()).searchParams.get('id')).toBe('eq.' + WATCHLIST[1].id);
   await expect(page.locator('#toast')).toHaveText('Orlando is off your watchlist.');
-  // Watched: + ADD's Log it, on that title; Post logs it, and the lists are read again
-  await row(page, 'wGrid', 'Paris, Texas').getByRole('button', { name: 'Watched' }).click();
+  // ✓ Mark watched: + ADD's Log it, on that title; Post logs it, and the lists are read again
+  await row(page, 'wGrid', 'Paris, Texas').getByRole('button', { name: 'Mark watched' }).click();
   const d = page.getByRole('dialog', { name: /log a film or book/i });
   await expect(d).toBeVisible();
   await expect(d.getByRole('radio', { name: 'Log it' })).toBeChecked();
