@@ -356,7 +356,7 @@ footer{margin-top:0}
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../spinetip.js?v=20261002a"></script>
-<script src="../nav.js?v=20261002c"></script>
+<script src="../nav.js?v=20261003a"></script>
 <script src="../add.js?v=20261002b"></script>
 <script>
 (() => {
@@ -1016,7 +1016,7 @@ const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$
 const EMAIL_LOGIN = window.SPINESTACK_EMAIL_LOGIN === true;
 const SB_LIB = {src:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
 const accounts = !!(SB_URL && SB_KEY && WORKER);
-const acct = {sb:null, user:null, profile:null, shelfId:null, shelves:[], pendingSave:false, watching:false, openAsked:null};
+const acct = {sb:null, user:null, profile:null, shelfId:null, shelves:[], pendingSave:false, watching:false, openAsked:null, unreachable:false};   // unreachable: signed in, but the account couldn't be read
 let sbLoading = null;
 function supa(){
   if (!accounts) return Promise.reject(new Error('Accounts aren’t set up on this copy of the site.'));
@@ -1075,10 +1075,10 @@ function watchAuth(){
 async function setUser(user){
   const same = (user && user.id) === (acct.user && acct.user.id);
   if (same && (acct.profile || !user)) return;
-  acct.user = user || null; acct.profile = null;
+  acct.user = user || null; acct.profile = null; acct.unreachable = false;
   if (!user){ acct.shelfId = null; acct.shelves = []; acct.pendingSave = false; proAccount = false; paintAcct(); return; }
   const {data, error} = await acct.sb.from('profiles').select('id,username,is_private,display_name,avatar_key,pinned_shelf_id').eq('id', user.id).maybeSingle();
-  if (error){ toast('Couldn’t load your account. Try again in a moment.'); paintAcct(); return; }
+  if (error){ acct.unreachable = true; toast('Couldn’t load your account. Check your connection and try again.'); paintAcct(); return; }
   acct.profile = data;
   if (SHELFSTACKD_PRO_REQUIRED && data){ const r = await acct.sb.rpc('am_i_pro'); proAccount = r.data === true; }
   paintAcct();
@@ -1090,7 +1090,7 @@ async function setUser(user){
 function paintAcct(){
   if (!accounts) return;
   const p = acct.profile;
-  Nav.paint({sb: acct.sb, user: acct.user, profile: p});   // the bar (nav.js): Sign in, Finish sign-up, or you and the account menu
+  Nav.paint({sb: acct.sb, user: acct.user, profile: p, unreachable: acct.unreachable});   // the bar (nav.js): Sign in, Finish sign-up, or you and the account menu
   paintLimit();   // Pro holds more
   $('#saveNote').textContent = acct.user ? '' : 'Sign in to keep this shelf and open it again later.';
 }
@@ -1234,6 +1234,7 @@ async function saveShelf(){
   if (saving) return;
   if (!books.length || isSample){ toast('Add your own titles first.'); return; }
   if (!acct.user){ acct.pendingSave = true; openSheet('signin'); return; }
+  if (!acct.profile && acct.unreachable){ toast('Couldn’t load your account. Check your connection and try again.'); return; }   // not "no username yet"
   if (!acct.profile){ acct.pendingSave = true; openSheet('name'); return; }
   if (books.length > spineMax()){ proToast('Free shelves hold 6 spines. Pro holds 20.'); return; }
   if (usesPro() && !isPro()){ proToast('Your own wall, PNGs and the floating shelf come with Pro.'); return; }

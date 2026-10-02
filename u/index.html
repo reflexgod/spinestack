@@ -380,7 +380,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 <script src="../cards.js?v=20261002a"></script>
 <script src="../spinetip.js?v=20261002a"></script>
 <script src="../wear.js?v=20261002a"></script>
-<script src="../nav.js?v=20261002c"></script>
+<script src="../nav.js?v=20261003a"></script>
 <script>
 (() => {
 /* A profile: /u/?username, and its shelf on its own page: /u/?username&shelf (one shelf each), or a shelf by its id,
@@ -481,7 +481,7 @@ async function startSession(){
       me.profile = rows[0] || null;
     }
     sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') location.reload(); });
-  } catch (e){ toast(friendly(e)); }
+  } catch (e){ if (me.user && !me.profile) me.unreachable = true; toast(friendly(e)); }   // unreachable: signed in, but the account couldn't be read (not "no username yet")
 }
 // the bar (nav.js) shows who is signed in
 const paintAcct = () => Nav.paint(me);
@@ -1003,6 +1003,7 @@ function followButton(btn, person, changed){
   btn.onmouseleave = () => { if (!sure) paint(false); };
   btn.onclick = async () => {
     if (!me.user){ keepFollow(person); openSheet('#signSheet', '#googleBtn'); toast('Sign in to follow @' + person.username + '.'); return; }
+    if (!me.profile && me.unreachable){ toast(friendly(new Error('network'))); return; }
     if (!me.profile){ keepFollow(person); toast('Pick a username first.'); setTimeout(() => { location.href = '../build/'; }, 900); return; }
     if (state !== 'none' && touch && !sure){ sure = setTimeout(() => { sure = 0; paint(false); }, 3000); paint(true); return; }
     clearTimeout(sure); sure = 0; btn.disabled = true;

@@ -170,7 +170,7 @@
 
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
-<script src="../nav.js?v=20261002c"></script>
+<script src="../nav.js?v=20261003a"></script>
 <script>
 (() => {
 /* Settings: /settings/ (#photo and #account pick the tab). Yours only: signed out, it asks you to sign in.
@@ -245,13 +245,13 @@ async function startSession(){
       me.profile = rows[0] || null;
     }
     sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') location.href = '../'; });   // these are someone's settings: signed out, there's nothing here
-  } catch (e){ toast(friendly(e)); }
+  } catch (e){ if (me.user && !me.profile) me.unreachable = true; toast(friendly(e)); }   // unreachable: signed in, but the account couldn't be read (not "no username yet")
 }
 const signIn = () => openSheet('#signSheet', '#googleBtn');
 Nav.onSignIn(signIn);
 // Sign out, from the account menu (nav.js): then home
 Nav.onSignOut(async () => { try { const {error} = await (await supa()).auth.signOut({scope: 'local'}); if (error) throw error; } catch (e){ toast(friendly(e)); } });
-$('#gateBtn').addEventListener('click', signIn);
+$('#gateBtn').addEventListener('click', () => { if (me.unreachable) location.reload(); else signIn(); });
 $('#googleBtn').addEventListener('click', async () => {
   const btn = $('#googleBtn'); btn.disabled = true;
   try {
@@ -418,6 +418,9 @@ $('#privIn').addEventListener('change', async () => {
   Nav.paint(me);
   $('#state').hidden = true;
   if (!me.user){ $('#gate').hidden = false; signIn(); return; }
+  if (!me.profile && me.unreachable){   // signed in, but the account couldn't be read: not the same as no username
+    $('#gateText').textContent = 'Couldn’t reach shelfstackd. Check your connection and try again.'; $('#gateBtn').textContent = 'Try again'; $('#gate').hidden = false; return;
+  }
   if (!me.profile){   // signed in, no username yet: the builder asks for one
     $('#gateText').textContent = 'Pick a username first, then your settings are here.'; $('#gateBtn').hidden = true; $('#gateLink').hidden = false; $('#gate').hidden = false; return;
   }

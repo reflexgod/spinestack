@@ -172,7 +172,7 @@ h2 .more.zapped svg{width:12px;height:12px;flex:none}
 <script src="shelf.js?v=20261002a"></script>
 <script src="worker-address.js?v=20261001a"></script>
 <script src="cards.js?v=20261002a"></script>
-<script src="nav.js?v=20261002c"></script>
+<script src="nav.js?v=20261003a"></script>
 <script>
 (() => {
 /* Home. Signed out: one line about the site and a way to the builder, then the newest public shelves and the people
@@ -234,7 +234,7 @@ async function startSession(){
       me.profile = rows[0] || null; me.unnamed = !rows[0];
     }
     sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') location.reload(); });
-  } catch (e){ toast(friendly(e)); }
+  } catch (e){ if (me.user && !me.profile) me.unreachable = true; toast(friendly(e)); }   // unreachable: signed in, but the account couldn't be read (not "no username yet")
 }
 // the bar (nav.js) shows who is signed in
 const paintAcct = () => Nav.paint(me);

@@ -106,7 +106,7 @@
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../cards.js?v=20261002a"></script>
-<script src="../nav.js?v=20261002c"></script>
+<script src="../nav.js?v=20261003a"></script>
 <script>
 (() => {
 /* Shelves: /shelves/. Every public shelf of a public profile, newest saved first, as cards: 24 at a time, then Load
@@ -168,7 +168,7 @@ async function startSession(){
       me.profile = rows[0] || null;
     }
     sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') location.reload(); });
-  } catch (e){ toast(friendly(e)); }
+  } catch (e){ if (me.user && !me.profile) me.unreachable = true; toast(friendly(e)); }   // unreachable: signed in, but the account couldn't be read (not "no username yet")
 }
 Nav.onSignIn(() => openSheet('#signSheet', '#googleBtn'));
 // Sign out, from the account menu (nav.js): the page starts again signed out

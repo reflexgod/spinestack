@@ -1,7 +1,8 @@
 /* The top bar's behaviour, the same on every page. Each page keeps its own copy of the bar's markup and CSS; this file
    fills in who is signed in, builds the two menus (the account menu, and the ▾ next to + ADD) and opens and closes
-   them. A page calls Nav.paint({sb, user, profile}) whenever that changes (sb: its Supabase client, once it has one;
-   profile: id, username, display_name, avatar_key), and says what its own Sign in, Finish sign-up and Sign out do:
+   them. A page calls Nav.paint({sb, user, profile, unreachable}) whenever that changes (sb: its Supabase client, once
+   it has one; profile: id, username, display_name, avatar_key; unreachable: signed in, but the account couldn't be
+   read, so the bar offers neither Sign in nor Finish sign-up), and says what its own Sign in, Finish sign-up and Sign out do:
    Nav.onSignIn(fn), Nav.onFinish(fn), Nav.onSignOut(fn). + ADD opens the Add dialog (add.js, loaded the first time
    it's pressed), which reads who is signed in with Nav.account() and asks to sign in with Nav.signIn().
    Load it after shelf.js and worker-address.js, before the page's own script. */
@@ -137,7 +138,7 @@
   function paint(s){
     state = {sb: (s && s.sb) || null, user: (s && s.user) || null, profile: (s && s.profile) || null};
     const p = state.profile;
-    acctBtn.hidden = !p; signBtn.hidden = !!p; moreBtn.hidden = !p; find.hidden = !p;
+    acctBtn.hidden = !p; signBtn.hidden = !!p || !!(s && s.unreachable); moreBtn.hidden = !p; find.hidden = !p;
     addWrap.classList.toggle('split', !!p);
     if (!p){
       for (const m of menus) m.hide(false);

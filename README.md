@@ -380,6 +380,10 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   dialog's title for each; Log it's cover, caption and Post (what it sends, "watched" or "read", and no spine searched
   for); Watchlist's Add to watchlist, and the database's answers when it's full or the title is already there; a title
   keeping its place when the choice changes; signed out and with no username yet; before the database has logs.
+- **No connection** (`specs/offline.spec.js`): signed in, with the database out of reach, Settings, the feed's You tab
+  and a profile say "Couldn’t reach shelfstackd", the bar offers no Finish sign-up, and the builder's Save says the
+  account couldn't load instead of asking for a username. A page tells "couldn't read your account" (`unreachable`)
+  apart from "no username yet".
 - **A log's worn cover** (`specs/wear.spec.js`): 2:3, the top right corner folded away, nothing ever written on it,
   nearly new on the day, more faded after a week and more worn after a month, and the same log worn the same way every
   time.
