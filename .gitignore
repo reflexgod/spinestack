@@ -17,3 +17,6 @@ worker/debug/
 debug/
 textures/raw/
 design/
+tests/test-results/
+tests/playwright-report/
+tests/shots/

@@ -1,18 +1,24 @@
 /* Spinestack Worker: film/book lookup, DVD/book scan search, a CORS image proxy, and a small
    moderated archive of spines people cut from their own scans. Keys live in Worker secrets
-   (TMDB_TOKEN, BRAVE_API_KEY, ADMIN_TOKEN), never in the page.
+   (TMDB_TOKEN, SERPER_KEY, SERPAPI_KEY, BRAVE_API_KEY, ADMIN_TOKEN), never in the page, and are never logged or sent back.
 
-   GET  /identify?q=&want=all|movie|book  -> {results:[{kind,title,year,creator,cover}]}
+   GET  /identify?q=&want=all|movie|book[&suggest=1]  -> {results:[{kind,title,year,creator,cover}]}
+        suggest=1 is a half-typed title (the page suggests as you type): answered the same, but not kept in KV.
    GET  /scans?title=&year=&kind=movie|book&creator=&round=0-3
-        -> {results:[{img,source,title,width,height, archive?,id?}], round, more}
-        One Brave query per round, so the page asks for the next round only when it still needs spines.
-        Round 0 starts with approved spines from the archive.
+        -> {results:[{img,source,title,width,height, archive?,id?}], round, more, capped?}
+        One query per round, so the page asks for the next round only when it still needs spines.
+        Round 0 starts with approved spines from the archive. What isn't already kept is looked for with Serper, then
+        SerpApi, then Brave, then archive.org, stopping at the first that gives a usable scan. Each has a cap on
+        searches a day, across everyone (wrangler.toml). capped: true means nothing usable was found and at least one
+        of them was at its cap or out for the day.
    GET  /img?url=  -> the image, with CORS
    POST /archive?kind=&title=&year=&author=  (body: PNG of one spine) -> {ok, id, status:'pending'}
    GET  /archive/img?id=  -> an approved spine (pending ones only with the admin token)
         Limits: 10 uploads a day per visitor and 50 a day in all; see the Archive class below.
    POST /report?id=  -> three reports send an approved spine back to pending
    GET  /admin/list?status=pending|approved, POST /admin/approve?id=, POST /admin/delete?id=
+   GET  /admin/usage  -> {day, providers:[{name, key, today, cap, out, credits?, creditCap?}]}: today's searches by each provider
+   GET  /admin/raw?provider=serper|serpapi|brave|archiveorg&q=  -> what that provider says before any filtering (costs one search)
         (Authorization: Bearer ADMIN_TOKEN)
 
    Accounts (Supabase sign-in; the page sends the user's access token as Authorization: Bearer ...):
@@ -77,9 +83,9 @@ export default {
         if (!post && path === '/admin/list') return json({items: await listMeta(env, p.get('status') === 'approved' ? 'approved' : 'pending')}, 200, cors, {'Cache-Control': 'no-store'});
         if (post && path === '/admin/approve') return await approve(p.get('id'), env, cors);
         if (post && path === '/admin/delete') return await remove(p.get('id'), env, cors);
-        // what Brave returns before any filtering, to tune the filters (costs one search)
-        if (!post && path === '/admin/brave') return json({results: (await brave(clean(p.get('q'), 200), env.BRAVE_API_KEY)).map(r => ({title: r.title, url: r.url, img: r.properties && r.properties.url,
-          w: (r.properties && r.properties.width) || (r.thumbnail && r.thumbnail.width), h: (r.properties && r.properties.height) || (r.thumbnail && r.thumbnail.height)}))}, 200, cors, {'Cache-Control': 'no-store'});
+        if (!post && path === '/admin/usage') return json(await usage(env), 200, cors, {'Cache-Control': 'no-store'});
+        // what one provider returns before any filtering, to tune the filters or check a key (costs one search)
+        if (!post && (path === '/admin/raw' || path === '/admin/brave')) return await rawFrom(path === '/admin/brave' ? 'brave' : p.get('provider'), clean(p.get('q'), 200), env, cors);
         return json({error: 'Not found.'}, 404, cors);
       }
       if (!(await allowed(env.LIMITER, ip))) return json({error: 'Too many requests. Wait a minute and try again.'}, 429, cors);
@@ -87,7 +93,7 @@ export default {
       if (!post && path === '/scans') return await scans(p, env, cors, ctx);
       if (post && path === '/archive') return await upload(req, p, ip, env, cors);
       if (post && path === '/report') return await report(p.get('id'), ip, env, cors);
-      if (!post && (path === '/' || path === '/health')) return json({ok: true, tmdb: !!env.TMDB_TOKEN, brave: !!env.BRAVE_API_KEY, archive: !!(env.ADMIN_TOKEN && env.ARCHIVE), accounts: !!(env.SUPABASE_URL && env.SUPABASE_KEY), userStore: env.USER_R2 ? 'r2' : 'kv'}, 200, cors);
+      if (!post && (path === '/' || path === '/health')) return json({ok: true, tmdb: !!env.TMDB_TOKEN, brave: !!env.BRAVE_API_KEY, braveDailyCap: braveCap(env), scans: Object.fromEntries(PROVIDERS.map(pv => [pv.name, !!pv.key(env)])), archive: !!(env.ADMIN_TOKEN && env.ARCHIVE), accounts: !!(env.SUPABASE_URL && env.SUPABASE_KEY), userStore: env.USER_R2 ? 'r2' : 'kv'}, 200, cors);
       return json({error: 'Not found.'}, 404, cors);
     } catch (e) {
       return json({error: 'Something went wrong. Try again in a moment.', detail: String(e && e.message || e).slice(0, 200)}, 502, cors);
@@ -140,9 +146,21 @@ async function tmdbFilms(q, token) {
     return {kind: 'movie', title: m.title || '', year: (m.release_date || '').slice(0, 4), creator, cover: m.poster_path ? 'https://image.tmdb.org/t/p/w500' + m.poster_path : ''};
   }));
 }
+/* Open Library also files government reports and the like as books ("John W. Gummo", 1888, by "United States.
+   Congress. House..."). A record with no cover is dropped when its author reads like an organisation, or when it has
+   one edition and is on nobody's reading list. Open Library also searches everything it knows about a book, so
+   "gummo" finds books on the Marx Brothers: what was typed has to be in the title or an author's name (a year after
+   a title isn't part of it). The rest go most-read first, then by how many editions there are, and a title that
+   comes more than once by the same author (other printings, other languages) is kept once. */
+const ORG_AUTHOR = /\b(congress|committee|department|office|list|directory)\b/i;
+const notABook = d => !d.cover_i && (ORG_AUTHOR.test((d.author_name || []).join(' ')) || ((d.edition_count || 0) <= 1 && !d.readinglog_count));
 async function olBooks(q) {
-  const r = await getJSON('https://openlibrary.org/search.json?limit=5&fields=title,author_name,first_publish_year,publish_year,cover_i&q=' + encodeURIComponent(q), {headers: {'User-Agent': UA}});
-  const docs = r.docs || [];
+  const r = await getJSON('https://openlibrary.org/search.json?limit=50&fields=title,author_name,first_publish_year,publish_year,cover_i,edition_count,readinglog_count&q=' + encodeURIComponent(q), {headers: {'User-Agent': UA}});
+  const want = words(q.replace(/[\s,(]+(?:19|20)\d\d\)?$/, ''));
+  const says = d => { const hay = words([d.title, ...(d.author_name || [])].join(' ')).join(' '); return want.length > 0 && want.every(w => hay.includes(w)); };
+  const seen = new Set(), once = d => { const k = words(d.title).join(' ').replace(/^(the|a|an) /, '') + '|' + words((d.author_name || [''])[0]).join(' '); return !seen.has(k) && !!seen.add(k); };
+  const docs = (r.docs || []).filter(d => !notABook(d) && says(d))
+    .sort((a, b) => (b.readinglog_count || 0) - (a.readinglog_count || 0) || (b.edition_count || 0) - (a.edition_count || 0)).filter(once).slice(0, 5);
   // Open Library's first year is sometimes a stray record (It Ends With Us: 2012, The Bell Jar: 1948).
   // Wikidata's publication date is right for known books; without it, a lone early year with a gap after it is dropped.
   const years = await Promise.all(docs.map(d => wikidataYear(d.title, (d.author_name || [''])[0]).then(y => y ? String(y) : olYear(d))));
@@ -170,15 +188,29 @@ async function wikidataYear(title, author) {
 async function identify(p, env, cors, ctx) {
   const q = clean(p.get('q'), 120), want = ['movie', 'book'].includes(p.get('want')) ? p.get('want') : 'all';
   if (!q) return json({error: 'Type a title to search.'}, 400, cors);
-  const {body, hit} = await cached(env, ctx, `id2:${want}:${q.toLowerCase()}`, MONTH, async () => {
+  // id4: books only when the title or author has what was typed, each once (id3 answers had the rest; id2 the reports)
+  const key = `id4:${want}:${q.toLowerCase()}`, make = async () => {
     const [f, b] = await Promise.allSettled([want !== 'book' ? tmdbFilms(q, env.TMDB_TOKEN) : [], want !== 'movie' ? olBooks(q) : []]);
     if (f.status === 'rejected' && b.status === 'rejected') throw new Error('TMDB and Open Library did not answer');
     return {results: [...(f.value || []), ...(b.value || [])]};
-  });
+  };
+  if (p.get('suggest') === '1') {
+    // a half-typed title, from the suggestions: a kept answer is used when there is one, but this one isn't kept in
+    // KV (its free plan allows 1,000 writes a day, and every few letters would be one). The edge holds it for a day.
+    const kept = env.SPINE_CACHE ? await env.SPINE_CACHE.get(key, 'json') : null;
+    if (kept) return json(kept, 200, cors, {'X-Cache': 'HIT'});
+    const edge = caches.default, ekey = new Request('https://identify.cache/' + encodeURIComponent(key));
+    const held = await edge.match(ekey);
+    if (held) return json(await held.json(), 200, cors, {'X-Cache': 'EDGE'});
+    const body = await make();
+    ctx.waitUntil(edge.put(ekey, new Response(JSON.stringify(body), {headers: {'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${body.results.length ? DAY : 3600}`}})));
+    return json(body, 200, cors, {'X-Cache': 'MISS'});
+  }
+  const {body, hit} = await cached(env, ctx, key, MONTH, make);
   return json(body, 200, cors, {'X-Cache': hit ? 'HIT' : 'MISS'});
 }
 
-/* ---------- /scans: DVD / book wraps and single spines from Brave Image Search ---------- */
+/* ---------- /scans: DVD / book wraps and single spines, from image searches ---------- */
 const SCAN_SITES = /covercity|dvd-covers|dvdcover|cdcovers|covercentury|freecovers|coverlib|cover-?addict/i;
 // Editions: most people want the English-language DVD or Blu-ray. These words, scripts and country domains
 // point to another language or region; VHS is kept only as a last resort.
@@ -202,23 +234,126 @@ function queryFor(kind, round, title, year, creator) {
     : [`"${title}" ${creator} book cover spine`, `"${title}" ${creator} book spine`, `"${title}" spine`, `${title} ${creator} full cover wrap`];
   return q[round].replace(/\s+/g, ' ').trim();
 }
-async function brave(q, key) {
-  const r = await fetch('https://api.search.brave.com/res/v1/images/search?count=100&safesearch=strict&q=' + encodeURIComponent(q), {
-    headers: {'Accept': 'application/json', 'X-Subscription-Token': key},
-  });
-  if (!r.ok) throw new Error('Brave answered ' + r.status);
-  return (await r.json()).results || [];
+/* Where a round's pictures are looked for, in this order, stopping at the first that gives a usable scan (one that
+   passes the wrap and spine filters in pick() below):
+     1. what's already kept in KV (and, on round 0, approved spines from the archive, which scans() adds)
+     2. Serper (Google Images), while its one-time free credits last
+     3. SerpApi (Google Images), a few a day, so a month stays inside its free 250
+     4. Brave Image Search, which bills after about 1,000 a month
+     5. archive.org's own search, which needs no key (round 0 only: there's one way to ask it)
+   Each has a cap on searches a day, across everyone ([vars] in wrangler.toml), and Serper a cap on credits in all.
+   A search is counted in the Archive Durable Object before it's made, in one step, so two requests can't both take
+   the last one; if it can't be counted, it isn't made. A provider that answers 401, 402, 403 or 429 (a bad key, no
+   credit left, too many) is left alone for the rest of the day; any other answer (a 400, a 500) only passes that one
+   search on. One with no key is passed over.
+   Every provider's answer is turned into the same list ({title, url, properties: {url, width, height}, thumbnail}),
+   which is what the filters read and what's kept. */
+const today = () => new Date().toISOString().slice(0, 10);
+const capOf = (v, d) => { const n = parseInt(v, 10); return Number.isFinite(n) && n >= 0 ? n : d; };
+const braveCap = env => capOf(env.BRAVE_DAILY_CAP, 30);
+const PROVIDERS = [
+  // a 100-result image search costs 2 Serper credits; its answer says what it really cost, and the count follows that
+  {name: 'serper', key: env => env.SERPER_KEY, cap: env => capOf(env.SERPER_DAILY_CAP, 100), total: env => capOf(env.SERPER_TOTAL_CAP, 2400), cost: 2, search: serper},
+  {name: 'serpapi', key: env => env.SERPAPI_KEY, cap: env => capOf(env.SERPAPI_DAILY_CAP, 8), search: serpapi},
+  {name: 'brave', key: env => env.BRAVE_API_KEY, cap: braveCap, search: brave},
+  {name: 'archiveorg', key: () => 'none needed', cap: env => capOf(env.ARCHIVE_ORG_DAILY_CAP, 100), search: archiveOrg, firstRoundOnly: true},
+];
+const OUT_FOR_TODAY = [401, 402, 403, 429];
+// what went wrong with a provider: its name and the status it answered with, nothing else (never an address, which may hold a key)
+class ProviderError extends Error { constructor(name, status) { super(`${name} answered ${status}`); this.status = status; } }
+async function provJSON(name, url, init) {
+  let r;
+  try { r = await fetch(url, init); } catch { throw new ProviderError(name, 'nothing'); }
+  if (!r.ok) throw new ProviderError(name, r.status);
+  try { return await r.json(); } catch { throw new ProviderError(name, 'something unreadable'); }
 }
-/* What Brave said for one title and round, kept as it came (trimmed to the fields we use). The key has no
+// one search by a provider, counted first: {ok: true}, or {ok: false, why: 'cap' | 'blocked' | 'total' | 'uncounted'}
+async function spendOn(env, pv) {
+  if (!env.ARCHIVE) return {ok: false, why: 'uncounted'};
+  try { return await store(env).spendSearch(pv.name, today(), pv.cap(env), pv.total ? pv.total(env) : null, pv.cost || 1); }
+  catch { return {ok: false, why: 'uncounted'}; }
+}
+/* Serper answers 400 to a search with double quotes in it ("gummo" 1997 dvd cover), and 200 to the same one without
+   them. So the quotes come out before it's asked: the filters in pick() look for the whole title in each result
+   anyway. If it still answers 400, it's asked once more with the plainest search there is (the title, a film's year,
+   "dvd cover" or "book cover") before the next provider gets the search. A 400 says something about that search, not
+   about the key or the credits, so it never puts Serper out for the day. /admin/raw (raw) asks once: it's there to
+   show what one search really gets. */
+const unquoted = q => String(q).replace(/"/g, ' ').replace(/\s+/g, ' ').trim();
+const plainQuery = (kind, title, year) => unquoted(kind === 'movie' ? `${title} ${year} dvd cover` : `${title} book cover`);
+async function serper(q, key, {kind, title, year, raw}) {
+  const ask = q => provJSON('Serper', 'https://google.serper.dev/images', {method: 'POST', headers: {'X-API-KEY': key, 'Content-Type': 'application/json'}, body: JSON.stringify({q, num: 100, gl: 'us', hl: 'en'})});
+  const first = unquoted(q), plain = plainQuery(kind, title, year);
+  let j;
+  try { j = await ask(first); }
+  catch (e) {
+    if (e.status !== 400 || raw || plain === first) throw e;   // (a film's first round already is the plain search)
+    j = await ask(plain);
+  }
+  return {credits: j.credits, list: (j.images || []).map(r => ({title: r.title, url: r.link, properties: {url: r.imageUrl, width: r.imageWidth, height: r.imageHeight}, thumbnail: {width: r.thumbnailWidth, height: r.thumbnailHeight}}))};
+}
+async function serpapi(q, key) {
+  const j = await provJSON('SerpApi', 'https://serpapi.com/search.json?engine=google_images&hl=en&gl=us&safe=active&q=' + encodeURIComponent(q) + '&api_key=' + encodeURIComponent(key));
+  return {list: (j.images_results || []).map(r => ({title: r.title, url: r.link, properties: {url: r.original, width: r.original_width, height: r.original_height}, thumbnail: null}))};
+}
+async function brave(q, key) {
+  const j = await provJSON('Brave', 'https://api.search.brave.com/res/v1/images/search?count=100&safesearch=strict&q=' + encodeURIComponent(q), {headers: {'Accept': 'application/json', 'X-Subscription-Token': key}});
+  return {list: j.results || []};
+}
+/* archive.org. Its search finds items, not pictures (a cover someone scanned is usually an item with a few pictures in
+   it), and doesn't say how large a picture is. So: up to 4 image items with the title in theirs, each one's largest
+   original JPEGs and PNGs (6 pictures at most in all), and each picture's size read from its first bytes. */
+async function archiveOrg(q, key, {title}) {
+  const init = {headers: {'User-Agent': UA}};
+  const found = await provJSON('archive.org', 'https://archive.org/advancedsearch.php?output=json&rows=8&fl%5B%5D=identifier&fl%5B%5D=title&q=' +
+    encodeURIComponent(`title:("${String(title).replace(/["\\]/g, ' ')}") AND mediatype:image`), init);
+  const items = ((found.response || {}).docs || []).filter(d => /^[\w.-]+$/.test(d.identifier || '')).slice(0, 4), list = [];
+  for (const d of items) {
+    if (list.length >= 6) break;
+    let files; try { files = (await provJSON('archive.org', `https://archive.org/metadata/${d.identifier}/files`, init)).result || []; } catch { continue; }
+    const pics = files.filter(f => f.source === 'original' && /\.(jpe?g|png)$/i.test(f.name || '') && !/^__ia_thumb/.test(f.name) && +f.size > 20000 && +f.size < MAX_IMG)
+      .sort((a, b) => b.size - a.size).slice(0, 3);
+    for (const f of pics) {
+      if (list.length >= 6) break;
+      const url = `https://archive.org/download/${d.identifier}/${f.name.split('/').map(encodeURIComponent).join('/')}`;
+      const size = await imageSize(url, init).catch(() => null);
+      if (size) list.push({title: `${d.title || ''} ${f.name}`, url: 'https://archive.org/details/' + d.identifier, properties: {url, width: size[0], height: size[1]}, thumbnail: null});
+    }
+  }
+  return {list};
+}
+// a JPEG's or PNG's width and height, from its first 64 KB
+async function imageSize(url, init) {
+  const r = await fetch(url, {...init, headers: {...(init && init.headers), Range: 'bytes=0-65535'}});
+  if (!r.ok || !r.body) return null;
+  const reader = r.body.getReader(), parts = []; let n = 0;
+  while (n < 65536) { const {done, value} = await reader.read(); if (done) break; parts.push(value); n += value.byteLength; }
+  reader.cancel().catch(() => {});
+  const b = new Uint8Array(n); let at = 0; for (const part of parts) { b.set(part, at); at += part.byteLength; }
+  const u16 = i => (b[i] << 8) | b[i + 1];
+  if (n > 24 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47) return [(u16(16) << 16) | u16(18), (u16(20) << 16) | u16(22)];
+  if (n > 4 && b[0] === 0xFF && b[1] === 0xD8) {
+    for (let i = 2; i + 9 < n;) {
+      if (b[i] !== 0xFF) { i++; continue; }
+      const m = b[i + 1];
+      if (m === 0xFF) { i++; continue; }
+      if (m === 0xD8 || m === 0x01 || (m >= 0xD0 && m <= 0xD7)) { i += 2; continue; }
+      if (m >= 0xC0 && m <= 0xCF && m !== 0xC4 && m !== 0xC8 && m !== 0xCC) return [u16(i + 7), u16(i + 5)];   // the frame: height, then width
+      i += 2 + u16(i + 2);
+    }
+  }
+  return null;
+}
+/* What the providers said for one title and round, kept as it came (trimmed to the fields we use). The key has no
    filter or scoring version in it: when the filters change they run again on this, with no new search. */
 const LEGACY = ['sc11', 'sc10', 'sc9', 'sc8', 'sc7', 'sc6'];
 const slim = list => list.map(r => ({title: r.title || '', url: r.url || '',
-  properties: {url: r.properties && r.properties.url, width: (r.properties && r.properties.width) || 0, height: (r.properties && r.properties.height) || 0},
-  thumbnail: r.thumbnail ? {width: r.thumbnail.width || 0, height: r.thumbnail.height || 0} : null}));
+  properties: {url: r.properties && r.properties.url, width: (r.properties && +r.properties.width) || 0, height: (r.properties && +r.properties.height) || 0},
+  thumbnail: r.thumbnail ? {width: +r.thumbnail.width || 0, height: +r.thumbnail.height || 0} : null}));
 async function rawScans(env, ctx, kind, title, year, creator, round, cacheOnly) {
   // book searches don't use the year (and book years get corrected), so a book's key has none
-  const key = `raw1:${kind}:${words(title).join(' ')}:${kind === 'book' ? '' : year}:${round}`, keep = n => ({expirationTtl: n ? 365 * DAY : 7 * DAY});
-  const hit = await env.SPINE_CACHE.get(key, 'json');
+  const ckey = `raw1:${kind}:${words(title).join(' ')}:${kind === 'book' ? '' : year}:${round}`, keep = n => ({expirationTtl: n ? 365 * DAY : 7 * DAY});
+  const hit = await env.SPINE_CACHE.get(ckey, 'json');
   if (hit) return {list: hit, from: 'raw'};
   // before raw1, only the filtered results were kept (sc6-sc11). They still carry everything the filters read,
   // so they stand in for the raw answer instead of a new search, and are copied to raw1 for next time.
@@ -230,56 +365,108 @@ async function rawScans(env, ctx, kind, title, year, creator, round, cacheOnly) 
     }
     if (!old || !old.results) continue;
     const list = old.results.map(r => ({title: r.title || '', url: r.source || '', properties: {url: r.img, width: r.width || 0, height: r.height || 0}, thumbnail: null}));
-    ctx.waitUntil(env.SPINE_CACHE.put(key, JSON.stringify(list), keep(list.length)));
+    ctx.waitUntil(env.SPINE_CACHE.put(ckey, JSON.stringify(list), keep(list.length)));
     return {list, from: v};
   }
-  if (cacheOnly || !env.BRAVE_API_KEY) return {list: [], from: 'miss'};
-  const list = slim(await brave(queryFor(kind, round, title, year, creator), env.BRAVE_API_KEY));
-  ctx.waitUntil(env.SPINE_CACHE.put(key, JSON.stringify(list), keep(list.length)));
-  return {list, from: 'brave'};
+  if (cacheOnly) return {list: [], from: 'miss'};
+  // each provider in turn, until one gives a scan the filters keep
+  const q = queryFor(kind, round, title, year, creator), all = [];
+  let asked = 0, capped = false, failed = false;
+  for (const pv of PROVIDERS) {
+    const key = pv.key(env);
+    if (!key || (pv.firstRoundOnly && round > 0)) continue;
+    if (!(await spendOn(env, pv)).ok) { capped = true; continue; }   // today's searches (or its credits) are used up, or it's out for the day
+    let got;
+    try { got = await pv.search(q, key, {kind, title, year, creator, round}); }
+    catch (e) {
+      if (OUT_FOR_TODAY.includes(e && e.status)) { capped = true; ctx.waitUntil(store(env).blockSearch(pv.name, today()).catch(() => {})); }
+      else failed = true;   // it didn't answer, or not sensibly: the next one is asked, and this title is tried again tomorrow
+      continue;
+    }
+    if (pv.total && Number.isFinite(got.credits) && got.credits !== pv.cost) ctx.waitUntil(store(env).addCredits(pv.name, got.credits - pv.cost).catch(() => {}));
+    asked++;
+    const list = slim(got.list || []);
+    all.push(...list);
+    if (pick(list, kind, title, year, creator).length) {
+      ctx.waitUntil(env.SPINE_CACHE.put(ckey, JSON.stringify(all), keep(all.length)));
+      return {list: all, from: pv.name};
+    }
+  }
+  // Nothing usable. When every provider that's set up was asked, that's the answer, and it's kept as before. When one
+  // was at its cap, out for the day or not answering, what there is is kept for a day only, so the title gets its
+  // turn with that provider tomorrow.
+  if (asked) ctx.waitUntil(env.SPINE_CACHE.put(ckey, JSON.stringify(all), capped || failed ? {expirationTtl: DAY} : keep(all.length)));
+  return {list: all, from: capped ? 'capped' : asked ? 'none' : 'miss'};
+}
+/* The filters: which of the pictures found are a scan of this title, best first (10 at most). */
+function pick(found, kind, title, year, creator) {
+  // wraps: back | spine | front. Films 1.3-1.9 wide (Blu-ray wraps run wider than DVDs), books 1.2-2.4.
+  // Also single spines: at least 4 times taller than wide.
+  const [lo, hi] = kind === 'movie' ? [1.3, 1.9] : [1.2, 2.4];
+  // the whole title, words in order, must appear in the result's title or addresses:
+  // this drops look-alikes such as "Texas - Paris" for Paris, Texas or other films on the same page
+  const phrase = words(title), extra = [year, ...words(creator).slice(-1)].filter(Boolean);
+  const seen = new Set(), out = [];
+  for (const r of found) {
+    const img = r.properties && r.properties.url;
+    if (!img || !/^https?:/i.test(img)) continue;
+    const id = img.replace(/\/s-l\d+\./, '/s-l.');   // eBay serves one photo at many sizes
+    if (seen.has(id)) continue;
+    seen.add(id);
+    // full-size size when the provider has it, else the thumbnail (same aspect, 500px wide)
+    const w = r.properties.width || (r.thumbnail && r.thumbnail.width) || 0, h = r.properties.height || (r.thumbnail && r.thumbnail.height) || 0;
+    if (!w || !h) continue;
+    const wrap = w / h >= lo && w / h <= hi, solo = h / w >= 4;
+    if (!wrap && !solo) continue;
+    if (r.properties.width && (wrap ? r.properties.width < 400 : r.properties.height < 400)) continue;
+    const text = ' ' + words([r.title, decode(r.url || ''), decode(img)].join(' ')).join(' ') + ' ';
+    // ...and it has to be in the image's own title or file name, not only the page address: shop pages
+    // (amazon.com/Paris-Texas/...) also show other films' covers, e.g. "The Longest Day" on Paris, Texas's page
+    const own = ' ' + words([r.title, decode(img)].join(' ')).join(' ') + ' ';
+    if (!own.includes(' ' + phrase.join(' ') + ' ')) continue;
+    const hits = extra.filter(x => text.includes(' ' + x + ' ')).length;
+    if (phrase.length === 1 && extra.length && !hits) continue;   // "Kids" alone also matches "Spy Kids": want the year or director too
+    const ed = edition(r, img, text);
+    const rank = (SCAN_SITES.test(r.url || img) ? 2 : 0) + hits + (/\bscan|cover|spine/.test(text) ? 1 : 0) + (ed.hint ? 2 : 0) - (ed.en ? 0 : 4) - (ed.vhs ? 3 : 0);
+    out.push({img, source: r.url || img, title: clean(r.title, 120), width: r.properties.width || w, height: r.properties.height || h, en: ed.en, vhs: ed.vhs, rank});
+  }
+  out.sort((a, b) => b.rank - a.rank);
+  return out.slice(0, 10).map(({rank, ...r}) => r);
 }
 async function scans(p, env, cors, ctx) {
   const title = clean(p.get('title'), 120), year = clean(p.get('year'), 4).replace(/\D/g, ''), creator = clean(p.get('creator'), 80);
   const kind = p.get('kind') === 'book' ? 'book' : 'movie', round = Math.max(0, Math.min(ROUNDS - 1, parseInt(p.get('round'), 10) || 0));
   if (!title) return json({error: 'A title is needed.'}, 400, cors);
   const archived = round === 0 ? await archiveFor(env, kind, title, year, creator) : [];
-  // cacheonly=1: never search Brave, answer from what's stored (for tests)
+  // cacheonly=1: never search, answer from what's stored (for tests)
   const {list: found, from} = await rawScans(env, ctx, kind, title, year, creator, round, p.get('cacheonly') === '1');
-  const body = (() => {
-    // wraps: back | spine | front. Films 1.3-1.9 wide (Blu-ray wraps run wider than DVDs), books 1.2-2.4.
-    // Also single spines: at least 4 times taller than wide.
-    const [lo, hi] = kind === 'movie' ? [1.3, 1.9] : [1.2, 2.4];
-    // the whole title, words in order, must appear in the result's title or addresses:
-    // this drops look-alikes such as "Texas - Paris" for Paris, Texas or other films on the same page
-    const phrase = words(title), extra = [year, ...words(creator).slice(-1)].filter(Boolean);
-    const seen = new Set(), out = [];
-    for (const r of found) {
-      const img = r.properties && r.properties.url;
-      if (!img || !/^https?:/i.test(img)) continue;
-      const id = img.replace(/\/s-l\d+\./, '/s-l.');   // eBay serves one photo at many sizes
-      if (seen.has(id)) continue;
-      seen.add(id);
-      // full-size size when Brave has it, else the thumbnail (same aspect, 500px wide)
-      const w = r.properties.width || (r.thumbnail && r.thumbnail.width) || 0, h = r.properties.height || (r.thumbnail && r.thumbnail.height) || 0;
-      if (!w || !h) continue;
-      const wrap = w / h >= lo && w / h <= hi, solo = h / w >= 4;
-      if (!wrap && !solo) continue;
-      if (r.properties.width && (wrap ? r.properties.width < 400 : r.properties.height < 400)) continue;
-      const text = ' ' + words([r.title, decode(r.url || ''), decode(img)].join(' ')).join(' ') + ' ';
-      // ...and it has to be in the image's own title or file name, not only the page address: shop pages
-      // (amazon.com/Paris-Texas/...) also show other films' covers, e.g. "The Longest Day" on Paris, Texas's page
-      const own = ' ' + words([r.title, decode(img)].join(' ')).join(' ') + ' ';
-      if (!own.includes(' ' + phrase.join(' ') + ' ')) continue;
-      const hits = extra.filter(x => text.includes(' ' + x + ' ')).length;
-      if (phrase.length === 1 && extra.length && !hits) continue;   // "Kids" alone also matches "Spy Kids": want the year or director too
-      const ed = edition(r, img, text);
-      const rank = (SCAN_SITES.test(r.url || img) ? 2 : 0) + hits + (/\bscan|cover|spine/.test(text) ? 1 : 0) + (ed.hint ? 2 : 0) - (ed.en ? 0 : 4) - (ed.vhs ? 3 : 0);
-      out.push({img, source: r.url || img, title: clean(r.title, 120), width: r.properties.width || w, height: r.properties.height || h, en: ed.en, vhs: ed.vhs, rank});
-    }
-    out.sort((a, b) => b.rank - a.rank);
-    return {results: out.slice(0, 10).map(({rank, ...r}) => r)};
-  })();
-  return json({results: [...archived, ...body.results], round, more: round < ROUNDS - 1}, 200, cors, {'X-Cache': from});
+  // capped: nothing usable was found and a provider was at its cap or out for the day; the page makes a spine from the cover
+  return json({results: [...archived, ...pick(found, kind, title, year, creator)], round, more: round < ROUNDS - 1, ...(from === 'capped' ? {capped: true} : {})}, 200, cors, {'X-Cache': from});
+}
+/* ---------- admin: today's searches, and one provider's raw answer ---------- */
+async function usage(env) {
+  const day = today(), u = env.ARCHIVE ? await store(env).searchUsage(day) : {today: [], credits: []};
+  return {day, providers: PROVIDERS.map(pv => {
+    const t = u.today.find(x => x.name === pv.name) || {}, c = u.credits.find(x => x.name === pv.name);
+    // key: whether there is one, never what it is
+    return {name: pv.name, key: pv.name === 'archiveorg' ? 'not needed' : !!pv.key(env), today: t.n || 0, cap: pv.cap(env), out: !!t.blocked, ...(pv.total ? {credits: c ? c.n : 0, creditCap: pv.total(env)} : {})};
+  })};
+}
+async function rawFrom(name, q, env, cors) {
+  const pv = PROVIDERS.find(x => x.name === name), key = pv && pv.key(env);
+  if (!pv) return json({error: 'Which provider? One of: ' + PROVIDERS.map(x => x.name).join(', ') + '.'}, 400, cors);
+  if (!q) return json({error: 'A search is needed (q).'}, 400, cors);
+  if (!key) return json({error: `${pv.name} has no key set.`}, 400, cors);
+  const spent = await spendOn(env, pv);
+  if (!spent.ok) return json({error: `${pv.name} has had today’s searches, or is out for the day (${spent.why}).`}, 429, cors);
+  let got;
+  try { got = await pv.search(q, key, {kind: 'movie', title: q, year: '', creator: '', round: 0, raw: true}); }
+  catch (e) {
+    if (OUT_FOR_TODAY.includes(e && e.status)) await store(env).blockSearch(pv.name, today()).catch(() => {});
+    return json({error: e instanceof ProviderError ? e.message : `${pv.name} didn’t answer.`}, 502, cors);
+  }
+  if (pv.total && Number.isFinite(got.credits) && got.credits !== pv.cost) await store(env).addCredits(pv.name, got.credits - pv.cost).catch(() => {});
+  return json({provider: pv.name, results: slim(got.list || []).map(r => ({title: r.title, url: r.url, img: r.properties.url, w: r.properties.width || (r.thumbnail && r.thumbnail.width) || 0, h: r.properties.height || (r.thumbnail && r.thumbnail.height) || 0}))}, 200, cors, {'Cache-Control': 'no-store'});
 }
 
 /* ---------- /img: CORS image proxy ---------- */
@@ -369,6 +556,41 @@ export class Archive extends DurableObject {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS reports (id TEXT, who TEXT, PRIMARY KEY (id, who))`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS userwrites (who TEXT, day TEXT, n INTEGER, PRIMARY KEY (who, day))`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS mediawrites (who TEXT, day TEXT, n INTEGER, PRIMARY KEY (who, day))`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS bravecalls (day TEXT PRIMARY KEY, n INTEGER)`);
+    // searches by each provider, a day at a time (blocked: it answered 401, 402, 403 or 429 and is left alone till tomorrow),
+    // and credits spent in all by a provider that has only so many
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS searches (name TEXT, day TEXT, n INTEGER DEFAULT 0, blocked INTEGER DEFAULT 0, PRIMARY KEY (name, day))`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS credits (name TEXT PRIMARY KEY, n INTEGER DEFAULT 0)`);
+    // Brave's searches used to be counted on their own (bravecalls): today's count carries over
+    this.sql.exec(`INSERT OR IGNORE INTO searches (name, day, n) SELECT 'brave', day, n FROM bravecalls`);
+  }
+  // one more search by this provider today, if its cap for the day leaves room, it isn't out for the day, and (when it
+  // has only so many credits) the credits it costs are still there. One step: two requests can't both take the last one.
+  spendSearch(name, day, cap, total, cost) {
+    const row = this.one('SELECT n, blocked FROM searches WHERE name = ? AND day = ?', name, day), n = row ? row.n : 0;
+    if (row && row.blocked) return {ok: false, why: 'blocked', n};
+    if (n >= cap) return {ok: false, why: 'cap', n};
+    if (total != null) {
+      const used = (this.one('SELECT n FROM credits WHERE name = ?', name) || {}).n || 0;
+      if (used + cost > total) return {ok: false, why: 'total', n};
+      this.sql.exec('INSERT INTO credits (name, n) VALUES (?, ?) ON CONFLICT (name) DO UPDATE SET n = n + ?', name, cost, cost);
+    }
+    this.sql.exec('INSERT INTO searches (name, day, n) VALUES (?, ?, 1) ON CONFLICT (name, day) DO UPDATE SET n = n + 1', name, day);
+    this.sql.exec('DELETE FROM searches WHERE day < ?', day);
+    return {ok: true, n: n + 1};
+  }
+  // this provider is left alone for the rest of the day
+  blockSearch(name, day) {
+    this.sql.exec('INSERT INTO searches (name, day, n, blocked) VALUES (?, ?, 0, 1) ON CONFLICT (name, day) DO UPDATE SET blocked = 1', name, day);
+    return {ok: true};
+  }
+  // a search cost more or fewer credits than was counted for it
+  addCredits(name, extra) {
+    this.sql.exec('INSERT INTO credits (name, n) VALUES (?, ?) ON CONFLICT (name) DO UPDATE SET n = MAX(0, n + ?)', name, Math.max(0, extra), extra);
+    return {ok: true};
+  }
+  searchUsage(day) {
+    return {today: this.sql.exec('SELECT name, n, blocked FROM searches WHERE day = ?', day).toArray(), credits: this.sql.exec('SELECT name, n FROM credits').toArray()};
   }
   // one more photo, wall or PNG for this account today, if there's room (per account and in all)
   spendMedia(who, day) {

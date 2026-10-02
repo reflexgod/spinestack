@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Activity · shelfstackd</title>
+<meta name="description" content="The newest shelves and logs on shelfstackd, from everyone or from the people you follow.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<meta name="theme-color" content="#FFFFFF">
+<meta property="og:site_name" content="shelfstackd">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Activity · shelfstackd">
+<meta property="og:description" content="The newest shelves and logs on shelfstackd, from everyone or from the people you follow.">
+<meta property="og:url" content="https://shelfstackd.com/feed/">
+<meta property="og:image" content="https://shelfstackd.com/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="shelfstackd. Your shelf, but the real spines. Four book spines stand side by side.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://shelfstackd.com/og.jpg">
+<script>
+  /* The same public addresses as build/ (see the notes there). */
+  window.SPINESTACK_WORKER = "https://api.shelfstackd.com";
+  window.SPINESTACK_WORKER_FALLBACK = "https://spinestack.spinestack-worker.workers.dev";
+  window.SPINESTACK_SUPABASE_URL = "https://fiukspnovrlzlcdekcnb.supabase.co";
+  window.SPINESTACK_SUPABASE_KEY = "sb_publishable_cZeUDJXk-nCbSJ4VZWn_GQ_6xNFyBo2";
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&display=swap">
+<link rel="stylesheet" href="../site.css?v=20261004a">
+<style>
+/* the feed: the tabs, then a line for each shelf saved (its card under it) and each film or book logged (its worn
+   cover and caption under it); site.css has the tabs, the lines, the card, the cover and the rest */
+.items{margin-top:var(--s5)}
+.fnone{display:grid;justify-items:start;gap:var(--s3);margin:var(--s5) 0 0}
+.fnone p{margin:0}
+.linkish{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
+#state{margin:var(--s5) 0 0}
+#more{margin-top:var(--s6)}
+</style>
+</head>
+<body>
+<header class="top" id="top">
+  <!-- icons: Lucide 1.49.0 (ISC), pasted in -->
+  <a class="mark" href="../" aria-label="shelfstackd, home">SHELFSTACKD</a>
+  <button class="acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false" hidden><span class="ava" aria-hidden="true"></span><span class="who"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+  <nav class="links" aria-label="shelfstackd">
+    <a class="zap" href="./" aria-current="page" aria-label="Activity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z"/></svg></a>
+    <a href="../shelves/">Shelves</a><a href="../members/">Members</a>
+    <a class="find" href="../members/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
+  </nav>
+  <a class="signin" id="signInBtn" href="#" hidden>Sign in</a>
+  <span class="addwrap"><a class="btn primary add" href="../build/" aria-label="Add a film or a book"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Add</span></a><button class="btn primary addmore" id="addMore" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More ways to add" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></span>
+</header>
+
+<main class="feed">
+  <h1>Activity</h1>
+  <nav class="tabs" role="tablist" aria-label="Feed">
+    <button type="button" role="tab" id="tabF" data-scope="following" aria-selected="false" aria-controls="panel">Following</button>
+    <button type="button" role="tab" id="tabY" data-scope="you" aria-selected="false" aria-controls="panel">You</button>
+    <button type="button" role="tab" id="tabE" data-scope="everyone" aria-selected="false" aria-controls="panel">Everyone</button>
+  </nav>
+  <div id="panel" role="tabpanel">
+    <p class="grey" id="state" role="status">Loading…</p>
+    <ol class="items" id="items"></ol>
+    <div class="fnone" id="none" hidden></div>
+    <button class="dash sm" id="more" type="button" hidden>Load more</button>
+  </div>
+</main>
+
+<div class="sheet" id="signSheet" hidden role="dialog" aria-modal="true" aria-label="Sign in">
+  <div class="sheetbox">
+    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <div>
+      <h2>Sign in</h2>
+      <p>Keep your shelf and everything you log on any device.</p>
+      <button class="btn primary full" id="googleBtn" type="button">Continue with Google</button>
+      <p class="note">Accounts are for people 18 or older. <a href="../privacy.html">Privacy</a></p>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>Film data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB. Book data from <a href="https://openlibrary.org/" target="_blank" rel="noopener">Open Library</a>. <a href="https://search.brave.com/" target="_blank" rel="noopener">Search by Brave</a>.</p>
+  <p class="fnav"><a href="../privacy.html">Privacy</a><a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a></p>
+</footer>
+<div class="toast" id="toast" hidden></div>
+
+<script src="../shelf.js?v=20261002a"></script>
+<script src="../worker-address.js?v=20261001a"></script>
+<script src="../cards.js?v=20261002a"></script>
+<script src="../wear.js?v=20261004a"></script>
+<script src="../nav.js?v=20261004a"></script>
+<script>
+(() => {
+/* The feed: /feed/ (?following, ?you or ?everyone picks the tab). A line for each shelf saved and each film or book
+   logged, newest first, 20 at a time. The database decides what shows (activity(), supabase/migrations/0007_logs_watchlist.sql):
+   EVERYONE is public profiles, FOLLOWING the people you follow, YOU your own (a private shelf too). On a database
+   without 0007 the feed is shelves only, as feed() in 0006 has them (YOU read from the shelves table), and asks no more.
+   Only saving a shelf in the builder moves it up; renaming it doesn't. */
+const $ = s => document.querySelector(s);
+const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
+const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
+const SB_LIB = {src:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
+const PAGE = 20;
+const params = new URLSearchParams(location.search);
+const asked = ['following', 'you', 'everyone'].find(k => params.has(k)) || '';
+
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const profileUrl = (name, shelf) => '../u/?' + name + (shelf ? '&shelf=' + shelf : '');
+let toastT = 0; function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 4200); }
+function friendly(e){
+  const m = (e && e.message) || '';
+  if (/fetch|network/i.test(m)) return 'Couldn’t reach shelfstackd. Check your connection and try again.';
+  return m || 'Something went wrong. Try again in a moment.';
+}
+// 2h, 3d: how long ago a shelf was saved. The browser says it (Intl.RelativeTimeFormat: "2h ago") and its "ago" is
+// left off. The same as in u/: keep the two in step.
+const RTF = new Intl.RelativeTimeFormat('en', {style: 'narrow', numeric: 'always'});
+function ago(t){
+  const s = Math.max(0, (Date.now() - new Date(t)) / 1000), D = 86400;
+  if (s < 60) return 'now';
+  const [n, unit] = s < 3600 ? [s / 60, 'minute'] : s < D ? [s / 3600, 'hour'] : s < 7*D ? [s / D, 'day'] : s < 30*D ? [s / (7*D), 'week'] : s < 365*D ? [s / (30*D), 'month'] : [s / (365*D), 'year'];
+  return RTF.format(-Math.floor(n), unit).replace(/\s*ago$/, '').replace(/\s+/g, '');
+}
+// a log is by the day: today, yesterday, then as ago() says it (3d, 2w). The same as in u/
+function day(t){
+  const d = new Date(t), now = new Date(), start = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const n = Math.round((start(now) - start(d)) / 864e5);
+  return n <= 0 ? 'today' : n === 1 ? 'yesterday' : ago(t);
+}
+
+/* ---------- signing in (the same Supabase client and settings as u/) ---------- */
+const me = {sb:null, user:null, profile:null};
+let sbLoading = null;
+function supa(){
+  return sbLoading || (sbLoading = new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = SB_LIB.src; s.integrity = SB_LIB.integrity; s.crossOrigin = 'anonymous';
+    s.onload = () => { me.sb = window.supabase.createClient(SB_URL, SB_KEY, {auth:{flowType:'pkce', persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}}); res(me.sb); };
+    s.onerror = () => { sbLoading = null; s.remove(); rej(new Error('Sign-in couldn’t load. Check your connection and try again.')); };
+    document.head.appendChild(s);
+  }));
+}
+const hasSession = () => { try { return Object.keys(localStorage).some(k => /^sb-.+-auth-token$/.test(k)); } catch { return false; } };
+const returning = () => /[?&](code|error|error_description)=/.test(location.search);
+const here = () => location.pathname + (asked ? '?' + asked : '');
+async function token(){
+  if (!me.sb) return null;
+  const {data:{session}} = await me.sb.auth.getSession();
+  return session ? session.access_token : null;
+}
+// Supabase's REST API: as the signed-in person when there is one, otherwise as a visitor
+async function api(path, opt = {}){
+  const t = await token(), r = await fetch(`${SB_URL}/rest/v1/${path}`, {...opt,
+    headers: {apikey: SB_KEY, 'Content-Type': 'application/json', ...(t ? {Authorization: 'Bearer ' + t} : {}), ...(opt.headers || {})}});
+  const j = r.status === 204 ? null : await r.json().catch(() => null);
+  if (!r.ok) throw new Error((j && j.message) || 'Couldn’t load the feed. Try again in a moment.');
+  return j;
+}
+const rpc = (fn, args) => api('rpc/' + fn, {method:'POST', body: JSON.stringify(args)});
+async function startSession(){
+  const back = returning();   // asked before Supabase takes ?code= off
+  if (!hasSession() && !back) return;
+  try {
+    const err = new URLSearchParams(location.search).get('error_description');
+    const sb = await supa(), {data:{session}} = await sb.auth.getSession();   // finishes a Google sign-in coming back with ?code=
+    if (back) history.replaceState(null, '', here() + location.hash);
+    if (err) toast('Sign-in didn’t finish: ' + err);
+    me.user = session && session.user;
+    if (me.user){
+      const rows = await api(`profiles?select=id,username,display_name,avatar_key&id=eq.${me.user.id}`);
+      me.profile = rows[0] || null;
+    }
+    sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') location.reload(); });
+  } catch (e){ if (me.user && !me.profile) me.unreachable = true; toast(friendly(e)); }   // unreachable: signed in, but the account couldn't be read (not "no username yet")
+}
+// the bar (nav.js) shows who is signed in
+const paintAcct = () => Nav.paint(me);
+const signIn = () => openSheet('#signSheet', '#googleBtn');
+Nav.onSignIn(signIn);
+// Sign out, from the account menu (nav.js): the page starts again signed out
+Nav.onSignOut(async () => { try { const {error} = await (await supa()).auth.signOut({scope: 'local'}); if (error) throw error; } catch (e){ toast(friendly(e)); } });
+$('#googleBtn').addEventListener('click', async () => {
+  const btn = $('#googleBtn'); btn.disabled = true;
+  try {
+    const sb = await supa(), back = location.origin + location.pathname + '?' + (feed.scope || 'following');
+    const {error} = await sb.auth.signInWithOAuth({provider:'google', options:{redirectTo: back}});
+    if (error) throw error;
+  } catch (e){ btn.disabled = false; toast(friendly(e)); }
+});
+
+/* sheets */
+let sheetFrom = null;
+function openSheet(id, focus){ sheetFrom = document.activeElement; $(id).hidden = false; const f = $(focus); if (f) f.focus(); }
+function closeSheets(){ document.querySelectorAll('.sheet').forEach(s => s.hidden = true); if (sheetFrom && sheetFrom.focus) sheetFrom.focus(); }
+document.querySelectorAll('.sheet').forEach(s => s.addEventListener('click', e => { if (e.target === s || e.target.closest('[data-close]')) closeSheets(); }));
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.querySelector('.sheet:not([hidden])')) closeSheets(); });
+
+/* ---------- the feed ---------- */
+const feed = {scope:'', last:null, run:0, logs:true};   // logs: false once the database says activity() isn't there
+const avatar = x => `<a class="fa" href="${esc(profileUrl(x.username))}" tabindex="-1" aria-hidden="true">${x.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(x.avatar_key)}`)}" alt="" loading="lazy">` : esc(((x.display_name || '').trim() || x.username).trim()[0] || '·')}</a>`;
+const when = (t, text) => `<span class="ago">· <time datetime="${esc(t)}" title="${esc(new Date(t).toLocaleString())}">${text}</time></span>`;
+const COVER = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cover')) || 72;   // how wide a log's cover is (site.css)
+// one line: "@abc shelved my films · 2h" (in YOU: "You shelved…", and a private shelf says so), its card under it;
+// or "@abc watched Gummo · today", its cover, small, worn by how long ago that was, and the caption beside it
+function item(x){
+  const li = document.createElement('li'), who = esc(profileUrl(x.username)), by = `<a href="${who}">${x.mine ? 'You' : '@' + esc(x.username)}</a>`;
+  li.className = 'item';
+  if (x.what === 'log'){
+    const verb = x.kind === 'movie' ? 'watched' : 'read', label = `${x.title}${x.year ? ` (${x.year})` : ''}`;
+    li.classList.add('log');
+    li.innerHTML = `${avatar(x)}<p class="line">${by} ${verb} <b>${esc(x.title)}</b> ${when(x.at, day(x.at))}</p>
+      <div class="logbody"><span class="cover"></span>${x.caption ? `<p class="say">${esc(x.caption)}</p>` : ''}</div>`;
+    li.querySelector('.cover').append(Wear.cover({src: x.cover_src ? `${WORKER}/img?url=${encodeURIComponent(x.cover_src.replace(/^url:/, ''))}` : '', seed: x.id, at: x.at,
+      label: `${label}, ${verb} by @${x.username}`, width: COVER}));
+    return li;
+  }
+  const to = esc(profileUrl(x.username, x.id)), shelf = Shelf.shelfName({name: x.name, caption: x.caption});
+  const pic = x.preview_key ? `<img src="${esc(`${WORKER}/u/preview?k=${encodeURIComponent(x.preview_key)}&v=${encodeURIComponent(x.updated_at)}`)}" alt="" crossorigin="anonymous" loading="lazy" width="360" height="640">` : '';   // with CORS, so cards.js can read it and cut the card round the books
+  li.innerHTML = `${avatar(x)}<p class="line">${by} ${x.updated ? 'updated' : 'shelved'} <a href="${to}">${esc(shelf)}</a>${x.is_public === false ? ' <span class="tag">private</span>' : ''} ${when(x.at, ago(x.at))}</p>
+    <a class="pic" data-shelf="${esc(x.id)}" href="${to}" tabindex="-1" aria-label="Open ${esc(shelf)} by @${esc(x.username)}">${pic}</a>`;
+  return li;
+}
+// a shelf as feed() (0006) gives it, in activity()'s shape
+const fromFeed = r => ({what: 'shelf', id: r.shelf_id, at: r.saved_at, owner: r.owner, username: r.username, display_name: r.display_name, avatar_key: r.avatar_key,
+  caption: r.caption, name: r.name, preview_key: r.preview_key, created_at: r.created_at, updated_at: r.updated_at, updated: r.updated, is_public: r.is_public});
+// YOU before activity() is there: your own shelves, private ones too, read from the shelves table (Row Level Security
+// lets you read your own)
+async function mine(from){
+  const p = me.profile;
+  const rows = await api(`shelves?select=id,caption,name,preview_key,is_public,saved_at,created_at,updated_at&owner=eq.${me.user.id}&hidden=is.false&order=saved_at.desc,id.desc&limit=${PAGE}&offset=${from}`);
+  return rows.map(s => ({what: 'shelf', id: s.id, at: s.saved_at, caption: s.caption, name: s.name, preview_key: s.preview_key, is_public: s.is_public, created_at: s.created_at,
+    updated_at: s.updated_at, owner: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key, updated: new Date(s.saved_at) - new Date(s.created_at) > 60000}));
+}
+// the next page of the tab: activity() while it's there, otherwise what 0006 has
+const missing = e => /PGRST20[25]|42883|Could not find the function|does not exist/i.test(String(e && e.message));
+async function page(){
+  const last = feed.last, from = $('#items').children.length;
+  if (feed.logs){
+    try { return await rpc('activity', {scope: feed.scope, before: last ? last.at : null, before_id: last ? last.id : null, n: PAGE}); }
+    catch (e){ if (!missing(e)) throw e; feed.logs = false; }
+  }
+  return feed.scope === 'you' ? mine(from) : (await rpc('feed', {scope: feed.scope, before: last ? last.at : null, before_id: last ? last.id : null, n: PAGE})).map(fromFeed);
+}
+function none(kind){
+  const box = $('#none');
+  if (kind === 'signin') box.innerHTML = `<p><button class="linkish" type="button" data-signin>Sign in</button> to see ${feed.scope === 'you' ? 'your own shelf and logs here' : 'what people you follow shelve and log'}.</p>`;
+  else if (kind === 'you') box.innerHTML = '<p>Nothing from you yet. Save your shelf, or log a film or a book with + Add.</p><a class="dash sm" href="../build/">Your shelf</a>';
+  else if (kind === 'following') box.innerHTML = '<p>Follow people to see what they shelve and log here.</p><button class="dash sm" type="button" data-scope="everyone">Everyone</button>';
+  else box.innerHTML = '<p>Nothing shelved yet. The first shelf here could be yours.</p>';
+  box.hidden = false;
+}
+$('#none').addEventListener('click', e => {
+  if (e.target.closest('[data-signin]')) signIn();
+  const b = e.target.closest('[data-scope]'); if (b) show(b.dataset.scope);
+});
+async function show(scope){
+  const run = ++feed.run;
+  feed.scope = scope; feed.last = null;
+  document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.scope === scope)));
+  history.replaceState(null, '', location.pathname + '?' + scope + location.hash);   // back from a shelf lands on the same tab
+  $('#items').replaceChildren(); $('#none').hidden = true; $('#more').hidden = true;
+  if (scope !== 'everyone' && !me.user){ $('#state').hidden = true; none('signin'); return; }
+  if (scope === 'you' && me.unreachable){ $('#state').textContent = friendly(new Error('network')); $('#state').hidden = false; return; }   // the account couldn't be read
+  if (scope === 'you' && !me.profile){ $('#state').hidden = true; none('you'); return; }   // no username yet, so nothing saved
+  $('#state').textContent = 'Loading…'; $('#state').hidden = false;
+  await more(run);
+}
+async function more(run = feed.run){
+  const btn = $('#more');
+  btn.disabled = true;
+  let rows;
+  try { rows = await page(); }
+  catch (e){
+    if (run !== feed.run) return;
+    btn.disabled = false;
+    if ($('#items').children.length) toast(friendly(e)); else $('#state').textContent = friendly(e);
+    return;
+  }
+  if (run !== feed.run) return;   // another tab was picked meanwhile
+  btn.disabled = false; $('#state').hidden = true;
+  for (const x of rows) $('#items').append(item({...x, mine: feed.scope === 'you'}));
+  const end = rows[rows.length - 1];
+  if (end) feed.last = {at: end.at, id: end.id};
+  btn.hidden = rows.length < PAGE;
+  if (!$('#items').children.length) none(feed.scope);
+}
+// a log posted with + ADD on this page: the tab starts again, with it at the top
+document.addEventListener('shelfstackd:added', e => { if (e.detail && e.detail.what === 'log' && feed.scope) show(feed.scope); });
+$('#more').addEventListener('click', () => more());
+const tabs = [...document.querySelectorAll('.tabs button')];
+tabs.forEach(b => b.addEventListener('click', () => { if (b.dataset.scope !== feed.scope) show(b.dataset.scope); }));
+// ← → move between the tabs
+document.querySelector('.tabs').addEventListener('keydown', e => {
+  const i = tabs.indexOf(document.activeElement); if (i < 0 || (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft')) return;
+  const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]; next.focus(); next.click();
+});
+
+(async () => {
+  await startSession();
+  paintAcct();
+  show(asked || (me.user ? 'following' : 'everyone'));
+})();
+})();
+</script>
+</body>
+</html>

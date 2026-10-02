@@ -953,6 +953,7 @@ function renderStory(x, f, fast, books, settings, bare = false, art = {}){
   x.fillStyle = T.ink; x.font = '500 52px "Geist Mono", ui-monospace, monospace'; x.textBaseline = 'alphabetic'; x.textAlign = 'left';
   let y = 290; if (!bare && settings.caption.trim()) for (const ln of wrapText(x, settings.caption, 900)){ x.fillText(ln, 90, y); y += 68; }
   const captionBottom = y === 290 ? 150 : y - 50; let booksTop = null;
+  const spots = [];   // where each book was drawn: {i: its place in books, x, y, w, h}, so the builder can let a spine be dragged
   const base = 1700;
   // Spines: up to 10 stand in one row; more (Pro holds 20) in two rows of up to 10, the upper one a little fuller
   const twoRows = settings.layout === 'row' && books.length > 10, bases = twoRows ? [1060, 1720] : [base], H0 = twoRows ? 530 : 1160;
@@ -967,7 +968,7 @@ function renderStory(x, f, fast, books, settings, bare = false, art = {}){
     let cy = top + ((bottom-top) - (rowH.reduce((a,v) => a+v, 0) + gap*(rows-1)))/2; booksTop = cy;
     for (let r = 0; r < rows; r++){
       const items = books.slice(r*cols, r*cols+cols), s2 = sz.slice(r*cols, r*cols+cols); let cx = (W - (s2.reduce((a,z) => a+z[0], 0) + gap*(items.length-1)))/2;
-      items.forEach((b,i) => { const [w,h] = s2[i], dy = cy + rowH[r] - h; x.save(); x.shadowColor = shadow; x.shadowBlur = 30; x.shadowOffsetY = 12; x.fillStyle = '#000'; rr(x,cx,dy,w,h,10); x.fill(); x.restore(); x.save(); rr(x,cx,dy,w,h,10); x.clip(); x.drawImage(b.img,cx,dy,w,h); x.restore(); cx += w + gap; });
+      items.forEach((b,i) => { const [w,h] = s2[i], dy = cy + rowH[r] - h; spots.push({i:r*cols + i, x:cx, y:dy, w, h}); x.save(); x.shadowColor = shadow; x.shadowBlur = 30; x.shadowOffsetY = 12; x.fillStyle = '#000'; rr(x,cx,dy,w,h,10); x.fill(); x.restore(); x.save(); rr(x,cx,dy,w,h,10); x.clip(); x.drawImage(b.img,cx,dy,w,h); x.restore(); cx += w + gap; });
       cy += rowH[r] + gap;
     }
   } else if (books.length && settings.layout === 'row'){
@@ -995,6 +996,7 @@ function renderStory(x, f, fast, books, settings, bare = false, art = {}){
       x.translate(placed[i].x + sp.width/2, rb); x.rotate(tilt); x.drawImage(sp, -sp.width/2, -sp.height); x.restore();
     });
     bookLight(f, x, rows.flatMap(({placed, rb}) => placed.map(pl => ({x:pl.x, y:rb - pl.h, w:pl.w, h:pl.h}))), k);
+    rows.forEach(({placed, rb}, r) => placed.forEach((pl, i) => spots.push({i:(r ? split : 0) + i, x:pl.x, y:rb - pl.h, w:pl.w, h:pl.h})));
     booksTop = Math.min(...rows[0].placed.map(pl => rows[0].rb - pl.h));
     // where two spines meet: a thin dark line down the shorter one
     x.fillStyle = seam;
@@ -1007,6 +1009,7 @@ function renderStory(x, f, fast, books, settings, bare = false, art = {}){
       x.save(); x.shadowColor = f === 'flash' ? flashShadow : shadow; x.shadowBlur = f === 'flash' ? 3 : 16; x.shadowOffsetX = f === 'flash' ? 20 : 0; x.shadowOffsetY = f === 'flash' ? 16 : 5; x.translate(Math.round(cx), Math.round(cy + sp.width)); x.rotate(-Math.PI/2); x.drawImage(sp,0,0); x.restore();
       placed.push({x:Math.round(cx), y:Math.round(cy), L:sp.height, t:sp.width}); });
     bookLight(f, x, placed.map(pl => ({x:pl.x, y:pl.y, w:pl.L, h:pl.t})), k);
+    placed.forEach((pl, i) => spots.push({i, x:pl.x, y:pl.y, w:pl.L, h:pl.t}));
     booksTop = cy;
     // lying books meet along a line too
     x.fillStyle = seam;
@@ -1014,7 +1017,7 @@ function renderStory(x, f, fast, books, settings, bare = false, art = {}){
   }
   if (f === 'flash' && books.length && !bare){ flashVignette(x, k); dateStamp(x); }
   if (!bare){ x.fillStyle = T.mark; x.font = '400 24px "Geist Mono", monospace'; x.textAlign = 'center'; x.fillText('made with shelfstackd', W/2, 1868); }
-  return {captionBottom, booksTop};
+  return {captionBottom, booksTop, spots};
 }
 
 // is a picture dark (so the caption and shadows on it go light)?

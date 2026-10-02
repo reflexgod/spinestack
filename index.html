@@ -3,1715 +3,360 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="Type a film or a book, get its real spine, save your shelf as an Instagram story.">
+<title>shelfstackd · your shelf, but the real spines</title>
+<meta name="description" content="Search a film or a book and its real spine goes on your shelf. Share your shelf, or follow people to see theirs.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#FFFFFF">
+<meta property="og:site_name" content="shelfstackd">
+<meta property="og:type" content="website">
+<meta property="og:title" content="shelfstackd · your shelf, but the real spines">
+<meta property="og:description" content="Search a film or a book and its real spine goes on your shelf. Share your shelf, or follow people to see theirs.">
+<meta property="og:url" content="https://shelfstackd.com/">
+<meta property="og:image" content="https://shelfstackd.com/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="shelfstackd. Your shelf, but the real spines. Four book spines stand side by side.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://shelfstackd.com/og.jpg">
 <script>
-  /* Only for the old self-hosted backend (backend/, not used now): its address, e.g. "http://localhost:8000" when it
-     serves this page. Empty: the page uses the Worker below and doesn't look for a backend (with no Worker either, it
-     looks on its own site, as a backend serving this page would answer there). */
-  window.SPINESTACK_API = "";
-  /* Address of the Spinestack Cloudflare Worker (worker/ folder), e.g. "https://spinestack.NAME.workers.dev".
-     It looks up titles, finds DVD and book scans, and passes images through with CORS. */
+  /* The shelf builder used to be this page; it's in build/ now. Links made before the move keep working: a saved
+     shelf (?open=<id>), the builder inside a profile (?embed, ?new) and the builder's sections (#shelf #search #upload
+     #mine #how) go on to build/ with the same query and hash. A Google sign-in on its way back (?code=) stays: this
+     page finishes it. */
+  (function(){
+    var q = location.search, h = location.hash;
+    if (/[?&](open|embed|new)(=|&|$)/.test(q) || /^#(shelf|search|upload|mine|how)$/.test(h)){
+      document.documentElement.hidden = true;
+      location.replace('build/' + q + h);
+    }
+  })();
+  /* Signed out, home's one black button is Make a shelf, so the bar's + is outlined here (as it is on the builder,
+     where the black one is Save). Said now, before anything is drawn, so the + doesn't change as the page loads. */
+  try {
+    if (!Object.keys(localStorage).some(function(k){ return /^sb-.+-auth-token$/.test(k); }) && !/[?&](code|error|error_description)=/.test(location.search)) document.documentElement.classList.add('signedout');
+  } catch (e) {}
+  /* The same public addresses as build/ (see the notes there). */
   window.SPINESTACK_WORKER = "https://api.shelfstackd.com";
-  /* Only for running without the Worker: a TMDB v4 "API Read Access Token" or v3 key for film search.
-     Anyone who reads this page's source can see it, so keep it empty while the Worker is set. */
-  window.SPINESTACK_TMDB = "";
-  /* Supabase (accounts: sign in, saved shelves). Both values are public and meant for the page: every table is
-     protected by Row Level Security. The secret (service_role) key must never be put here. */
+  window.SPINESTACK_WORKER_FALLBACK = "https://spinestack.spinestack-worker.workers.dev";
   window.SPINESTACK_SUPABASE_URL = "https://fiukspnovrlzlcdekcnb.supabase.co";
   window.SPINESTACK_SUPABASE_KEY = "sb_publishable_cZeUDJXk-nCbSJ4VZWn_GQ_6xNFyBo2";
-  /* Sign-in by email link: off until the site has its own domain to send email from. */
-  window.SPINESTACK_EMAIL_LOGIN = false;
-  /* Inside a profile page (u/), which opens this builder over itself: no site header, footer or My shelves. */
-  if (window.parent !== window && /[?&]embed(&|=|$)/.test(location.search)) document.documentElement.classList.add('embed');
 </script>
-</head>
-<body>
-<title>shelfstackd</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&display=swap">
+<link rel="stylesheet" href="site.css?v=20261004a">
 <style>
-:root{--paper:#FFFFFF;--ink:#000000;--grey:#6B6B6B;--hair:#D9D9D9;--mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-*{box-sizing:border-box}
-[hidden]{display:none!important}
-html{background:var(--paper)}
-body{margin:0;background:var(--paper);color:var(--ink);font:400 12px/1.55 var(--mono)}
-a{color:inherit}
-:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
-
-.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 24px}
-.top a{text-decoration:none;font-size:13px;text-transform:uppercase}
-.top .r{justify-self:end}
-.mark{font-weight:800;font-size:22px!important;letter-spacing:.34em;margin-right:-.34em;line-height:1}
-
-.col{max-width:600px;margin:0 auto;padding:0 16px}
-.wide{max-width:940px;margin:0 auto;padding:0 16px}
-section{padding-block:56px 0}
-h1,h2{font-weight:700;text-transform:uppercase;margin:0 0 14px;letter-spacing:0}
-h1{font-size:24px;line-height:1.3;text-align:center}
-h2{font-size:16px;display:flex;gap:10px;align-items:baseline}
-h2 small{font-size:12px;font-weight:400}
-p{margin:0 0 12px}
-.say{font-size:16px;font-weight:700;margin:18px 0 26px}
-.grey{color:var(--grey)}
-.center{text-align:center}
-
-/* the dashed underline from the reference: chunky dashes under uppercase text */
-.dash{display:inline-block;background:none;border:0;padding:0 0 9px;font:500 16px var(--mono);text-transform:uppercase;color:var(--ink);cursor:pointer;text-decoration:none;
-  background-image:repeating-linear-gradient(90deg,var(--ink) 0 11px,transparent 11px 14px);background-size:100% 4px;background-repeat:no-repeat;background-position:left bottom}
-.dash.sm{font-size:12px;padding-bottom:6px;background-size:100% 3px;background-image:repeating-linear-gradient(90deg,var(--ink) 0 8px,transparent 8px 11px)}
-
-form.search{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px}
-input[type=text],select{font:400 13px var(--mono);color:var(--ink);background:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 12px;width:100%;min-width:0}
-input[type=text]::placeholder{color:#8A8A8A}
-.opts{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:12px;align-items:center}
-.opts .ed{margin-left:auto;display:flex;gap:18px;align-items:center}
-.opts label{cursor:pointer;text-transform:uppercase;display:flex;gap:6px;align-items:center}
-.opts input{accent-color:var(--ink);margin:0}
-.btn{font:500 13px var(--mono);text-transform:uppercase;background:var(--ink);color:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 22px;cursor:pointer}
-.btn:hover{background:#222}
-.btn.full{width:100%}
-.status{min-height:18px;margin-top:14px}
-.status.err{font-weight:700}
-
-table{border-collapse:collapse;width:100%}
-.tbl{overflow-x:auto;margin-top:6px}
-th,td{text-align:left;padding:9px 8px 9px 0;border-bottom:1px solid var(--ink);white-space:nowrap;vertical-align:top}
-th{font-weight:400;color:var(--grey);text-transform:uppercase;font-size:11px}
-td.t{white-space:normal;font-weight:700;text-transform:uppercase}
-td.t,td.by{white-space:normal;overflow-wrap:anywhere}
-tbody tr{cursor:pointer}
-tbody tr:hover td{background:#F2F2F2}
-td.no{color:var(--grey);font-variant-numeric:tabular-nums}
-
-.found{--th:300px;--tw:104px;display:flex;gap:16px;overflow-x:auto;padding:8px 0 4px;align-items:flex-start}
-.pick{flex:none;display:grid;grid-template-rows:var(--th) 18px 26px auto;gap:6px;justify-items:center;width:max-content;min-width:var(--tw)}
-.pick .art{height:var(--th);display:flex;align-items:flex-end}
-.pick .art img,.pick .art canvas{height:var(--th);width:auto;display:block}
-.pick img.cov{aspect-ratio:auto 2/3;background:#F2F2F2}
-.pick .lbl{font-size:10.5px;color:var(--grey);white-space:nowrap;width:var(--tw);text-align:center;overflow:hidden;text-overflow:ellipsis;align-self:center}
-.pick .lbl a{color:inherit}
-.pick .on{font-size:12px;font-weight:700;text-transform:uppercase;align-self:start}
-.found .rule{flex:none;width:1px;height:var(--th);background:var(--hair)}
-.picked{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline}
-.found{margin-bottom:8px}
-
-/* the shelf as it stands, drawn with the same spines as the story */
-.strip{display:flex;gap:5px;align-items:flex-end;height:260px;margin-top:26px;overflow-x:auto;overflow-y:hidden}
-.strip button{flex:none;background:none;border:0;padding:0;cursor:pointer;line-height:0}
-.strip canvas{display:block}
-.src{font-size:10.5px;color:var(--grey);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-
-.drop{display:block;border:1px dashed var(--ink);border-radius:8px;padding:22px 18px;cursor:pointer;text-align:center}
-.drop.over{background:#F2F2F2}
-.drop input{position:absolute;width:1px;height:1px;opacity:0}
-
-.shelfgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:40px;align-items:start;margin-top:8px}
-ol.books{list-style:none;margin:0;padding:0;border-top:1px solid var(--ink)}
-ol.books .book{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:12px;padding:12px 0;border-bottom:1px solid var(--ink)}
-.thumb{width:42px;height:62px;object-fit:cover;background:#EEE}
-.fields{display:grid;gap:7px;min-width:0}
-.row2{display:grid;grid-template-columns:1.3fr 1fr;gap:7px}
-.row3{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
-.fields input[type=text]{padding:7px 9px;font-size:12px;border-radius:6px}
-.fields input.t{font-weight:700}
-.row3 select{width:auto;padding:5px 7px;font-size:11.5px;border-radius:6px}
-.sw{display:inline-flex;align-items:center;gap:5px;font-size:11px;text-transform:uppercase}
-input[type=color]{width:22px;height:22px;padding:0;border:1px solid var(--ink);border-radius:4px;background:none;cursor:pointer}
-input[type=color]::-webkit-color-swatch-wrapper{padding:1px}
-input[type=color]::-webkit-color-swatch{border:0;border-radius:2px}
-.acts{display:flex;flex-direction:column;gap:4px}
-.ib{width:26px;height:26px;border:1px solid var(--ink);border-radius:6px;background:var(--paper);color:var(--ink);cursor:pointer;font:500 12px var(--mono);padding:0}
-.ib:hover{background:var(--ink);color:var(--paper)}
-.ib:disabled{opacity:.25;cursor:default;background:var(--paper);color:var(--ink)}
-.note{font-size:11px;color:var(--grey)}
-.note:empty{display:none}
-.note.warn{color:var(--ink);font-weight:700}
-.empty{padding:20px 0;color:var(--grey)}
-
-.story{display:grid;gap:16px}
-.phone{border:1px solid var(--ink);border-radius:26px;padding:6px;width:100%;max-width:270px;margin:0 auto}
-#story{display:block;width:100%;aspect-ratio:9/16;border-radius:20px;background:#fff}
-.ctl{display:grid;gap:6px}
-.lbl{font-size:11px;color:var(--grey);text-transform:uppercase}
-.seg{display:flex;gap:14px;flex-wrap:wrap}
-.seg button{font:400 12px var(--mono);text-transform:uppercase;background:none;border:0;padding:0 0 4px;color:var(--grey);cursor:pointer;border-bottom:2px solid transparent}
-.seg button[aria-pressed="true"]{color:var(--ink);font-weight:700;border-bottom-color:var(--ink)}
-.check{display:flex;gap:8px;align-items:center;cursor:pointer;text-transform:uppercase;font-size:11.5px}
-.filters{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 4px}
-.flt{flex:none;display:grid;gap:5px;background:none;border:0;padding:0;cursor:pointer;font:400 10.5px var(--mono);text-transform:uppercase;color:var(--grey);text-align:left}
-.flt canvas{width:54px;height:96px;display:block;border:1px solid var(--hair)}
-.flt[aria-pressed="true"]{color:var(--ink);font-weight:700}
-.flt[aria-pressed="true"] canvas{outline:2px solid var(--ink);outline-offset:1px;border-color:var(--ink)}
-.flt .pro{font-style:normal;font-weight:700;font-size:9px;border:1px solid currentColor;padding:0 3px;margin-left:4px;letter-spacing:.04em}
-em.pro{font-style:normal;font-weight:700;font-size:9px;border:1px solid currentColor;padding:0 3px;margin:0 4px;letter-spacing:.04em}
-.note .pro:first-child{margin-left:0}
-.wallbox{display:grid;gap:4px;margin-top:2px}
-.wallrow{display:flex;gap:6px 16px;align-items:baseline;flex-wrap:wrap;margin:0}
-.wallname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
-.pngadd{display:grid;gap:4px;justify-items:start;margin-top:6px}
-.colours{display:grid;gap:6px;margin:2px 0 4px 22px}
-.swatches{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
-.swatch{width:22px;height:22px;border-radius:50%;border:1px solid var(--ink);padding:0;cursor:pointer}
-.swatch[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:2px}
-.colours input[type=text]{width:96px;padding:5px 8px;font-size:12px;border-radius:6px;text-transform:uppercase}
-.stage{position:relative}
-.stage.arranging{touch-action:none}
-.stage.arranging canvas{cursor:grab}
-.pngbox{position:absolute;border:1px dashed var(--ink);box-shadow:0 0 0 1px rgba(255,255,255,.85);pointer-events:none}
-.pngx{pointer-events:auto;position:absolute;top:-12px;right:-12px;width:24px;height:24px;border-radius:50%;border:1px solid var(--ink);background:var(--paper);color:var(--ink);font:500 12px var(--mono);cursor:pointer;padding:0;line-height:1;touch-action:none}
-.pngh{pointer-events:auto;position:absolute;right:-7px;bottom:-7px;width:14px;height:14px;background:var(--paper);border:1px solid var(--ink);cursor:nwse-resize;touch-action:none}
-.pngr{pointer-events:auto;position:absolute;left:50%;top:-34px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:var(--paper);border:1px solid var(--ink);cursor:grab;touch-action:none}
-.pngr::after{content:"";position:absolute;left:6px;top:13px;width:1px;height:20px;background:var(--ink)}
-.pngadd .range{justify-self:stretch;max-width:340px}
-.range{display:flex;gap:10px;align-items:center}
-.range input{accent-color:var(--ink);flex:1;min-width:0}
-.check input{accent-color:var(--ink);margin:0}
-
-.home{padding-block:64px 72px;text-align:center}
-
-footer{background:var(--ink);color:var(--paper);padding:36px 24px 22px}
-.fgrid{display:grid;grid-template-columns:1.1fr 1.3fr 1fr;gap:36px;max-width:1200px;margin:0 auto}
-footer h3{font-size:16px;font-weight:700;text-transform:uppercase;margin:0 0 10px}
-footer p,footer li{font-size:13px;letter-spacing:.02em}
-footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
-.fbtn{display:inline-block;background:var(--paper);color:var(--ink);border-radius:8px;padding:12px 28px;text-transform:uppercase;text-decoration:none;font-size:14px;margin-top:4px}
-.fbase{max-width:1200px;margin:34px auto 0;border-top:1px solid #8A8A8A;padding-top:12px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:11.5px}
-
-.top .r{display:flex;gap:18px;align-items:center}
-.acct{font:400 13px var(--mono);text-transform:uppercase;background:none;border:0;padding:0;color:var(--ink);cursor:pointer}
-.acct.named{text-transform:none}   /* usernames are lowercase: show them as they are */
-.btn.ghost{background:var(--paper);color:var(--ink)}
-.btn.ghost:hover{background:#F2F2F2}
-.btn:disabled{opacity:.5;cursor:default}
-.savewrap{display:grid;gap:8px;justify-items:start;margin-top:4px}
-.namebox{display:grid;gap:6px;justify-self:stretch;margin:0}
-.namerow{display:flex;gap:8px}
-.namerow .btn{padding:0 18px;flex:none}
-/* the builder inside a profile page */
-.embed .top,.embed footer,.embed .home,.embed #mine{display:none!important}
-.embed main{padding-bottom:48px}
-.mine{list-style:none;margin:10px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:26px 18px}
-.mine .card{display:grid;gap:4px;align-content:start}
-.mine .open{padding:0;border:1px solid var(--hair);background:#F3F3F3;border-radius:8px;cursor:pointer;aspect-ratio:9/16;overflow:hidden;outline-offset:3px}
-.mine .open img{width:100%;height:100%;object-fit:cover;display:block}
-.mine .card.on .open{outline:2px solid var(--ink)}
-.mine .cap{font-weight:500;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mine .acts{display:flex;flex-direction:row;flex-wrap:wrap;gap:6px 18px;margin-top:4px}
-.sheet{position:fixed;inset:0;background:rgba(0,0,0,.35);display:grid;place-items:center;z-index:30;padding:16px}
-.sheetbox{background:var(--paper);border:1px solid var(--ink);border-radius:12px;width:100%;max-width:380px;padding:26px 24px 22px;position:relative}
-.sheetbox > div{display:grid;gap:14px}
-.sheetbox h2{margin:0}
-.sheetbox p{margin:0}
-.sheetbox form{display:grid;gap:10px}
-.x{position:absolute;top:8px;right:12px;background:none;border:0;font:400 22px var(--mono);cursor:pointer;color:var(--ink);padding:4px}
-.uname{display:flex;align-items:center;gap:6px;border:1px solid var(--ink);border-radius:8px;padding:0 0 0 12px}
-.uname input[type=text]{border:0;padding-left:0}
-.uname input[type=text]:focus{outline:none}
-.uname:focus-within{outline:2px solid var(--ink);outline-offset:2px}
-input[type=email]{font:400 13px var(--mono);color:var(--ink);background:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 12px;width:100%}
-.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);background:var(--ink);color:var(--paper);border-radius:8px;padding:10px 16px;font-size:12px;max-width:calc(100% - 32px);z-index:20}
-.modal{position:fixed;inset:0;background:rgba(255,255,255,.92);display:grid;place-items:center;padding:16px;z-index:30}
-.modal-card{background:var(--paper);border:1px solid var(--ink);border-radius:10px;padding:18px;max-width:380px;width:100%;display:grid;gap:12px;max-height:calc(100% - 32px);overflow:auto}
-.modal-card img{width:100%;max-width:230px;margin:0 auto;display:block}
+/* home: a welcome, then rows and grids of shelf cards (site.css has the cards, the bar and everything shared) */
+.home section{margin-top:var(--s6)}
+.home section:first-child{margin-top:0}
+/* signed out: a real shelf, large, then one line and the one black button, from the left like the rest of the site */
+.hero{display:grid;justify-items:start;gap:var(--s4)}
+.hero h1{margin:var(--s2) 0 0}
+/* the shelf: the newest public one, its picture cut to the band its books stand in, on the story's own background
+   colour, with the hairline shelf cards have. The panel keeps its height, so nothing moves when the picture comes.
+   While there are no public shelves it holds the builder's sample shelf, so the page still shows what one is */
+.lead{margin:0;justify-self:stretch;display:grid;gap:var(--s2);min-width:0}
+.stand{position:relative;display:grid;place-items:center;height:460px;padding:var(--s5) var(--s4);background:var(--wash);border-radius:var(--radius);overflow:hidden;container-type:inline-size;--hmax:412px}
+.stand::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12);pointer-events:none}
+.stand.plain{background:var(--paper)}
+.stand a{display:block;line-height:0}
+.cut{display:block;position:relative;overflow:hidden;aspect-ratio:var(--r, .5625);width:min(100cqw, calc(var(--hmax) * var(--r, .5625)), 540px)}   /* 540px: one and a half times the picture, which is 360px wide */
+.cut img{position:absolute;left:0;top:0;width:100%;height:auto;display:block}
+.stand #sample{display:block;width:auto;height:auto;max-width:100%;max-height:var(--hmax)}
+.lead figcaption{display:flex;gap:var(--s2);align-items:baseline;font-size:var(--fs-card);min-height:1.55em;min-width:0}
+.lead figcaption a{text-decoration:none}
+.lead figcaption a:hover,.lead figcaption a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
+.lead figcaption > a{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}   /* a long name is cut short; who made it always shows */
+.lead figcaption span{flex:none;color:var(--grey);font-size:var(--fs-small)}
+.signedout .top .add.primary{background:var(--paper);color:var(--ink)}
+.signedout .top .add.primary:hover{background:var(--wash)}
+/* how it works, short: only here */
+.how ol{margin:0;padding-left:1.6em;display:grid;gap:var(--s1);max-width:72ch}
+@media (max-width:640px){ .stand{height:340px;padding:var(--s4) var(--s3);--hmax:308px} }
+/* a touch screen: the shelf's name under the panel takes a press 44px tall (it's cut with an ellipsis, so it's padded out) */
+@media (pointer:coarse){ .lead figcaption > a{position:relative;padding:13px 0;margin:-13px 0} }
+.welcome h1{margin:0}
+/* ⚡ All activity, at the right of the row's heading */
+h2 .more.zapped{display:inline-flex;align-items:center;gap:var(--s1)}
+h2 .more.zapped svg{width:12px;height:12px;flex:none}
+.welcome h1 a{text-decoration:none}
+.welcome h1 a:hover,.welcome h1 a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:4px}
+.none{margin:0}
+.none a{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
 
 @media (max-width:820px){
-  .shelfgrid{grid-template-columns:minmax(0,1fr);gap:28px}
-  .story{order:-1}
-  .fgrid{grid-template-columns:1fr;gap:26px}
-}
-@media (max-width:520px){
-  .top{padding:12px 16px}
-  .mark{font-size:17px!important;letter-spacing:.22em;margin-right:-.22em}
-  .top a,.acct{font-size:11.5px}
-  .top .r{gap:12px}
-  form.search{grid-template-columns:1fr}
-  .strip{height:200px}
-  .found{--th:220px;--tw:84px}
-  .row2{grid-template-columns:1fr}
-  section{padding-block:40px 0}
+  /* a row stays one row: it scrolls sideways inside the page, and the page itself never does */
+  .thumbs.row{display:flex;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none}
+  .thumbs.row::-webkit-scrollbar{display:none}
+  .thumbs.row li{flex:0 0 calc((100% - (var(--cards) - 1)*var(--card-gap))/var(--cards));min-width:0;scroll-snap-align:start}
 }
 </style>
-
+</head>
+<body>
 <header class="top" id="top">
-  <a href="#how">Info</a>
-  <a class="mark" href="#top" aria-label="shelfstackd, back to top">SHELFSTACKD</a>
-  <span class="r"><a href="#shelf">Shelf (<span id="navCount">0</span>)</a><button class="acct" id="acctBtn" type="button" hidden>Sign in</button></span>
+  <!-- icons: Lucide 1.49.0 (ISC), pasted in -->
+  <a class="mark" href="./" aria-current="page" aria-label="shelfstackd, home">SHELFSTACKD</a>
+  <button class="acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false" hidden><span class="ava" aria-hidden="true"></span><span class="who"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+  <nav class="links" aria-label="shelfstackd">
+    <a class="zap" href="feed/" aria-label="Activity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z"/></svg></a>
+    <a href="shelves/">Shelves</a><a href="members/">Members</a>
+    <a class="find" href="members/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
+  </nav>
+  <a class="signin" id="signInBtn" href="#" hidden>Sign in</a>
+  <span class="addwrap"><a class="btn primary add" href="build/" aria-label="Add a film or a book"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Add</span></a><button class="btn primary addmore" id="addMore" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More ways to add" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></span>
 </header>
 
-<main>
-  <section id="search" class="col">
-    <h1>Find a spine</h1>
-    <p>Type a film or a book. shelfstackd looks through DVD and book scans online, cuts the spine out of each one, and puts it on your shelf. When the shelf looks right, save it as a story.</p>
-    <p class="say">The real spine, not a mockup.</p>
-    <form class="search" id="sform" autocomplete="off">
-      <input type="text" id="q" placeholder="Gummo, The Waves, Kids..." aria-label="Film or book name" maxlength="120">
-      <button class="btn" type="submit">Search</button>
-    </form>
-    <div class="opts" role="radiogroup" aria-label="Search in">
-      <label><input type="radio" name="qk" value="all" checked>All</label>
-      <label><input type="radio" name="qk" value="movie">Films</label>
-      <label><input type="radio" name="qk" value="book">Books</label>
-      <span class="ed" role="radiogroup" aria-label="Edition"><span class="grey">Edition</span>
-        <label><input type="radio" name="ed" value="english" checked>English</label>
-        <label><input type="radio" name="ed" value="any">Any</label></span>
-    </div>
-    <select id="qkind" hidden aria-hidden="true"><option value="all">all</option><option value="movie">movie</option><option value="book">book</option></select>
-    <div class="strip" id="strip" role="group" aria-label="Your shelf"></div>
-    <p class="grey" id="stripEmpty" hidden style="margin-top:26px">Your shelf is empty. Search a title.</p>
-    <p class="grey" id="modeNote" style="margin-top:14px">Search needs the shelfstackd server, so it's off in this preview. Uploading a scan below still works.</p>
-    <p class="grey" id="recent" hidden style="margin-top:14px">Recently found: <span></span></p>
-    <div class="status" id="sstatus" role="status"></div>
-    <div id="matches" hidden>
-      <div class="tbl"><table>
-        <thead><tr><th>No.</th><th>Title</th><th>Year</th><th>Type</th><th>By</th></tr></thead>
-        <tbody id="mrows"></tbody>
-      </table></div>
-    </div>
-    <div id="spines" hidden style="margin-top:26px">
-      <h2 class="picked"><span id="spinesTitle">Spines</span> <small id="spinesBy"></small> <button class="dash sm" id="changeMatch" type="button">Change</button></h2>
-      <p id="dupAsk" hidden><span id="dupText"></span> <button class="dash sm" id="dupAdd" type="button">Add again</button> <button class="dash sm" id="dupCancel" type="button">Cancel</button></p>
-      <div class="found" id="found"></div>
-      <p class="grey" id="noReal" hidden>No real spine found yet. Upload a photo of yours to add it to the archive.</p>
-      <p class="grey" id="spinesNote" hidden>Real DVD and book spines show up once the shelfstackd server is connected. Until then, paste a full DVD scan below.</p>
-    </div>
-  </section>
+<main class="home">
+  <p class="grey" id="state" role="status">Loading…</p>
 
-  <section id="upload" class="col">
-    <h2>Upload</h2>
-    <p>Found a scan yourself? Drop it here. A full DVD or book wrap, with back, spine and front in one image, gives you the real spine. A plain cover or poster gets a spine made from its colours.</p>
-    <label class="drop" id="drop" for="file">
-      <span class="dash sm">Choose image</span>
-      <span class="grey" style="display:block;margin-top:10px">or drag it here, or copy an image and press Ctrl+V</span>
-      <input type="file" id="file" accept="image/*" multiple>
-    </label>
-  </section>
-
-  <section id="shelf" class="wide">
-    <h2>Shelf <small id="count"></small> <button class="dash sm" id="clear" type="button" style="margin-left:auto">Clear</button></h2>
-    <p class="grey" id="sampleNote">This is a sample shelf. It clears when you add your first title.</p>
-    <div class="shelfgrid">
-      <ol class="books" id="books"></ol>
-      <div class="story" id="export">
-        <div class="ctl"><span class="lbl">Layout</span>
-          <div class="seg" id="layout" role="group" aria-label="Layout"><button type="button" data-v="row">Spines</button><button type="button" data-v="stack">Stacked</button><button type="button" data-v="covers">Covers</button></div></div>
-        <div class="ctl"><span class="lbl">Filter</span>
-          <div class="filters" id="filters" role="group" aria-label="Filter"></div>
-          <label class="range"><span class="lbl">Intensity</span><input type="range" id="intensity" min="0" max="100" value="70" aria-label="Filter intensity"></label></div>
-        <div class="phone"><div class="stage" id="stage"><canvas id="story" width="1080" height="1920" aria-label="Story preview"></canvas>
-          <div class="pngbox" id="pngBox" hidden><button class="pngx" id="pngX" type="button" aria-label="Remove this PNG">✕</button><span class="pngh" id="pngH" aria-hidden="true"></span><span class="pngr" id="pngR" aria-hidden="true"></span></div></div></div>
-        <div class="ctl"><label class="lbl" for="caption">Caption</label><input type="text" id="caption" value="my next reads." maxlength="60"></div>
-        <div class="ctl" id="themeWrap"><span class="lbl">Background</span>
-          <div class="seg" id="theme" role="group" aria-label="Background"><button type="button" data-v="paper">Paper</button><button type="button" data-v="ink">Ink</button><button type="button" data-v="blush">Blush</button><button type="button" data-v="shelf">Shelf</button><button type="button" data-v="dark">Dark</button><button type="button" data-v="forest">Forest</button><button type="button" data-v="wall">Your PNG<em class="pro">PRO</em></button></div>
-          <p class="note" id="themeNote"></p>
-          <div class="wallbox" id="wallBox" hidden>
-            <p class="wallrow"><span class="wallname" id="wallName"></span><button class="dash sm" id="wallPick" type="button">Choose picture</button><button class="dash sm" id="wallRemove" type="button">Remove</button></p>
-            <p class="note">Best size: 1080 × 1920 px (9:16, same as an Instagram story). Min 720 × 1280. PNG, JPG or WEBP, max 5 MB.</p>
-            <p class="note warn" id="wallWarn"></p>
-          </div>
-          <input type="file" id="wallFile" accept="image/png,image/jpeg,image/webp" hidden>
-          <div class="pngadd"><button class="dash sm" id="pngAdd" type="button">+ Add PNG<em class="pro">PRO</em></button>
-            <p class="note">Posters, photos, anything. PNG, JPG or WEBP, max 5 MB each. Transparent PNGs work. Place it anywhere on the wall. It always stays behind the books.</p>
-            <p class="note" id="pngNote"></p>
-            <label class="range" id="pngOpWrap" hidden><span class="lbl">Opacity</span><input type="range" id="pngOp" min="10" max="100" value="100" aria-label="Opacity of the picked PNG"><span class="lbl" id="pngOpV">100%</span></label>
-            <input type="file" id="pngFile" accept="image/png,image/jpeg,image/webp" multiple hidden></div>
-          <label class="check"><input type="checkbox" id="woodShelf"> Wood shelf</label>
-          <label class="check"><input type="checkbox" id="plank"> Floating shelf<em class="pro">PRO</em></label>
-          <div class="colours" id="colourWrap" hidden><span class="lbl">Shelf colour<em class="pro">PRO</em></span>
-            <div class="swatches" id="swatches" role="group" aria-label="Shelf colour">
-              <button type="button" class="swatch" data-c="#FFFFFF" aria-label="White" style="background:#FFFFFF"></button><button type="button" class="swatch" data-c="#161616" aria-label="Black" style="background:#161616"></button><button type="button" class="swatch" data-c="#B7B7B2" aria-label="Grey" style="background:#B7B7B2"></button><button type="button" class="swatch" data-c="#D8A86A" aria-label="Oak" style="background:#D8A86A"></button><button type="button" class="swatch" data-c="#7A4E2D" aria-label="Walnut" style="background:#7A4E2D"></button><button type="button" class="swatch" data-c="#86A27B" aria-label="Sage" style="background:#86A27B"></button>
-              <input type="text" id="colourHex" value="#FFFFFF" maxlength="7" spellcheck="false" autocomplete="off" aria-label="Shelf colour as a hex code"></div></div>
-          <p class="note" id="plankNote"></p></div>
-        <label class="check" id="variedWrap"><input type="checkbox" id="varied" checked> Mixed heights</label>
-        <button class="btn full" id="exportBtn" type="button">Save story</button>
-        <p class="note" id="exportNote"></p>
-        <div class="savewrap" id="saveWrap" hidden>
-          <button class="btn full ghost" id="saveShelf" type="button">Save shelf</button>
-          <button class="dash sm" id="saveNew" type="button" hidden>Save as a new shelf</button>
-          <form class="namebox" id="nameBox" hidden>
-            <label class="lbl" for="shelfName">Name this shelf</label>
-            <div class="namerow"><input type="text" id="shelfName" maxlength="60" autocomplete="off" spellcheck="false"><button class="btn" type="submit">Save</button></div>
-            <p class="note">It's also the caption on the story. <button class="dash sm" id="nameCancel" type="button">Cancel</button></p>
-          </form>
-          <p class="note" id="saveNote"></p>
+  <!-- signed out -->
+  <div id="out" hidden>
+    <section class="hero">
+      <!-- a real shelf, large: the newest public one (the script puts it in). The builder's sample shelf (tests/art.js
+           makes the picture) is shown only while there are no public shelves -->
+      <figure class="lead" id="lead">
+        <div class="stand" id="stand">
+          <img id="sample" src="sample-shelf.jpg" alt="Four book spines standing side by side: The Waves, Delta of Venus, Journey by Moonlight and Kuasa Rahim." width="440" height="733" loading="lazy" hidden>
         </div>
-      </div>
-    </div>
-  </section>
+        <figcaption id="leadCap"></figcaption>
+      </figure>
+      <h1>Shelve the films and books you love, with their real spines.</h1>
+      <a class="btn primary" id="start" href="build/">Make a shelf</a>
+    </section>
+    <section class="how">
+      <h2>How it works</h2>
+      <ol>
+        <li>Type a film or a book.</li>
+        <li>We find a scan of its DVD or book cover and cut out the spine.</li>
+        <li>No clean scan? You get a spine made from the poster or cover.</li>
+      </ol>
+    </section>
+    <section id="outJust">
+      <h2>Just shelved <a class="more" href="shelves/">More</a></h2>
+      <p class="grey" id="outState" role="status">Loading…</p>
+      <ul class="thumbs" id="outGrid"></ul>
+    </section>
+    <section id="stackersSec" hidden>
+      <h2>Recently active <a class="more" href="members/">More</a></h2>
+      <ul class="stackers" id="stackers"></ul>
+    </section>
+  </div>
 
-  <section id="mine" class="wide" hidden>
-    <h2>My shelves <small id="mineCount"></small> <a class="dash sm" id="profileLink" href="u/" style="margin-left:auto">Profile</a> <button class="dash sm" id="signOut" type="button">Sign out</button></h2>
-    <p class="grey" id="mineEmpty" hidden>No saved shelves yet. Make one above and press Save shelf.</p>
-    <ol class="mine" id="mineList"></ol>
-  </section>
-
-  <div class="home"><a class="dash" href="#top">Back to top</a></div>
+  <!-- signed in -->
+  <div id="in" hidden>
+    <section class="welcome">
+      <h1 id="hello">Welcome back. <span class="grey">Here’s what people you follow have been shelving…</span></h1>
+    </section>
+    <section>
+      <h2>New from people you follow <a class="more zapped" href="feed/?following"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z"/></svg>All activity</a></h2>
+      <p class="grey" id="folState" role="status">Loading…</p>
+      <ul class="thumbs row" id="folRow"></ul>
+      <p class="none" id="folNone" hidden>Follow people to see their shelves here. <a href="members/">Find members</a></p>
+    </section>
+    <section>
+      <h2>Just shelved <a class="more" href="shelves/">More</a></h2>
+      <p class="grey" id="inState" role="status">Loading…</p>
+      <ul class="thumbs" id="inGrid"></ul>
+    </section>
+  </div>
 </main>
 
-<div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-label="Account">
+<div class="sheet" id="signSheet" hidden role="dialog" aria-modal="true" aria-label="Sign in">
   <div class="sheetbox">
-    <button class="x" id="sheetClose" type="button" aria-label="Close">×</button>
-    <div id="signinPane">
+    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <div>
       <h2>Sign in</h2>
-      <p>Save your shelves to your account and open them again on any device.</p>
-      <button class="btn full" id="googleBtn" type="button">Continue with Google</button>
-      <form id="emailForm" hidden>
-        <input type="email" id="email" placeholder="you@example.com" autocomplete="email" aria-label="Email">
-        <button class="btn full ghost" type="submit">Email me a sign-in link</button>
-      </form>
+      <p>Keep your shelf and everything you log on any device.</p>
+      <button class="btn primary full" id="googleBtn" type="button">Continue with Google</button>
       <p class="note">Accounts are for people 18 or older. <a href="privacy.html">Privacy</a></p>
-    </div>
-    <div id="namePane" hidden>
-      <h2>Pick a username</h2>
-      <p>It’s how your shelves will be found later. You can change it once a month.</p>
-      <label class="uname"><span aria-hidden="true">@</span><input type="text" id="uname" maxlength="20" autocapitalize="off" autocomplete="off" spellcheck="false" aria-label="Username"></label>
-      <p class="note" id="unameNote"></p>
-      <label class="check"><input type="checkbox" id="adult"> I’m 18 or older</label>
-      <button class="btn full" id="nameBtn" type="button" disabled>Create account</button>
-      <p class="note">By creating an account you agree to how we keep your data: <a href="privacy.html">Privacy</a>. <button class="dash sm" id="nameOut" type="button">Sign out</button></p>
     </div>
   </div>
 </div>
 
 <footer>
-  <div class="fgrid">
-    <div id="how">
-      <h3>How it works</h3>
-      <ol>
-        <li>You type a name. Films come from TMDB, books from Open Library.</li>
-        <li>We look for full DVD and book scans of that title.</li>
-        <li>The strip between back and front is the spine. We cut it out.</li>
-        <li>No clean scan? You get a spine made from the poster or cover.</li>
-      </ol>
-    </div>
-    <div id="sources">
-      <h3>Sources</h3>
-      <p>Film data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB. Book data from Open Library. Scans belong to their studios and publishers, and every spine links back to where it was found.</p>
-    </div>
-    <div>
-      <h3>Shelf</h3>
-      <p>Build it, then post it.</p>
-      <a class="fbtn" href="#shelf">Open shelf</a>
-    </div>
-  </div>
-  <div class="fbase"><span>© 2026 SHELFSTACKD. All rights reserved.</span><span>Not affiliated with any studio or publisher.</span></div>
+  <p>Film data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB. Book data from <a href="https://openlibrary.org/" target="_blank" rel="noopener">Open Library</a>. <a href="https://search.brave.com/" target="_blank" rel="noopener">Search by Brave</a>.</p>
+  <p class="fnav"><a href="privacy.html">Privacy</a><a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a></p>
 </footer>
-
-<div class="modal" id="modal" hidden>
-  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="mtitle">
-    <b id="mtitle">SAVE YOUR STORY</b>
-    <img id="mimg" alt="Your story image">
-    <p>Press and hold the image on a phone, or right-click it on a computer, and choose Save image. Then add it to your Instagram story.</p>
-    <button class="btn" id="mclose" type="button">Done</button>
-  </div>
-</div>
 <div class="toast" id="toast" hidden></div>
 
-<script src="shelf.js?v=20260930d"></script>
+<script src="shelf.js?v=20261002a"></script>
+<script src="worker-address.js?v=20261001a"></script>
+<script src="cards.js?v=20261002a"></script>
+<script src="nav.js?v=20261004a"></script>
 <script>
 (() => {
+/* Home. Signed out: the newest public shelf, large, one line about the site and Make a shelf, how it works, then the
+   next newest shelves and the people who made them. Signed in: a welcome, the newest shelves of the people you follow,
+   then everyone's. The shelves come from feed() (0006), as on feed/. */
 const $ = s => document.querySelector(s);
-const story = $('#story'), sctx = story.getContext('2d');
-const W = 1080, H = 1920;
-// the spines and the story are drawn by shelf.js (shared with the profile page)
-const {FONTS, STYLES, hex, lum, contrast, sat, dist, crop, posterTitle, loadImg, isReal, isCase, makeSpine, TEX, texture, isDark, shelfName} = Shelf;
-// the builder inside a profile page (u/): it opens a saved shelf (?embed&open=<id>) or an empty one (?embed&new),
-// and tells the profile when it's saved
-const EMBED = document.documentElement.classList.contains('embed');
-let books = [], isSample = true, uid = 0, server = false;
-const settings = {caption:'my next reads.', theme:'paper', layout:'row', varied:true, wood:false, plank:false, shelfColour:'#FFFFFF'};
-
-/* ---------- colour ---------- */
-function extractPalette(img){
-  const c = document.createElement('canvas'); c.width = 48; c.height = 72;
-  const x = c.getContext('2d', {willReadFrequently:true}), iw = img.width, ih = img.height;
-  x.drawImage(img, iw*.06, ih*.06, iw*.88, ih*.66, 0, 0, 48, 72);
-  const d = x.getImageData(0,0,48,72).data, buckets = new Map();
-  for (let i = 0; i < d.length; i += 4){
-    const k = (d[i]>>4)<<8 | (d[i+1]>>4)<<4 | (d[i+2]>>4), e = buckets.get(k) || {n:0,r:0,g:0,b:0};
-    e.n++; e.r += d[i]; e.g += d[i+1]; e.b += d[i+2]; buckets.set(k, e);
-  }
-  const list = [...buckets.values()].map(e => ({n:e.n, c:[e.r/e.n, e.g/e.n, e.b/e.n]})).sort((a,b) => b.n - a.n);
-  if (!list.length) return {bg:'#333333', fg:'#FFFFFF', accent:'#CCCCCC'};
-  const score = e => e.n * (.35 + sat(e.c)*1.8), dom = list.slice(0,10).sort((a,b) => score(b)-score(a))[0].c, bg = hex(...dom);
-  const others = list.slice(0,14).filter(e => dist(e.c, dom) > 70);
-  const ac = others.slice().sort((a,b) => sat(b.c)*Math.sqrt(b.n) - sat(a.c)*Math.sqrt(a.n))[0];
-  const accent = ac ? hex(...ac.c) : (lum(bg) > .5 ? '#1A1A1A' : '#F2F2F2');
-  let fg = null, best = 0;
-  for (const e of others){ const h = hex(...e.c), ct = contrast(h, bg); if (ct > best){ best = ct; fg = h; } }
-  if (best < 4.5) fg = contrast('#FFFFFF', bg) >= contrast('#111111', bg) ? '#FFFFFF' : '#111111';
-  return {bg, fg, accent};
-}
-
-/* ---------- wrap scans: find the spine between back and front ---------- */
-/* Returns {x, w, frontX, score} in image pixels, or null when there's no clear spine.
-   score is 0-100: how sure we are this is a clean spine (clear edges, where a DVD spine sits,
-   an even colour down its height, lettering on it). The same logic lives in backend/api/spine.py. */
-function findSpine(img, kind){
-  kind = kind || (img.width/img.height >= 1.3 && img.width/img.height <= 1.9 ? 'movie' : 'book');
-  const aspect = img.width/img.height, [lo, hi] = kind === 'movie' ? [1.3, 1.9] : [1.2, 2.4];
-  if (aspect < lo || aspect > hi) return null;
-  const cw = 600, ch = Math.max(40, Math.round(cw/aspect));
-  const c = document.createElement('canvas'); c.width = cw; c.height = ch;
-  const x = c.getContext('2d', {willReadFrequently:true}); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, cw, ch);
-  const d = x.getImageData(0,0,cw,ch).data, y0 = Math.floor(ch*.08), y1 = Math.floor(ch*.92), cols = [];
-  const px = (X, Y) => { const i = (Y*cw+X)*4; return [d[i], d[i+1], d[i+2]]; };
-  // a photo of a case or book on a table has a plain background down both sides; a scan runs to the edge
-  const band = Math.max(4, Math.floor(cw/50)), sd = (x0, x1) => { const s = [0,0,0], q = [0,0,0]; let n = 0;
-    for (let Y = 0; Y < ch; Y++) for (let X = x0; X < x1; X++){ const p = px(X, Y); for (let k = 0; k < 3; k++){ s[k] += p[k]; q[k] += p[k]*p[k]; } n++; }
-    return [0,1,2].reduce((a, k) => a + Math.sqrt(Math.max(0, q[k]/n - (s[k]/n)**2)), 0)/3; };
-  const border = (sd(0, band) + sd(cw - band, cw))/2;
-  if (border < 10) return null;
-  for (let X = 0; X < cw; X++){ let r=0,g=0,b=0,n=0; for (let Y = y0; Y < y1; Y += 2){ const i = (Y*cw+X)*4; r+=d[i]; g+=d[i+1]; b+=d[i+2]; n++; } cols.push([r/n,g/n,b/n]); }
-  const avg = (a, b) => { const s = [0,0,0]; for (let i = a; i <= b; i++){ s[0]+=cols[i][0]; s[1]+=cols[i][1]; s[2]+=cols[i][2]; } const n = b-a+1; return [s[0]/n, s[1]/n, s[2]/n]; };
-  const median = list => [0,1,2].map(k => { const v = list.map(p => p[k]).sort((a,b) => a-b), m = v.length >> 1; return v.length % 2 ? v[m] : (v[m-1] + v[m])/2; });
-  // colour step between the 3 columns left and right of X: scans have soft, blurred edges
-  const edge = cols.map((_, i) => i < 3 || i > cw-4 ? 0 : dist(avg(i-3, i-1), avg(i+1, i+3)));
-  const film = kind === 'movie', minW = Math.round(cw*(film ? .025 : .02)), maxW = Math.round(cw*(film ? .09 : .14));
-  const cands = [];
-  for (let L = Math.floor(cw*.36); L <= Math.floor(cw*.56); L++)
-    for (let R = L + minW; R <= Math.min(cw-4, L + maxW); R++){
-      const lo = Math.min(edge[L], edge[R]), hi = Math.max(edge[L], edge[R]);
-      if (lo < 10 || hi < 25) continue;                           // one edge can be soft (spine and front alike), not both
-      const e = .6*lo + .4*hi, wf = (R-L)/cw, off = Math.abs((L+R)/2/cw - .5);
-      const fit = film ? ((wf >= .03 && wf <= .07) || (aspect >= 1.65 && wf >= .025 && wf <= .06) ? 1 : .75)*Math.exp(-.5*(off/.035)**2)   // DVD: 129 | 14 | 129 mm; Blu-ray runs wider, spine thinner
-                       : Math.exp(-.5*(off/.1)**2);
-      cands.push({L, R, e, fit, s:e*fit});
-    }
-  if (!cands.length) return null;
-  cands.sort((a,b) => b.s - a.s);
-  // among the best, prefer an even colour down the height (a spine, not a slice of a photo)
-  const evenness = (L, R) => {
-    const rows = [];
-    for (let Y = y0; Y < y1; Y += 2){ let r=0,g=0,b=0; for (let X = L+1; X < R; X++){ const i = (Y*cw+X)*4; r+=d[i]; g+=d[i+1]; b+=d[i+2]; } const n = R-L-1; rows.push([r/n,g/n,b/n]); }
-    const med = median(rows);
-    return rows.filter(v => dist(v, med) < 60).length / rows.length;
-  };
-  const top40 = cands.slice(0, 40);
-  for (const cd of top40){ cd.u = evenness(cd.L, cd.R); cd.f = cd.s*(.5 + .5*cd.u); }
-  const ranked = top40.slice().sort((a,b) => b.f - a.f);            // best first; equal ones keep their order
-  // drop plain margins above and below the wrap (rows that are one flat colour right across the scan)
-  const flat = Y => { let s = 0, q = 0; for (let X = 0; X < cw; X += 2){ const i = (Y*cw+X)*4, v = d[i] + d[i+1] + d[i+2]; s += v; q += v*v; } const n = Math.ceil(cw/2); return Math.sqrt(Math.max(0, q/n - (s/n)**2))/3 < 6; };
-  let top = 0, bot = ch - 1;
-  while (top < ch*.15 && flat(top)) top++;
-  while (bot > ch*.85 && flat(bot)) bot--;
-  const k = img.width/cw, ky = img.height/ch;
-  const cut = best => {
-    // move each edge inward past columns that look more like the back or front cover than the spine
-    const bl = best.L, br = best.R, q = Math.floor((br-bl)/4), inner = median(cols.slice(bl+q, br-q+1)), cap = Math.max(2, Math.round(cw*.02));
-    const outL = avg(Math.max(0, bl-5), bl-2), outR = avg(br+2, Math.min(cw-1, br+5));
-    let L = bl, R = br;
-    while (L - bl < cap && R - L > minW && dist(cols[L], inner) > dist(cols[L], outL)) L++;
-    while (br - R < cap && R - L > minW && dist(cols[R], inner) > dist(cols[R], outR)) R--;
-    // spine and cover the same colour (Gummo: yellow on yellow) leave a soft edge that lettering can beat:
-    // widen a thin film spine over columns that still match it, up to a DVD spine's usual 5 %
-    if (film) while ((R-L)/cw < .05){ const r = R < cw-4 && dist(cols[R+1], inner) < 35, l = L > 3 && dist(cols[L-1], inner) < 35; if (!r && !l) break; if (r) R++; if (l && (R-L)/cw < .05) L--; }
-    L++; R--;                                                         // one more column for the soft edge itself
-    // a spine carries lettering: rows change as they cross it. A blank strip is a gap or a case hinge.
-    const g = [];
-    for (let Y = y0; Y < y1; Y++){ let s = 0; for (let X = L+1; X < R; X++){ const i = (Y*cw+X)*4; s += d[i] + d[i+1] + d[i+2]; } g.push(s/(3*Math.max(1, R-L-1))); }
-    let text = 0; for (let i = 1; i < g.length; i++) text += Math.abs(g[i] - g[i-1]); text /= Math.max(1, g.length - 1);
-    const penalty = (Math.abs(aspect - 4/3) < .012 ? .6 : 1)*(text < 2 ? .7 : 1);   // 4:3 is a phone photo, not a scan
-    // Books: scans are rare and look-alikes common (3D mock-ups, a strip of one cover, two books side by side,
-    // wooden boards for "Norwegian Wood"). Keep only a flat scan: a busy edge all round, clear edges on both
-    // sides of the spine, straight up and down, and an even colour top to bottom.
-    if (!film){
-      const at = X => Math.max(...edge.slice(Math.max(0, X-3), X+4));
-      const drift = X => { const pos = [[.1, .4], [.6, .9]].map(([a, b]) => { let best = -1, arg = X;
-        for (let i = Math.max(3, X-12); i <= Math.min(cw-4, X+12); i++){ const col = (i0, i1) => { const t = [0,0,0]; let n = 0;
-          for (let Y = Math.floor(ch*a); Y < Math.floor(ch*b); Y += 2) for (let c2 = i0; c2 <= i1; c2++){ const j = (Y*cw+c2)*4; t[0]+=d[j]; t[1]+=d[j+1]; t[2]+=d[j+2]; n++; } return t.map(v => v/n); };
-          const e = dist(col(i+1, i+3), col(i-3, i-1)); if (e > best){ best = e; arg = i; } } return arg; });
-        return Math.abs(pos[0] - pos[1])/cw; };
-      if (border < 20 || Math.min(at(bl), at(br)) < 25 || best.u < .9 || Math.max(drift(bl), drift(br)) > .012) return null;
-    }
-    const score = Math.round(100*Math.min(1, best.e/60)*best.fit*(.5 + .5*best.u)*penalty);
-    if (score < 20) return null;
-    return {x:L*k, w:(R-L+1)*k, frontX:(br+1)*k, y:top*ky, h:(bot-top+1)*ky, score};
-  };
-  // A spine is never much wider than a real one for its height: a DVD's is 14 x 184 mm (1:13), a Blu-ray's
-  // 12 x 148, and scans squash them (right cuts in the tested scans ran up to 1:8). The thickest paperbacks
-  // are about 1:3.5. A wider cut has taken in part of the back or front, so the next candidate gets a turn;
-  // with none left, there's no clean spine here (the caller moves on to the next scan, or the cover).
-  const most = film ? .14 : .3, first = cut(ranked[0]);
-  if (!first || first.w/first.h <= most) return first;
-  for (const cd of ranked.slice(1)){ const r = cut(cd); if (r && r.w/r.h <= most) return r; }
-  return null;
-}
-/* A photo or scan of a single spine (at least 4 times taller than wide). Trims plain background
-   around it. score 0-100: a clean background around it (or none at all) and lettering on it. */
-function findSoloSpine(img){
-  const ch = 600, cw = Math.max(6, Math.round(ch*img.width/img.height));
-  const c = document.createElement('canvas'); c.width = cw; c.height = ch;
-  const x = c.getContext('2d', {willReadFrequently:true}); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, cw, ch);
-  const d = x.getImageData(0, 0, cw, ch).data, px = (X, Y) => { const i = (Y*cw+X)*4; return [d[i], d[i+1], d[i+2]]; };
-  // background: the colour of the outer ring of pixels
-  const ring = [];
-  for (let X = 0; X < cw; X++){ ring.push(px(X, 0), px(X, ch-1)); }
-  for (let Y = 0; Y < ch; Y++){ ring.push(px(0, Y), px(cw-1, Y)); }
-  const bg = [0,1,2].map(k => ring.map(p => p[k]).sort((a,b) => a-b)[ring.length >> 1]);
-  const plain = ring.filter(p => dist(p, bg) < 30).length/ring.length;   // 1: a clean background all round
-  const isBg = p => plain > .6 && dist(p, bg) < 30;
-  const colBg = X => { let n = 0; for (let Y = 0; Y < ch; Y += 2) n += isBg(px(X, Y)); return n/Math.ceil(ch/2) > .9; };
-  const rowBg = Y => { let n = 0; for (let X = 0; X < cw; X++) n += isBg(px(X, Y)); return n/cw > .9; };
-  let L = 0, R = cw-1, T = 0, B = ch-1;
-  while (L < R && colBg(L)) L++;
-  while (R > L && colBg(R)) R--;
-  while (T < B && rowBg(T)) T++;
-  while (B > T && rowBg(B)) B--;
-  const w = R-L+1, h = B-T+1;
-  if (w < 4 || h < ch*.5 || h/w < 4 || h/w > 40) return null;
-  // lettering: rows change as they cross the spine
-  let text = 0, prev = null;
-  for (let Y = T; Y <= B; Y++){ let s = 0; for (let X = L; X <= R; X++){ const p = px(X, Y); s += p[0]+p[1]+p[2]; } s /= 3*w; if (prev !== null) text += Math.abs(s - prev); prev = s; }
-  text /= Math.max(1, h-1);
-  const score = Math.round(100*(plain > .6 ? 1 : .6)*(.4 + .6*Math.min(1, text/6)));
-  if (score < 20) return null;
-  const k = img.width/cw, ky = img.height/ch;
-  return {x:L*k, y:T*ky, w:w*k, h:h*ky, score};
-}
-const API = String(window.SPINESTACK_API || '').replace(/\/+$/, '');
-
-/* ---------- sample shelf (drawn covers, no real artwork) ---------- */
-function drawCover(fn){ const c = document.createElement('canvas'); c.width = 400; c.height = 600; fn(c.getContext('2d')); return c; }
-function samples(){
-  const waves = drawCover(x => { x.fillStyle = '#161616'; x.fillRect(0,0,400,600); x.strokeStyle = '#EDE7D6'; x.lineWidth = 3; for (let r = 0; r < 9; r++){ x.beginPath(); for (let i = 0; i <= 400; i += 8) x.lineTo(i, 300+r*22+Math.sin(i/30+r)*10); x.stroke(); } });
-  const venus = drawCover(x => { const g = x.createLinearGradient(0,0,0,600); g.addColorStop(0,'#F4C3CF'); g.addColorStop(.7,'#EFA5B8'); g.addColorStop(1,'#E8588A'); x.fillStyle = g; x.fillRect(0,0,400,600); x.fillStyle = 'rgba(160,110,120,.35)'; x.beginPath(); x.ellipse(120,380,110,190,.3,0,7); x.fill(); x.fillStyle = '#1F2E26'; x.beginPath(); x.moveTo(170,0); x.quadraticCurveTo(230,120,190,220); x.lineTo(215,225); x.quadraticCurveTo(250,110,210,0); x.fill(); });
-  const moon = drawCover(x => { x.fillStyle = '#1C1B21'; x.fillRect(0,0,400,600); x.fillStyle = '#E8D23C'; x.beginPath(); x.arc(270,190,70,0,7); x.fill(); x.fillStyle = '#1C1B21'; x.beginPath(); x.arc(295,175,62,0,7); x.fill(); });
-  const kuasa = drawCover(x => { x.fillStyle = '#EFE7D6'; x.fillRect(0,0,400,600); x.fillStyle = '#A3542E'; for (let i = 0; i < 12; i++){ x.beginPath(); x.moveTo(i*36,600); x.lineTo(i*36+18,540); x.lineTo(i*36+36,600); x.fill(); } });
-  return [
-    {title:'The Waves', author:'Virginia Woolf', img:waves, bg:'#161616', fg:'#F1EEE6', accent:'#EDE7D6', style:'classic', font:'oswald'},
-    {title:'delta of venus', author:'anaïs nin', img:venus, bg:'#F2B6C5', fg:'#1F2E26', accent:'#E8588A', style:'strip', font:'black'},
-    {title:'Journey by Moonlight', author:'Antal Szerb', img:moon, bg:'#1C1B21', fg:'#E8D23C', accent:'#E8D23C', style:'solid', font:'oswald'},
-    {title:'Kuasa Rahim', author:'Barbara Watson Andaya', img:kuasa, bg:'#EFE7D6', fg:'#3B2E25', accent:'#A3542E', style:'solid', font:'serif'},
-  ].map((b,i) => newBook(Object.assign(b, {wf:[.96,1.08,.9,1.15][i], hf:[1.02,.98,1,.95][i]})));
-}
-function newBook(b){
-  const i = uid++;
-  return Object.assign({id:'b'+i, cat:'D'+String(10000+Math.floor(Math.random()*89999)), wf:.86+Math.random()*.32, hf:.9+Math.random()*.14, jit:Math.random()*2-1, kind:'book', author:'', studio:'', status:'',
-    thumb: b.img && b.img.toDataURL ? b.img.toDataURL('image/jpeg', .8) : b.thumb}, b);
-}
-
-/* ---------- filters: what happens to the books. The background is its own control; filters never touch it. ---------- */
-const SHELFSTACKD_PRO_REQUIRED = false;   // paywall off: Pro filters work for everyone and just carry a PRO tag
-const FILTERS = [
-  {id:'clean', name:'Clean'},
-  {id:'faded', name:'Faded'},
-  {id:'glossy', name:'Glossy'},
-  {id:'grain', name:'Grain'},
-  {id:'vhs', name:'Worn VHS', pro:true},
-  {id:'rental', name:'Rental Shop', pro:true},
-  {id:'library', name:'Library Copy', pro:true},
-  {id:'secondhand', name:'Secondhand Bookshop', pro:true},
-  {id:'cloth', name:'Clothbound', pro:true},
-  {id:'flash', name:'Flash', pro:true},
-  {id:'film', name:'Film Roll', pro:true},
-  {id:'riso', name:'Riso Print', pro:true},
-  {id:'xerox', name:'Xerox Zine', pro:true},
-  {id:'night', name:'Night Shelf', pro:true},
-];
-settings.filter = 'clean'; settings.intensity = 70;
-// Free shelves hold 6 spines, Pro 20. While SHELFSTACKD_PRO_REQUIRED is false everyone is Pro; with it on, the database
-// says who is (am_i_pro, checked after sign-in). Its twin in the database is app_config.pro_required: flip both together.
-const SPINES_FREE = 6, SPINES_PRO = 20;
-let proAccount = false;
-const isPro = () => !SHELFSTACKD_PRO_REQUIRED || proAccount;
-const spineMax = () => isPro() ? SPINES_PRO : SPINES_FREE;
-const PRO_TAG = '<em class="pro">PRO</em>';
-const proNote = (el, msg) => { el.innerHTML = PRO_TAG + esc(msg); };
-function proToast(msg){ toast(msg); $('#toast').insertAdjacentHTML('afterbegin', PRO_TAG); }
-/* Your own wall and PNGs (Pro). They stay in this page while you make the shelf and go to the Worker only when you
-   save it (so a story needs no account), and they're deleted from storage once no saved shelf of yours uses them. */
-const media = {wall: null, pngs: []};   // wall: {img, blob, name, small, dark, key}; pngs: [{img, blob, key, x, y, w, rot, opacity}]
-const art = () => ({wall: media.wall && media.wall.img, wallDark: !!(media.wall && media.wall.dark), pngs: media.pngs});
-const walled = () => settings.theme === 'wall' && !!media.wall;
-// the Pro settings a shelf keeps (in shelves.pro); the pictures' keys exist once they're uploaded
-const r4 = v => Math.round(v*1e4)/1e4;
-// a PNG's turn and opacity are kept only when they're not the plain 0° and 100 %
-const itemOf = p => { const rot = Math.round((p.rot || 0)*10)/10, opacity = Math.round((p.opacity == null ? 1 : p.opacity)*100)/100;
-  return clean0({key: p.key, x: r4(p.x), y: r4(p.y), w: r4(p.w), rot: rot || undefined, opacity: opacity < 1 ? opacity : undefined}); };
-const proSettings = () => clean0({plank: settings.plank || undefined, shelf_colour: settings.plank && settings.shelfColour !== '#FFFFFF' ? settings.shelfColour : undefined, wall_key: walled() && media.wall.key || undefined,
-  wall_items: media.pngs.length ? media.pngs.map(itemOf) : undefined});
-const usesPro = () => !!settings.plank || walled() || media.pngs.length > 0;
-const keysOf = pro => [pro && pro.wall_key, ...((pro && pro.wall_items) || []).map(p => p.key)].filter(Boolean);
-// this page's shelf, drawn by shelf.js
-let layout = {captionBottom: 150, booksTop: null};   // where the preview's caption ends and its books begin
-const renderStory = (x = sctx, f = settings.filter, fast = false) => { const r = Shelf.renderStory(x, f, fast, books, settings, false, art()); if (x === sctx) layout = r; return r; };
-const sizes = (H0, U, list = books) => Shelf.sizes(H0, U, list, settings);
-Shelf.onTextureLoaded(() => redraw());
-/* the Filter row: a live thumbnail of this shelf in each look */
-function renderFilterRow(){
-  $('#filters').innerHTML = FILTERS.map(fl => `<button type="button" class="flt" data-v="${fl.id}" aria-pressed="${settings.filter === fl.id}"><canvas width="108" height="192" aria-hidden="true"></canvas><span>${fl.name}${fl.pro ? '<em class="pro">PRO</em>' : ''}</span></button>`).join('');
-}
-let thumbT = 0;
-function renderThumbs(){
-  clearTimeout(thumbT);
-  thumbT = setTimeout(() => document.querySelectorAll('#filters .flt').forEach(bt => {
-    const c = bt.querySelector('canvas'), x = c.getContext('2d'); x.setTransform(c.width/W, 0, 0, c.height/H, 0, 0); renderStory(x, bt.dataset.v, true); x.setTransform(1, 0, 0, 1, 0, 0);
-  }), 250);
-}
-function renderStrip(){
-  const el = $('#strip'), none = !books.length;
-  el.hidden = none; $('#stripEmpty').hidden = !none; if (none){ el.replaceChildren(); return; }
-  const dpr = Math.min(2, window.devicePixelRatio || 1), s = sizes(1160, books.length <= 2 ? 220 : 165);
-  const build = H0 => el.replaceChildren(...books.map((b,i) => {
-    const k = (H0 - 2)/1160, sp = makeSpine(b, s[i].w*k*dpr, s[i].h*k*dpr), bt = document.createElement('button');
-    sp.style.width = sp.width/dpr + 'px'; sp.style.height = sp.height/dpr + 'px';
-    bt.type = 'button'; bt.dataset.id = b.id; bt.setAttribute('aria-label', (b.title || 'Untitled') + ', show in the list'); bt.append(sp); return bt;
-  }));
-  const h0 = el.clientHeight; build(h0);
-  if (el.clientHeight !== h0) build(el.clientHeight);   // a sideways scrollbar took some height
-}
-$('#strip').addEventListener('click', e => {
-  const bt = e.target.closest('button'); if (!bt) return;
-  const li = document.querySelector(`#books .book[data-id="${bt.dataset.id}"]`); if (!li) return;
-  li.scrollIntoView({behavior:'smooth', block:'center'}); document.getElementById(bt.dataset.id + '-title').focus({preventScroll:true});
-});
-let raf = 0; const redraw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { renderStory(); renderStrip(); renderThumbs(); }); };
-addEventListener('resize', redraw);
-
-/* ---------- shelf list ---------- */
-const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-function renderList(){
-  $('#count').textContent = books.length ? `(${books.length})` : '';
-  $('#sampleNote').hidden = !isSample || !books.length;
-  $('#navCount').textContent = books.length;
-  $('#clear').hidden = !books.length;
-  const ol = $('#books');
-  if (!books.length){ ol.innerHTML = '<li class="empty">Nothing here yet. Search a title above.</li>'; redraw(); return; }
-  ol.innerHTML = books.map((b,i) => `
-  <li class="book" data-id="${b.id}">
-    <img class="thumb" src="${b.thumb}" alt="">
-    <div class="fields">
-      <div class="row2">
-        <input type="text" class="t" id="${b.id}-title" data-f="title" value="${esc(b.title)}" placeholder="Title" aria-label="Title">
-        <input type="text" id="${b.id}-author" data-f="author" value="${esc(b.author)}" placeholder="${b.kind === 'movie' ? 'Director' : 'Author'}" aria-label="Author or director">
-      </div>
-      <div class="row3">
-        <select id="${b.id}-kind" data-f="kind" aria-label="Book or film"><option value="book"${b.kind!=='movie'?' selected':''}>Book</option><option value="movie"${b.kind==='movie'?' selected':''}>Film</option></select>
-        <select id="${b.id}-style" data-f="style" aria-label="Spine style">${Object.entries(STYLES).filter(([k]) => k !== 'real' || b.spineImg).map(([k,v]) => `<option value="${k}"${b.style===k?' selected':''}>${v}</option>`).join('')}</select>
-        <select id="${b.id}-font" data-f="font" aria-label="Lettering">${Object.entries(FONTS).map(([k,v]) => `<option value="${k}"${b.font===k?' selected':''}>${v.label}</option>`).join('')}</select>
-        <label class="sw"><input type="color" id="${b.id}-bg" data-f="bg" value="${b.bg.toLowerCase()}">Spine</label>
-        <label class="sw"><input type="color" id="${b.id}-fg" data-f="fg" value="${b.fg.toLowerCase()}">Text</label>
-      </div>
-      <div class="note" id="${b.id}-note"></div>
-    </div>
-    <div class="acts">
-      <button class="ib" type="button" data-a="up" aria-label="Move left"${i===0?' disabled':''}>↑</button>
-      <button class="ib" type="button" data-a="down" aria-label="Move right"${i===books.length-1?' disabled':''}>↓</button>
-      <button class="ib" type="button" data-a="del" aria-label="Remove ${esc(b.title || 'item')}">✕</button>
-    </div>
-  </li>`).join('');
-  books.forEach(setNote); redraw();
-}
-function setNote(b){
-  const el = document.getElementById(b.id + '-note'); if (!el) return; el.classList.remove('warn');
-  if (b.status === 'reading'){ el.innerHTML = 'Reading the cover…'; return; }
-  if (!b.title.trim() && !isReal(b)){ el.textContent = 'Type the title to print it on the spine.'; el.classList.add('warn'); return; }
-  el.textContent = isReal(b) ? (b.source ? 'Real spine · from ' + b.source : 'Real spine, cut from your scan') : '';
-  // a clean cut from the user's own scan can go to the archive, where it's checked before anyone sees it
-  if (isReal(b) && b.file && WORKER && b.cutScore >= ARCHIVE_SCORE){
-    if (b.archived) el.textContent += '. Sent to the archive for a check.';
-    else if (!b.title.trim()) el.textContent += '. Type the title to add it to the archive.';
-    else el.insertAdjacentHTML('beforeend', ' <button class="dash sm" type="button" data-a="archive">Add to the archive</button>');
-  }
-}
-const ARCHIVE_SCORE = 70;
-async function archiveSpine(b){
-  // a PNG of the spine, made smaller until it fits the archive's 300 KB
-  let blob, k = Math.min(1, 1600/b.spineImg.height);
-  for (let tries = 0; tries < 6; tries++, k *= .8){
-    const c = document.createElement('canvas'); c.width = Math.max(8, Math.round(b.spineImg.width*k)); c.height = Math.round(b.spineImg.height*k);
-    c.getContext('2d').drawImage(b.spineImg, 0, 0, c.width, c.height);
-    blob = await new Promise(r => c.toBlob(r, 'image/png'));
-    if (blob && blob.size <= 300*1024) break;
-  }
-  if (!blob || blob.size > 300*1024){ toast('That spine is too large to send.'); return; }
-  const q = new URLSearchParams({kind:b.kind, title:b.title.trim(), author:(b.author || '').trim()});
-  try {
-    const r = await fetch(`${WORKER}/archive?${q}`, {method:'POST', headers:{'Content-Type':'image/png'}, body:blob}), j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.error || 'The archive didn’t answer. Try again later.');
-    b.archived = true; setNote(b); toast('Sent. It shows up in search once it’s checked.');
-  } catch (err){ toast(err.message || 'The archive didn’t answer. Try again later.'); }
-}
-$('#books').addEventListener('input', e => {
-  const li = e.target.closest('.book'), f = e.target.dataset.f; if (!li || !f) return;
-  const b = books.find(b => b.id === li.dataset.id); b[f] = e.target.value; b.touched = true;
-  if (f === 'title') delete b.titleImg;   // an edited title can't come from the poster any more
-  if (f === 'kind' && !isReal(b)){
-    if (b.kind === 'movie'){ b.style = 'dvd'; b.bg = '#111111'; b.fg = '#F4F4F2'; } else { b.style = 'art'; Object.assign(b, extractPalette(b.img)); }
-    renderList(); return;
-  }
-  setNote(b); redraw();
-});
-$('#books').addEventListener('click', e => {
-  const btn = e.target.closest('[data-a]'); if (!btn) return;
-  const i = books.findIndex(b => b.id === btn.closest('.book').dataset.id), a = btn.dataset.a;
-  if (a === 'archive'){ btn.disabled = true; archiveSpine(books[i]); return; }
-  if (a === 'del') books.splice(i,1);
-  if (a === 'up' && i > 0) [books[i-1], books[i]] = [books[i], books[i-1]];
-  if (a === 'down' && i < books.length-1) [books[i+1], books[i]] = [books[i], books[i+1]];
-  renderList();
-});
-$('#clear').addEventListener('click', () => { books = []; isSample = false; renderList(); });
-function shelve(b){
-  if (isSample){ books = []; isSample = false; }
-  if (books.length >= spineMax()){ if (isPro()) toast('A shelf holds up to 20 spines. Remove one first.'); else proToast('Free shelves hold 6 spines. Pro holds 20.'); return false; }
-  books.push(b); renderList(); return true;
-}
-
-/* ---------- search: the Spinestack server, or TMDB + Open Library straight from the browser ---------- */
-const sstatus = (msg, err) => { const s = $('#sstatus'); s.classList.toggle('err', !!err); s.innerHTML = msg; };
-const TMDB = String(window.SPINESTACK_TMDB || '').trim();
 const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
-const direct = !window.claude;   // the Claude preview can't reach other sites
-const viaWorker = u => WORKER ? WORKER + '/img?url=' + encodeURIComponent(u) : u;
-const timeout = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('timeout')), ms))]);
-const getJSON = (url, opt) => fetch(url, opt).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
-async function tmdbFilms(q){
-  const bearer = TMDB.length > 40, opt = bearer ? {headers:{Authorization:'Bearer ' + TMDB}} : {}, key = bearer ? '' : '&api_key=' + encodeURIComponent(TMDB);
-  const find = (s, y) => getJSON('https://api.themoviedb.org/3/search/movie?include_adult=false&query=' + encodeURIComponent(s) + (y ? '&year=' + y : '') + key, opt);
-  const yq = q.match(/^(.+?)[\s,(]+((?:19|20)\d\d)\)?$/);   // "kids 1995": TMDB finds nothing when the year is in the query
-  let r = yq ? await find(yq[1], yq[2]) : await find(q);
-  if (yq && !(r.results || []).length) r = await find(yq[1]);
-  return Promise.all((r.results || []).slice(0,5).map(async (m,i) => {
-    let creator = '';
-    if (i < 3) try { const c = await getJSON(`https://api.themoviedb.org/3/movie/${m.id}/credits?` + key.slice(1), opt); creator = ((c.crew || []).find(p => p.job === 'Director') || {}).name || ''; } catch {}
-    return {kind:'movie', title:m.title || '', year:(m.release_date || '').slice(0,4), creator, cover:m.poster_path ? 'https://image.tmdb.org/t/p/w500' + m.poster_path : ''};
-  }));
-}
-async function olBooks(q){
-  const r = await getJSON('https://openlibrary.org/search.json?limit=5&fields=title,author_name,first_publish_year,cover_i&q=' + encodeURIComponent(q));
-  return (r.docs || []).map(d => ({kind:'book', title:d.title || '', year:String(d.first_publish_year || ''), creator:(d.author_name || [''])[0], cover:d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-L.jpg` : ''}));
-}
-async function identifyDirect(q, want){
-  const films = want !== 'book' && TMDB, books = want !== 'movie';
-  const [f, b] = await Promise.allSettled([films ? tmdbFilms(q) : [], books ? olBooks(q) : []]);
-  if ((!films || f.status === 'rejected') && (!books || b.status === 'rejected')) throw new Error('no answer');
-  return [...(f.value || []), ...(b.value || [])];
-}
-let matches = [];
-$('#sform').addEventListener('submit', async e => {
-  e.preventDefault();
-  const q = $('#q').value.trim(); if (!q) return;
-  const want = $('#qkind').value, noFilms = !server && !WORKER && !TMDB && want !== 'book';
-  if (!server && !direct){ sstatus('Search runs on the shelfstackd server, which this preview doesn’t have. Drop a scan below instead.', true); return; }
-  if (noFilms && want === 'movie'){ sstatus('Film search needs a TMDB key. Books work without one.', true); $('#matches').hidden = true; return; }
-  $('#spines').hidden = true; sstatus('Looking up “' + esc(q) + '”…');
-  try {
-    let results;
-    if (server) results = (await fetch(API + '/api/identify?q=' + encodeURIComponent(q)).then(r => r.json())).results;
-    else if (WORKER) results = await getJSON(`${WORKER}/identify?want=${want}&q=` + encodeURIComponent(q)).then(r => r.results).catch(() => identifyDirect(q, want));
-    else results = await identifyDirect(q, want);
-    matches = results.filter(m => want === 'all' || m.kind === want);
-    if (!matches.length){ sstatus('Nothing matched “' + esc(q) + '”. Check the spelling, or drop a scan below.', true); $('#matches').hidden = true; return; }
-    sstatus(matches.length + ' match' + (matches.length > 1 ? 'es' : '') + '.' + (noFilms ? ' Film search needs a TMDB key.' : ''));
-    $('#mrows').innerHTML = matches.map((m,i) => `<tr tabindex="0" data-i="${i}"><td class="no">${String(i+1).padStart(3,'0')}</td><td class="t">${esc(m.title)}</td><td>${esc(m.year || '—')}</td><td><span class="kind ${m.kind}">${m.kind === 'movie' ? 'Film' : 'Book'}</span></td><td class="by">${esc(m.creator || '—')}</td></tr>`).join('');
-    $('#matches').hidden = false;
-  } catch { sstatus((server ? 'The search server' : 'The search') + ' didn’t answer. Try again in a moment.', true); }
-});
-const pickMatch = tr => tr && findSpines(matches[+tr.dataset.i]);
-$('#mrows').addEventListener('click', e => pickMatch(e.target.closest('tr')));
-$('#mrows').addEventListener('keydown', e => { if (e.key === 'Enter') pickMatch(e.target.closest('tr')); });
-
-/* An image that fails this would stop Save story from working, so it never goes on the shelf. */
-const canvasSafe = img => { try { const c = document.createElement('canvas'); c.width = c.height = 1; const x = c.getContext('2d'); x.drawImage(img, 0, 0, 1, 1); c.toDataURL(); return true; } catch { return false; } };
-/* Picking a match looks for real spines in DVD and book scans (the Worker finds them, the browser cuts them).
-   A clearly good one goes on the shelf by itself; otherwise the user picks. With no scans, a spine made
-   from the poster or cover goes on instead. The tiles then switch that shelf item between the choices. */
-const AUTO_SCORE = 75, SHOW_SCORE = 45;   // tested: right spines scored 76-97, wrong ones up to 69; below 45 mostly photos of open cases
-const englishOnly = () => ($('input[name=ed]:checked') || {}).value !== 'any';
-// the Worker flags each scan: en = no sign of another language or region, vhs = a tape
-const isEnglish = c => c.en !== false && !c.vhs;
-// best first: with English on, English DVD/Blu-ray above other editions; VHS below everything else either way
-const rankCut = (c, english) => (english && !isEnglish(c) ? -1000 : 0) + (c.vhs ? -500 : 0) + c.score;
-let current = null;
-const keyOf = m => [m.kind, m.title.toLowerCase(), m.year || ''].join('|');
-function bookFor(cur, choice){
-  const m = cur.m, film = m.kind === 'movie', base = {title:m.title, author:m.creator || '', kind:m.kind, year:m.year || '', coverUrl:m.cover || '', font:'oswald', key:cur.key, choice};
-  if (choice.startsWith('real:')){
-    const r = cur.real[+choice.slice(5)], front = r.front || cur.img || r.spine, pal = extractPalette(front);
-    return newBook(Object.assign(base, {img:front, spineImg:r.spine, archiveId:r.archive ? r.id : undefined, source:r.archive ? 'the archive' : hostOf(r.source), bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real'}, front.src ? {thumb:front.src} : {}));
-  }
-  const img = cur.img, pal = extractPalette(img), t = film ? cur.title : null;
-  const bg = t ? t.bg : film ? '#111111' : pal.bg, fg = t ? (contrast('#F4F4F2', bg) >= contrast('#111111', bg) ? '#F4F4F2' : '#111111') : film ? '#F4F4F2' : pal.fg;
-  return newBook(Object.assign(base, {img, thumb:img.src, bg, fg, accent:pal.accent, titleImg:t && t.img, style:choice === 'cover' ? 'cover' : film ? 'dvd' : 'art'}));
-}
-const tileCanvas = (b, w, H0) => { const dpr = Math.min(2, window.devicePixelRatio || 1), sp = makeSpine(b, w*dpr, H0*dpr); sp.style.width = sp.width/dpr + 'px'; sp.setAttribute('aria-hidden', 'true'); return sp; };
-function showTiles(cur){
-  const m = cur.m, noun = m.kind === 'movie' ? 'poster' : 'cover', on = books.find(b => b.key === cur.key);
-  // every option in one row at one height: the spine, one line saying where it's from, then Use this,
-  // or On shelf and Remove under the one that's on the shelf
-  const tile = (c, art, label, what) => `<div class="pick" data-c="${c}"><div class="art">${art}</div><span class="lbl">${label}</span>` +
-    (on && on.choice === c ? '<span class="on">On shelf</span><button class="dash sm" type="button" data-del="1">Remove</button>'
-                           : `<button class="dash sm" type="button" data-use="${c}" aria-label="Use ${what}">Use this</button>`) + '</div>';
-  const tiles = cur.real.map((r,i) => tile('real:' + i, '', r.archive
-    ? `From the archive · <a href="#" data-report="${esc(r.id)}">Report</a>`
-    : `<a class="src" href="${esc(r.source)}" target="_blank" rel="noopener">${esc(hostOf(r.source))}</a>`, 'this spine'));
-  if (cur.img){
-    tiles.push(tile('spine', '', 'Generated', 'a spine made from the ' + noun));
-    tiles.push('<span class="rule" aria-hidden="true"></span>');
-    tiles.push(tile('cover', `<img class="cov" src="${esc(cur.img.src)}" crossorigin="anonymous" alt="${esc(m.title)} ${noun}">`, 'Cover', 'the ' + noun));
-  }
-  $('#found').innerHTML = tiles.join('') || (cur.busy ? '' : '<p class="grey">No scans and no ' + noun + ' found for this title. Drop a scan below.</p>');
-  $('#noReal').hidden = cur.busy || !WORKER || server || cur.real.length > 0 || m.kind !== 'book';
-  const H0 = parseFloat(getComputedStyle($('#found')).getPropertyValue('--th')) || 300;
-  cur.real.forEach((r,i) => $(`#found [data-c="real:${i}"] .art`).append(tileCanvas({style:'real', spineImg:r.spine}, H0*r.spine.width/r.spine.height, H0)));
-  const gen = $('#found [data-c="spine"] .art');
-  if (gen){ const b = cur.preview || (cur.preview = bookFor(cur, 'spine')); gen.append(tileCanvas(b, isCase(b) ? H0/11 : Math.min(H0/5, 220*b.wf*H0/1160), H0)); }
-}
-/* Loads one scan through the Worker and cuts its spine: an archive spine is used as it is,
-   a tall thin image is a single spine, anything else is a wrap (back | spine | front). */
-async function cutOne(s, kind){
-  try {
-    const img = await timeout(loadImg(s.archive ? WORKER + s.img : viaWorker(s.img)), 15000);
-    if (!canvasSafe(img)) return null;
-    const base = {source:s.source, img:s.img, scan:img, archive:!!s.archive, id:s.id, front:null, en:s.en !== false, vhs:!!s.vhs};
-    if (s.archive) return Object.assign(base, {spine:img, score:100});   // checked by hand before it was approved
-    if (img.height/img.width >= 4){ const c = findSoloSpine(img); return c && Object.assign(base, {spine:crop(img, c.x, c.y, c.w, c.h), score:c.score, solo:true}); }
-    const cut = findSpine(img, kind); if (!cut) return null;
-    return Object.assign(base, {spine:crop(img, cut.x, cut.y, cut.w, cut.h), front:crop(img, cut.frontX, cut.y, img.width - cut.frontX, cut.h), score:cut.score});
-  } catch { return null; }
-}
-/* Asks the Worker for scans one round (one search) at a time and stops once two good spines turn up,
-   so most titles cost one or two searches. Returns the cuts, best first. */
-const ROUNDS = 4;
-async function cutScans(cur, english){
-  const q = `${WORKER}/scans?kind=${cur.m.kind}&title=${encodeURIComponent(cur.m.title)}&year=${encodeURIComponent(cur.m.year || '')}&creator=${encodeURIComponent(cur.m.creator || '')}`;
-  const seen = new Set(), cuts = []; let scans = 0, rounds = 0, busy = false;
-  for (let round = 0; round < ROUNDS && cur === current; round++){
-    if (round) sstatus(`Looking for more scans (${round + 1} of ${ROUNDS})…`);
-    let r;
-    try { r = await timeout(getJSON(q + '&round=' + round), 20000); rounds++; }
-    catch (err){ if (!cuts.length && !rounds) throw err; busy = /429/.test(err.message); break; }   // keep what the earlier rounds found
-    const fresh = (r.results || []).filter(s => !seen.has(s.img) && seen.add(s.img));
-    scans += fresh.length;
-    if (fresh.length && cur === current) sstatus(`Cutting spines from ${scans} scan${scans > 1 ? 's' : ''}…`);
-    cuts.push(...(await Promise.all(fresh.map(s => cutOne(s, cur.m.kind)))).filter(Boolean));
-    if (cuts.filter(c => c.score >= AUTO_SCORE && (!english || isEnglish(c))).length >= 2 || !r.more) break;
-  }
-  // one option per page: the same scan often comes at several sizes (reddit previews, eBay listings)
-  const best = new Map();
-  const show = cur.m.kind === 'book' ? 20 : SHOW_SCORE;   // a book cut has already passed the strict flat-scan checks in findSpine
-  for (const c of cuts.filter(c => c.score >= show && c.spine.width <= c.spine.height/5).sort((a,b) => rankCut(b, english) - rankCut(a, english)))
-    if (!best.has(c.source)) best.set(c.source, c);
-  return {scans, rounds, busy, cuts:[...best.values()].slice(0, 8)};
-}
-async function findSpines(m, again){
-  const key = keyOf(m), cur = current = {m, key, real:[], res:{spines:[]}, img:null, busy:true}, noun = m.kind === 'movie' ? 'poster' : 'cover';
-  $('#spines').hidden = false; $('#matches').hidden = true;
-  $('#spinesTitle').textContent = m.title + (m.year ? ' (' + m.year + ')' : ''); $('#spinesBy').textContent = m.creator ? '· ' + m.creator : '';
-  $('#spinesNote').hidden = server || !!WORKER; $('#found').innerHTML = ''; $('#noReal').hidden = true; $('#dupAsk').hidden = true;
-  if (!again && books.some(b => b.key === key)){
-    // already on the shelf: ask inline before adding it a second time
-    $('#dupText').textContent = m.title + ' is already on your shelf.'; $('#dupAsk').hidden = false; cur.busy = false; showTiles(cur); sstatus('');
-    return;
-  }
-  if (again) cur.key = key + '#' + (1 + books.filter(b => (b.key || '').split('#')[0] === key).length);
-  const poster = m.cover ? timeout(loadImg(server ? API + '/api/image?url=' + encodeURIComponent(m.cover) : viaWorker(m.cover)), 15000).catch(() => null) : Promise.resolve(null);
-  let found = {scans:0, cuts:[]}, failed = false;
-  const english = englishOnly();
-  if (!server && WORKER){
-    sstatus('Searching ' + (m.kind === 'movie' ? 'DVD' : 'book') + ' scans of “' + esc(m.title) + '”…');
-    try { found = await cutScans(cur, english); } catch (err){ failed = /429/.test(err.message) ? 'busy' : true; }
-  }
-  const img = await poster;
-  if (cur !== current) return;
-  if (img && canvasSafe(img)){ cur.img = img; if (m.kind === 'movie') cur.title = posterTitle(img); }
-  else if (m.cover) toast('The ' + noun + ' from ' + hostOf(m.cover) + ' can’t be used in a story. Try another match.');
-  cur.real = found.cuts;
-  const best = cur.real[0], add = c => { if (shelve(bookFor(cur, c))) toast(m.title + ' added to your shelf.'); };
-  if (server){
-    // the Spinestack backend (backend/): unchanged, it cuts the spines itself
-    if (cur.img) add('spine');
-    showTiles(cur); sstatus('Searching scans of “' + esc(m.title) + '”. Takes 10 to 20 seconds.');
-    try { cur.res = await fetch(`${API}/api/spines?title=${encodeURIComponent(m.title)}&kind=${m.kind}&year=${encodeURIComponent(m.year||'')}&creator=${encodeURIComponent(m.creator||'')}`).then(r => r.json()); }
-    catch { if (cur === current) sstatus('The search server didn’t answer. Try again in a moment.', true); }
-    if (cur !== current) return;
-    cur.real = (await Promise.all(cur.res.spines.map(s => Promise.all([loadImg(API + s.spine), loadImg(API + s.front)]).then(([spine, front]) => ({spine, front, score:s.score, source:s.source})).catch(() => null)))).filter(Boolean);
-    if (cur !== current) return;
-    cur.busy = false; showTiles(cur);
-    const n = cur.real.length;
-    sstatus(n ? `${n} real spine${n > 1 ? 's' : ''} found. Pick one to use it instead.` : 'No clean spine in the scans found online.' + (cur.img ? ' Using one made from the ' + noun + '.' : ''), !n);
-    return;
-  }
-  cur.busy = false;
-  // goes on by itself only when it's clearly right: a high score, the English edition (unless Edition is Any),
-  // and a film (book scans are rarer and less reliable) or a spine from the checked archive
-  const n = found.cuts.length, spines = n + ' possible spine' + (n > 1 ? 's' : '');
-  if (best && best.score >= AUTO_SCORE && (!english || isEnglish(best)) && (m.kind === 'movie' || best.archive)){
-    add('real:0'); sstatus(n > 1 ? `Real spine found. ${n - 1} more below if it’s the wrong edition.` : 'Real spine found.');
-  }
-  else if (best && english && !found.cuts.some(isEnglish)) sstatus(`${spines} found, but none looks like the English edition. Pick one, or set Edition to Any.`);
-  else if (best) sstatus(`${spines} found. Use the one that looks right.`);
-  else if (cur.img){
-    add('spine');   // the grey line under the tiles asks for a photo of a real one (books)
-    sstatus(!WORKER ? 'Pick Cover to show the ' + noun + ' face out instead.' : failed === 'busy' ? 'Scan search is busy. This spine is made from the ' + noun + '; try again in a minute.'
-      : failed ? 'Scan search didn’t answer, so this spine is made from the ' + noun + '.' : 'No clean spine in the scans found online, so this one is made from the ' + noun + '.', !!WORKER);
-  }
-  else sstatus('No scans and no ' + noun + ' found for this title. Drop a scan below.', true);
-  showTiles(cur);
-}
-$('#found').addEventListener('click', e => {
-  const flag = e.target.closest('a[data-report]');
-  if (flag){
-    e.preventDefault(); e.stopPropagation();
-    fetch(`${WORKER}/report?id=${encodeURIComponent(flag.dataset.report)}`, {method:'POST'}).catch(() => {});
-    flag.removeAttribute('data-report'); flag.removeAttribute('href'); flag.textContent = 'Reported'; toast('Reported. Thanks.');
-    return;
-  }
-  const u = e.target.closest('[data-use]'), cur = current; if (!u || !cur) return;
-  const c = u.dataset.use, b = bookFor(cur, c), i = books.findIndex(x => x.key === cur.key);
-  const what = c === 'cover' ? 'its cover' : c === 'spine' ? 'the generated spine' : 'a real spine';
-  if (i >= 0){ Object.assign(b, {id:books[i].id, wf:books[i].wf, hf:books[i].hf, jit:books[i].jit, cat:books[i].cat}); books[i] = b; renderList(); toast(cur.m.title + ' now shows ' + what + '.'); }
-  else if (shelve(b)) toast(cur.m.title + ' added to your shelf.');
-  showTiles(cur);
-});
-$('#found').addEventListener('click', e => {
-  if (!e.target.closest('[data-del]') || !current) return;
-  const cur = current; books = books.filter(b => b.key !== cur.key); renderList(); showTiles(cur); toast(cur.m.title + ' removed.');
-});
-$('#dupAdd').addEventListener('click', () => { if (current) findSpines(current.m, true); });
-$('#dupCancel').addEventListener('click', () => { $('#dupAsk').hidden = true; });
-$('#changeMatch').addEventListener('click', () => { $('#matches').hidden = false; $('#matches').scrollIntoView({behavior:'smooth', block:'nearest'}); });
-const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./,''); } catch { return 'source'; } };
-
-/* ---------- uploads ---------- */
-function titleFromName(name){ let t = (name||'').replace(/\.[a-z0-9]+$/i,'').replace(/[_\-+]+/g,' ').replace(/\s+/g,' ').trim(); if (/^(image|img|download|images|screenshot|photo|unnamed|pasted)\b/i.test(t) || /^[\d\s]+$/.test(t) || t.length > 60) t = ''; return t; }
-function addFiles(files){
-  const imgs = [...files].filter(f => f.type.startsWith('image/'));
-  if (!imgs.length){ toast('That wasn’t an image. Copy the image itself, or save it and drop the file.'); return; }
-  imgs.slice(0, spineMax()).forEach(f => {
-    const fr = new FileReader();
-    fr.onload = async () => {
-      let im; try { im = await loadImg(fr.result); } catch { toast('Couldn’t read ' + f.name + '.'); return; }
-      let b;
-      const cut = im.width/im.height > 1.15 ? findSpine(im) : null, solo = !cut && im.height/im.width >= 4 ? findSoloSpine(im) : null;
-      if (solo){
-        const spineImg = crop(im, solo.x, solo.y, solo.w, solo.h), pal = extractPalette(spineImg);
-        b = newBook({title:titleFromName(f.name), kind:'book', img:spineImg, spineImg, bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real', font:'oswald', file:f, cutScore:solo.score});
-      } else if (cut){
-        const spineImg = crop(im, cut.x, cut.y, cut.w, cut.h), front = crop(im, cut.frontX, cut.y, im.width - cut.frontX, cut.h), pal = extractPalette(front);
-        b = newBook({title:titleFromName(f.name), kind:im.width/im.height < 1.7 ? 'movie' : 'book', img:front, spineImg, bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real', font:'oswald', file:f, cutScore:cut.score});
-      } else if (im.width/im.height >= 1.3 && im.width/im.height <= 1.9){
-        // shaped like a DVD or Blu-ray wrap (or a photo of a case) with no clean spine in it: the DVD case spine a
-        // film gets from its poster, not a book-wide one with the whole picture shrunk into its top
-        const pal = extractPalette(im);
-        b = newBook({title:titleFromName(f.name), kind:'movie', img:im, thumb:fr.result, bg:'#111111', fg:'#F4F4F2', accent:pal.accent, style:'dvd', font:'oswald', file:f});
-      } else {
-        const pal = extractPalette(im);
-        b = newBook({title:titleFromName(f.name), img:im, thumb:fr.result, bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'art', font:'oswald', file:f});
-      }
-      if (shelve(b)){ identify(b); const el = document.getElementById(b.id + '-title'); if (el && !b.title) el.focus(); }
-    };
-    fr.readAsDataURL(f);
-  });
-}
-$('#file').addEventListener('change', e => { addFiles(e.target.files); e.target.value = ''; });
-const drop = $('#drop');
-['dragenter','dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
-['dragleave','drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
-drop.addEventListener('drop', e => { if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files); else toast('Images dragged from another site can’t be read. Right-click it, Copy image, then paste here.'); });
-document.addEventListener('paste', e => { const files = [...(e.clipboardData?.files || [])].filter(f => f.type.startsWith('image/')); if (files.length){ e.preventDefault(); addFiles(files); } });
-
-/* Title recognition for uploads: only where Claude can look at images (the Claude preview). */
-const samplerP = (window.claude && window.claude.use) ? window.claude.use('sample').catch(() => null) : Promise.resolve(null);
-let canSee = null;
-async function identify(b){
-  const s = await samplerP; if (!s) return;
-  if (canSee === null){ const l = await s.limits().catch(() => null); canSee = !!(l && l.images); }
-  if (!canSee || !b.file) return;
-  b.status = 'reading'; setNote(b);
-  try {
-    const r = await s.json('The attached image is a book cover, a film poster, or a full DVD/book wrap scan. Identify the work. Reply with only a JSON object: {"title": string, "creator": string, "kind": "book" or "movie", "studio": string}. "creator" is the author for a book and the director for a film; "studio" is the film distributor (empty for books). Use the usual published capitalisation. Use empty strings if unsure.', {images: b.file});
-    if (books.includes(b) && r && typeof r === 'object'){
-      const set = (f, v) => { if (typeof v === 'string' && v.trim() && !(b.touched && b[f])){ b[f] = v.trim().slice(0,80); const el = document.getElementById(b.id + '-' + f); if (el) el.value = b[f]; } };
-      set('title', r.title); set('author', r.creator); if (typeof r.studio === 'string') b.studio = r.studio.trim().slice(0,40);
-      if (r.kind === 'movie' && b.kind !== 'movie'){ b.kind = 'movie'; if (!isReal(b) && !b.touched){ b.style = 'dvd'; b.bg = '#111111'; b.fg = '#F4F4F2'; } b.status = ''; renderList(); return; }
-    }
-  } catch (err){ if (err && (err.code === 'not_granted' || err.code === 'images_unavailable')) canSee = false; }
-  b.status = ''; setNote(b); redraw();
-}
-
-/* ---------- controls ---------- */
-function bindSeg(id, key, after){
-  const seg = $(id), sync = () => seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === settings[key])));
-  seg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; settings[key] = b.dataset.v; sync(); after && after(); redraw(); }); sync();
-}
-bindSeg('#theme', 'theme', () => { if (settings.theme === 'shelf'){ settings.wood = true; $('#woodShelf').checked = true; } });   // Shelf has always come with its shelf
-$('#woodShelf').addEventListener('change', e => { settings.wood = e.target.checked; redraw(); });
-renderFilterRow();
-function syncFilter(){
-  document.querySelectorAll('#filters .flt').forEach(bt => bt.setAttribute('aria-pressed', String(bt.dataset.v === settings.filter)));
-}
-$('#filters').addEventListener('click', e => { const bt = e.target.closest('.flt'); if (!bt) return; settings.filter = bt.dataset.v; syncFilter(); redraw(); });
-$('#intensity').addEventListener('input', e => { settings.intensity = +e.target.value; redraw(); });
-syncFilter();
-['cardboard', 'cracks', 'crumpled', 'paper', 'fabric', 'wood', 'scratches-1', 'scratches-2', 'scratches-3'].forEach(texture);   // small, and needed by the first thumbnails
-bindSeg('#layout', 'layout', () => { $('#variedWrap').hidden = settings.layout === 'covers'; });
-$('#plank').addEventListener('change', e => {
-  $('#plankNote').textContent = '';
-  if (e.target.checked && !isPro()){ e.target.checked = false; proNote($('#plankNote'), 'The floating shelf comes with Pro.'); return; }
-  settings.plank = e.target.checked;
-  if (settings.plank){ settings.wood = false; $('#woodShelf').checked = false; }
-  redraw();
-});
-const woodTakesOver = () => { if (settings.wood && settings.plank){ settings.plank = false; $('#plank').checked = false; } paintColour(); };
-// the Floating shelf's colour: one colour, and its top, front edge and shadows are shaded from it
-function paintColour(){
-  $('#colourWrap').hidden = !settings.plank;
-  $('#swatches').querySelectorAll('.swatch').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.c === settings.shelfColour)));
-  if (document.activeElement !== $('#colourHex')) $('#colourHex').value = settings.shelfColour;
-}
-function setColour(c){
-  $('#plankNote').textContent = '';
-  if (!isPro()){ proNote($('#plankNote'), 'The shelf colour comes with Pro.'); return; }
-  settings.shelfColour = c; paintColour(); redraw();
-}
-$('#swatches').addEventListener('click', e => { const b = e.target.closest('.swatch'); if (b) setColour(b.dataset.c); });
-$('#colourHex').addEventListener('input', e => { const v = e.target.value.trim().replace(/^#?/, '#').toUpperCase(); if (/^#[0-9A-F]{6}$/.test(v)) setColour(v); });
-$('#colourHex').addEventListener('blur', paintColour);
-$('#plank').addEventListener('change', paintColour);
-$('#woodShelf').addEventListener('change', woodTakesOver);
-$('#theme').addEventListener('click', woodTakesOver);
-$('#caption').addEventListener('input', e => { settings.caption = e.target.value; redraw(); });
-$('#varied').addEventListener('change', e => { settings.varied = e.target.checked; redraw(); });
-
-/* ---------- Your PNG: the wall behind the shelf (Pro) ---------- */
-const MAX_PICKED = 5*1024*1024, MAX_STORED = 2*1024*1024;
-async function readPicture(file){
-  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) throw new Error('Pick a PNG, JPG or WEBP picture.');
-  if (file.size > MAX_PICKED) throw new Error('That picture is larger than 5 MB.');
-  const url = URL.createObjectURL(file);
-  try { return await loadImg(url); } catch { throw new Error('That picture couldn’t be read.'); } finally { URL.revokeObjectURL(url); }
-}
-// a picture made small enough to keep, drawn again (which drops EXIF and location): WebP where the browser can, under 2 MB
-async function under2mb(c, alpha){
-  for (const q of [.9, .82, .72, .6, .5]){
-    let b = await blobOf(c, 'image/webp', q);
-    if (!b || b.type !== 'image/webp') b = await blobOf(c, alpha ? 'image/png' : 'image/jpeg', q);   // Safari before 17 has no WebP encoder
-    if (b && b.size <= MAX_STORED) return b;
-  }
-  throw new Error('That picture couldn’t be made small enough.');
-}
-// dark pictures get light lettering (caption, watermark) and deeper shadows, as the dark backgrounds do
-// the wall: cover-fitted to the 1080 x 1920 story, the middle kept
-async function makeWall(file){
-  const im = await readPicture(file), w = im.naturalWidth, h = im.naturalHeight, k = Math.max(W/w, H/h);
-  const c = document.createElement('canvas'); c.width = W; c.height = H;
-  const x = c.getContext('2d'); x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, H); x.imageSmoothingQuality = 'high';
-  x.drawImage(im, (W - w*k)/2, (H - h*k)/2, w*k, h*k);
-  return {img: c, blob: await under2mb(c, false), name: file.name, small: w < 720 || h < 1280, dark: isDark(c), key: null};
-}
-let wallPicking = false;
-const syncTheme = () => document.querySelectorAll('#theme button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === settings.theme)));
-function paintWall(){
-  const w = media.wall;
-  $('#wallBox').hidden = !(settings.theme === 'wall' || wallPicking);
-  $('#wallName').textContent = w ? w.name : ''; $('#wallName').hidden = !w;
-  $('#wallPick').textContent = w ? 'Replace' : 'Choose picture';
-  $('#wallRemove').hidden = !w;
-  $('#wallWarn').textContent = w && w.small ? 'This picture is smaller than 720 × 1280, so it may look soft.' : '';
-}
-// before the Background buttons do their usual thing: Your PNG is Pro, and asks for a picture the first time
-$('#theme').addEventListener('click', e => {
-  const b = e.target.closest('button'); if (!b) return;
-  $('#themeNote').textContent = '';
-  if (b.dataset.v !== 'wall'){ wallPicking = false; return; }
-  if (!isPro()){ e.stopPropagation(); proNote($('#themeNote'), 'Your own wall comes with Pro.'); return; }
-  if (!media.wall){ e.stopPropagation(); wallPicking = true; paintWall(); $('#wallFile').click(); }
-}, true);
-$('#theme').addEventListener('click', paintWall);
-$('#wallPick').addEventListener('click', () => $('#wallFile').click());
-$('#wallFile').addEventListener('change', async e => {
-  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  $('#themeNote').textContent = 'Reading the picture…';
-  try { media.wall = await makeWall(f); settings.theme = 'wall'; wallPicking = false; $('#themeNote').textContent = ''; }
-  catch (err){ $('#themeNote').textContent = err.message; }
-  syncTheme(); paintWall(); redraw();
-});
-$('#wallRemove').addEventListener('click', () => { media.wall = null; settings.theme = 'paper'; wallPicking = false; syncTheme(); paintWall(); redraw(); });
-
-/* ---------- PNGs on the wall (Pro): as many as you like, always behind the books ---------- */
-// a new PNG goes on the open wall between the caption and the books, as big as fits there (up to 45 % of the width),
-// so it shows straight away; a few added at once fan out a little. With no books it goes in the middle.
-function landing(aspect, nth){
-  const top = layout.captionBottom + 30, bottom = (layout.booksTop == null ? H*.75 : layout.booksTop) - 30, band = bottom - top;
-  const h = Math.min(Math.max(band, 160), .45*W/aspect), w = h*aspect;
-  const cy = layout.booksTop == null ? H/2 : band >= 160 ? (top + bottom)/2 : bottom - h/2;
-  return {x: clamp(.5 + ((nth % 5) - 2)*.06, 0, 1), y: clamp(cy/H, 0, 1), w: clamp(w/W, .02, 2)};
-}
-// long side 1080 at most, drawn again (EXIF gone, transparency kept), under 2 MB
-async function makePng(file, nth = 2){
-  const im = await readPicture(file), w0 = im.naturalWidth, h0 = im.naturalHeight;
-  for (let k = Math.min(1, 1080/Math.max(w0, h0)), tries = 0; tries < 5; tries++, k *= .8){
-    const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w0*k)); c.height = Math.max(1, Math.round(h0*k));
-    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
-    try {
-      const blob = await under2mb(c, true), a = c.width/c.height;
-      return {img: c, blob, key: null, ...landing(a, nth), rot: 0, opacity: 1};
-    } catch {}
-  }
-  throw new Error('That picture couldn’t be made small enough.');
-}
-let sel = -1;          // the PNG picked on the preview
-const stage = $('#stage'), pointers = new Map(); let grab = null;
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const rectOf = p => { const w = p.w*W, h = w*p.img.height/p.img.width; return {x: p.x*W - w/2, y: p.y*H - h/2, w, h}; };   // before its turn
-const atStory = e => { const r = story.getBoundingClientRect(), k = W/r.width; return {x: (e.clientX - r.left)*k, y: (e.clientY - r.top)*k}; };
-// is the point on the PNG, turned as it is?
-const onPng = (p, pt) => { const r = rectOf(p), a = -(p.rot || 0)*Math.PI/180, dx = pt.x - p.x*W, dy = pt.y - p.y*H;
-  return Math.abs(dx*Math.cos(a) - dy*Math.sin(a)) <= r.w/2 && Math.abs(dx*Math.sin(a) + dy*Math.cos(a)) <= r.h/2; };
-// a turn in degrees, -180 to 180, straight again when it comes within 4° of straight
-const turn = d => { d = ((d % 360) + 540) % 360 - 180; return Math.abs(d) < 4 ? 0 : d; };
-const heading = (a, b) => Math.atan2(b.y - a.y, b.x - a.x)*180/Math.PI;
-function paintPngs(){
-  stage.classList.toggle('arranging', media.pngs.length > 0);
-  const p = media.pngs[sel], box = $('#pngBox');
-  $('#pngOpWrap').hidden = !p;
-  if (!p){ box.hidden = true; return; }
-  const r = rectOf(p), k = story.clientWidth/W, op = Math.round((p.opacity == null ? 1 : p.opacity)*100);
-  box.hidden = false; Object.assign(box.style, {left: r.x*k + 'px', top: r.y*k + 'px', width: r.w*k + 'px', height: r.h*k + 'px', transform: p.rot ? `rotate(${p.rot}deg)` : ''});
-  $('#pngOp').value = op; $('#pngOpV').textContent = op + '%';
-}
-addEventListener('resize', paintPngs);
-$('#pngAdd').addEventListener('click', () => {
-  $('#pngNote').textContent = '';
-  if (!isPro()){ proNote($('#pngNote'), 'PNGs on the wall come with Pro.'); return; }
-  $('#pngFile').click();
-});
-$('#pngFile').addEventListener('change', async e => {
-  const files = [...e.target.files]; e.target.value = ''; if (!files.length) return;
-  $('#pngNote').textContent = files.length > 1 ? 'Reading the pictures…' : 'Reading the picture…';
-  let failed = '';
-  for (const [i, f] of files.entries()){ try { media.pngs.push(await makePng(f, files.length > 1 ? i : 2)); sel = media.pngs.length - 1; } catch (err){ failed = err.message; } }
-  $('#pngNote').textContent = failed || 'Drag it on the preview to move it. Pull its corner, or pinch, to resize. Turn it with the dot above it, or with two fingers.';
-  paintPngs(); redraw();
-});
-// tap a PNG to pick it and drag it; pull the corner or pinch to resize; turn it with the dot above it or two
-// fingers; tap the wall to let go
-stage.addEventListener('pointerdown', e => {
-  if (!media.pngs.length || e.target.closest('#pngX')) return;
-  const pt = atStory(e); pointers.set(e.pointerId, pt);
-  const p = media.pngs[sel], mid = p && {x: p.x*W, y: p.y*H};
-  if (pointers.size === 2 && p){ const [a, b] = [...pointers.values()]; grab = {mode: 'pinch', w0: p.w, d0: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), rot0: p.rot || 0, a0: heading(a, b)}; }
-  else if (e.target.closest('#pngH') && p) grab = {mode: 'size', w0: p.w, d0: Math.max(1, Math.hypot(pt.x - mid.x, pt.y - mid.y))};
-  else if (e.target.closest('#pngR') && p) grab = {mode: 'turn', off: (p.rot || 0) - heading(mid, pt)};
-  else {
-    sel = -1;
-    for (let i = media.pngs.length - 1; i >= 0; i--) if (onPng(media.pngs[i], pt)){ sel = i; break; }
-    const q = media.pngs[sel]; grab = q ? {mode: 'move', dx: pt.x - q.x*W, dy: pt.y - q.y*H} : null;
-  }
-  if (grab){ e.preventDefault(); try { stage.setPointerCapture(e.pointerId); } catch {} }
-  if (media.pngs[sel] && document.activeElement && typing(document.activeElement)) document.activeElement.blur();   // so Delete goes to the PNG
-  paintPngs();
-});
-stage.addEventListener('pointermove', e => {
-  if (!grab || !pointers.has(e.pointerId)) return;
-  const pt = atStory(e), p = media.pngs[sel]; pointers.set(e.pointerId, pt); if (!p) return;
-  if (grab.mode === 'move'){ p.x = clamp((pt.x - grab.dx)/W, 0, 1); p.y = clamp((pt.y - grab.dy)/H, 0, 1); }
-  else if (grab.mode === 'size') p.w = clamp(grab.w0*Math.hypot(pt.x - p.x*W, pt.y - p.y*H)/grab.d0, .02, 2);
-  else if (grab.mode === 'turn') p.rot = turn(heading({x: p.x*W, y: p.y*H}, pt) + grab.off);
-  else if (pointers.size === 2){ const [a, b] = [...pointers.values()]; p.w = clamp(grab.w0*Math.hypot(a.x - b.x, a.y - b.y)/grab.d0, .02, 2); p.rot = turn(grab.rot0 + heading(a, b) - grab.a0); }
-  paintPngs(); redraw();
-});
-const letGo = e => { pointers.delete(e.pointerId); if (!pointers.size || (grab && grab.mode === 'pinch')) grab = null; };
-stage.addEventListener('pointerup', letGo); stage.addEventListener('pointercancel', letGo);
-function dropPng(){ if (sel < 0) return; media.pngs.splice(sel, 1); sel = -1; $('#pngNote').textContent = ''; paintPngs(); redraw(); }
-$('#pngX').addEventListener('click', dropPng);
-$('#pngOp').addEventListener('input', e => { const p = media.pngs[sel]; if (!p) return; p.opacity = clamp(+e.target.value/100, .1, 1); $('#pngOpV').textContent = e.target.value + '%'; redraw(); });
-// Delete or Backspace removes the picked PNG and Escape lets go of it, never while typing in a box
-const typing = t => t.isContentEditable || /^(TEXTAREA|SELECT)$/.test(t.tagName) || (t.tagName === 'INPUT' && !/^(range|checkbox|radio|button|submit|reset|file|color)$/.test(t.type));
-addEventListener('keydown', e => {
-  if (!media.pngs[sel] || e.ctrlKey || e.metaKey || e.altKey || typing(e.target)) return;
-  if (e.key === 'Delete' || e.key === 'Backspace'){ e.preventDefault(); dropPng(); }
-  else if (e.key === 'Escape'){ sel = -1; paintPngs(); }
-});
-// a click anywhere off the preview lets go of the picked PNG too (the controls, the list, the rest of the page);
-// on the preview, the handler above picks what's under it. Its Opacity slider is one of its tools.
-// On click, not pointerdown: hiding the slider moves what's below it, and a button that moves mid-press never gets its click.
-document.addEventListener('click', e => { if (sel >= 0 && !e.target.closest('#stage, #pngOpWrap')){ sel = -1; paintPngs(); } });
-
-/* ---------- export: Claude download, phone share sheet, or plain download ---------- */
-let downloads = null;
-if (window.claude && window.claude.use) window.claude.use('downloads').then(d => { downloads = d; }).catch(() => {});
-let toastT = 0; function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 4200); }
-let lastUrl = null;
-function fallback(blob){ if (lastUrl) URL.revokeObjectURL(lastUrl); lastUrl = URL.createObjectURL(blob); $('#mimg').src = lastUrl; $('#modal').hidden = false; $('#mclose').focus(); }
-$('#mclose').addEventListener('click', () => $('#modal').hidden = true);
-$('#modal').addEventListener('click', e => { if (e.target.id === 'modal') $('#modal').hidden = true; });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#modal').hidden = true; });
-$('#exportBtn').addEventListener('click', async () => {
-  if (!books.length){ toast('Add something to your shelf first.'); return; }
-  await Promise.all(Object.values(TEX).map(t => t.ready).filter(Boolean));
-  renderStory();
-  let blobOk = true;
-  try { story.toBlob(() => {}); } catch { blobOk = false; }
-  if (!blobOk){ toast('One image can’t be exported. Remove it and try again.'); return; }
-  story.toBlob(async blob => {
-    if (!blob){ toast('Couldn’t create the image. Try again.'); return; }
-    if (downloads){
-      try { await downloads.save({filename:'shelfstackd-story.png', data:blob}); toast('Saved. Open Instagram, add a story, pick this image.'); return; }
-      catch (err){ if (err && err.code === 'declined'){ toast('Save cancelled.'); return; } if (err && err.code === 'rate_limited'){ toast('A save prompt is already open.'); return; } fallback(blob); return; }
-    }
-    const file = new File([blob], 'shelfstackd-story.png', {type:'image/png'});
-    const plain = server || !window.claude;
-    if (plain && navigator.canShare && navigator.canShare({files:[file]}) && matchMedia('(pointer:coarse)').matches){
-      try { await navigator.share({files:[file]}); return; } catch (err){ if (err && err.name === 'AbortError') return; }
-    }
-    if (plain){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'shelfstackd-story.png'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('Downloaded shelfstackd-story.png.'); return; }
-    fallback(blob);
-  }, 'image/png');
-});
-
-document.querySelectorAll('input[name=qk]').forEach(r => r.addEventListener('change', () => { $('#qkind').value = r.value; }));
-
-/* ---------- boot ---------- */
-function fillRecent(items){
-  const el = $('#recent'); if (!items.length){ el.hidden = true; return; }
-  el.hidden = false; el.querySelector('span').textContent = items.slice(0, 8).join(', ');
-}
-async function boot(){
-  if (EMBED){ books = []; isSample = false; } else books = samples();   // on a profile, a new shelf starts empty
-  renderList();
-  // the old self-hosted backend: only looked for when its address is set, or when there's no Worker to use
-  // (asking for /api/health on a plain site, like shelfstackd.com, only gets a 404)
-  if (API || !WORKER) try {
-    const ctl = new AbortController(); setTimeout(() => ctl.abort(), 2500);
-    if (location.protocol === 'file:') throw 0;
-    const h = await fetch(API + '/api/health', {signal:ctl.signal}).then(r => r.ok ? r.json() : null);
-    server = !!(h && h.ok);
-  } catch { server = false; }
-  $('#modeNote').hidden = server || !!WORKER;
-  if (!server && !WORKER && direct) $('#modeNote').textContent = TMDB ? 'Search works here. Real DVD and book spines need the shelfstackd server.' : 'Book search works here. Films need a TMDB key, and real spines need the shelfstackd server.';
-  $('#exportNote').textContent = 'On a phone this opens the share sheet. Pick Instagram, then Story.';
-  if (server){
-    try { const r = await fetch(API + '/api/recent').then(r => r.json()); fillRecent(r.recent.map(x => x.title)); } catch {}
-  }
-}
-
-/* ---------- accounts (Supabase): sign in with Google, save shelves, open them again ----------
-   Only for people who use them: the Supabase library loads the first time it's needed (a click on Sign in or
-   Save shelf, or a session already on this device), so nothing changes for anyone else.
-   Text goes to Supabase (every table has Row Level Security); images a shelf needs go to the Worker. */
 const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
-const EMAIL_LOGIN = window.SPINESTACK_EMAIL_LOGIN === true;
 const SB_LIB = {src:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
-const accounts = !!(SB_URL && SB_KEY && WORKER);
-const acct = {sb:null, user:null, profile:null, shelfId:null, shelves:[], pendingSave:false, watching:false};
+const ROW = 6, GRID = 12;
+
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const profileUrl = (name, shelf) => 'u/?' + name + (shelf ? '&shelf=' + shelf : '');
+let toastT = 0; function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 4200); }
+function friendly(e){
+  const m = (e && e.message) || '';
+  if (/fetch|network/i.test(m)) return 'Couldn’t reach shelfstackd. Check your connection and try again.';
+  return m || 'Something went wrong. Try again in a moment.';
+}
+
+/* ---------- signing in (the same Supabase client and settings as feed/ and u/) ---------- */
+const me = {sb:null, user:null, profile:null, unnamed:false};
 let sbLoading = null;
 function supa(){
-  if (!accounts) return Promise.reject(new Error('Accounts aren’t set up on this copy of the site.'));
   return sbLoading || (sbLoading = new Promise((res, rej) => {
     const s = document.createElement('script'); s.src = SB_LIB.src; s.integrity = SB_LIB.integrity; s.crossOrigin = 'anonymous';
-    s.onload = () => { acct.sb = window.supabase.createClient(SB_URL, SB_KEY, {auth:{flowType:'pkce', persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}}); res(acct.sb); };
+    s.onload = () => { me.sb = window.supabase.createClient(SB_URL, SB_KEY, {auth:{flowType:'pkce', persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}}); res(me.sb); };
     s.onerror = () => { sbLoading = null; s.remove(); rej(new Error('Sign-in couldn’t load. Check your connection and try again.')); };
     document.head.appendChild(s);
   }));
 }
 const hasSession = () => { try { return Object.keys(localStorage).some(k => /^sb-.+-auth-token$/.test(k)); } catch { return false; } };
 const returning = () => /[?&](code|error|error_description)=/.test(location.search);
-const here = () => location.origin + location.pathname;
-const clean0 = o => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null));
-const blobOf = (c, type, q) => new Promise(r => c.toBlob(r, type, q));
-function friendly(e){
-  const m = (e && e.message) || '';
-  if (e && e.code === '23505') return 'That username is taken.';
-  if (e && e.code === 'P0001' && m) return m;
-  if (/fetch|network/i.test(m)) return 'Couldn’t reach your account. Check your connection and try again.';
-  return m || 'Something went wrong. Try again in a moment.';
+async function token(){
+  if (!me.sb) return null;
+  const {data:{session}} = await me.sb.auth.getSession();
+  return session ? session.access_token : null;
 }
-
-/* the account, and what the page shows for it */
-async function startAccounts(){
-  if (!accounts) return;
-  $('#acctBtn').hidden = false; $('#saveWrap').hidden = false; paintAcct();
-  const draft = EMBED ? null : takeDraft();           // a draft waits for the builder page itself, not a profile's
-  if (draft) await restoreDraft(draft);
-  if (!hasSession() && !returning()){ embedReady(); return; }          // signed out: nothing more loads
+// Supabase's REST API: as the signed-in person when there is one, otherwise as a visitor
+async function api(path, opt = {}){
+  const t = await token(), r = await fetch(`${SB_URL}/rest/v1/${path}`, {...opt,
+    headers: {apikey: SB_KEY, 'Content-Type': 'application/json', ...(t ? {Authorization: 'Bearer ' + t} : {}), ...(opt.headers || {})}});
+  const j = r.status === 204 ? null : await r.json().catch(() => null);
+  if (!r.ok) throw new Error((j && j.message) || 'Couldn’t load the shelves. Try again in a moment.');
+  return j;
+}
+const rpc = (fn, args) => api('rpc/' + fn, {method:'POST', body: JSON.stringify(args)});
+async function startSession(){
+  const back = returning();   // asked before Supabase takes ?code= off
+  if (!hasSession() && !back) return;
   try {
-    const sb = await supa(), {data:{session}} = await sb.auth.getSession();   // finishes a Google sign-in coming back with ?code=
     const err = new URLSearchParams(location.search).get('error_description');
-    if (returning()) history.replaceState(null, '', here() + location.hash);
+    const sb = await supa(), {data:{session}} = await sb.auth.getSession();   // finishes a Google sign-in coming back with ?code=
+    if (back) history.replaceState(null, '', location.pathname + location.hash);
     if (err) toast('Sign-in didn’t finish: ' + err);
-    await setUser(session && session.user);
-    watchAuth();
-    const openId = new URLSearchParams(location.search).get('open');
-    if (openId && !draft){
-      if (!EMBED) history.replaceState(null, '', here() + location.hash);
-      if (acct.shelves.some(s => s.id === openId)) await openShelf(openId); else if (EMBED) toast('Couldn’t open that shelf.');
+    me.user = session && session.user;
+    if (me.user){
+      const rows = await api(`profiles?select=id,username,display_name,avatar_key&id=eq.${me.user.id}`);
+      me.profile = rows[0] || null; me.unnamed = !rows[0];
     }
-  } catch (e){ toast(friendly(e)); }
-  embedReady();
+    sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') location.reload(); });
+  } catch (e){ if (me.user && !me.profile) me.unreachable = true; toast(friendly(e)); }   // unreachable: signed in, but the account couldn't be read (not "no username yet")
 }
-// on a profile: what's on the shelf now, so closing the builder can ask first when there are changes
-const snapshot = () => JSON.stringify([books.map(b => [b.id, b.title, b.author, b.kind, b.style, b.font, b.bg, b.fg]), settings,
-  media.wall && (media.wall.key || media.wall.name), media.pngs.map(p => [p.key, p.x, p.y, p.w, p.rot, p.opacity])]);
-let clean = '';
-function embedReady(){ if (!EMBED) return; clean = snapshot(); window.spinestackDirty = () => snapshot() !== clean; }
-function watchAuth(){
-  if (acct.watching) return; acct.watching = true;
-  // (no Supabase calls inside this callback: they'd wait on the lock it holds)
-  acct.sb.auth.onAuthStateChange((ev, s) => { if (ev === 'SIGNED_IN' || ev === 'SIGNED_OUT' || ev === 'USER_UPDATED') setTimeout(() => setUser(s && s.user), 0); });
-}
-async function setUser(user){
-  const same = (user && user.id) === (acct.user && acct.user.id);
-  if (same && (acct.profile || !user)) return;
-  acct.user = user || null; acct.profile = null;
-  if (!user){ acct.shelfId = null; acct.shelves = []; acct.pendingSave = false; proAccount = false; paintAcct(); paintMine(); return; }
-  const {data, error} = await acct.sb.from('profiles').select('id,username,is_private').eq('id', user.id).maybeSingle();
-  if (error){ toast('Couldn’t load your account. Try again in a moment.'); paintAcct(); return; }
-  acct.profile = data;
-  if (SHELFSTACKD_PRO_REQUIRED && data){ const r = await acct.sb.rpc('am_i_pro'); proAccount = r.data === true; }
-  paintAcct();
-  if (!data){ if (!same) openSheet('name'); return; }
-  await loadMine();
-  if (acct.pendingSave){ acct.pendingSave = false; saveShelf(false); }
-}
-function paintAcct(){
-  if (!accounts) return;
-  const p = acct.profile, b = $('#acctBtn');
-  b.textContent = p ? '@' + p.username : acct.user ? 'Finish sign-up' : 'Sign in'; b.classList.toggle('named', !!p);
-  $('#saveShelf').textContent = acct.shelfId ? 'Update shelf' : 'Save shelf';
-  $('#saveNew').hidden = !acct.shelfId;
-  $('#saveNote').textContent = acct.user ? '' : 'Sign in to keep this shelf and open it again later.';
-  $('#mine').hidden = !p;
-  if (p) $('#profileLink').href = 'u/?' + p.username;
-}
-$('#acctBtn').addEventListener('click', () => {
-  if (acct.profile) location.href = 'u/?' + acct.profile.username;
-  else openSheet(acct.user ? 'name' : 'signin');
-});
-
-/* the sign-in and username sheet */
-let sheetFrom = null;
-function openSheet(which){
-  sheetFrom = document.activeElement;
-  $('#signinPane').hidden = which !== 'signin'; $('#namePane').hidden = which !== 'name'; $('#emailForm').hidden = !EMAIL_LOGIN;
-  $('#sheet').hidden = false;
-  if (which === 'name') prefillName();
-  (which === 'name' ? $('#uname') : $('#googleBtn')).focus();
-}
-function closeSheet(){ if (!$('#signinPane').hidden) acct.pendingSave = false; $('#sheet').hidden = true; if (sheetFrom && sheetFrom.focus) sheetFrom.focus(); }
-$('#sheetClose').addEventListener('click', closeSheet);
-$('#sheet').addEventListener('click', e => { if (e.target.id === 'sheet') closeSheet(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#sheet').hidden) closeSheet(); });
+// the bar (nav.js) shows who is signed in
+const paintAcct = () => Nav.paint(me);
+const signIn = () => openSheet('#signSheet', '#googleBtn');
+Nav.onSignIn(signIn);
+// Sign out, from the account menu (nav.js): the page starts again signed out
+Nav.onSignOut(async () => { try { const {error} = await (await supa()).auth.signOut({scope: 'local'}); if (error) throw error; } catch (e){ toast(friendly(e)); } });
 $('#googleBtn').addEventListener('click', async () => {
   const btn = $('#googleBtn'); btn.disabled = true;
   try {
-    const sb = await supa(); await stashDraft();      // the page reloads after Google: keep this shelf for when it's back
-    const {error} = await sb.auth.signInWithOAuth({provider:'google', options:{redirectTo: here()}});
+    const sb = await supa();
+    const {error} = await sb.auth.signInWithOAuth({provider:'google', options:{redirectTo: location.origin + location.pathname}});   // back to this page
     if (error) throw error;
   } catch (e){ btn.disabled = false; toast(friendly(e)); }
 });
-$('#emailForm').addEventListener('submit', async e => {       // off until the site can send email (SPINESTACK_EMAIL_LOGIN)
-  e.preventDefault(); if (!EMAIL_LOGIN) return;
-  const email = $('#email').value.trim(); if (!email) return;
-  try {
-    const sb = await supa(); await stashDraft();
-    const {error} = await sb.auth.signInWithOtp({email, options:{emailRedirectTo: here(), shouldCreateUser:true}});
-    if (error) throw error;
-    toast('Check your email for a sign-in link.'); closeSheet();
-  } catch (err){ toast(friendly(err)); }
-});
-// usernames: 3-20 lowercase letters, numbers or _; the database has the final say (reserved names, taken names)
-const NAME_OK = /^[a-z0-9_]{3,20}$/;
-let nameT = 0, nameFree = false;
-function prefillName(){
-  const u = acct.user || {}, m = u.user_metadata || {};
-  const guess = String(m.preferred_username || m.name || m.full_name || (u.email || '').split('@')[0] || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 20);
-  if (!$('#uname').value && guess.length >= 3) $('#uname').value = guess;
-  checkName();
-}
-function paintName(msg, ok){ const n = $('#unameNote'); n.textContent = msg; n.classList.toggle('warn', !ok && !!msg); $('#nameBtn').disabled = !(nameFree && $('#adult').checked); }
-function checkName(){
-  const el = $('#uname'), v = el.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20);
-  if (el.value !== v) el.value = v;
-  nameFree = false; clearTimeout(nameT);
-  if (!v){ paintName('3 to 20 letters, numbers or _.', true); return; }
-  if (!NAME_OK.test(v)){ paintName('At least 3 characters: letters, numbers or _.', false); return; }
-  paintName('Checking…', true);
-  nameT = setTimeout(async () => {
-    const {data, error} = await acct.sb.rpc('username_available', {name: v});
-    if (el.value !== v) return;
-    if (error){ paintName('Couldn’t check that name. Try again.', false); return; }
-    nameFree = !!data; paintName(data ? '@' + v + ' is free.' : 'That username is taken.', !!data);
-  }, 350);
-}
-$('#uname').addEventListener('input', checkName);
-$('#adult').addEventListener('change', () => paintName($('#unameNote').textContent, nameFree || !$('#unameNote').classList.contains('warn')));
-$('#nameBtn').addEventListener('click', async () => {
-  const v = $('#uname').value, btn = $('#nameBtn');
-  if (!nameFree || !$('#adult').checked || !acct.user) return;
-  btn.disabled = true;
-  const {data, error} = await acct.sb.from('profiles').insert({id: acct.user.id, username: v}).select('id,username,is_private').single();
-  if (error){ nameFree = false; paintName(friendly(error), false); return; }
-  acct.profile = data; closeSheet(); paintAcct(); toast('Welcome, @' + data.username + '.');
-  await loadMine();
-  if (acct.pendingSave){ acct.pendingSave = false; saveShelf(false); }
-});
-async function signOut(){
-  try { await (await supa()).auth.signOut(); } catch {}
-  await setUser(null); closeSheet(); toast('Signed out.');
-}
-$('#nameOut').addEventListener('click', signOut);
-$('#signOut').addEventListener('click', signOut);
 
-/* a shelf as rows: each spine points at its images (a:archive id, u:saved image, url:TMDB / Open Library cover) */
-const COVER_HOSTS = /^https:\/\/(image\.tmdb\.org|covers\.openlibrary\.org)\/\S+$/;
-async function itemFor(b, put){
-  const look = clean0({style:b.style, font:b.font, bg:b.bg, fg:b.fg, accent:b.accent, wf:+(+b.wf).toFixed(3), hf:+(+b.hf).toFixed(3), jit:+(+b.jit).toFixed(3),
-    studio:b.studio || undefined, cat:b.cat || undefined, pt:b.titleImg ? 1 : undefined});
-  const rec = {item_id:b.id, kind:b.kind === 'movie' ? 'movie' : 'book', title:String(b.title || '').slice(0, 200), author:String(b.author || '').slice(0, 200),
-    year:/^\d{4}$/.test(String(b.year || '')) ? String(b.year) : null, look};
-  if (isReal(b)) rec.spine_src = b.archiveId ? 'a:' + b.archiveId : await put(b.spineImg, 'spine');
-  // the cover: from TMDB / Open Library when we have its address (a scan's front is kept only when there's none)
-  if (b.coverUrl && COVER_HOSTS.test(b.coverUrl) && b.coverUrl.length <= 396) rec.cover_src = 'url:' + b.coverUrl;
-  else if (b.img && b.img !== b.spineImg) rec.cover_src = await put(b.img, 'cover');
-  return rec;
-}
-// an image made small enough to keep: spines up to 1400px tall, covers up to 800px, WebP where the browser can
-async function encode(src, kind){
-  const w0 = src.naturalWidth || src.width, h0 = src.naturalHeight || src.height, max = kind === 'spine' ? 1400 : 800;
-  for (let k = Math.min(1, max/Math.max(w0, h0)), tries = 0; tries < 6; tries++, k *= .8){
-    const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w0*k)); c.height = Math.max(1, Math.round(h0*k));
-    c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
-    let blob = await blobOf(c, 'image/webp', .88);
-    if (!blob || blob.type !== 'image/webp') blob = await blobOf(c, 'image/jpeg', .86);     // Safari before 17 has no WebP encoder
-    if (blob && blob.size <= 190*1024) return blob;
-  }
-  throw new Error('One image on this shelf is too large to save.');
-}
-const PUT = new WeakMap();   // image -> the key it's saved under, so saving again doesn't send it again
-async function putImage(src, kind){
-  const memo = PUT.get(src); if (memo && memo.user === acct.user.id) return memo.ref;
-  const r = await workerPost('/u/blob', await encode(src, kind)), ref = 'u:' + r.key;
-  PUT.set(src, {user: acct.user.id, ref}); return ref;
-}
-async function workerPost(path, body){
-  const {data:{session}} = await acct.sb.auth.getSession();
-  if (!session) throw new Error('Sign in again to save shelves.');
-  const r = await fetch(WORKER + path, {method:'POST', headers:{Authorization:'Bearer ' + session.access_token, 'Content-Type': body ? body.type : 'text/plain'}, body: body || ''});
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || 'Saving didn’t work. Try again in a moment.');
-  return j;
-}
-// the shelf's picture for lists: the story, 360 x 640
-async function previewBlob(){
-  await Promise.all(Object.values(TEX).map(t => t.ready).filter(Boolean));
-  const c = document.createElement('canvas'); c.width = W; c.height = H; renderStory(c.getContext('2d'));
-  const p = document.createElement('canvas'); p.width = 360; p.height = 640;
-  const x = p.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(c, 0, 0, 360, 640);
-  for (const q of [.82, .7, .55]){
-    let b = await blobOf(p, 'image/webp', q);
-    if (!b || b.type !== 'image/webp') b = await blobOf(p, 'image/jpeg', q);
-    if (b && b.size <= 110*1024) return b;
-  }
-  throw new Error('Couldn’t make the shelf’s picture. Try again.');
-}
-let saving = false;
-async function saveShelf(asNew, named){
-  if (saving) return;
-  if (!books.length || isSample){ toast('Add your own titles first.'); return; }
-  if (!acct.user){ acct.pendingSave = true; openSheet('signin'); return; }
-  if (!acct.profile){ acct.pendingSave = true; openSheet('name'); return; }
-  if (books.length > spineMax()){ proToast('Free shelves hold 6 spines. Pro holds 20.'); return; }
-  if (usesPro() && !isPro()){ proToast('Your own wall, PNGs and the floating shelf come with Pro.'); return; }
-  const updating = !asNew && !!acct.shelfId;
-  if (!updating && !named){ askName(asNew); return; }   // a new shelf gets its name first
-  saving = true; $('#saveShelf').disabled = true; $('#saveNote').textContent = 'Saving…';
-  const id = updating ? acct.shelfId : crypto.randomUUID(), was = acct.shelves.find(s => s.id === id);
-  try {
-    const items = await Promise.all(books.map(b => itemFor(b, putImage)));
-    await uploadArt();
-    const pro = proSettings();
-    const pv = await workerPost('/u/preview?shelf=' + id, await previewBlob());
-    const {error} = await acct.sb.rpc('save_shelf', {items, shelf:{id, caption: settings.caption.slice(0, 60), filter: settings.filter, intensity: settings.intensity,
-      background: settings.theme === 'wall' ? 'paper' : settings.theme, wood: settings.wood, layout: settings.layout, varied: settings.varied, is_public: was ? was.is_public : true, preview_key: pv.key, pro}});
-    if (error) throw error;
-    forgetArt(keysOf(was && was.pro).filter(k => !keysOf(pro).includes(k)));
-    acct.shelfId = id; toast(updating ? 'Shelf updated.' : 'Saved to My shelves.');
-    if (EMBED){ clean = snapshot(); parent.postMessage({spinestack: 'saved', id}, location.origin); }   // the profile closes this and shows it
-    await loadMine();
-  } catch (e){ toast(friendly(e)); }
-  finally { saving = false; $('#saveShelf').disabled = false; paintAcct(); }
-}
-// a new shelf's name is its caption: asked for in a small field, filled in with the caption it has
-let naming = false;
-function askName(asNew){
-  naming = asNew; $('#nameBox').hidden = false; $('#saveShelf').hidden = true; $('#saveNew').hidden = true;
-  const f = $('#shelfName'); f.value = settings.caption; f.focus(); f.select();
-}
-function doneNaming(){ $('#nameBox').hidden = true; $('#saveShelf').hidden = false; paintAcct(); }
-$('#nameBox').addEventListener('submit', e => {
-  e.preventDefault();
-  const v = $('#shelfName').value.replace(/\s+/g, ' ').trim().slice(0, 60);
-  settings.caption = v; $('#caption').value = v; redraw();
-  doneNaming(); saveShelf(naming, true);
-});
-$('#nameCancel').addEventListener('click', doneNaming);
-$('#shelfName').addEventListener('keydown', e => { if (e.key === 'Escape') doneNaming(); });
-// the wall and PNGs this shelf needs, uploaded once (a picture keeps its key while it stays on the shelf)
-async function uploadArt(){
-  const mine = k => k && k.startsWith(acct.user.id + '/');
-  if (walled() && !mine(media.wall.key)){
-    if (!media.wall.blob) throw new Error('The wall couldn’t be saved. Pick it again.');
-    media.wall.key = (await workerPost('/m/upload?kind=wall', media.wall.blob)).key;
-  }
-  for (const p of media.pngs) if (!mine(p.key)){
-    if (!p.blob) throw new Error('A PNG couldn’t be saved. Add it again.');
-    p.key = (await workerPost('/m/upload?kind=png', p.blob)).key;
-  }
-}
-// pictures no shelf needs any more: the Worker deletes each one unless another of your shelves still uses it
-const forgetArt = keys => { for (const k of keys) workerPost('/m/delete?k=' + encodeURIComponent(k)).catch(() => {}); };
-$('#saveShelf').addEventListener('click', () => saveShelf(false));
-$('#saveNew').addEventListener('click', () => saveShelf(true));
+/* sheets */
+let sheetFrom = null;
+function openSheet(id, focus){ sheetFrom = document.activeElement; $(id).hidden = false; const f = $(focus); if (f) f.focus(); }
+function closeSheets(){ document.querySelectorAll('.sheet').forEach(s => s.hidden = true); if (sheetFrom && sheetFrom.focus) sheetFrom.focus(); }
+document.querySelectorAll('.sheet').forEach(s => s.addEventListener('click', e => { if (e.target === s || e.target.closest('[data-close]')) closeSheets(); }));
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.querySelector('.sheet:not([hidden])')) closeSheets(); });
 
-/* My shelves */
-const SHELF_COLS = 'id,caption,name,filter,intensity,background,wood,layout,varied,is_public,preview_key,pro,created_at,updated_at,shelf_items(count)';
-async function loadMine(){
-  if (!acct.profile) return;
-  // own shelves only: since phase 2, other people's public shelves are readable too
-  const {data, error} = await acct.sb.from('shelves').select(SHELF_COLS).eq('owner', acct.user.id).order('updated_at', {ascending:false}).limit(60);
-  if (error){ toast('Couldn’t load your shelves. Try again in a moment.'); return; }
-  acct.shelves = data || []; paintMine();
+/* ---------- shelves and people ---------- */
+// one shelf: its preview, its name, who made it
+function tile(x, lazy){
+  const li = document.createElement('li'), shelf = Shelf.shelfName({name: x.name, caption: x.caption});
+  const pic = x.preview_key ? `<img src="${esc(`${WORKER}/u/preview?k=${encodeURIComponent(x.preview_key)}&v=${encodeURIComponent(x.updated_at)}`)}" alt="" crossorigin="anonymous"${lazy ? ' loading="lazy"' : ''} width="360" height="640">` : '';   // with CORS, so cards.js can read it and cut the card round the books
+  li.innerHTML = `<a href="${esc(profileUrl(x.username, x.shelf_id))}" aria-label="${esc(shelf)} by @${esc(x.username)}">
+      <span class="pic" data-shelf="${esc(x.shelf_id)}">${pic}</span><span class="cap">${esc(shelf)}</span><span class="by">@${esc(x.username)}</span></a>`;
+  return li;
 }
-const fmtDate = s => new Date(s).toLocaleDateString(undefined, {day:'numeric', month:'short', year:'numeric'});
-function paintMine(){
-  const list = acct.shelves;
-  $('#mineCount').textContent = list.length ? `(${list.length})` : '';
-  $('#mineEmpty').hidden = !!list.length || !acct.profile;
-  $('#mineList').innerHTML = list.map(s => {
-    const n = ((s.shelf_items || [])[0] || {}).count || 0, cap = shelfName(s);
-    const src = s.preview_key ? `${WORKER}/u/preview?k=${encodeURIComponent(s.preview_key)}&v=${encodeURIComponent(s.updated_at)}` : '';
-    return `<li class="card${s.id === acct.shelfId ? ' on' : ''}"><button class="open" type="button" data-open="${s.id}" aria-label="Open ${esc(cap)}">${src ? `<img src="${esc(src)}" alt="" loading="lazy" width="360" height="640">` : ''}</button>
-      <div class="cap">${esc(cap)}</div><div class="grey">${n} ${n === 1 ? 'spine' : 'spines'} · ${esc(fmtDate(s.updated_at))}</div>
-      <div class="acts"><button class="dash sm" type="button" data-open="${s.id}">Open</button><button class="dash sm" type="button" data-del="${s.id}">Delete</button>
-        <label class="check"><input type="checkbox" data-private="${s.id}"${s.is_public ? '' : ' checked'}> Private</label></div></li>`;
-  }).join('');
+function person(x){
+  const li = document.createElement('li'), name = (x.display_name || '').trim();
+  li.innerHTML = `<a href="${esc(profileUrl(x.username))}"><span class="fa" aria-hidden="true">${x.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(x.avatar_key)}`)}" alt="" loading="lazy">` : esc((name || x.username).trim()[0] || '·')}</span><span>@${esc(x.username)}</span></a>`;
+  return li;
 }
-// Private: only its owner sees it (never on the profile); public is the default
-$('#mineList').addEventListener('change', async e => {
-  const box = e.target.closest('[data-private]'); if (!box) return;
-  const id = box.dataset.private, s = acct.shelves.find(x => x.id === id), priv = box.checked;
-  box.disabled = true;
-  const {error} = await acct.sb.from('shelves').update({is_public: !priv}).eq('id', id);
-  box.disabled = false;
-  if (error){ box.checked = !priv; toast(friendly(error)); return; }
-  if (s) s.is_public = !priv;
-  toast(priv ? 'Only you can see this shelf now.' : 'This shelf shows on your profile again.');
-});
-$('#mineList').addEventListener('click', async e => {
-  const o = e.target.closest('[data-open]'), d = e.target.closest('[data-del]');
-  if (o) openShelf(o.dataset.open);
-  if (d){
-    if (!d.dataset.sure){ d.dataset.sure = '1'; d.textContent = 'Sure? Delete'; setTimeout(() => { if (d.isConnected){ delete d.dataset.sure; d.textContent = 'Delete'; } }, 4000); return; }
-    d.disabled = true;
-    const id = d.dataset.del, gone = keysOf((acct.shelves.find(s => s.id === id) || {}).pro), {error} = await acct.sb.from('shelves').delete().eq('id', id);
-    if (error){ toast(friendly(error)); d.disabled = false; return; }
-    workerPost('/u/forget?shelf=' + id).catch(() => {});
-    forgetArt(gone);
-    if (acct.shelfId === id) acct.shelfId = null;
-    toast('Shelf deleted.'); paintAcct(); loadMine();
-  }
-});
-// a saved item back into a book on the shelf
-const srcOf = ref => ref.startsWith('a:') ? `${WORKER}/archive/img?id=${ref.slice(2)}` : ref.startsWith('u:') ? `${WORKER}/u/blob?k=${encodeURIComponent(ref.slice(2))}`
-  : ref.startsWith('url:') ? viaWorker(ref.slice(4)) : ref.startsWith('data:image/') ? ref : '';
-async function rebuild(r){
-  const [spine, cover] = await Promise.all([r.spine_src, r.cover_src].map(ref => ref && srcOf(ref) ? timeout(loadImg(srcOf(ref)), 15000).catch(() => null) : null));
-  const look = r.look || {}, style = look.style || 'art';
-  if ((style === 'real' && !spine) || (style === 'cover' && !cover)) return null;
-  for (const [im, ref] of [[spine, r.spine_src], [cover, r.cover_src]]) if (im && acct.user && ref && ref.startsWith('u:' + acct.user.id + '/')) PUT.set(im, {user: acct.user.id, ref});
-  const t = look.pt && cover && r.kind === 'movie' ? posterTitle(cover) : null, img = cover || spine;
-  const n = /^b(\d+)$/.exec(r.item_id); if (n) uid = Math.max(uid, +n[1] + 1);   // new books never reuse a saved one's id
-  return newBook(clean0({id: r.item_id, title: r.title, author: r.author, kind: r.kind, year: r.year ? String(r.year) : undefined, style, font: look.font || 'oswald',
-    bg: look.bg, fg: look.fg, accent: look.accent, wf: look.wf, hf: look.hf, jit: look.jit, studio: look.studio, cat: look.cat, img, spineImg: spine || undefined,
-    titleImg: t ? t.img : undefined, thumb: img && img.src, archiveId: r.spine_src && r.spine_src.startsWith('a:') ? r.spine_src.slice(2) : undefined,
-    coverUrl: r.cover_src && r.cover_src.startsWith('url:') ? r.cover_src.slice(4) : undefined,
-    source: style === 'real' ? (r.spine_src.startsWith('a:') ? 'the archive' : 'your saved shelf') : undefined}));
+const everyone = n => rpc('feed', {scope: 'everyone', before: null, before_id: null, n});
+
+/* The lead: a real shelf, large. Its picture is the whole 9:16 story (360 x 640), so it's cut to the band the books
+   stand in (cards.js finds them, as it does for a card) and stands on the story's own background colour, as large as
+   the panel allows and no more than one and a half times its size. A picture that can't be read is shown whole. */
+function lead(x){
+  const shelf = Shelf.shelfName({name: x.name, caption: x.caption}), to = profileUrl(x.username, x.shelf_id), stand = $('#stand');
+  const a = document.createElement('a'); a.id = 'leadLink'; a.href = to; a.hidden = true; a.setAttribute('aria-label', `${shelf} by @${x.username}`);
+  a.innerHTML = `<span class="cut" data-shelf="${esc(x.shelf_id)}"><img alt="" crossorigin="anonymous" width="360" height="640"></span>`;
+  const cut = a.firstChild, im = cut.firstChild;
+  im.addEventListener('load', () => {
+    let m = null; try { m = window.Cards ? Cards.measure(im) : null; } catch {}   // without CORS it can't be looked at
+    const top = m ? m.ct : 0, bottom = m ? m.cb : 1, r = 9 / (16 * (bottom - top));   // the band's width over its height
+    cut.style.setProperty('--r', r.toFixed(4)); im.style.top = (-100 * top * 16 / 9 * r).toFixed(2) + '%';
+    stand.style.backgroundColor = m ? `rgb(${m.bg.join(',')})` : '';
+    a.hidden = false;
+  });
+  // the picture didn't come: the sample shelf. (worker-address.js may first try the Worker's other address: then the
+  // picture's address has changed, and this waits for that one.)
+  let tried = '';
+  im.addEventListener('error', () => { if (im.src !== tried){ tried = im.src; return; } a.remove(); sample(); });
+  im.src = tried = `${WORKER}/u/preview?k=${encodeURIComponent(x.preview_key)}&v=${encodeURIComponent(x.updated_at)}`;
+  stand.prepend(a);
+  $('#leadCap').innerHTML = `<a href="${esc(to)}">${esc(shelf)}</a> <span>by <a href="${esc(profileUrl(x.username))}">@${esc(x.username)}</a></span>`;
 }
-function applySettings(s){
-  Object.assign(settings, {caption: s.caption, filter: s.filter, intensity: s.intensity, theme: s.background || s.theme, wood: !!s.wood, layout: s.layout, varied: s.varied !== false,
-    plank: !!(s.pro ? s.pro.plank : s.plank), shelfColour: (s.pro ? s.pro.shelf_colour : s.shelfColour) || '#FFFFFF'});   // a saved shelf keeps these in pro, a draft in its settings
-  $('#plank').checked = settings.plank; paintColour();
-  $('#caption').value = settings.caption; $('#intensity').value = settings.intensity; $('#woodShelf').checked = settings.wood; $('#varied').checked = settings.varied;
-  for (const [id, key] of [['#theme', 'theme'], ['#layout', 'layout']]) document.querySelectorAll(id + ' button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === settings[key])));
-  $('#variedWrap').hidden = settings.layout === 'covers';
-  syncFilter();
+// no public shelf to show: the builder's sample shelf, so the page still shows what one is
+function sample(){ $('#sample').hidden = false; $('#stand').classList.add('plain'); $('#leadCap').textContent = 'a shelf, for example'; }
+
+let outShown = false;
+async function showOut(){
+  if (outShown) return; outShown = true;
+  document.documentElement.classList.add('signedout');   // the bar's + is outlined: Make a shelf is the black button here
+  $('#state').hidden = true; $('#in').hidden = true; $('#out').hidden = false;
+  let rows;
+  try { rows = await everyone(1 + GRID); }
+  catch (e){ $('#outState').textContent = friendly(e); sample(); return; }
+  if (rows[0] && rows[0].preview_key) lead(rows[0]); else sample();   // an empty site: a shelf, for example
+  const rest = rows.slice(1);
+  $('#outGrid').replaceChildren(...rest.map(x => tile(x, true)));
+  $('#outState').hidden = true; $('#outJust').hidden = !rest.length;   // one shelf so far: it's the one above
+  // the people behind the newest shelves, each once
+  const seen = new Set(), who = rows.filter(x => !seen.has(x.owner) && seen.add(x.owner));
+  $('#stackers').replaceChildren(...who.map(person)); $('#stackersSec').hidden = !who.length;
 }
-// a saved shelf's wall comes from the Worker; a draft's from this browser (see stashDraft)
-async function restoreArt(s, drafted){
-  media.wall = null; media.pngs = [];
-  const pro = s.pro || {}, w = drafted ? drafted.wall : pro.wall_key ? {key: pro.wall_key, name: 'Your saved wall'} : null;
-  if (w){
-    const url = w.blob ? URL.createObjectURL(w.blob) : `${WORKER}/m/img?k=${encodeURIComponent(w.key)}`;
+async function showIn(){
+  document.documentElement.classList.remove('signedout');
+  $('#state').hidden = true; $('#out').hidden = true; $('#in').hidden = false;
+  // welcome back, with what the people you follow have been shelving; with no one to show yet (a new account, or
+  // nobody followed), what to do first
+  const hello = (back, line) => { if (me.profile) $('#hello').innerHTML = `${back ? 'Welcome back' : 'Welcome'}, <a href="${esc(profileUrl(me.profile.username))}">@${esc(me.profile.username)}</a>. <span class="grey">${line}</span>`; };
+  hello(true, 'Here’s what people you follow have been shelving…');
+  const fill = async (get, state, list, lazy, empty) => {
     try {
-      const img = await timeout(loadImg(url), 15000);
-      media.wall = {img, blob: w.blob || null, name: w.name, small: !!w.small, dark: 'dark' in w ? w.dark : isDark(img), key: w.key || null};
-    } catch { toast('The wall couldn’t load, so this shelf is on Paper for now.'); }
-    finally { if (w.blob) URL.revokeObjectURL(url); }
-  }
-  const items = drafted ? drafted.pngs || [] : pro.wall_items || [];
-  const got = await Promise.all(items.map(async it => {
-    const url = it.blob ? URL.createObjectURL(it.blob) : `${WORKER}/m/img?k=${encodeURIComponent(it.key)}`;
-    try { return {img: await timeout(loadImg(url), 15000), blob: it.blob || null, key: it.key || null, x: it.x, y: it.y, w: it.w, rot: +it.rot || 0, opacity: it.opacity == null ? 1 : +it.opacity}; }
-    catch { return null; } finally { if (it.blob) URL.revokeObjectURL(url); }
-  }));
-  media.pngs = got.filter(Boolean);
-  if (media.pngs.length < got.length) toast(`${got.length - media.pngs.length} of the PNGs couldn’t load.`);
-  if (media.wall) settings.theme = 'wall'; else if (settings.theme === 'wall') settings.theme = 'paper';
-  wallPicking = false; sel = -1; syncTheme(); paintWall(); paintPngs();
-}
-async function putOnShelf(rows, s, drafted){
-  const got = await Promise.all(rows.map(rebuild)), ok = got.filter(Boolean);
-  books = ok; isSample = false; applySettings(s); await restoreArt(s, drafted); renderList();
-  if (ok.length < rows.length) toast(`${rows.length - ok.length} of the spines couldn’t load. The rest are on your shelf.`);
-}
-async function openShelf(id){
-  const s = acct.shelves.find(x => x.id === id); if (!s) return;
-  $('#saveNote').textContent = 'Opening…';
-  const {data, error} = await acct.sb.from('shelf_items').select('position,item_id,kind,title,author,year,spine_src,cover_src,look').eq('shelf_id', id).order('position');
-  if (error){ $('#saveNote').textContent = ''; toast(friendly(error)); return; }
-  await putOnShelf(data || [], s);
-  acct.shelfId = id; paintAcct(); paintMine(); $('#saveNote').textContent = '';
-  $('#shelf').scrollIntoView({behavior:'smooth'});
+      const rows = await get();
+      $(list).replaceChildren(...rows.map(x => tile(x, lazy)));
+      $(state).hidden = true; if (!rows.length) empty();
+    } catch (e){ $(state).textContent = friendly(e); }
+  };
+  await Promise.all([
+    fill(() => rpc('feed', {scope: 'following', before: null, before_id: null, n: ROW}), '#folState', '#folRow', false, () => {
+      $('#folNone').hidden = false; hello(false, 'Start your shelf with + Add, then follow a few people to see theirs.'); }),
+    fill(() => everyone(GRID), '#inState', '#inGrid', true, () => { $('#inState').textContent = 'Nothing shelved yet. The first shelf here could be yours.'; $('#inState').hidden = false; }),
+  ]);
 }
 
-/* Signing in with Google leaves the page and comes back to it: the shelf being made waits in this tab meanwhile */
-const DRAFT = 'spinestack-draft';
-const idb = (() => {
-  let db = null;
-  const open = () => db || (db = new Promise((res, rej) => { const r = indexedDB.open('spinestack', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }));
-  const run = async (mode, fn) => { const d = await open(); return new Promise((res, rej) => { const t = d.transaction('kv', mode), r = fn(t.objectStore('kv')); t.oncomplete = () => res(r.result); t.onerror = () => rej(t.error); }); };
-  return {put: (k, v) => run('readwrite', st => st.put(v, k)), get: k => run('readonly', st => st.get(k)), del: k => run('readwrite', st => st.delete(k))};
+(async () => {
+  if (!hasSession() && !returning()) showOut();   // signed out: nothing waits on the account
+  await startSession();
+  if (me.unnamed){ location.replace('build/'); return; }   // signed in, no username yet: the builder asks for one
+  paintAcct();
+  if (me.user) showIn(); else showOut();
 })();
-async function stashDraft(){
-  try {
-    if (isSample || !books.length){ sessionStorage.removeItem(DRAFT); return; }
-    const inline = async (src, kind) => { const b = await encode(src, kind); return await new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); }); };
-    const items = await Promise.all(books.map(b => itemFor(b, inline)));
-    sessionStorage.setItem(DRAFT, JSON.stringify({at: Date.now(), settings: {...settings}, shelfId: acct.shelfId, save: acct.pendingSave, items}));
-    try { await idb.put(DRAFT, {wall: media.wall && {blob: media.wall.blob, key: media.wall.key, name: media.wall.name, small: media.wall.small, dark: media.wall.dark},
-      pngs: media.pngs.map(p => ({blob: p.blob, key: p.key, x: p.x, y: p.y, w: p.w, rot: p.rot, opacity: p.opacity}))}); } catch {}
-  } catch { try { sessionStorage.removeItem(DRAFT); } catch {} }
-}
-function takeDraft(){
-  try { const d = JSON.parse(sessionStorage.getItem(DRAFT) || 'null'); sessionStorage.removeItem(DRAFT); return d && Date.now() - d.at < 3600e3 ? d : null; } catch { return null; }
-}
-async function restoreDraft(d){
-  let drafted = null;
-  try { drafted = await idb.get(DRAFT); idb.del(DRAFT).catch(() => {}); } catch {}
-  await putOnShelf(d.items || [], d.settings || {}, drafted || {});
-  acct.shelfId = d.shelfId || null; acct.pendingSave = !!d.save;
-}
-
-boot();
-startAccounts();
-const faces = ['600 40px Oswald','400 40px Oswald','600 40px "Cormorant Garamond"','italic 500 40px "Cormorant Garamond"','40px "Archivo Black"','40px "Gochi Hand"','500 40px "IBM Plex Mono"','400 40px "IBM Plex Mono"','600 40px "IBM Plex Sans"','500 40px "Geist Mono"','400 40px "Geist Mono"'];
-if (document.fonts){ Promise.all(faces.map(f => document.fonts.load(f).catch(() => {}))).then(redraw); document.fonts.ready.then(redraw); }
 })();
 </script>
-
 </body>
 </html>

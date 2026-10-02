@@ -3,181 +3,213 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="Shelves on shelfstackd.">
-<title>shelfstackd</title>
+<title>Profile · shelfstackd</title>
+<meta name="description" content="A person on shelfstackd: their shelf, and the films and books they log.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<meta name="theme-color" content="#FFFFFF">
+<meta property="og:site_name" content="shelfstackd">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Profile · shelfstackd">
+<meta property="og:description" content="A person on shelfstackd: their shelf, and the films and books they log.">
+<meta property="og:image" content="https://shelfstackd.com/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="shelfstackd. Your shelf, but the real spines. Four book spines stand side by side.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://shelfstackd.com/og.jpg">
 <script>
-  /* The same public addresses as index.html (see the notes there). */
+  /* The same public addresses as build/ (see the notes there). */
   window.SPINESTACK_WORKER = "https://api.shelfstackd.com";
+  window.SPINESTACK_WORKER_FALLBACK = "https://spinestack.spinestack-worker.workers.dev";
   window.SPINESTACK_SUPABASE_URL = "https://fiukspnovrlzlcdekcnb.supabase.co";
   window.SPINESTACK_SUPABASE_KEY = "sb_publishable_cZeUDJXk-nCbSJ4VZWn_GQ_6xNFyBo2";
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
+<link rel="stylesheet" href="../site.css?v=20261004a">
 <style>
-/* the site's own look, as in index.html */
-:root{--paper:#FFFFFF;--ink:#000000;--grey:#6B6B6B;--hair:#D9D9D9;--mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-*{box-sizing:border-box}
-[hidden]{display:none!important}
-html{background:var(--paper)}
-body{margin:0;background:var(--paper);color:var(--ink);font:400 12px/1.55 var(--mono)}
-a{color:inherit}
-:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
-.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 24px}
-.top a{text-decoration:none;font-size:13px;text-transform:uppercase}
-.top .r{justify-self:end;display:flex;gap:18px;align-items:center}
-.mark{font-weight:800;font-size:22px!important;letter-spacing:.34em;margin-right:-.34em;line-height:1}
-.acct{font:400 13px var(--mono);text-transform:uppercase;background:none;border:0;padding:0;color:var(--ink);cursor:pointer;text-decoration:none}
-.acct.named{text-transform:none}
-p{margin:0 0 12px}
-.grey{color:var(--grey)}
-.dash{display:inline-block;background:none;border:0;padding:0 0 9px;font:500 16px var(--mono);text-transform:uppercase;color:var(--ink);cursor:pointer;text-decoration:none;
-  background-image:repeating-linear-gradient(90deg,var(--ink) 0 11px,transparent 11px 14px);background-size:100% 4px;background-repeat:no-repeat;background-position:left bottom}
-.dash.grey{color:var(--grey);background-image:repeating-linear-gradient(90deg,var(--grey) 0 8px,transparent 8px 11px)}
-.dash.sm{font-size:12px;padding-bottom:6px;background-size:100% 3px;background-image:repeating-linear-gradient(90deg,var(--ink) 0 8px,transparent 8px 11px)}
-.btn{font:500 13px var(--mono);text-transform:uppercase;background:var(--ink);color:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 22px;cursor:pointer;text-decoration:none;display:inline-block}
-.btn:hover{background:#222}
-.btn.full{width:100%}
-.btn.ghost{background:var(--paper);color:var(--ink)}
-.btn.ghost:hover{background:#F2F2F2}
-.btn:disabled{opacity:.5;cursor:default}
-.btn.sm{font-size:11.5px;padding:7px 14px}
-.lbl{font-size:11px;color:var(--grey);text-transform:uppercase}
-.check{display:flex;gap:8px;align-items:center;cursor:pointer;text-transform:uppercase;font-size:11.5px}
-.check input{accent-color:var(--ink);margin:0}
-.note{font-size:11px;color:var(--grey)}
-.note:empty{display:none}
-.note.warn{color:var(--ink);font-weight:700}
-input[type=text],select,textarea{font:400 13px var(--mono);color:var(--ink);background:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 12px;width:100%;min-width:0}
-textarea{resize:vertical;line-height:1.5}
-.sheet{position:fixed;inset:0;background:rgba(0,0,0,.35);display:grid;place-items:center;z-index:30;padding:16px}
-.sheetbox{background:var(--paper);border:1px solid var(--ink);border-radius:12px;width:100%;max-width:380px;padding:26px 24px 22px;position:relative;max-height:calc(100% - 16px);overflow:auto}
-.sheetbox > div{display:grid;gap:14px}
-.sheetbox h2{margin:0;font-size:16px;font-weight:700;text-transform:uppercase}
-.sheetbox p{margin:0}
-.x{position:absolute;top:8px;right:12px;background:none;border:0;font:400 22px var(--mono);cursor:pointer;color:var(--ink);padding:4px}
-.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);background:var(--ink);color:var(--paper);border-radius:8px;padding:10px 16px;font-size:12px;max-width:calc(100% - 32px);z-index:40}
-footer{background:var(--ink);color:var(--paper);padding:36px 24px 22px;margin-top:72px}
-.fgrid{display:grid;grid-template-columns:1.1fr 1.3fr 1fr;gap:36px;max-width:1200px;margin:0 auto}
-footer h3{font-size:16px;font-weight:700;text-transform:uppercase;margin:0 0 10px}
-footer p,footer li{font-size:13px;letter-spacing:.02em}
-footer ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
-.fbtn{display:inline-block;background:var(--paper);color:var(--ink);border-radius:8px;padding:12px 28px;text-transform:uppercase;text-decoration:none;font-size:14px;margin-top:4px}
-.fbase{max-width:1200px;margin:34px auto 0;border-top:1px solid #8A8A8A;padding-top:12px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:11.5px}
-
-/* the profile */
-.prof{max-width:1120px;margin:0 auto;padding:36px 24px 0}
-.phead{display:grid;grid-template-columns:120px minmax(0,1fr) auto;grid-template-areas:"ava who stats";gap:0 28px;align-items:center}
-.ava{grid-area:ava;width:120px;height:120px;border-radius:50%;border:1px solid var(--ink);background:#F2F2F2;display:grid;place-items:center;overflow:hidden;font:400 44px var(--mono);text-transform:uppercase;color:var(--ink);padding:0}
+/* the profile (site.css has the cards, the tabs, the sheets and everything shared) */
+.phead{display:grid;grid-template-columns:96px minmax(0,1fr) auto;grid-template-areas:"ava who stats";gap:0 var(--s5);align-items:center}
+.ava{grid-area:ava;width:96px;height:96px;border-radius:50%;border:1px solid var(--ink);background:var(--wash);display:grid;place-items:center;overflow:hidden;font:400 36px var(--mono);text-transform:uppercase;color:var(--ink);padding:0}
 .ava img{width:100%;height:100%;object-fit:cover;display:block}
 .ava.add{border-style:dashed;background:var(--paper)}
-.addphoto{width:100%;height:100%;border:0;border-radius:50%;background:none;font:400 12px var(--mono);color:var(--ink);cursor:pointer}
+.addphoto{width:100%;height:100%;border-radius:50%;display:grid;place-items:center;font:400 var(--fs-small) var(--mono);color:var(--ink);text-decoration:none}
 .who{grid-area:who;min-width:0}
-.who h1{font-size:30px;line-height:1.2;font-weight:700;margin:0;overflow-wrap:anywhere}
-.handle{color:var(--grey);margin:4px 0 14px;font-size:13px}
-.pbtns{display:flex;gap:10px;align-items:center;position:relative}
-.menu{position:absolute;top:calc(100% + 6px);left:0;z-index:6;background:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:6px 0;min-width:160px;display:grid}
-.menu button{background:none;border:0;font:400 12px var(--mono);text-transform:uppercase;text-align:left;padding:8px 14px;cursor:pointer;color:var(--ink)}
-.menu button:hover{background:#F2F2F2}
-.bio-m{grid-area:bio;display:none;white-space:pre-line;overflow-wrap:anywhere;margin:0}
-.stats{grid-area:stats;display:flex;margin:0}
-.stats div{padding:0 22px;text-align:center;border-left:1px solid var(--hair);display:flex;flex-direction:column-reverse}
+.who h1{margin:0}
+.namerow{display:flex;gap:var(--s1) var(--s3);align-items:center;flex-wrap:wrap}
+/* under the bio: people you follow who follow them */
+.mutual{margin:0;font-size:var(--fs-small);color:var(--grey);overflow-wrap:anywhere}
+.mutual a{color:var(--ink);font-weight:500;text-decoration:none}
+.mutual a:hover,.mutual a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
+.handle{color:var(--grey);margin:var(--s1) 0 0;font-size:var(--fs-card)}
+.pbtns{display:flex;gap:var(--s2);align-items:center;position:relative;margin-top:var(--s3)}
+.menu{position:absolute;top:calc(100% + var(--s1));left:0;z-index:6;background:var(--paper);border:1px solid var(--ink);border-radius:var(--radius);padding:var(--s1) 0;min-width:160px;display:grid}
+.menu button,.menu a{background:none;border:0;font:500 var(--fs-nav) var(--mono);text-transform:uppercase;letter-spacing:var(--track);text-align:left;text-decoration:none;padding:var(--s2) var(--s4);cursor:pointer;color:var(--ink)}
+.menu button:hover,.menu a:hover,.menu button:focus-visible,.menu a:focus-visible{background:var(--wash);outline:0}
+/* the ··· menu of one of your shelf cards: one menu for them all, put by the button that was pressed */
+.menu.cardmenu{position:fixed;top:0;left:0;z-index:20}
+.bio-m{grid-area:bio;display:none}
+.bio-m p{margin:0}
+.bio-m #bioM{white-space:pre-line;overflow-wrap:anywhere}
+.bio-m #bioM:empty{display:none}
+.bio-m .mutual{margin-top:var(--s2)}
+/* the numbers: bold, their labels tiny under them, a thin line between each */
+.statcol{grid-area:stats;display:grid;justify-items:end;gap:var(--s2)}
+.stats{display:flex;margin:0}
+.stats div{padding:0 var(--s4);text-align:center;border-left:1px solid var(--hair);display:flex;flex-direction:column-reverse}
 .stats div:first-child{border-left:0}
-.stats dd{margin:0;font-size:26px;font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums}
-.stats dt{font-size:10.5px;color:var(--grey);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
-.tabs{display:flex;gap:30px;border-bottom:1px solid var(--ink);margin-top:34px}
-.tabs button{font:400 12px var(--mono);text-transform:uppercase;letter-spacing:.06em;background:none;border:0;padding:0 0 10px;margin-bottom:-1px;color:var(--grey);cursor:pointer;border-bottom:2px solid transparent}
-.tabs button[aria-selected="true"]{color:var(--ink);font-weight:700;border-bottom-color:var(--ink)}
-.pgrid{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:56px;margin-top:32px;align-items:start}
-.pmain{display:grid;gap:44px;min-width:0}
-.sechead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
-/* every shelf at one scale (a spine is 1160 story px: about 315 px here, as in the design), so one spine is one
-   normal spine on a short shelf, not a spine blown up to fill the space */
-.feat{display:grid;justify-items:center;gap:10px;--fk:.27}
-.feat .pic1{display:block;line-height:0}
-.feat .pic1 canvas{display:block;max-width:100%;height:auto;width:calc(var(--w, 600) * var(--fk) * 1px)}
-/* one shelf on its own page: the story itself, bigger */
-#viewShelf .pic1 canvas{width:min(100%, 460px, calc(74vh * 9 / 16));border:1px solid var(--hair);border-radius:12px}
-.featmeta{justify-self:stretch;display:flex;gap:6px 14px;flex-wrap:wrap;align-items:baseline}
-.featmeta b{font-weight:500}
-.thumbs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:26px 18px}
-.thumbs a{display:grid;gap:4px;text-decoration:none;align-content:start}
-.thumbs .pic{display:block;background:#F3F3F3;border:1px solid var(--hair);border-radius:8px;aspect-ratio:9/16;overflow:hidden}
-.thumbs img{width:100%;height:100%;object-fit:cover;display:block}
-.thumbs .cap{font-weight:500;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.thumbs li.own{display:grid;gap:4px;align-content:start}
-.thumbs li.own .cap{display:flex;gap:6px;align-items:baseline;min-width:0}
-/* a shelf's name on your own profile: click to rename it (a faint dashed underline on hover says so) */
-.name{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;cursor:text;text-align:left;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stats div:last-child{padding-right:0}
+.stats dd{margin:0;font-size:var(--fs-stat);font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums}
+.stats dt{font-size:var(--fs-label);color:var(--grey);text-transform:uppercase;letter-spacing:var(--track);margin-top:var(--s1)}
+/* FOLLOWING and FOLLOWERS open their lists: the whole number-and-label is the target, the label is the button */
+.statlink{cursor:pointer}
+.statlink button{font:inherit;color:inherit;text-transform:inherit;letter-spacing:inherit;background:none;border:0;padding:0;cursor:pointer;outline-offset:4px}
+.statlink:hover dd,.statlink:focus-within dd{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:4px}
+/* on a phone the numbers are one small line under the name instead ("2 spines · 1 following · 2 followers"), each a
+   link: the shelf's page, Following, Followers. A band of three big numbers there is a stats bar */
+.counts{display:none;margin:var(--s1) 0 0;font-size:var(--fs-card);color:var(--grey)}
+.counts a{display:inline-block;text-decoration:none}
+.counts a:hover,.counts a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
+.counts b{font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
+@media (pointer:coarse){ .counts a{position:relative} .counts a::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))} }   /* 44px to press (see site.css) */
+@media (pointer:coarse) and (max-width:640px){ .pbtns{margin-top:var(--s5)} }   /* and the buttons under the line a press away from it */
+#privNote{margin:var(--s4) 0 0}
+.privmsg{margin:var(--s6) 0 0}
+#people{padding-right:2px;max-height:min(60vh,520px);overflow:auto}   /* in the Requests sheet the list scrolls */
+.tabs{margin-top:var(--s5)}
+/* the Profile tab: their shelf, big, across the column; under it the watchlist and From friends on the left, the bio
+   on the right */
+.hero{display:grid;grid-template-columns:minmax(0,1fr);justify-items:center;gap:var(--s3);margin-top:var(--s5);padding:var(--s6) var(--s4);background:var(--wash);border-radius:var(--radius);--fk:.5;--hmax:420px}
+.hero > *{max-width:100%;min-width:0}
+/* the picture is sized from the band's width (a container), so it sits in the middle whatever its size in pixels */
+#featWrap{justify-self:stretch;container-type:inline-size;display:grid;justify-items:center}
+.hero .pic1{display:block;line-height:0}
+.hero .pic1 canvas{display:block;height:auto;width:min(calc(var(--w, 600) * var(--fk) * 1px), 100cqw, calc(var(--hmax) * var(--w, 600) / var(--h, 600)))}
+.featmeta{display:flex;gap:var(--s1) var(--s3);flex-wrap:wrap;align-items:baseline;justify-content:center;text-align:center;max-width:100%}
+.featmeta b{font-weight:500;font-size:var(--fs-dialog);min-width:0;max-width:100%}
+.pgrid{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:var(--s6);margin-top:var(--s6);align-items:start}
+.pgrid.solo{grid-template-columns:minmax(0,1fr)}
+.pgrid.solo .pmain{display:none}
+.pmain{display:grid;gap:var(--s6);min-width:0}
+/* the watchlist and From friends: a row each, as On this shelf has them */
+.titles{list-style:none;margin:0;padding:0}
+.titles li{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:var(--s3);align-items:center;padding:var(--s2) 0;border-bottom:1px solid var(--hair)}
+.titles .tc{display:block;width:40px;aspect-ratio:2/3;border-radius:2px;overflow:hidden;background:var(--wash)}
+.titles .tc img{width:100%;height:100%;object-fit:cover;display:block}
+.titles .tt{display:grid;min-width:0}
+.titles .tt b{font-weight:500;overflow-wrap:anywhere}
+.titles .tt b span{font-weight:400;color:var(--grey)}
+.titles .tt > span{color:var(--grey);font-size:var(--fs-small);overflow-wrap:anywhere}
+.titles .tt a{color:var(--ink);font-weight:500;text-decoration:none}
+.titles .tt a:hover,.titles .tt a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
+.tacts{display:flex;gap:var(--s2) var(--s3);align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.pmain .grey{margin:0}
+#panelA,#panelN,#viewShelf{margin-top:var(--s5)}
+/* Activity: this person's lines (site.css draws them). Network: Following · Followers under the tabs, then the
+   people, in the page */
+#acts:empty,#netPeople:empty{display:none}
+.tabs.sub{margin-top:0;border-bottom:0;gap:var(--s4)}
+.tabs.sub button{font-size:var(--fs-card);padding-bottom:var(--s1)}
+#netPeople{max-width:520px;margin-top:var(--s4)}
+#netNone{margin:var(--s4) 0 0}
+/* a link in an empty list's line (Find people): ink, our dashed underline */
+#friendsNone a,#netNone a{color:var(--ink);text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
+#actsMore,#netMore{margin-top:var(--s5)}
+/* one shelf on its own page: the shelf itself, as the profile's hero has it (the spines cut out of the story, on the
+   wash, with no caption), so on a phone the spines are on the first screen; on a wide window what's on it sits to its
+   right. The 9:16 story is only made for Share */
+.sgrid{display:grid;gap:var(--s6);align-items:start}
+#viewShelf .pic1{display:grid;justify-items:center;position:relative;line-height:0;container-type:inline-size;padding:var(--s6) var(--s4);background:var(--wash);border-radius:var(--radius);--fk:.5;--hmax:420px}
+#viewShelf .pic1:empty{display:none}
+#viewShelf .pic1 canvas{display:block;height:auto;width:min(calc(var(--w, 600) * var(--fk) * 1px), 100cqw, calc(var(--hmax) * var(--w, 600) / var(--h, 600)))}
+@media (min-width:821px){ .sgrid{grid-template-columns:minmax(0,1fr) 380px} }
+@media (max-width:640px){ #viewShelf .pic1{--fk:.36;--hmax:340px;padding:var(--s5) var(--s3)} }
+/* a shelf's own page: its name, who made it and when, what can be done with it; under the shelf, what's on it */
+.shead{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--s2);margin-bottom:var(--s5)}
+.shead h1{margin:0;min-width:0;max-width:100%}
+.stitle{display:flex;gap:var(--s2) var(--s3);align-items:center;flex-wrap:wrap}
+/* Share, by the shelf's name: a small button with an icon */
+.iconbtn{display:grid;place-items:center;flex:none;width:28px;height:28px;padding:0;border:1px solid var(--ink);border-radius:var(--radius);background:var(--paper);color:var(--ink);cursor:pointer}
+.iconbtn:hover,.iconbtn[aria-expanded="true"]{background:var(--wash)}
+.iconbtn svg{width:14px;height:14px;display:block}
+.sby{margin:0;display:flex;gap:var(--s1) var(--s2);align-items:center;flex-wrap:wrap}
+.sby a{font-weight:500;text-decoration:none}
+.sby a:hover,.sby a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
+.sacts{display:flex;gap:var(--s3) var(--s4);align-items:center;flex-wrap:wrap;margin-top:var(--s2)}
+.onshelf{max-width:680px;min-width:0}
+.spines{list-style:none;margin:0;padding:0}
+.spines li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:var(--s3);align-items:center;padding:var(--s2) 0;border-bottom:1px solid var(--hair)}
+.spines .sthumb{display:grid;place-items:center;height:56px}
+.spines .sthumb canvas{display:block}
+.spines .st{display:grid;min-width:0}
+.spines .st b{font-weight:500;overflow-wrap:anywhere}
+.spines .st b span{font-weight:400;color:var(--grey)}
+.spines .st > span{color:var(--grey);font-size:var(--fs-small);overflow-wrap:anywhere}
+.row{display:flex;gap:var(--s3) var(--s4);align-items:center;flex-wrap:wrap}
+/* a shelf's name that renames it when pressed (the hero's, and a shelf page's heading) */
+.name{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;cursor:text;text-align:left;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
 .name:hover,.name:focus-visible{text-decoration:underline dashed var(--grey);text-decoration-thickness:1px;text-underline-offset:3px}
-.cap .tag,.featmeta .tag{flex:none}
+.featmeta .tag{flex:none}
 /* exactly the height of the name it replaces, so nothing below it moves (a link that moves mid-press misses its click) */
-input.renamer{font:inherit;font-weight:500;line-height:inherit;height:1.55em;padding:0 5px;border-radius:5px;min-width:0;width:100%;max-width:320px}
-.newcard{display:block;width:100%;padding:0;border:0;background:none;cursor:pointer;font:inherit;color:var(--ink)}
-.thumbs .pic.new{background:var(--paper);border:1px dashed var(--ink);display:grid;place-items:center;font:500 12px var(--mono);text-transform:uppercase;letter-spacing:.04em}
-.newcard:hover .pic.new{background:#F7F7F7}
-.thumbs .acts{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:8px;align-items:baseline}
-.dash.xs{font-size:10.5px;text-transform:none;padding-bottom:4px;background-size:100% 2px;background-image:repeating-linear-gradient(90deg,var(--ink) 0 6px,transparent 6px 9px)}
-.dash.xs:disabled{opacity:.5;cursor:default}
-.tag{font-style:normal;font-weight:700;font-size:9px;border:1px solid currentColor;padding:0 3px;letter-spacing:.04em;text-transform:uppercase;vertical-align:1px}
-/* the builder, over the profile */
-.builder{position:fixed;inset:0;z-index:20;background:var(--paper);display:grid;grid-template-rows:auto minmax(0,1fr)}
-.bbar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 24px;border-bottom:1px solid var(--ink);padding-top:max(12px, env(safe-area-inset-top,0px))}
-.bbar b{font-size:13px;text-transform:uppercase;letter-spacing:.06em}
-.builder iframe{display:block;width:100%;height:100%;border:0}
-.side{display:grid;gap:34px;min-width:0}
-.side .rule{border-bottom:1px solid var(--ink);padding-bottom:8px;margin-bottom:12px;display:block}
+input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1);min-width:0;width:100%;max-width:320px}
+.tag{vertical-align:1px}
+.side{display:grid;gap:var(--s6);min-width:0}
 .side .bio{white-space:pre-line;overflow-wrap:anywhere;margin:0}
-.addbio{background:none;border:0;padding:0;font:inherit;color:var(--grey);cursor:pointer;text-align:left}
-.most{display:flex;gap:3px;align-items:flex-end;height:132px;overflow:hidden}
-.most canvas{display:block;flex:none}
-.none{display:grid;justify-items:center;gap:14px;padding:26px 0 8px;text-align:center}
-.outlines{display:flex;gap:6px;align-items:flex-end;height:180px;margin-bottom:12px}
+.addbio{color:var(--grey);text-decoration:none}
+.addbio:hover,.addbio:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
+.none{display:grid;justify-items:center;gap:var(--s3);padding:var(--s5) 0 var(--s2);text-align:center}
+.hero .none{padding:0}
+.none p{margin:0}
+.outlines{display:flex;gap:var(--s1);align-items:flex-end;height:180px;margin-bottom:var(--s3)}
 .outlines i{display:block;width:32px;border:1px dashed var(--ink)}
-.none .dash{border:1px dashed var(--ink);border-radius:8px;padding:11px 18px;background:none}
-.back{margin-bottom:22px;display:inline-block}
-.photo-row{display:flex;gap:16px;align-items:center}
-.photo-row .ava{width:72px;height:72px;font-size:26px}
-.photo-row .acts{display:flex;gap:14px;flex-wrap:wrap}
-.field{display:grid;gap:6px}
+/* the way back is plain grey text, in its own case: it goes somewhere, it doesn't do anything. (A dashed underline
+   is for a small action; a grey one for an action that loses something: Delete, Remove.) */
+.back{display:inline-block;margin-bottom:var(--s5);color:var(--grey);text-decoration:none}
+.back:hover,.back:focus-visible{color:var(--ink)}
+@media (pointer:coarse){ .back{position:relative} .back::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))} }
 
-@media (max-width:980px){ .thumbs{grid-template-columns:repeat(3,minmax(0,1fr))} }
 @media (max-width:820px){
-  .pgrid{grid-template-columns:minmax(0,1fr);gap:44px}
-  .fgrid{grid-template-columns:1fr;gap:26px}
+  .pgrid{grid-template-columns:minmax(0,1fr)}
+}
+/* a touch screen: 44 x 44px to press (see site.css): the share button and "add a bio" reach out with a clear ::before,
+   the menus' rows are 44px, and a shelf's name (cut with an ellipsis, so nothing can reach past it) is padded out */
+@media (pointer:coarse){
+  .iconbtn,.addbio{position:relative}
+  :is(.iconbtn,.addbio)::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))}
+  .menu button,.menu a{padding-top:15px;padding-bottom:15px}
+  .name{position:relative;padding-top:10px;padding-bottom:10px;margin-top:-10px;margin-bottom:-10px}   /* over the date under it, under Edit and Share */
 }
 @media (max-width:640px){
-  .prof{padding:22px 16px 0}
-  .phead{grid-template-columns:88px minmax(0,1fr);grid-template-areas:"ava who" "bio bio" "stats stats";gap:16px 18px}
-  .ava{width:88px;height:88px;font-size:34px}
-  .who h1{font-size:24px}
-  .handle{margin-bottom:10px}
+  .phead{grid-template-columns:72px minmax(0,1fr);grid-template-areas:"ava who" "bio bio" "stats stats";gap:var(--s4)}
+  .ava{width:72px;height:72px;font-size:28px}
   .bio-m{display:block}
-  .bio-m:empty{display:none}
-  .side .biosec{display:none}
-  .stats{border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);padding:12px 0;justify-content:space-around}
-  .stats div{padding:0 6px;border-left:0}
-  .stats dd{font-size:20px}
-  .stats dt{font-size:9.5px}
-  .tabs{margin-top:22px}
-  .pgrid{margin-top:22px}
-  .feat{--fk:.2}
-  .bbar{padding-inline:16px}
-  .thumbs{grid-template-columns:repeat(2,minmax(0,1fr))}
-}
-@media (max-width:520px){
-  .top{padding:12px 16px}
-  .mark{font-size:17px!important;letter-spacing:.22em;margin-right:-.22em}
-  .top a,.acct{font-size:11.5px}
-  .top .r{gap:12px}
+  .side .biosec,.side .mutual{display:none}
+  .statcol{justify-items:stretch}
+  .stats{display:none}                              /* the numbers are the one small line under the name */
+  .counts{display:block}
+  .statcol:has(> #reqBtn[hidden]){display:none}     /* with no requests waiting, nothing is left in it */
+  #reqBtn{justify-self:start}
+  .hero{--fk:.36;--hmax:340px;padding:var(--s5) var(--s3)}
+  .titles li{grid-template-columns:40px minmax(0,1fr)}
+  .tacts{grid-column:2;justify-content:flex-start}
 }
 </style>
 </head>
 <body>
 <header class="top" id="top">
-  <a href="../#how">Info</a>
-  <a class="mark" href="../" aria-label="shelfstackd, the shelf builder">SHELFSTACKD</a>
-  <span class="r"><a href="../#shelf">Shelf</a><a class="acct" id="acctBtn" href="#" hidden>Sign in</a></span>
+  <!-- icons: Lucide 1.49.0 (ISC), pasted in -->
+  <a class="mark" href="../" aria-label="shelfstackd, home">SHELFSTACKD</a>
+  <button class="acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false" hidden><span class="ava" aria-hidden="true"></span><span class="who"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+  <nav class="links" aria-label="shelfstackd">
+    <a class="zap" href="../feed/" aria-label="Activity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z"/></svg></a>
+    <a href="../shelves/">Shelves</a><a href="../members/">Members</a>
+    <a class="find" href="../members/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
+  </nav>
+  <a class="signin" id="signInBtn" href="#" hidden>Sign in</a>
+  <span class="addwrap"><a class="btn primary add" href="../build/" aria-label="Add a film or a book"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Add</span></a><button class="btn primary addmore" id="addMore" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More ways to add" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></span>
 </header>
 
 <main class="prof">
@@ -186,76 +218,150 @@ input.renamer{font:inherit;font-weight:500;line-height:inherit;height:1.55em;pad
     <div class="phead">
       <div class="ava" id="ava"></div>
       <div class="who">
-        <h1 id="name"></h1>
+        <div class="namerow">
+          <!-- [html-validate-disable-next empty-heading -- the name is filled in once the profile loads; the page is hidden until then] -->
+          <h1 id="name"></h1>
+          <span class="tag" id="followsYou" hidden>Follows you</span>
+        </div>
         <p class="handle" id="handle"></p>
+        <!-- the numbers on a phone, in one small line (on a wide window they stand at the right: .stats) -->
+        <p class="counts" id="counts"><a id="cSpines" href="#"><b>0</b> spines</a> · <a id="cFollowing" href="#network"><b>0</b> following</a> · <a id="cFollowers" href="#followers"><b>0</b> followers</a></p>
         <div class="pbtns">
-          <button class="btn ghost sm" id="editBtn" type="button" hidden>Edit profile</button>
+          <a class="btn ghost sm" id="editBtn" href="../settings/" hidden>Edit profile</a>
+          <button class="btn ghost sm follow" id="followBtn" type="button" hidden>Follow</button>
           <button class="btn ghost sm" id="moreBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More">···</button>
           <div class="menu" id="menu" role="menu" hidden><button type="button" role="menuitem" id="copyLink">Copy link</button><button type="button" role="menuitem" id="reportProfile" hidden>Report</button></div>
         </div>
       </div>
-      <p class="bio-m" id="bioM"></p>
-      <dl class="stats">
-        <div><dt>Shelves</dt><dd id="nShelves">0</dd></div>
-        <div><dt>Spines</dt><dd id="nSpines">0</dd></div>
-        <div><dt>Following</dt><dd>0</dd></div>
-        <div><dt>Followers</dt><dd>0</dd></div>
-      </dl>
+      <div class="bio-m" id="bioWrap" hidden><p id="bioM"></p><a class="addbio" id="addBioM" href="../settings/" hidden>add a bio</a><p class="mutual" id="mutualM" hidden></p></div>
+      <div class="statcol" id="statCol">
+        <dl class="stats">
+          <div><dt>Spines</dt><dd id="nSpines">0</dd></div>
+          <div class="statlink" data-list="following"><dt><button type="button">Following</button></dt><dd id="nFollowing">0</dd></div>
+          <div class="statlink" data-list="followers"><dt><button type="button">Followers</button></dt><dd id="nFollowers">0</dd></div>
+        </dl>
+        <button class="dash sm" id="reqBtn" type="button" hidden>Requests</button>
+      </div>
     </div>
-    <p class="note" id="privNote" hidden style="margin-top:18px">Your profile is private: only you can see it and its shelves.</p>
+    <p class="note" id="privNote" hidden>Your profile is private: only your followers see your shelf and your logs. Others see your photo and name, and can ask to follow you.</p>
+    <p class="privmsg" id="privateMsg" hidden>This profile is private.</p>
 
     <div id="viewProfile">
       <nav class="tabs" role="tablist" aria-label="Profile">
         <button type="button" role="tab" id="tabP" data-tab="profile" aria-selected="true" aria-controls="panelP">Profile</button>
-        <button type="button" role="tab" id="tabS" data-tab="shelves" aria-selected="false" aria-controls="panelS">Shelves</button>
+        <button type="button" role="tab" id="tabA" data-tab="activity" aria-selected="false" aria-controls="panelA">Activity</button>
+        <button type="button" role="tab" id="tabN" data-tab="network" aria-selected="false" aria-controls="panelN">Network</button>
       </nav>
-      <div class="pgrid" id="panelP" role="tabpanel" aria-labelledby="tabP">
-        <div class="pmain">
-          <section id="featWrap" hidden>
-            <div class="sechead"><span class="lbl">Featured shelf</span></div>
-            <div class="feat"><a class="pic1" id="featLink" href="#"></a><div class="featmeta"><b id="featCap"></b><span class="grey" id="featMeta"></span></div></div>
-          </section>
-          <section id="recentWrap" hidden>
-            <div class="sechead"><span class="lbl">Recent shelves</span></div>
-            <ol class="thumbs" id="recent"></ol>
-          </section>
+      <div id="panelP" role="tabpanel" aria-labelledby="tabP">
+        <section class="hero" id="hero" aria-label="Shelf">
+          <div id="featWrap" hidden>
+            <a class="pic1" id="featLink" href="#"></a>
+          </div>
+          <div class="featmeta" id="featMetaRow" hidden><b id="featCap"></b><span class="tag" id="featPriv" hidden>private</span><span class="grey" id="featMeta"></span><a class="dash sm" id="featEdit" href="../build/" hidden>Edit</a></div>
           <div class="none" id="none" hidden>
             <div class="outlines" aria-hidden="true"><i style="height:150px"></i><i style="height:170px"></i><i style="height:140px"></i><i style="height:162px"></i></div>
-            <p style="font-size:14px;margin:0">No shelves yet.</p>
+            <p id="noneText">No shelf yet.</p>
+            <a class="btn" id="noneMake" href="../build/" hidden>Make your shelf</a>
           </div>
+        </section>
+        <div class="pgrid" id="pgrid">
+          <div class="pmain">
+            <section id="watchSec" hidden>
+              <h2>Watchlist <small id="watchCount"></small></h2>
+              <ol class="titles" id="watch"></ol>
+              <p class="grey" id="watchNone" hidden>Nothing here yet. Pick Watchlist in + Add to keep a film or a book for later.</p>
+            </section>
+            <section id="friendsSec" hidden>
+              <h2>From friends</h2>
+              <ol class="titles" id="friends"></ol>
+              <p class="grey" id="friendsNone" hidden>Nothing from friends yet. What people you follow log shows up here. <a href="../members/">Find people</a></p>
+            </section>
+          </div>
+          <aside class="side">
+            <section class="biosec" id="bioSec" hidden><h2>Bio</h2><p class="bio" id="bio"></p><a class="addbio" id="addBio" href="../settings/" hidden>add a bio</a></section>
+            <p class="mutual" id="mutual" hidden></p>
+            <p class="grey" id="since"></p>
+          </aside>
         </div>
-        <aside class="side">
-          <section class="biosec" id="bioSec" hidden><span class="lbl rule">Bio</span><p class="bio" id="bio"></p><button class="addbio" id="addBio" type="button" hidden>add a bio</button></section>
-          <section id="mostSec" hidden><span class="lbl rule">Most shelved</span><div class="most" id="most" role="img"></div></section>
-          <p class="grey" id="since"></p>
-        </aside>
       </div>
-      <div id="panelS" role="tabpanel" aria-labelledby="tabS" hidden style="margin-top:32px">
-        <ol class="thumbs" id="all"></ol>
-        <p class="grey" id="allNone" hidden>No shelves yet.</p>
+      <div id="panelA" role="tabpanel" aria-labelledby="tabA" hidden>
+        <ol class="items solo" id="acts"></ol>
+        <p class="grey" id="actsNone" hidden>No activity yet.</p>
+        <p class="grey" id="actsNoneMine" hidden>Nothing here yet. Log a film or a book with + Add, or save your shelf.</p>
+        <button class="dash sm" id="actsMore" type="button" hidden>Load more</button>
+      </div>
+      <div id="panelN" role="tabpanel" aria-labelledby="tabN" hidden>
+        <nav class="tabs sub" role="tablist" aria-label="Network">
+          <button type="button" role="tab" id="tabNg" data-net="following" aria-selected="true" aria-controls="netPanel">Following</button>
+          <button type="button" role="tab" id="tabNr" data-net="followers" aria-selected="false" aria-controls="netPanel">Followers</button>
+        </nav>
+        <div id="netPanel" role="tabpanel" aria-label="People">
+          <ul class="people" id="netPeople"></ul>
+          <p class="grey" id="netNone" hidden></p>
+          <button class="dash sm" id="netMore" type="button" hidden>Load more</button>
+        </div>
       </div>
     </div>
 
-    <section id="viewShelf" hidden style="margin-top:34px">
-      <a class="dash sm back" id="backLink" href="#">← All shelves</a>
-      <div class="feat"><div class="pic1" id="oneShelf"></div><div class="featmeta"><b id="oneCap"></b><span class="grey" id="oneMeta"></span><a class="dash sm" id="openBuilder" href="#" hidden style="margin-left:auto">Open in builder</a><button class="dash sm grey" id="reportShelf" type="button" hidden style="margin-left:auto">Report</button></div></div>
+    <section id="viewShelf" hidden>
+      <a class="back" id="backLink" href="#">← Profile</a>
+      <div class="shead">
+        <div class="stitle">
+          <!-- [html-validate-disable-next empty-heading -- the shelf's name is filled in once it loads; the page is hidden until then] -->
+          <h1 id="oneCap"></h1>
+          <!-- icon: Lucide 1.49.0 share-2 (ISC), pasted in -->
+          <button class="iconbtn" id="shareBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Share" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg></button>
+        </div>
+        <p class="sby" id="oneBy"></p>
+        <div class="sacts" id="oneActs">
+          <a class="btn" id="openBuilder" href="../build/" hidden>Edit</a>
+          <button class="dash sm" id="onePrivacy" type="button" data-act="privacy" hidden>Make private</button>
+          <button class="dash sm grey" id="oneDelete" type="button" data-act="delete" hidden>Delete</button>
+          <button class="dash sm" id="reportShelf" type="button" hidden>Report</button>
+        </div>
+      </div>
+      <div class="sgrid">
+        <div class="pic1" id="oneShelf"></div>
+        <section class="onshelf" id="oneOn" hidden>
+          <h2>On this shelf</h2>
+          <ol class="spines" id="oneItems"></ol>
+        </section>
+      </div>
     </section>
   </div>
 </main>
-
-<div class="builder" id="builder" hidden role="dialog" aria-modal="true" aria-labelledby="bTitle">
-  <div class="bbar"><b id="bTitle">New shelf</b><button class="dash sm" id="bClose" type="button">Close</button></div>
-  <iframe id="bFrame" title="Shelf builder" allow="web-share; clipboard-write"></iframe>
-</div>
 
 <div class="sheet" id="signSheet" hidden role="dialog" aria-modal="true" aria-label="Sign in">
   <div class="sheetbox">
     <button class="x" data-close type="button" aria-label="Close">×</button>
     <div>
       <h2>Sign in</h2>
-      <p>Save your shelves to your account and open them again on any device.</p>
-      <button class="btn full" id="googleBtn" type="button">Continue with Google</button>
+      <p>Keep your shelf and everything you log on any device.</p>
+      <button class="btn primary full" id="googleBtn" type="button">Continue with Google</button>
       <p class="note">Accounts are for people 18 or older. <a href="../privacy.html">Privacy</a></p>
+    </div>
+  </div>
+</div>
+
+<div class="sheet" id="listSheet" hidden role="dialog" aria-modal="true" aria-labelledby="listTitle">
+  <div class="sheetbox">
+    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <div>
+      <h2 id="listTitle">Requests</h2>
+      <ul class="people" id="people"></ul>
+      <p class="grey" id="peopleNone" hidden></p>
+      <button class="dash sm" id="peopleMore" type="button" hidden>Load more</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet" id="confirmSheet" hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div class="sheetbox">
+    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <div>
+      <h2 id="confirmTitle">Delete this shelf?</h2>
+      <p id="confirmText"></p>
+      <div class="row"><button class="btn" id="confirmYes" type="button">Delete</button><button class="dash sm" data-close type="button">Cancel</button></div>
     </div>
   </div>
 </div>
@@ -267,66 +373,29 @@ input.renamer{font:inherit;font-weight:500;line-height:inherit;height:1.55em;pad
       <h2 id="reportTitle">Report</h2>
       <p class="grey" id="reportWhat"></p>
       <label class="field"><span class="lbl">What's wrong? (optional)</span><textarea id="reportReason" maxlength="200" rows="3"></textarea></label>
-      <button class="btn full" id="reportSend" type="button">Send report</button>
+      <button class="btn primary full" id="reportSend" type="button">Send report</button>
       <p class="note">Only we read reports. We look at every one.</p>
       <p class="note" id="reportNote"></p>
     </div>
   </div>
 </div>
 
-<div class="sheet" id="editSheet" hidden role="dialog" aria-modal="true" aria-label="Edit profile">
-  <div class="sheetbox">
-    <button class="x" data-close type="button" aria-label="Close">×</button>
-    <div>
-      <h2>Edit profile</h2>
-      <div class="photo-row">
-        <div class="ava" id="editAva"></div>
-        <div class="field">
-          <div class="acts"><label class="dash sm" for="photoFile" style="cursor:pointer">Choose photo</label><button class="dash sm" id="photoRemove" type="button">Remove</button></div>
-          <input type="file" id="photoFile" accept="image/jpeg,image/png,image/webp" hidden>
-          <span class="note">JPG, PNG or WEBP, up to 5 MB.</span>
-        </div>
-      </div>
-      <label class="field"><span class="lbl">Display name</span><input type="text" id="nameIn" maxlength="40" autocomplete="name"></label>
-      <label class="field"><span class="lbl">Bio</span><textarea id="bioIn" maxlength="160" rows="3"></textarea><span class="note" id="bioCount"></span></label>
-      <label class="field"><span class="lbl">Featured shelf</span><select id="pinIn"></select></label>
-      <label class="check"><input type="checkbox" id="privIn"> Private profile</label>
-      <p class="note">A private profile and its shelves show only to you. Your username, <b id="unameRO"></b>, stays as it is.</p>
-      <button class="btn full" id="saveBtn" type="button">Save</button>
-      <p class="note" id="editNote"></p>
-    </div>
-  </div>
-</div>
-
 <footer>
-  <div class="fgrid">
-    <div id="how">
-      <h3>How it works</h3>
-      <ol>
-        <li>You type a name. Films come from TMDB, books from Open Library.</li>
-        <li>We look for full DVD and book scans of that title.</li>
-        <li>The strip between back and front is the spine. We cut it out.</li>
-        <li>No clean scan? You get a spine made from the poster or cover.</li>
-      </ol>
-    </div>
-    <div id="sources">
-      <h3>Sources</h3>
-      <p>Film data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB. Book data from Open Library. Scans belong to their studios and publishers, and every spine links back to where it was found.</p>
-    </div>
-    <div>
-      <h3>Shelf</h3>
-      <p>Build it, then post it.</p>
-      <a class="fbtn" href="../#shelf">Open shelf</a>
-    </div>
-  </div>
-  <div class="fbase"><span>© 2026 SHELFSTACKD. All rights reserved.</span><span>Not affiliated with any studio or publisher.</span></div>
+  <p>Film data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB. Book data from <a href="https://openlibrary.org/" target="_blank" rel="noopener">Open Library</a>. <a href="https://search.brave.com/" target="_blank" rel="noopener">Search by Brave</a>.</p>
+  <p class="fnav"><a href="../privacy.html">Privacy</a><a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a></p>
 </footer>
 <div class="toast" id="toast" hidden></div>
 
-<script src="../shelf.js?v=20260930d"></script>
+<script src="../shelf.js?v=20261002a"></script>
+<script src="../worker-address.js?v=20261001a"></script>
+<script src="../cards.js?v=20261002a"></script>
+<script src="../spinetip.js?v=20261004a"></script>
+<script src="../wear.js?v=20261004a"></script>
+<script src="../nav.js?v=20261004a"></script>
 <script>
 (() => {
-/* A profile: /u/?username, and one of its shelves: /u/?username&shelf=<id>.
+/* A profile: /u/?username, and its shelf on its own page: /u/?username&shelf (one shelf each), or a shelf by its id,
+   /u/?username&shelf=<id> (the links already out there, and accounts that made more than one before).
    Anyone can read a public profile (straight from Supabase with the public key, Row Level Security decides what shows).
    The Supabase library only loads for someone who's signed in on this device or signing in. */
 const $ = s => document.querySelector(s);
@@ -337,16 +406,36 @@ const SB_LIB = {src:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/
 const {makeSpine, loadImg, posterTitle, isDark, shelfName} = Shelf;
 
 const params = new URLSearchParams(location.search);
-const NAME = [...params.keys()].find(k => /^[a-z0-9_]{3,20}$/.test(k) && !params.get(k)) || '';
+const NAME = [...params.keys()].find(k => /^[a-z0-9_]{3,20}$/.test(k) && k !== 'shelf' && !params.get(k)) || '';
 const SHELF = /^[0-9a-f-]{36}$/.test(params.get('shelf') || '') ? params.get('shelf') : '';
+const ONE = params.has('shelf');   // the shelf's own page
 const pageUrl = (name, shelf) => location.pathname + '?' + name + (shelf ? '&shelf=' + shelf : '');
+const here = () => NAME ? (ONE ? location.pathname + '?' + NAME + '&shelf' + (SHELF ? '=' + SHELF : '') : pageUrl(NAME)) : location.pathname;
 
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const clean0 = o => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null));
 const fmtDate = s => new Date(s).toLocaleDateString(undefined, {day:'numeric', month:'short', year:'numeric'});
 const spines = n => `${n} ${n === 1 ? 'spine' : 'spines'}`;
+// a person, as the tab's title says them: "Mira (@mira)", or "@mira" with no display name
+const person = p => { const n = (p.display_name || '').trim(); return n ? `${n} (@${p.username})` : '@' + p.username; };
+// the tab's title, and what the page is about (search engines and link previews that run the page read it)
+function titled(title, about){ document.title = title + ' · shelfstackd'; const m = document.querySelector('meta[name="description"]'); if (m) m.content = about; }
+// 2h, 3d: how long ago a shelf was saved. The browser says it (Intl.RelativeTimeFormat: "2h ago") and its "ago" is
+// left off. The same as in feed/: keep the two in step.
+const RTF = new Intl.RelativeTimeFormat('en', {style: 'narrow', numeric: 'always'});
+function ago(t){
+  const s = Math.max(0, (Date.now() - new Date(t)) / 1000), D = 86400;
+  if (s < 60) return 'now';
+  const [n, unit] = s < 3600 ? [s / 60, 'minute'] : s < D ? [s / 3600, 'hour'] : s < 7*D ? [s / D, 'day'] : s < 30*D ? [s / (7*D), 'week'] : s < 365*D ? [s / (30*D), 'month'] : [s / (365*D), 'year'];
+  return RTF.format(-Math.floor(n), unit).replace(/\s*ago$/, '').replace(/\s+/g, '');
+}
+// a log is by the day: today, yesterday, then as ago() says it (3d, 2w). The same as in feed/
+function day(t){
+  const d = new Date(t), now = new Date(), start = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const n = Math.round((start(now) - start(d)) / 864e5);
+  return n <= 0 ? 'today' : n === 1 ? 'yesterday' : ago(t);
+}
 const timeout = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('timeout')), ms))]);
-const blobOf = (c, type, q) => new Promise(r => c.toBlob(r, type, q));
 let toastT = 0; function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 4200); }
 function friendly(e){
   const m = (e && e.message) || '';
@@ -354,7 +443,7 @@ function friendly(e){
   return m || 'Something went wrong. Try again in a moment.';
 }
 
-/* ---------- signing in (the same Supabase client and settings as index.html) ---------- */
+/* ---------- signing in (the same Supabase client and settings as build/) ---------- */
 const me = {sb:null, user:null, profile:null};
 let sbLoading = null;
 function supa(){
@@ -377,7 +466,7 @@ async function api(path, opt = {}){
   const t = await token(), r = await fetch(`${SB_URL}/rest/v1/${path}`, {...opt,
     headers: {apikey: SB_KEY, 'Content-Type': 'application/json', ...(t ? {Authorization: 'Bearer ' + t} : {}), ...(opt.headers || {})}});
   const j = r.status === 204 ? null : await r.json().catch(() => null);
-  if (!r.ok) throw new Error((j && j.message) || 'Couldn’t load this profile. Try again in a moment.');
+  if (!r.ok){ const e = new Error((j && j.message) || 'Couldn’t load this profile. Try again in a moment.'); e.code = j && j.code; throw e; }
   return j;
 }
 const rpc = (fn, args) => api('rpc/' + fn, {method:'POST', body: JSON.stringify(args)});
@@ -390,31 +479,30 @@ async function workerPost(path, body){
   return j;
 }
 async function startSession(){
-  if (!hasSession() && !returning()) return;
+  const back = returning();   // asked before Supabase takes ?code= off (it leaves "?name=" behind)
+  if (!hasSession() && !back) return;
   try {
-    const sb = await supa(), {data:{session}} = await sb.auth.getSession();   // finishes a Google sign-in coming back with ?code=
     const err = new URLSearchParams(location.search).get('error_description');
-    if (returning()) history.replaceState(null, '', (NAME ? pageUrl(NAME, SHELF) : location.pathname) + location.hash);
+    const sb = await supa(), {data:{session}} = await sb.auth.getSession();   // finishes a Google sign-in coming back with ?code=
+    if (back) history.replaceState(null, '', here() + location.hash);
     if (err) toast('Sign-in didn’t finish: ' + err);
     me.user = session && session.user;
     if (me.user){
-      const rows = await api(`profiles?select=id,username&id=eq.${me.user.id}`);
+      const rows = await api(`profiles?select=id,username,display_name,avatar_key&id=eq.${me.user.id}`);
       me.profile = rows[0] || null;
     }
     sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') location.reload(); });
-  } catch (e){ toast(friendly(e)); }
+  } catch (e){ if (me.user && !me.profile) me.unreachable = true; toast(friendly(e)); }   // unreachable: signed in, but the account couldn't be read (not "no username yet")
 }
-function paintAcct(){
-  const b = $('#acctBtn'); b.hidden = false; b.classList.toggle('named', !!me.profile);
-  if (me.profile){ b.textContent = '@' + me.profile.username; b.href = pageUrl(me.profile.username); }
-  else if (me.user){ b.textContent = 'Finish sign-up'; b.href = '../'; }
-  else { b.textContent = 'Sign in'; b.href = '#'; }
-}
-$('#acctBtn').addEventListener('click', e => { if (!me.user){ e.preventDefault(); openSheet('#signSheet', '#googleBtn'); } });
+// the bar (nav.js) shows who is signed in
+const paintAcct = () => Nav.paint(me);
+Nav.onSignIn(() => openSheet('#signSheet', '#googleBtn'));
+// Sign out, from the account menu (nav.js): the page starts again signed out
+Nav.onSignOut(async () => { try { const {error} = await (await supa()).auth.signOut({scope: 'local'}); if (error) throw error; } catch (e){ toast(friendly(e)); } });
 $('#googleBtn').addEventListener('click', async () => {
   const btn = $('#googleBtn'); btn.disabled = true;
   try {
-    const sb = await supa(), back = location.origin + (NAME ? pageUrl(NAME, SHELF) : location.pathname);
+    const sb = await supa(), back = location.origin + here();
     const {error} = await sb.auth.signInWithOAuth({provider:'google', options:{redirectTo: back}});
     if (error) throw error;
   } catch (e){ btn.disabled = false; toast(friendly(e)); }
@@ -423,11 +511,22 @@ $('#googleBtn').addEventListener('click', async () => {
 /* sheets */
 let sheetFrom = null;
 function openSheet(id, focus){ sheetFrom = document.activeElement; $(id).hidden = false; const f = $(focus); if (f) f.focus(); }
-function closeSheets(){ document.querySelectorAll('.sheet').forEach(s => s.hidden = true); if (sheetFrom && sheetFrom.focus) sheetFrom.focus(); }
+function closeSheets(){
+  document.querySelectorAll('.sheet').forEach(s => s.hidden = true); if (sheetFrom && sheetFrom.isConnected && sheetFrom.focus) sheetFrom.focus();
+  if (asked){ const no = asked; asked = null; no(false); }   // a question shut without an answer is a no
+}
+// "Delete this shelf?": true only when the sheet's own button is pressed
+let asked = null;
+function sure(title, text, yes){
+  $('#confirmTitle').textContent = title; $('#confirmText').textContent = text; $('#confirmYes').textContent = yes;
+  openSheet('#confirmSheet', '#confirmYes');
+  return new Promise(res => { asked = res; });
+}
+$('#confirmYes').addEventListener('click', () => { const yes = asked; asked = null; closeSheets(); if (yes) yes(true); });
 document.querySelectorAll('.sheet').forEach(s => s.addEventListener('click', e => { if (e.target === s || e.target.closest('[data-close]')) closeSheets(); }));
-document.addEventListener('keydown', e => { if (e.key === 'Escape'){ if (!$('#builder').hidden) askClose(); else { closeSheets(); closeMenu(); } } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape'){ closeSheets(); closeMenu(); closeCardMenu(true); } });
 
-/* ---------- a saved spine back into a book (the same as rebuild() in index.html: keep the two in step) ---------- */
+/* ---------- a saved spine back into a book (the same as rebuild() in build/: keep the two in step) ---------- */
 const srcOf = ref => ref.startsWith('a:') ? `${WORKER}/archive/img?id=${ref.slice(2)}` : ref.startsWith('u:') ? `${WORKER}/u/blob?k=${encodeURIComponent(ref.slice(2))}`
   : ref.startsWith('url:') ? `${WORKER}/img?url=${encodeURIComponent(ref.slice(4))}` : '';
 async function bookOf(r){
@@ -448,13 +547,28 @@ const pngsOf = s => Promise.all(((s.pro || {}).wall_items || []).map(it => timeo
 const ITEM_COLS = 'position,item_id,kind,title,author,year,spine_src,cover_src,look';
 
 /* ---------- drawing: a shelf on its own, on the white page ---------- */
+// Covers stand face out, so each book needs a picture. One whose cover didn't load, or that never had one, gets a plain
+// one in its own colours with its title, so the shelf still draws.
+const PLAIN = new WeakMap();
+function plainCover(b){
+  let c = PLAIN.get(b); if (c) return c;
+  c = document.createElement('canvas'); c.width = 400; c.height = 600;
+  const x = c.getContext('2d'); x.fillStyle = b.bg || '#161616'; x.fillRect(0, 0, 400, 600);
+  x.fillStyle = b.fg || '#F1EEE6'; x.font = '500 30px "Geist Mono", ui-monospace, monospace'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  const lines = []; let line = '';
+  for (const w of String(b.title || '').split(/\s+/).filter(Boolean)){ const t = line ? line + ' ' + w : w; if (line && x.measureText(t).width > 340){ lines.push(line); line = w; } else line = t; }
+  if (line) lines.push(line);
+  const shown = lines.slice(0, 6); shown.forEach((l, i) => x.fillText(l, 200, 300 + (i - (shown.length - 1)/2)*42));
+  PLAIN.set(b, c); return c;
+}
+const facing = (list, layout) => layout === 'covers' ? list.map(b => b.img ? b : {...b, img: plainCover(b)}) : list;
 // the story drawn "bare" (no background, caption or watermark), then cut down to the books and their shelf
 function bareShelf(list, s, wall){
   const st = {caption:'', theme:'paper', layout: s.layout || 'row', varied: s.varied !== false, wood: !!s.wood, filter: s.filter || 'clean', intensity: s.intensity == null ? 70 : s.intensity,
     plank: !!(s.pro || {}).plank, shelfColour: (s.pro || {}).shelf_colour};
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const x = c.getContext('2d');   // as the builder's canvas, so the books come out the same
-  Shelf.renderStory(x, st.filter, false, list, st, true);
+  const spots = Shelf.renderStory(x, st.filter, false, facing(list, st.layout), st, true).spots;
   const d = x.getImageData(0, 0, W, H).data;
   let x0 = W, y0 = H, x1 = -1, y1 = -1;
   for (let y = 0; y < H; y += 2) for (let X = 0; X < W; X += 2) if (d[(y*W + X)*4 + 3] > 10){ if (X < x0) x0 = X; if (X > x1) x1 = X; if (y < y0) y0 = y; if (y > y1) y1 = y; }
@@ -475,16 +589,17 @@ function bareShelf(list, s, wall){
   }
   ox.drawImage(c, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
   out.style.setProperty('--w', out.width);   // drawn at one scale for every shelf (see .feat)
+  out.spots = spots.map(sp => ({...sp, x: sp.x - x0, y: sp.y - y0}));   // where each book is in this picture, for its tooltip
   out.setAttribute('role', 'img');
   out.setAttribute('aria-label', shelfName(s) + ': ' + list.map(b => b.title).filter(Boolean).join(', '));
   return out;
 }
-// the whole story, as Save story makes it in the builder: caption, background or wall, PNGs, the books
+// the whole story, for Share: caption, background or wall, PNGs, the books
 function storyCanvas(list, s, wall, pngs){
   const pro = s.pro || {}, st = {caption: s.caption || '', theme: wall ? 'wall' : s.background || 'paper', layout: s.layout || 'row', varied: s.varied !== false, wood: !!s.wood,
     filter: s.filter || 'clean', intensity: s.intensity == null ? 70 : s.intensity, plank: !!pro.plank, shelfColour: pro.shelf_colour || '#FFFFFF'};
   const c = document.createElement('canvas'); c.width = W; c.height = H;
-  Shelf.renderStory(c.getContext('2d'), st.filter, false, list, st, false, {wall, wallDark: !!wall && isDark(wall), pngs});
+  Shelf.renderStory(c.getContext('2d'), st.filter, false, facing(list, st.layout), st, false, {wall, wallDark: !!wall && isDark(wall), pngs});
   c.setAttribute('role', 'img');
   c.setAttribute('aria-label', shelfName(s) + ': ' + list.map(b => b.title).filter(Boolean).join(', '));
   return c;
@@ -499,29 +614,19 @@ const fontsReady = document.fonts ? Promise.all(FACES.map(f => document.fonts.lo
 
 /* ---------- the page ---------- */
 const view = {profile:null, shelves:[], mine:false, drawn:[]};   // drawn: what to draw again once fonts or textures arrive
-// shelves: the public ones; on your own profile, your private ones too (marked, and never featured)
+// shelves: the public ones; on your own profile, your private ones too. There's one shelf each now (theShelf()), but
+// accounts from before can have more, so they're all read.
 const previewSrc = s => s.preview_key ? `${WORKER}/u/preview?k=${encodeURIComponent(s.preview_key)}&v=${encodeURIComponent(s.updated_at)}` : '';
 const countOf = s => ((s.shelf_items || [])[0] || {}).count || 0;
-const publicOnes = () => view.shelves.filter(s => s.is_public);
+const savedAt = s => s.saved_at || s.updated_at;
 const PROFILE_COLS = 'id,username,display_name,bio,avatar_key,pinned_shelf_id,is_private,created_at';
-const SHELF_COLS = 'id,caption,name,filter,intensity,background,wood,layout,varied,is_public,preview_key,pro,created_at,updated_at,shelf_items(count)';
-const fetchShelves = () => api(`shelves?select=${SHELF_COLS}&owner=eq.${view.profile.id}${view.mine ? '' : '&is_public=is.true'}&hidden=is.false&order=updated_at.desc&limit=200`);
-// a shelf's card; on your own profile its picture opens the builder, its name renames it, and it has its links:
-// open, make main shelf, private or public, delete
-function thumbs(list){
-  const mine = view.mine, main = mine && featured();
-  const card = s => {
-    const name = shelfName(s), src = previewSrc(s), href = esc(pageUrl(view.profile.username, s.id));
-    const pic = `<span class="pic">${src ? `<img src="${esc(src)}" alt="" loading="lazy" width="360" height="640">` : ''}</span>`, meta = `${spines(countOf(s))} · ${esc(fmtDate(s.updated_at))}`;
-    if (!mine) return `<li><a href="${href}" data-shelf="${s.id}" aria-label="${esc(name)}">${pic}<span class="cap">${esc(name)}</span><span class="grey">${meta}</span></a></li>`;
-    const acts = `<div class="acts"><button class="dash xs" type="button" data-act="open" data-id="${s.id}">open</button>` +
-      (main && main.id === s.id ? '<span class="tag">main</span>' : s.is_public ? `<button class="dash xs" type="button" data-act="main" data-id="${s.id}">make main shelf</button>` : '') +
-      `<button class="dash xs" type="button" data-act="privacy" data-id="${s.id}">${s.is_public ? 'private' : 'public'}</button>` +
-      `<button class="dash xs" type="button" data-act="delete" data-id="${s.id}">delete</button></div>`;
-    return `<li class="own"><a href="${href}" data-shelf="${s.id}" aria-label="Open ${esc(name)}">${pic}</a>
-      <span class="cap"><button class="name" type="button" data-rename="${s.id}" title="Rename">${esc(name)}</button>${!s.is_public ? '<span class="tag">private</span>' : ''}</span><span class="grey">${meta}</span>${acts}</li>`;
-  };
-  return (mine ? '<li><button class="newcard" type="button" data-act="new"><span class="pic new">+ new shelf</span></button></li>' : '') + list.map(card).join('');
+const SHELF_COLS = 'id,caption,name,filter,intensity,background,wood,layout,varied,is_public,preview_key,pro,created_at,updated_at,saved_at,shelf_items(count)';
+const fetchShelves = () => api(`shelves?select=${SHELF_COLS}&owner=eq.${view.profile.id}${view.mine ? '' : '&is_public=is.true'}&hidden=is.false&order=saved_at.desc&limit=200`);
+// their shelf: the main one (pinned, from before) when it's set, otherwise the one saved last. The builder opens the
+// same one (yourShelf() there).
+function theShelf(){
+  const p = view.profile, list = view.shelves;
+  return list.find(s => s.id === p.pinned_shelf_id) || list.slice().sort((a, b) => new Date(savedAt(b)) - new Date(savedAt(a)))[0] || null;
 }
 let redrawT = 0;
 function redrawAll(){ clearTimeout(redrawT); redrawT = setTimeout(() => { for (const f of view.drawn) f(); }, 60); }
@@ -532,37 +637,50 @@ async function load(){
   paintAcct();
   if (!NAME){
     if (me.profile){ location.replace(pageUrl(me.profile.username)); return; }
-    $('#state').innerHTML = 'Whose shelves? <a href="../">Build your own</a>.'; return;
+    $('#state').innerHTML = 'Whose shelf? <a href="../build/">Make your own</a>.'; return;
   }
   let p;
   try { p = (await api(`profiles?select=${PROFILE_COLS}&username=eq.${NAME}`))[0]; }
   catch (e){ $('#state').textContent = friendly(e); return; }
-  if (!p){ $('#state').innerHTML = `No one here. Profiles can be private, or the name may have changed. <a href="../">Build your own shelf</a>.`; return; }
+  if (!p){
+    // a private profile you don't follow: only its card
+    const card = (await rpc('profile_card', {p_username: NAME}).catch(() => []))[0];
+    if (card && card.is_private) return showPrivate(card);
+    $('#state').innerHTML = `No one here. The name may have changed. <a href="../build/">Make your own shelf</a>.`; return;
+  }
   view.profile = p; view.mine = !!(me.user && me.user.id === p.id);
-  document.title = (p.display_name || '@' + p.username) + ' · shelfstackd';
-  const [stats, shelves] = await Promise.all([rpc('profile_stats', {uid: p.id}).catch(() => []), fetchShelves().catch(() => [])]);
-  view.shelves = shelves;
-  paintStats(stats);
+  titled(person(p), `${person(p)} on shelfstackd: their shelf, and the films and books they log.`);
+  view.shelves = await fetchShelves().catch(() => []);
+  paintStats();
   paintHead();
+  paintFollow().then(async () => { if (await finishFollow()) paintFollow(); });
+  paintKnown();
   $('#state').hidden = true; $('#page').hidden = false;
-  if (SHELF) return showShelf(SHELF);
+  if (ONE) return showShelf(SHELF || (theShelf() || {}).id || '');
   $('#viewProfile').hidden = false; $('#viewShelf').hidden = true;
   paintTabs();
   paintLists();
   await fontsReady;
-  paintFeatured();
-  paintMost();
+  paintHero();
 }
-// after a change on this page (a shelf saved in the builder, made main, private, deleted): everything again, in place
+// after a change on this page (the shelf made private, deleted, renamed; a log): everything again, in place
 async function refresh(){
-  const [rows, stats, shelves] = await Promise.all([api(`profiles?select=${PROFILE_COLS}&id=eq.${view.profile.id}`), rpc('profile_stats', {uid: view.profile.id}).catch(() => []), fetchShelves()]);
+  const [rows, shelves] = await Promise.all([api(`profiles?select=${PROFILE_COLS}&id=eq.${view.profile.id}`), fetchShelves()]);
   if (rows && rows[0]) view.profile = rows[0];
   view.shelves = shelves; view.drawn = [];
-  paintStats(stats); paintHead();
-  if (SHELF) return showShelf(SHELF);
-  paintLists(); paintFeatured(); paintMost();
+  paintStats(); paintHead();
+  if (ONE) return showShelf(SHELF || (theShelf() || {}).id || '');
+  paintHero();
+  if (!$('#panelA').hidden) paintActivity();
 }
-function paintStats(stats){ const st = stats[0] || {}; $('#nShelves').textContent = st.shelf_count || 0; $('#nSpines').textContent = st.spine_count || 0; }
+// SPINES: on their shelf (the one shown). The numbers are said twice in the page: big, at the right, for a wide
+// window, and as one small line of links under the name for a phone ("2 spines · 1 following · 2 followers")
+const counted = (n, one, many) => `<b>${n}</b> ${n === 1 ? one : many}`;
+function paintStats(){
+  const n = countOf(theShelf() || {});
+  $('#nSpines').textContent = n;
+  $('#cSpines').innerHTML = counted(n, 'spine', 'spines'); $('#cSpines').href = pageUrl(view.profile.username) + '&shelf';
+}
 function paintHead(){
   const p = view.profile, name = p.display_name.trim(), mine = view.mine;
   $('#name').textContent = name || '@' + p.username;
@@ -570,106 +688,231 @@ function paintHead(){
   $('#handle').hidden = !name;
   const ava = $('#ava');
   if (p.avatar_key){ ava.className = 'ava'; ava.innerHTML = `<img src="${esc(WORKER + '/m/img?k=' + encodeURIComponent(p.avatar_key))}" alt="${esc(name || p.username)}">`; }
-  else if (mine){ ava.className = 'ava add'; ava.innerHTML = '<button type="button" class="addphoto">+ photo</button>'; ava.querySelector('button').addEventListener('click', openEdit); }
+  else if (mine){ ava.className = 'ava add'; ava.innerHTML = '<a class="addphoto" href="../settings/#photo">+ photo</a>'; }   // Settings, on its Photo tab
   else { ava.className = 'ava'; ava.textContent = (name || p.username).trim()[0] || '·'; ava.setAttribute('aria-hidden', 'true'); }
   $('#editBtn').hidden = !mine;
   $('#reportProfile').hidden = mine;
   $('#privNote').hidden = !(mine && p.is_private);
-  $('#bioM').textContent = p.bio;
+  $('#bioM').textContent = p.bio; $('#addBioM').hidden = !(mine && !p.bio); bioWrap();   // on a phone, the bio's place under you
   $('#bio').textContent = p.bio; $('#bio').hidden = !p.bio;
   $('#addBio').hidden = !(mine && !p.bio);
   $('#bioSec').hidden = !p.bio && !mine;
   $('#since').textContent = 'on shelfstackd since ' + new Date(p.created_at).toLocaleDateString('en-US', {month:'short', year:'numeric'});
 }
-function paintLists(){
-  // the main shelf first, then the rest newest first
-  const main = featured(), list = main ? [main, ...view.shelves.filter(s => s !== main)] : view.shelves, none = !list.length, mine = view.mine;
-  $('#recent').innerHTML = thumbs(list.slice(0, mine ? 3 : 4));   // on your own profile, + new shelf comes first
-  $('#recentWrap').hidden = none && !mine;
-  $('#all').innerHTML = thumbs(list); $('#allNone').hidden = !none || mine;
-  $('#none').hidden = !none || mine;
-}
-// the main shelf: the one picked, or else the newest public one
-function featured(){ const p = view.profile, pub = publicOnes(); return pub.find(s => s.id === p.pinned_shelf_id) || pub[0] || null; }
-let featRun = 0;
-async function paintFeatured(){
-  const s = featured(), run = ++featRun; $('#featWrap').hidden = !s; if (!s) return;
+// on a phone the bio sits under the name, with the "Followed by" line under it; the box they share shows when either does
+function bioWrap(){ $('#bioWrap').hidden = !(view.profile && view.profile.bio) && $('#mutualM').hidden && $('#addBioM').hidden; }
+/* the hero: their shelf, big, across the column, the way the builder draws it (shelf.js), cut down to the books.
+   Pressing it opens the shelf's page. Its name under it (yours: press it to rename it), and Edit on your own. */
+let heroRun = 0;
+async function paintHero(){
+  const s = theShelf(), run = ++heroRun, mine = view.mine;
+  $('#featWrap').hidden = $('#featMetaRow').hidden = !s; $('#none').hidden = !!s;
+  if (!s){ $('#noneText').textContent = mine ? 'Your shelf is empty.' : 'No shelf yet.'; $('#noneMake').hidden = !mine; $('#featLink').replaceChildren(); return; }
   $('#featLink').href = pageUrl(view.profile.username, s.id);
-  if (view.mine) $('#featCap').replaceChildren(nameButton(s)); else $('#featCap').textContent = shelfName(s);
+  if (mine) $('#featCap').replaceChildren(nameButton(s)); else $('#featCap').textContent = shelfName(s);
+  $('#featPriv').hidden = s.is_public;
   $('#featMeta').textContent = `${spines(countOf(s))} · ${fmtDate(s.updated_at)}`;
-  let list;
-  let wall = null;
+  $('#featEdit').hidden = !mine; $('#featEdit').href = '../build/?open=' + s.id;
+  let list, wall = null;
   try { [list, wall] = await Promise.all([books(await api(`shelf_items?select=${ITEM_COLS}&shelf_id=eq.${s.id}&order=position`)), wallOf(s)]); } catch { list = []; }
-  if (run !== featRun) return;   // another shelf was made main meanwhile
-  const draw = () => { const c = list.length && bareShelf(list, s, wall); $('#featLink').replaceChildren(...(c ? [c] : [])); };
-  draw(); view.drawn.push(draw);
-}
-async function paintMost(){
-  let rows = [];
-  try { rows = await rpc('most_shelved', {uid: view.profile.id}); } catch {}
-  const list = await books(rows);
-  $('#mostSec').hidden = !list.length; if (!list.length) return;
-  $('#most').setAttribute('aria-label', 'Most shelved: ' + list.map(b => b.title).join(', '));
-  const draw = () => $('#most').replaceChildren(...smallSpines(list, 130));
-  draw(); view.drawn.push(draw);
-}
-// one shelf on its own: the story, bigger (as its card shows it)
-async function showShelf(id){
-  $('#viewProfile').hidden = true; $('#viewShelf').hidden = false;
-  const p = view.profile, s = view.shelves.find(x => x.id === id);
-  $('#backLink').href = pageUrl(p.username) + '#shelves';
-  $('#backLink').textContent = '← @' + p.username;
-  if (!s){ $('#oneCap').textContent = 'This shelf is private, or it was deleted.'; $('#oneMeta').textContent = ''; $('#oneShelf').replaceChildren(); $('#openBuilder').hidden = $('#reportShelf').hidden = true; return; }
-  $('#oneCap').textContent = shelfName(s);
-  $('#oneMeta').textContent = `${spines(countOf(s))} · ${fmtDate(s.updated_at)}`;
-  $('#openBuilder').hidden = !view.mine; $('#openBuilder').dataset.id = s.id;
-  $('#reportShelf').hidden = view.mine; $('#reportShelf').dataset.id = s.id;
-  document.title = shelfName(s) + ' · @' + p.username + ' · shelfstackd';
-  await fontsReady;
-  let list = [], wall = null, pngs = [];
-  try { [list, wall, pngs] = await Promise.all([books(await api(`shelf_items?select=${ITEM_COLS}&shelf_id=eq.${s.id}&order=position`)), wallOf(s), pngsOf(s)]); } catch { list = []; }
-  const draw = () => { const c = list.length && storyCanvas(list, s, wall, pngs); $('#oneShelf').replaceChildren(...(c ? [c] : [])); };
+  if (run !== heroRun) return;   // drawn again meanwhile
+  const draw = () => {
+    const c = list.length && bareShelf(list, s, wall);
+    if (c) c.style.setProperty('--h', c.height);
+    $('#featLink').replaceChildren(...(c ? [c] : []));
+  };
   draw(); view.drawn.push(draw);
 }
 
-/* ---------- your own shelves, from here: the builder over this page, and each card's links ---------- */
-// the same builder as the home page (index.html, in its embed mode), in a frame over the profile; it says when it saved
-function openBuilder(id){
-  if (!view.mine) return;
-  const b = $('#bClose'); delete b.dataset.sure; b.textContent = 'Close';
-  $('#bTitle').textContent = id ? 'Edit shelf' : 'New shelf';
-  $('#bFrame').src = '../?embed' + (id ? '&open=' + encodeURIComponent(id) : '&new');
-  $('#builder').hidden = false; document.body.style.overflow = 'hidden'; b.focus();
+/* ---------- the watchlist (up to 6, anyone who can see the profile) and From friends (yours only): what the people
+   you follow logged lately, that you haven't. Both read the tables supabase/migrations/0007_logs_watchlist.sql makes;
+   on a database without them, neither shows. ---------- */
+const lists = {watch: [], friends: []};
+const coverOf = ref => ref ? `${WORKER}/img?url=${encodeURIComponent(String(ref).replace(/^url:/, ''))}` : '';
+const asItem = r => ({kind: r.kind, title: r.title, year: r.year ? String(r.year) : '', creator: r.author || '', cover: r.cover_src ? String(r.cover_src).replace(/^url:/, '') : ''});
+const didIt = r => r.kind === 'movie' ? 'Watched' : 'Read';
+// a title: its cover, its name and year, who made it, Film or Book (and whose log it came from), and its buttons
+function titleRow(r, i, acts, from){
+  const li = document.createElement('li'); li.dataset.i = i;
+  li.innerHTML = `<span class="tc">${r.cover_src ? `<img src="${esc(coverOf(r.cover_src))}" alt="" loading="lazy">` : ''}</span>
+    <span class="tt"><b>${esc(r.title)}${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${esc([r.author, r.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · '))}${from ? ` · from <a href="${esc(pageUrl(from))}">@${esc(from)}</a>` : ''}</span></span>
+    ${acts ? `<span class="tacts">${acts}</span>` : ''}`;
+  return li;
 }
-function closeBuilder(){ $('#builder').hidden = true; $('#bFrame').src = 'about:blank'; document.body.style.overflow = ''; }
-function askClose(){
-  const b = $('#bClose'); let dirty = false;
-  try { const w = $('#bFrame').contentWindow; dirty = !!(w && w.spinestackDirty && w.spinestackDirty()); } catch {}
-  if (dirty && !b.dataset.sure){ b.dataset.sure = '1'; b.textContent = 'Close without saving?'; setTimeout(() => { if (b.isConnected && b.dataset.sure){ delete b.dataset.sure; b.textContent = 'Close'; } }, 4000); return; }
-  closeBuilder();
+// the main column shows when either list does; with neither, the bio has the width
+function paintGrid(){ $('#pgrid').classList.toggle('solo', $('#watchSec').hidden && $('#friendsSec').hidden); }
+async function paintWatch(){
+  const mine = view.mine;
+  let rows = null;
+  try { rows = await api(`watchlist?select=id,kind,title,author,year,cover_src,from_user,created_at&owner=eq.${view.profile.id}&order=created_at.desc&limit=6`); } catch {}
+  lists.watch = rows || [];
+  $('#watchSec').hidden = !rows || (!rows.length && !mine);
+  $('#watchCount').textContent = mine && lists.watch.length ? `${lists.watch.length} of 6` : '';
+  // yours: Remove, and Watched (or Read), which logs it and so takes it off
+  $('#watch').replaceChildren(...lists.watch.map((r, i) => titleRow(r, i, mine ? `<button class="dash sm grey" type="button" data-w="remove">Remove</button><button class="dash sm" type="button" data-w="log">${didIt(r)}</button>` : '')));
+  $('#watchNone').hidden = !!lists.watch.length;
+  paintGrid();
 }
-$('#bClose').addEventListener('click', askClose);
-addEventListener('message', e => {
-  if (e.origin !== location.origin || !e.data || e.data.spinestack !== 'saved' || $('#builder').hidden) return;
-  closeBuilder(); toast('Shelf saved.');
-  refresh().catch(err => toast(friendly(err)));
-});
-async function cardAction(b){
-  const act = b.dataset.act, id = b.dataset.id, s = view.shelves.find(x => x.id === id);
-  if (act === 'new') return openBuilder(null);
-  if (!s) return;
-  if (act === 'open') return openBuilder(id);
-  if (act === 'delete' && !b.dataset.sure){ b.dataset.sure = '1'; b.textContent = 'sure? delete'; setTimeout(() => { if (b.isConnected){ delete b.dataset.sure; b.textContent = 'delete'; } }, 4000); return; }
+async function paintFriends(){
+  let rows = null;
+  if (view.mine) try { rows = await rpc('from_friends', {n: 6}); } catch {}
+  lists.friends = rows || [];
+  $('#friendsSec').hidden = !rows;
+  // Keep puts it on your watchlist, Remove takes it out of here for good, Watched (or Read) logs it
+  $('#friends').replaceChildren(...lists.friends.map((r, i) => titleRow(r, i, `<button class="dash sm" type="button" data-f="keep">Keep</button><button class="dash sm grey" type="button" data-f="remove">Remove</button><button class="dash sm" type="button" data-f="log">${didIt(r)}</button>`, r.from_username)));
+  $('#friendsNone').hidden = !!lists.friends.length;
+  paintGrid();
+}
+function paintLists(){ paintWatch(); paintFriends(); }
+const keptError = e => e && e.code === '23505' ? 'It’s already on your watchlist.' : friendly(e);
+$('#watch').addEventListener('click', async e => {
+  const b = e.target.closest('[data-w]'), r = b && lists.watch[+b.closest('li').dataset.i]; if (!r) return;
+  if (b.dataset.w === 'log'){ Nav.add({mode: 'log', item: asItem(r)}); return; }
   b.disabled = true;
   try {
-    if (act === 'main'){
-      const rows = await api(`profiles?id=eq.${view.profile.id}&select=${PROFILE_COLS}`, {method:'PATCH', headers:{Prefer:'return=representation'}, body: JSON.stringify({pinned_shelf_id: id})});
-      if (!rows || !rows[0] || rows[0].pinned_shelf_id !== id) throw new Error('That didn’t save, so your main shelf is as it was. Try again.');
-      // then what's saved, read back: the page never shows a main shelf the database doesn't have
-      await refresh();
-      if ((featured() || {}).id !== id) throw new Error('That didn’t save, so your main shelf is as it was. Try again.');
-      toast('That’s your main shelf now.');
-    } else if (act === 'privacy'){
+    const rows = await api(`watchlist?id=eq.${r.id}&select=id`, {method: 'DELETE', headers: {Prefer: 'return=representation'}});
+    if (!rows || !rows[0]) throw new Error('Couldn’t take it off. Sign in again and try once more.');
+    toast(`${r.title} is off your watchlist.`); paintLists();
+  } catch (err){ toast(friendly(err)); if (b.isConnected) b.disabled = false; }
+});
+$('#friends').addEventListener('click', async e => {
+  const b = e.target.closest('[data-f]'), r = b && lists.friends[+b.closest('li').dataset.i]; if (!r) return;
+  if (b.dataset.f === 'log'){ Nav.add({mode: 'log', item: asItem(r)}); return; }
+  b.disabled = true;
+  try {
+    if (b.dataset.f === 'keep'){
+      await api('watchlist', {method: 'POST', headers: {Prefer: 'return=minimal'}, body: JSON.stringify({kind: r.kind, title: r.title, author: r.author || '', year: r.year || null, cover_src: r.cover_src || null, from_user: r.from_id})});
+      toast(`${r.title} is on your watchlist.`);
+    } else {
+      await api('friend_hides', {method: 'POST', headers: {Prefer: 'return=minimal'}, body: JSON.stringify({item_key: r.item_key})});
+      toast(`Removed ${r.title}.`);
+    }
+    paintLists();
+  } catch (err){ toast(keptError(err)); if (b.isConnected) b.disabled = false; }
+});
+// something logged or put on the watchlist with + ADD on this page (a Watched here, too): the lists and Activity again
+document.addEventListener('shelfstackd:added', () => {
+  if (!view.mine || ONE) return;
+  paintLists();
+  if (!$('#panelA').hidden) paintActivity();
+});
+/* ---------- one shelf on its own page: its name, who made it and when, what can be done with it, the shelf itself
+   (as the profile's hero draws it), and under it what's on the shelf, a row for each spine with + Add to my shelf ---------- */
+const shown = {shelf: null, rows: [], list: [], wall: null, pngs: []};   // the shelf on the page: its saved rows, the books made from them (the same order), its wall and PNGs
+const SAVED = 'shelfstackd-saved';   // the builder leaves the id of a shelf it has just saved here
+async function showShelf(id){
+  $('#viewProfile').hidden = true; $('#viewShelf').hidden = false;
+  document.querySelector('.phead').hidden = true; $('#privNote').hidden = true;   // the shelf has its own heading, and its maker is in it
+  const p = view.profile, s = view.shelves.find(x => x.id === id), mine = view.mine;
+  $('#backLink').href = pageUrl(p.username);
+  $('#backLink').textContent = '← @' + p.username;
+  $('#oneBy').hidden = $('#shareBtn').hidden = !s; $('#oneOn').hidden = true;
+  $('#oneActs').hidden = !s && !(mine && !id);
+  shown.shelf = s || null; shown.rows = []; shown.list = [];
+  // straight from Save in the builder: said once, with where sharing is
+  try { if (mine && sessionStorage.getItem(SAVED) === id){ sessionStorage.removeItem(SAVED); toast('Saved. Share it from the ↗ icon.'); } } catch {}
+  if (!s){
+    // no shelf yet (&shelf), or one that's private or gone (&shelf=<id>); yours: the way to make it
+    $('#oneCap').textContent = !id ? (mine ? 'Your shelf is empty.' : 'No shelf here yet.') : 'This shelf is private, or it was deleted.';
+    $('#oneShelf').replaceChildren();
+    for (const b of [$('#onePrivacy'), $('#oneDelete'), $('#reportShelf')]) b.hidden = true;
+    $('#openBuilder').hidden = !(mine && !id); $('#openBuilder').textContent = 'Make your shelf'; $('#openBuilder').href = '../build/';
+    return;
+  }
+  if (mine) $('#oneCap').replaceChildren(nameButton(s)); else $('#oneCap').textContent = shelfName(s);   // yours: press its name to rename it
+  $('#oneBy').innerHTML = `<span>by <a href="${esc(pageUrl(p.username))}">@${esc(p.username)}</a></span><span class="grey">· ${esc(fmtDate(s.updated_at))} · ${spines(countOf(s))}</span>` +
+    (s.is_public ? '' : '<span class="tag">private</span>');
+  // yours: Edit, Make private or public, Delete. Anyone else's: Report.
+  $('#openBuilder').hidden = !mine; $('#openBuilder').textContent = 'Edit'; $('#openBuilder').href = '../build/?open=' + s.id;
+  for (const [b, on] of [[$('#onePrivacy'), mine], [$('#oneDelete'), mine]]){ b.hidden = !on; b.dataset.id = s.id; b.disabled = false; }
+  $('#onePrivacy').textContent = s.is_public ? 'Make private' : 'Make public';
+  $('#reportShelf').hidden = mine; $('#reportShelf').dataset.id = s.id;
+  titled(`${shelfName(s)} by ${person(p)}`, `${shelfName(s)}: a shelf by ${person(p)} on shelfstackd.`);
+  await fontsReady;
+  let pairs = [], wall = null, pngs = [];
+  try {
+    const rows = await api(`shelf_items?select=${ITEM_COLS}&shelf_id=eq.${s.id}&order=position`);
+    [pairs, wall, pngs] = await Promise.all([Promise.all(rows.map(async r => [r, await bookOf(r)])).then(a => a.filter(x => x[1])), wallOf(s), pngsOf(s)]);
+  } catch { pairs = []; }
+  const list = pairs.map(x => x[1]);
+  shown.rows = pairs.map(x => x[0]); shown.list = list; shown.wall = wall; shown.pngs = pngs;
+  const draw = () => { const c = list.length && bareShelf(list, s, wall); if (c) c.style.setProperty('--h', c.height); $('#oneShelf').replaceChildren(...(c ? [c] : [])); };
+  draw(); view.drawn.push(draw);
+  paintItems();
+}
+// On this shelf: each spine small, its title and year, who made it, Film or Book, and + Add to my shelf
+function paintItems(){
+  const ol = $('#oneItems');
+  ol.replaceChildren(...shown.rows.map((r, i) => {
+    const li = document.createElement('li'); li.dataset.i = i;
+    li.innerHTML = `<span class="sthumb" aria-hidden="true"></span>
+      <span class="st"><b>${esc(r.title || 'Untitled')}${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${esc([r.author, r.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · '))}</span></span>
+      <button class="dash sm" type="button" data-add="${i}">+ Add to my shelf</button>`;
+    return li;
+  }));
+  const draw = () => smallSpines(shown.list, 56).forEach((sp, i) => { const at = ol.children[i]; if (at) at.querySelector('.sthumb').replaceChildren(sp); });
+  draw(); view.drawn.push(draw);
+  $('#oneOn').hidden = !shown.rows.length;
+}
+// + Add to my shelf: the saved row itself goes to the builder (the same pictures, nothing searched for again), which
+// puts it on the shelf being made there
+const ADD_ROW = 'shelfstackd-add-row';
+$('#oneItems').addEventListener('click', e => {
+  const b = e.target.closest('[data-add]'), r = b && shown.rows[+b.dataset.add]; if (!r) return;
+  try { sessionStorage.setItem(ADD_ROW, JSON.stringify({at: Date.now(), row: {kind: r.kind, title: r.title, author: r.author, year: r.year, spine_src: r.spine_src, cover_src: r.cover_src, look: r.look}})); }
+  catch { toast('Couldn’t take it to the builder. Try again.'); return; }
+  location.href = '../build/';
+});
+// a spine on the picture: hovering it says what it is ("Title (year) · creator"), pressing it goes to its row
+const spineLabel = r => r ? (r.title || 'Untitled') + (r.year ? ` (${r.year})` : '') + (r.author ? ' · ' + r.author : '') : '';
+if (window.SpineTip) SpineTip.attach($('#oneShelf'), {pointer: true, canvas: () => $('#oneShelf canvas'), spots: () => ($('#oneShelf canvas') || {}).spots,
+  label: i => spineLabel(shown.rows[i]), pick: i => SpineTip.flash($('#oneItems').children[i])});
+/* Share, by the shelf's name: its story as a picture (to a phone's share sheet, or saved here), the picture alone, or
+   the link. The story is drawn again for this, whole, as the builder made it. */
+const STORY_FILE = 'shelfstackd-story.png';
+async function storyBlob(){
+  if (!shown.shelf || !shown.list.length) throw new Error('This shelf’s pictures haven’t loaded. Try again in a moment.');
+  await Promise.all([fontsReady, ...Object.values(Shelf.TEX).map(t => t.ready).filter(Boolean)]);
+  const c = storyCanvas(shown.list, shown.shelf, shown.wall, shown.pngs);
+  return new Promise((res, rej) => {
+    const no = () => rej(new Error('One picture on this shelf can’t be put in a story.'));
+    try { c.toBlob(b => b ? res(b) : no(), 'image/png'); } catch { no(); }
+  });
+}
+function saveFile(blob){
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = STORY_FILE;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+async function shareShelf(what){
+  if (what === 'link'){
+    const url = location.origin + pageUrl(view.profile.username, shown.shelf.id);
+    try { await navigator.clipboard.writeText(url); toast('Link copied.'); } catch { toast(url); }
+    return;
+  }
+  toast('Making the picture…');   // a browser can take a few seconds over it
+  let blob; try { blob = await storyBlob(); } catch (err){ toast(friendly(err)); return; }
+  if (what === 'story'){
+    // a phone has a share sheet for pictures (pick Instagram, then Story); a computer doesn't, so the picture is saved
+    const file = new File([blob], STORY_FILE, {type: 'image/png'});
+    if (navigator.canShare && navigator.canShare({files: [file]}) && matchMedia('(pointer:coarse)').matches){
+      $('#toast').hidden = true;
+      try { await navigator.share({files: [file]}); return; } catch (err){ if (err && err.name === 'AbortError') return; }
+    }
+    saveFile(blob); toast('Saved as ' + STORY_FILE + '. Add it to your Instagram story.');
+    return;
+  }
+  saveFile(blob); toast('Downloaded ' + STORY_FILE + '.');
+}
+$('#oneActs').addEventListener('click', e => { const act = e.target.closest('[data-act]'); if (act) cardAction(act); });
+
+/* ---------- your shelf, from its page: Make private or public, Delete (Edit is a link to the builder) ---------- */
+async function cardAction(b){
+  const act = b.dataset.act, id = b.dataset.id, s = view.shelves.find(x => x.id === id);
+  if (!s) return;
+  if (act === 'delete' && !(await sure(`Delete “${shelfName(s)}”?`, 'The shelf and its picture go for good. This can’t be undone.', 'Delete'))) return;
+  b.disabled = true;
+  try {
+    if (act === 'privacy'){
       const rows = await api(`shelves?id=eq.${id}&select=id`, {method:'PATCH', headers:{Prefer:'return=representation'}, body: JSON.stringify({is_public: !s.is_public})});
       if (!rows || !rows[0]) throw new Error('Couldn’t change it. Sign in again and try once more.');
       await refresh(); toast(s.is_public ? 'Only you can see this shelf now.' : 'This shelf shows on your profile again.');
@@ -680,11 +923,11 @@ async function cardAction(b){
       workerPost('/u/forget?shelf=' + id).catch(() => {});
       const pro = s.pro || {};
       for (const k of [pro.wall_key, ...(pro.wall_items || []).map(p => p.key)].filter(Boolean)) workerPost('/m/delete?k=' + encodeURIComponent(k)).catch(() => {});
-      await refresh(); toast('Shelf deleted.');
+      location.replace(pageUrl(view.profile.username)); return;   // its own page is gone: back to your profile
     }
   } catch (err){ toast(friendly(err)); if (b.isConnected) b.disabled = false; }
 }
-/* renaming one of your shelves: click its name (on its card or the featured shelf), type, then Enter or click away;
+/* renaming your shelf: click its name (in its page's heading, or under it on your profile), type, then Enter or click away;
    Escape leaves it as it was. The name is the shelf's alone: the caption on its story stays as it is. */
 const nameButton = s => { const b = document.createElement('button'); b.type = 'button'; b.className = 'name'; b.dataset.rename = s.id; b.title = 'Rename'; b.textContent = shelfName(s); return b; };
 const showName = s => document.querySelectorAll(`button[data-rename="${s.id}"]`).forEach(b => { b.textContent = shelfName(s); });
@@ -713,32 +956,309 @@ function startRename(btn){
   f.addEventListener('blur', () => finish(true, false));
 }
 document.addEventListener('click', e => { const b = e.target.closest('button[data-rename]'); if (b && view.mine){ e.preventDefault(); startRename(b); } });
-// cards: a link's own button, or (yours) the card itself, which opens the builder instead of the shelf's page
-function onCards(e){
-  const act = e.target.closest('[data-act]'), link = e.target.closest('a[data-shelf]');
-  if (act){ e.preventDefault(); cardAction(act); return; }
-  if (link && view.mine && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.button){ e.preventDefault(); openBuilder(link.dataset.shelf); }
+/* The small menu under Share on a shelf's page (Share to story, Download image, Copy link), put under the button,
+   inside the window. */
+const cardMenu = document.createElement('div');
+cardMenu.id = 'cardMenu'; cardMenu.className = 'menu cardmenu'; cardMenu.setAttribute('role', 'menu'); cardMenu.hidden = true;
+document.body.append(cardMenu);
+let cardBtn = null;   // the button the menu is open for
+function placeCardMenu(){
+  if (!cardBtn) return;
+  const r = cardBtn.getBoundingClientRect(), w = cardMenu.offsetWidth, h = cardMenu.offsetHeight;
+  cardMenu.style.left = Math.max(8, Math.min(r.right - w, innerWidth - w - 8)) + 'px';
+  cardMenu.style.top = (r.bottom + 4 + h > innerHeight - 8 && r.top - 4 - h > 8 ? r.top - 4 - h : r.bottom + 4) + 'px';   // above the button when there's no room under it
 }
-$('#recent').addEventListener('click', onCards);
-$('#all').addEventListener('click', onCards);
-$('#featLink').addEventListener('click', e => { const s = featured(); if (view.mine && s && !e.ctrlKey && !e.metaKey && !e.shiftKey){ e.preventDefault(); openBuilder(s.id); } });
-$('#openBuilder').addEventListener('click', e => { e.preventDefault(); openBuilder(e.currentTarget.dataset.id); });
+function closeCardMenu(refocus){
+  if (cardMenu.hidden) return;
+  cardMenu.hidden = true;
+  const b = cardBtn; cardBtn = null;
+  if (b){ b.setAttribute('aria-expanded', 'false'); if (refocus && b.isConnected) b.focus(); }
+}
+function openCardMenu(btn){
+  if (!shown.shelf) return;
+  closeCardMenu(false); closeMenu();
+  cardMenu.innerHTML = [['story', 'Share to story'], ['download', 'Download image'], ['link', 'Copy link']].map(([k, text]) => `<button type="button" role="menuitem" data-share="${k}">${text}</button>`).join('');
+  cardMenu.setAttribute('aria-label', 'Share');
+  cardMenu.hidden = false; cardBtn = btn; btn.setAttribute('aria-expanded', 'true');
+  placeCardMenu(); cardMenu.firstElementChild.focus();
+}
+cardMenu.addEventListener('click', e => {
+  const share = e.target.closest('[data-share]'), from = cardBtn;
+  closeCardMenu(false);
+  if (share && from && from.isConnected) from.focus();
+  if (share) shareShelf(share.dataset.share);
+});
+cardMenu.addEventListener('keydown', e => {
+  const items = [...cardMenu.querySelectorAll('[role="menuitem"]')], i = items.indexOf(document.activeElement), to = n => { e.preventDefault(); items[(n + items.length) % items.length].focus(); };
+  if (e.key === 'ArrowDown') to(i + 1); else if (e.key === 'ArrowUp') to(i - 1); else if (e.key === 'Home') to(0); else if (e.key === 'End') to(items.length - 1);
+  else if (e.key === 'Tab') closeCardMenu(false);
+});
+addEventListener('resize', placeCardMenu);
+addEventListener('scroll', placeCardMenu, {passive: true});   // it stays by its button as the page moves
+document.addEventListener('click', e => {
+  const more = e.target.closest('#shareBtn');
+  if (more){ if (cardBtn === more) closeCardMenu(false); else openCardMenu(more); return; }
+  if (!e.target.closest('#cardMenu')) closeCardMenu(false);
+});
 
-/* tabs: Profile / Shelves (#shelves keeps the second one on reload) */
-function paintTabs(){
-  const shelvesTab = location.hash === '#shelves';
-  $('#tabP').setAttribute('aria-selected', String(!shelvesTab)); $('#tabS').setAttribute('aria-selected', String(shelvesTab));
-  $('#panelP').hidden = shelvesTab; $('#panelS').hidden = !shelvesTab;
+/* ---------- following: the FOLLOW button, the numbers, the lists, requests to a private profile ---------- */
+// FOLLOW pressed while signed out, or before picking a username, waits here (build/ sends you back once you have one)
+const PENDING = 'shelfstackd-follow';
+const pendingFollow = () => { try { const v = JSON.parse(sessionStorage.getItem(PENDING) || 'null'); return v && Date.now() - v.at < 30*60e3 ? v : null; } catch { return null; } };
+const keepFollow = x => { try { sessionStorage.setItem(PENDING, JSON.stringify({id: x.id, username: x.username, at: Date.now()})); } catch {} };
+const dropFollow = () => { try { sessionStorage.removeItem(PENDING); } catch {} };
+const avatarSrc = k => `${WORKER}/m/img?k=${encodeURIComponent(k)}`;
+// 'none', 'following', or 'requested' (a private profile that hasn't answered yet)
+const stateOf = x => x.i_follow ? 'following' : x.i_requested ? 'requested' : 'none';
+const LABEL = {none: 'Follow', following: 'Following', requested: 'Requested'}, UNDO = {following: 'Unfollow', requested: 'Cancel'};
+function followButton(btn, person, changed){
+  // hover shows UNFOLLOW (or CANCEL) and a click does it; on a phone the first tap shows it and a second one does it
+  let state = stateOf(person), sure = 0, touch = false;
+  const paint = undo => { btn.textContent = undo && UNDO[state] ? UNDO[state] : LABEL[state]; btn.setAttribute('aria-pressed', String(state !== 'none')); };
+  paint(false);
+  btn.onpointerdown = e => { touch = e.pointerType === 'touch'; };
+  btn.onmouseenter = () => { if (!touch) paint(true); };
+  btn.onmouseleave = () => { if (!sure) paint(false); };
+  btn.onclick = async () => {
+    if (!me.user){ keepFollow(person); openSheet('#signSheet', '#googleBtn'); toast('Sign in to follow @' + person.username + '.'); return; }
+    if (!me.profile && me.unreachable){ toast(friendly(new Error('network'))); return; }
+    if (!me.profile){ keepFollow(person); toast('Pick a username first.'); setTimeout(() => { location.href = '../build/'; }, 900); return; }
+    if (state !== 'none' && touch && !sure){ sure = setTimeout(() => { sure = 0; paint(false); }, 3000); paint(true); return; }
+    clearTimeout(sure); sure = 0; btn.disabled = true;
+    try {
+      state = await rpc(state === 'none' ? 'follow' : 'unfollow', {target: person.id});
+      person.i_follow = state === 'following'; person.i_requested = state === 'requested';
+      if (state === 'requested') toast('Request sent to @' + person.username + '.');
+      if (changed) changed(state);
+    } catch (err){ toast(friendly(err)); }
+    finally { btn.disabled = false; paint(false); }
+  };
 }
-document.querySelector('.tabs').addEventListener('click', e => {
-  const b = e.target.closest('[data-tab]'); if (!b) return;
-  history.replaceState(null, '', location.pathname + location.search + (b.dataset.tab === 'shelves' ? '#shelves' : ''));
-  paintTabs();
+// a FOLLOW pressed before signing in, finished on the profile it was pressed on. true when it followed (or asked to).
+async function finishFollow(){
+  const pf = pendingFollow();
+  if (!pf || !view.profile || pf.id !== view.profile.id || view.mine || !me.user) return false;
+  if (!me.profile){ toast('Pick a username first.'); setTimeout(() => { location.href = '../build/'; }, 900); return false; }
+  dropFollow();
+  try {
+    const st = await rpc('follow', {target: pf.id});
+    toast(st === 'requested' ? 'Request sent to @' + pf.username + '.' : 'You follow @' + pf.username + ' now.');
+    return true;
+  } catch (err){ toast(friendly(err)); return false; }
+}
+// the header: FOLLOW on someone else's profile; the numbers; on your own, the requests waiting for you
+async function paintFollow(){
+  const p = view.profile, b = $('#followBtn');
+  b.hidden = view.mine;
+  if (!view.mine){
+    const card = (await rpc('profile_card', {p_username: p.username}).catch(() => []))[0] || {};
+    followButton(b, {...card, id: p.id, username: p.username}, state => {
+      if (p.is_private && state === 'none') location.reload();   // a private profile shows you only its card again
+      else paintFollowStats();
+    });
+  }
+  paintFollowStats();
+  if (view.mine) paintRequests();
+}
+/* Who you both know. "Follows you" by their name, when they do: a follow you're in is always yours to read. Under the
+   bio, the people you follow who follow them ("Followed by @a, @b and 3 others"): the followers list already says of
+   each person whether you follow them, so it's read from that (the newest 200 followers at most). Nothing new in the
+   database. */
+async function paintKnown(){
+  const p = view.profile, tag = $('#followsYou'), lines = [$('#mutual'), $('#mutualM')];
+  tag.hidden = true; for (const el of lines) el.hidden = true; bioWrap();
+  if (!me.user || !p || p.id === me.user.id) return;
+  api(`follows?select=follower&follower=eq.${p.id}&followee=eq.${me.user.id}`).then(rows => { tag.hidden = !(rows && rows.length); }).catch(() => {});
+  const known = []; let last = null, more = true;
+  try {
+    for (let page = 0; page < 4 && more; page++){
+      const rows = await rpc('follow_list', {uid: p.id, kind: 'followers', before: last ? last.at : null, before_id: last ? last.id : null, n: 50});
+      for (const x of rows) if (x.i_follow && x.id !== me.user.id) known.push(x);
+      const end = rows[rows.length - 1]; if (end) last = {at: end.followed_at, id: end.id};
+      more = rows.length === 50;
+    }
+  } catch { return; }
+  if (!known.length) return;
+  const at = x => `<a href="${esc(pageUrl(x.username))}">@${esc(x.username)}</a>`, rest = known.length - 2;
+  const html = 'Followed by ' + (known.length === 1 ? at(known[0]) : known.length === 2 ? `${at(known[0])} and ${at(known[1])}`
+    : `${at(known[0])}, ${at(known[1])} and <a href="${esc(pageUrl(p.username))}#followers">${rest} ${rest === 1 ? 'other' : 'others'}</a>`);   // the others: their Followers list
+  for (const el of lines){ el.innerHTML = html; el.hidden = false; }
+  bioWrap();
+}
+async function paintFollowStats(){
+  const st = (await rpc('follow_stats', {uid: view.profile.id}).catch(() => []))[0] || {};
+  $('#nFollowing').textContent = st.following || 0; $('#nFollowers').textContent = st.followers || 0;
+  $('#cFollowing').innerHTML = counted(st.following || 0, 'following', 'following'); $('#cFollowers').innerHTML = counted(st.followers || 0, 'follower', 'followers');
+}
+async function paintRequests(){
+  const list = await rpc('request_list', {n: 31}).catch(() => []), b = $('#reqBtn');
+  b.hidden = !list.length; b.textContent = `Requests (${list.length > 30 ? '30+' : list.length})`;
+}
+// a private profile you don't follow: its photo, display name and username, "This profile is private", and FOLLOW
+async function showPrivate(card){
+  view.profile = card; view.mine = false;
+  const name = (card.display_name || '').trim(), ava = $('#ava');
+  titled(person(card), `${person(card)} is on shelfstackd. This profile is private.`);
+  $('#name').textContent = name || '@' + card.username; $('#handle').textContent = '@' + card.username; $('#handle').hidden = !name;
+  ava.className = 'ava';
+  if (card.avatar_key) ava.innerHTML = `<img src="${esc(avatarSrc(card.avatar_key))}" alt="${esc(name || card.username)}">`;
+  else { ava.textContent = (name || card.username).trim()[0] || '·'; ava.setAttribute('aria-hidden', 'true'); }
+  $('#editBtn').hidden = true; $('#reportProfile').hidden = false; $('#statCol').hidden = true; $('#counts').hidden = true; $('#bioWrap').hidden = true;
+  paintKnown();   // "Follows you" shows on a private profile's card too
+  $('#viewProfile').hidden = true; $('#viewShelf').hidden = true; $('#privateMsg').hidden = false; $('#followBtn').hidden = false;
+  $('#state').hidden = true; $('#page').hidden = false;
+  if (await finishFollow()) card = (await rpc('profile_card', {p_username: card.username}).catch(() => []))[0] || card;
+  followButton($('#followBtn'), card, () => {});
+}
+
+/* ---------- the lists of people: Following and Followers in the Network tab, the requests waiting for you in a sheet;
+   30 at a time ---------- */
+const LIST_NONE = {followers: 'No followers yet.', following: 'Not following anyone yet.', requests: 'No requests waiting.'};
+// your own lists say what to do next
+const LIST_NONE_MINE = {followers: 'No followers yet. Share your shelf from its page and they’ll find you.', following: 'You’re not following anyone yet. <a href="../members/">Find people</a>'};
+// one person: photo, name, and FOLLOW (or, for a request, Accept and Decline). list: the list the row is in
+function personRow(x, kind, list){
+  const li = document.createElement('li'), name = (x.display_name || '').trim(), href = pageUrl(x.username);
+  li.className = 'person';
+  li.innerHTML = `<a class="pa" href="${esc(href)}" tabindex="-1" aria-hidden="true">${x.avatar_key ? `<img src="${esc(avatarSrc(x.avatar_key))}" alt="" loading="lazy">` : esc((name || x.username).trim()[0] || '·')}</a>
+    <a class="pn" href="${esc(href)}"><b>${esc(name || '@' + x.username)}</b><span>@${esc(x.username)}</span></a><div class="acts"></div>`;
+  const acts = li.querySelector('.acts');
+  if (kind === 'requests'){
+    acts.innerHTML = '<button class="btn sm" type="button" data-answer="1">Accept</button><button class="dash sm" type="button" data-answer="0">Decline</button>';
+    acts.addEventListener('click', async e => {
+      const b = e.target.closest('[data-answer]'); if (!b) return;
+      acts.querySelectorAll('button').forEach(y => { y.disabled = true; });
+      try {
+        const r = await rpc('answer_request', {requester: x.id, accept: b.dataset.answer === '1'});
+        li.remove(); toast(r === 'accepted' ? '@' + x.username + ' follows you now.' : 'Request declined.');
+        if (!list.ul.children.length) list.none();
+        paintRequests(); paintFollowStats();
+        if (r === 'accepted' && netShown === 'followers') netList.open('followers');   // they're in your followers now
+      } catch (err){ toast(friendly(err)); acts.querySelectorAll('button').forEach(y => { y.disabled = false; }); }
+    });
+  } else if (!me.user || x.id !== me.user.id){
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ghost sm follow'; acts.append(b);
+    followButton(b, x, () => paintFollowStats());
+  }
+  return li;
+}
+function peopleList(ul, noneEl, moreEl){
+  const st = {kind: '', last: null, run: 0};
+  const list = {ul, none(){ if (view.mine && LIST_NONE_MINE[st.kind]) noneEl.innerHTML = LIST_NONE_MINE[st.kind]; else noneEl.textContent = LIST_NONE[st.kind]; noneEl.hidden = false; }};
+  async function more(){
+    const kind = st.kind, run = st.run, page = {before: st.last ? st.last.at : null, before_id: st.last ? st.last.id : null, n: 30};
+    moreEl.disabled = true;
+    let rows = [];
+    try { rows = kind === 'requests' ? await rpc('request_list', page) : await rpc('follow_list', {uid: view.profile.id, kind, ...page}); }
+    catch (err){ toast(friendly(err)); }
+    if (run !== st.run) return;   // another list was opened meanwhile
+    for (const x of rows) ul.append(personRow(x, kind, list));
+    const last = rows[rows.length - 1];
+    if (last) st.last = {at: last.followed_at || last.requested_at, id: last.id};
+    moreEl.hidden = rows.length < 30; moreEl.disabled = false;
+    if (!ul.children.length) list.none();
+  }
+  moreEl.addEventListener('click', more);
+  list.open = kind => { st.kind = kind; st.last = null; st.run++; ul.replaceChildren(); noneEl.hidden = true; moreEl.hidden = true; return more(); };
+  return list;
+}
+const netList = peopleList($('#netPeople'), $('#netNone'), $('#netMore')), reqList = peopleList($('#people'), $('#peopleNone'), $('#peopleMore'));
+let netShown = '';   // which of the two the Network tab has now: 'following' or 'followers'
+$('#reqBtn').addEventListener('click', () => { openSheet('#listSheet', '#listSheet .x'); reqList.open('requests'); });
+// FOLLOWING and FOLLOWERS, the numbers at the top, open the Network tab on that list
+document.querySelectorAll('.statlink').forEach(d => {
+  d.addEventListener('click', () => goTab(d.dataset.list === 'followers' ? '#followers' : '#network'));   // its button too: Enter and Space click it
 });
-document.querySelector('.tabs').addEventListener('keydown', e => {
-  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-  const next = document.activeElement === $('#tabP') ? $('#tabS') : $('#tabP'); next.focus(); next.click();
+for (const a of document.querySelectorAll('#cFollowing, #cFollowers')) a.addEventListener('click', e => { e.preventDefault(); goTab(a.getAttribute('href')); });   // the phone's line does the same
+
+/* ---------- the Activity tab: a line for each shelf saved and each film or book logged, newest first (the feed's
+   lines, without the photo: they're all this person's). On your own profile a private shelf is there too, marked, and
+   each log has Delete. Logs come 20 at a time from the logs table (supabase/migrations/0007_logs_watchlist.sql); where
+   it isn't there, the shelves alone. ---------- */
+const ACTS = 20;
+const COVER = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cover')) || 72;   // how wide a log's cover is (site.css)
+const acts = {logs: [], done: false, shown: 0, run: 0};
+const when = (t, text) => `<span class="ago">· <time datetime="${esc(t)}" title="${esc(new Date(t).toLocaleString())}">${text}</time></span>`;
+function actLine(x){
+  const p = view.profile, li = document.createElement('li'), who = `<a href="${esc(pageUrl(p.username))}">@${esc(p.username)}</a>`;
+  li.className = 'item';
+  if (x.log){
+    const l = x.log, verb = l.kind === 'movie' ? 'watched' : 'read';
+    li.classList.add('log');
+    li.innerHTML = `<p class="line">${who} ${verb} <b>${esc(l.title)}</b> ${when(l.created_at, day(l.created_at))}${view.mine ? ` <button class="dash sm grey" type="button" data-unlog="${esc(l.id)}">Delete</button>` : ''}</p>
+      <div class="logbody"><span class="cover"></span>${l.caption ? `<p class="say">${esc(l.caption)}</p>` : ''}</div>`;
+    li.querySelector('.cover').append(Wear.cover({src: coverOf(l.cover_src), seed: l.id, at: l.created_at, label: `${l.title}${l.year ? ` (${l.year})` : ''}, ${verb} by @${p.username}`, width: COVER}));
+    return li;
+  }
+  const s = x.shelf, name = shelfName(s), src = previewSrc(s), to = esc(pageUrl(p.username, s.id)), at = savedAt(s);
+  li.innerHTML = `<p class="line">${who} ${new Date(at) - new Date(s.created_at) > 60000 ? 'updated' : 'shelved'} <a href="${to}">${esc(name)}</a>${s.is_public ? '' : ' <span class="tag">private</span>'} ${when(at, ago(at))}</p>
+    <a class="pic" data-shelf="${s.id}" href="${to}" tabindex="-1" aria-label="Open ${esc(name)}">${src ? `<img src="${esc(src)}" alt="" crossorigin="anonymous" loading="lazy" width="360" height="640">` : ''}</a>`;
+  return li;
+}
+async function moreLogs(){
+  let rows = [];
+  try { rows = await api(`logs?select=id,kind,title,author,year,cover_src,caption,created_at&owner=eq.${view.profile.id}&order=created_at.desc,id.desc&limit=${ACTS}&offset=${acts.logs.length}`); }
+  catch { acts.done = true; return; }   // not in the database yet
+  acts.logs.push(...rows);
+  if (rows.length < ACTS) acts.done = true;
+}
+// shelves and the logs read so far, newest first; while there are more logs to read, nothing older than the last one
+function merged(){
+  const cut = acts.done ? -Infinity : acts.logs.length ? new Date(acts.logs[acts.logs.length - 1].created_at).getTime() : Infinity;
+  return [...view.shelves.map(s => ({at: savedAt(s), shelf: s})), ...acts.logs.map(l => ({at: l.created_at, log: l}))]
+    .filter(x => new Date(x.at).getTime() >= cut).sort((a, b) => new Date(b.at) - new Date(a.at));
+}
+async function paintActivity(more){
+  const run = more ? acts.run : ++acts.run;
+  if (!more){ acts.logs = []; acts.done = false; acts.shown = 0; }
+  $('#actsMore').disabled = true;
+  const want = acts.shown + ACTS;
+  while (!acts.done && merged().length < want){ await moreLogs(); if (run !== acts.run) return; }
+  const list = merged();
+  if (!more) $('#acts').replaceChildren();
+  for (const x of list.slice(acts.shown, want)) $('#acts').append(actLine(x));
+  acts.shown = Math.min(list.length, want);
+  $('#actsNone').hidden = !!list.length || view.mine; $('#actsNoneMine').hidden = !!list.length || !view.mine; $('#actsMore').hidden = acts.done && acts.shown >= list.length; $('#actsMore').disabled = false;
+}
+$('#actsMore').addEventListener('click', () => paintActivity(true));
+// Delete on one of your logs: it comes off the feed and your profile, after a yes
+$('#acts').addEventListener('click', async e => {
+  const b = e.target.closest('[data-unlog]'), l = b && acts.logs.find(x => x.id === b.dataset.unlog); if (!l) return;
+  if (!(await sure('Delete this log?', `${l.title} comes off the feed and your profile. This can’t be undone.`, 'Delete'))) return;
+  b.disabled = true;
+  try {
+    const rows = await api(`logs?id=eq.${l.id}&select=id`, {method: 'DELETE', headers: {Prefer: 'return=representation'}});
+    if (!rows || !rows[0]) throw new Error('Couldn’t delete it. Sign in again and try once more.');
+    toast('Log deleted.'); paintActivity(); paintFriends();
+  } catch (err){ toast(friendly(err)); if (b.isConnected) b.disabled = false; }
 });
+
+/* ---------- tabs: Profile · Activity (#activity) · Network (#network is Following, #followers is Followers). The
+   address has the tab, so a reload lands on it, and so do the account menu's links. #shelves, from when there was a
+   Shelves tab, is Profile. ---------- */
+const HASH = {'': ['profile'], '#shelves': ['profile'], '#activity': ['activity'], '#network': ['network', 'following'], '#following': ['network', 'following'], '#followers': ['network', 'followers']};
+const PANEL = {profile: '#panelP', activity: '#panelA', network: '#panelN'};
+function paintTabs(){
+  const [tab, net] = HASH[location.hash] || HASH[''];
+  for (const b of document.querySelectorAll('#viewProfile > .tabs button')){ const on = b.dataset.tab === tab; b.setAttribute('aria-selected', String(on)); $(PANEL[b.dataset.tab]).hidden = !on; }
+  if (tab === 'activity') paintActivity();
+  if (tab === 'network'){
+    for (const b of document.querySelectorAll('.tabs.sub button')) b.setAttribute('aria-selected', String(b.dataset.net === net));
+    if (netShown !== net){ netShown = net; netList.open(net); }
+  }
+}
+function goTab(hash){ history.replaceState(null, '', location.pathname + location.search + hash); paintTabs(); }
+document.querySelector('#viewProfile > .tabs').addEventListener('click', e => {
+  const b = e.target.closest('[data-tab]'); if (b) goTab({profile: '', activity: '#activity', network: '#network'}[b.dataset.tab]);
+});
+document.querySelector('.tabs.sub').addEventListener('click', e => { const b = e.target.closest('[data-net]'); if (b) goTab(b.dataset.net === 'followers' ? '#followers' : '#network'); });
+// ← → move between the tabs of a row
+for (const row of document.querySelectorAll('#viewProfile .tabs')) row.addEventListener('keydown', e => {
+  const all = [...row.querySelectorAll('button')], i = all.indexOf(document.activeElement); if (i < 0 || (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft')) return;
+  const next = all[(i + (e.key === 'ArrowRight' ? 1 : all.length - 1)) % all.length]; next.focus(); next.click();
+});
+// a link to another tab of this same page (the account menu's Activity and Network on your own profile)
+addEventListener('hashchange', () => { if (view.profile && !$('#viewProfile').hidden) paintTabs(); });
 
 /* the ··· menu */
 function closeMenu(){ $('#menu').hidden = true; $('#moreBtn').setAttribute('aria-expanded', 'false'); }
@@ -775,70 +1295,6 @@ $('#reportSend').addEventListener('click', async () => {
   const j = r ? await r.json().catch(() => ({})) : {};
   btn.disabled = false;
   note.textContent = !r ? 'Couldn’t reach shelfstackd. Check your connection and try again.' : j.code === '23505' ? 'You’ve already reported this. Thanks.' : j.code === 'P0001' && j.message ? j.message : 'Couldn’t send the report. Try again in a moment.';
-});
-
-/* ---------- Edit profile ---------- */
-const edit = {photo:undefined, preview:null};   // photo: undefined = unchanged, null = removed, Blob = new
-function paintEditAva(){
-  const a = $('#editAva'), p = view.profile;
-  if (edit.photo instanceof Blob){ a.innerHTML = `<img src="${edit.preview}" alt="Your new photo">`; return; }
-  if (edit.photo !== null && p.avatar_key){ a.innerHTML = `<img src="${esc(WORKER + '/m/img?k=' + encodeURIComponent(p.avatar_key))}" alt="Your photo">`; return; }
-  a.textContent = ((p.display_name || p.username).trim()[0] || '·');
-}
-function openEdit(){
-  const p = view.profile; if (!view.mine) return;
-  edit.photo = undefined; if (edit.preview) URL.revokeObjectURL(edit.preview); edit.preview = null;
-  $('#nameIn').value = p.display_name; $('#bioIn').value = p.bio; $('#privIn').checked = p.is_private; $('#unameRO').textContent = '@' + p.username;
-  $('#pinIn').innerHTML = `<option value="">Your most recent shelf</option>` + publicOnes().map(s => `<option value="${s.id}"${s.id === p.pinned_shelf_id ? ' selected' : ''}>${esc(shelfName(s))} · ${esc(fmtDate(s.updated_at))}</option>`).join('');
-  $('#editNote').textContent = ''; bioCount(); paintEditAva();
-  openSheet('#editSheet', '#nameIn');
-}
-$('#editBtn').addEventListener('click', openEdit);
-$('#addBio').addEventListener('click', () => { openEdit(); $('#bioIn').focus(); });
-function bioCount(){ $('#bioCount').textContent = `${$('#bioIn').value.length} / 160`; }
-$('#bioIn').addEventListener('input', bioCount);
-// a photo: JPG, PNG or WEBP up to 5 MB, cut to the middle square, 400 x 400, drawn again (which drops EXIF and location)
-async function squarePhoto(file){
-  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error('Pick a JPG, PNG or WEBP photo.');
-  if (file.size > 5*1024*1024) throw new Error('That photo is larger than 5 MB.');
-  const url = URL.createObjectURL(file); let im;
-  try { im = await loadImg(url); } catch { throw new Error('That photo couldn’t be read.'); } finally { URL.revokeObjectURL(url); }
-  const w = im.naturalWidth, h = im.naturalHeight, s = Math.min(w, h), c = document.createElement('canvas'); c.width = 400; c.height = 400;
-  const x = c.getContext('2d'); x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, 400, 400); x.imageSmoothingQuality = 'high';
-  x.drawImage(im, (w - s)/2, (h - s)/2, s, s, 0, 0, 400, 400);
-  for (const q of [.9, .8, .7]){
-    let b = await blobOf(c, 'image/webp', q);
-    if (!b || b.type !== 'image/webp') b = await blobOf(c, 'image/jpeg', q);   // Safari before 17 has no WebP encoder
-    if (b && b.size <= 2*1024*1024) return b;
-  }
-  throw new Error('That photo couldn’t be made small enough.');
-}
-$('#photoFile').addEventListener('change', async e => {
-  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  try { const b = await squarePhoto(f); if (edit.preview) URL.revokeObjectURL(edit.preview); edit.photo = b; edit.preview = URL.createObjectURL(b); paintEditAva(); $('#editNote').textContent = ''; }
-  catch (err){ $('#editNote').textContent = err.message; }
-});
-$('#photoRemove').addEventListener('click', () => { edit.photo = null; paintEditAva(); });
-$('#saveBtn').addEventListener('click', async () => {
-  const p = view.profile, btn = $('#saveBtn'), note = $('#editNote');
-  const patch = {display_name: $('#nameIn').value.trim().slice(0, 40), bio: $('#bioIn').value.trim().slice(0, 160), pinned_shelf_id: $('#pinIn').value || null, is_private: $('#privIn').checked};
-  btn.disabled = true; note.textContent = 'Saving…';
-  const old = p.avatar_key; let added = null;
-  try {
-    if (edit.photo instanceof Blob){ added = (await workerPost('/m/upload?kind=avatar', edit.photo)).key; patch.avatar_key = added; }
-    else if (edit.photo === null) patch.avatar_key = null;
-    const rows = await api(`profiles?id=eq.${p.id}&select=id,username,display_name,bio,avatar_key,pinned_shelf_id,is_private,created_at`,
-      {method:'PATCH', headers:{Prefer:'return=representation'}, body: JSON.stringify(patch)});
-    if (!rows || !rows[0]) throw new Error('Couldn’t save. Sign in again and try once more.');
-    view.profile = rows[0];
-    if (old && old !== view.profile.avatar_key) workerPost('/m/delete?k=' + encodeURIComponent(old)).catch(() => {});   // the old photo goes for good
-    closeSheets(); toast('Profile saved.');
-    paintHead();
-    if (patch.pinned_shelf_id !== (p.pinned_shelf_id || null)){ view.drawn = []; paintLists(); paintFeatured(); paintMost(); }
-  } catch (err){
-    if (added) workerPost('/m/delete?k=' + encodeURIComponent(added)).catch(() => {});   // the new photo isn't used after all
-    note.textContent = friendly(err);
-  } finally { btn.disabled = false; }
 });
 
 load().catch(e => { $('#state').hidden = false; $('#state').textContent = friendly(e); });

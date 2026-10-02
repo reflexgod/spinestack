@@ -1,0 +1,50 @@
+// A site with nothing on it yet: no public shelves. Home shows one sample shelf, and shelves, members and the feed each
+// say so in a line.
+const { test, expect } = require('@playwright/test');
+const { mockNetwork, watchErrors, open } = require('../site');
+
+test('signed-out home with no shelves: the sample shelf where the newest one would be, "a shelf, for example"', async ({ page }) => {
+  const errors = watchErrors(page);
+  await mockNetwork(page, { empty: true });
+  await open(page, '/');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Shelve the films and books you love, with their real spines.');
+  const img = page.locator('#sample');
+  await expect(img).toBeVisible();
+  await expect(page.locator('#leadCap')).toHaveText('a shelf, for example');
+  await expect(img).toHaveAttribute('src', 'sample-shelf.jpg');
+  await expect(img).toHaveAttribute('alt', /The Waves/);
+  await expect.poll(() => img.evaluate(im => im.complete && im.naturalWidth)).toBe(440);   // the picture is in the repo, and loads
+  // whole, in the middle of the panel, above the line and the button
+  const make = await page.locator('#start').boundingBox(), pic = await img.boundingBox(), stand = await page.locator('#stand').boundingBox();
+  expect(pic.y).toBeGreaterThanOrEqual(stand.y); expect(pic.y + pic.height).toBeLessThanOrEqual(stand.y + stand.height);
+  expect(pic.width / pic.height).toBeCloseTo(440 / 733, 1);
+  expect(Math.abs(pic.x + pic.width / 2 - (stand.x + stand.width / 2))).toBeLessThanOrEqual(1);
+  expect(make.y).toBeGreaterThan(stand.y + stand.height);
+  await expect(page.locator('#leadLink')).toHaveCount(0);
+  await expect(page.locator('#outJust')).toBeHidden();
+  await expect(page.locator('#stackersSec')).toBeHidden();
+  const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(sideways).toBeLessThanOrEqual(0);
+  expect(errors).toEqual([]);
+});
+
+test('with shelves on the site, home has no sample shelf', async ({ page }) => {
+  await mockNetwork(page);
+  await open(page, '/');
+  await expect(page.locator('#leadLink')).toBeVisible();
+  await expect(page.locator('#sample')).toBeHidden();
+});
+
+test('shelves, members and the feed each say it in one line when there is nothing yet', async ({ page }) => {
+  await mockNetwork(page, { empty: true });
+  await open(page, '/shelves/');
+  await expect(page.locator('#none')).toHaveText('Nothing shelved yet. The first shelf here could be yours.');
+  await expect(page.locator('#grid li')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Load more' })).toBeHidden();
+  await expect(page.locator('main').getByRole('link', { name: 'Your shelf' })).toBeVisible();   // the way to be the first
+  await open(page, '/members/');
+  await expect(page.locator('#activeState')).toHaveText('It’s quiet in here. Shelve something and yours is the first face on this page.');
+  await expect(page.locator('#active li')).toHaveCount(0);
+  await open(page, '/feed/?everyone');
+  await expect(page.locator('#none')).toHaveText('Nothing shelved yet. The first shelf here could be yours.');
+});

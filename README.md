@@ -2,13 +2,32 @@
 
 Live at https://shelfstackd.com (this repository and its folders keep the old working name, spinestack).
 
-Type a film or a book, get its real spine, put it on a shelf, save the shelf as an Instagram story.
+Type a film or a book, get its real spine, put it on your shelf (one each), save it to your profile. From its page the shelf can be shared as an Instagram story. You can also log a film or a book you watched or read, which goes on the feed with its cover, and keep a watchlist.
 
 ```
-index.html            the website (GitHub Pages serves this): search, the shelf, the story
-shelf.js              draws the spines and the story; index.html and u/ both use it, so a shelf looks the same everywhere
-u/index.html          profiles: /u/?username, and one shelf: /u/?username&shelf=<id>
+index.html            the home page (GitHub Pages serves this). Signed out: the newest public shelf, large, then one line about the site and Make a shelf (the black button on that screen), How it works in three steps, and the next newest shelves; signed in: a welcome, new shelves from people you follow (⚡ All activity), then Just shelved. Links to the old builder here (/?open=, /#shelf) go on to build/
+build/index.html      the shelf builder (Your shelf: there's one shelf each, and signed in it opens yours): Add, the spines as a list (drag one there or on the preview to move it), Style, the preview; at the bottom its name (one name: it's the caption on the story too), who can view it, Cancel · Save. Clear asks first
+add.js                + ADD on every page: the Add dialog. Three choices at the top: Put on shelf (suggestions as you type, then the spine choices and Add to shelf; the spine finder lives here), Log it (the cover as the feed will show it, a caption if you want one, Post) and Watchlist (Add to watchlist)
+wear.js               a log's cover, worn: one corner dog-eared (a hairline round the fold and a soft shadow under it, so it reads on a white poster), fine scratches, rubbed edges and a little fade, drawn on a canvas from how long ago it was logged (lightly worn that day, with two or three scratches to see; faded after a week, worn after a month). No stamp and nothing written on it
+shelf.js              draws the spines and the story (and says where it drew each book); build/ and u/ both use it, so a shelf looks the same everywhere
+u/index.html          profiles: /u/?username with its tabs Profile (their shelf, big, then Watchlist and, on your own, From friends) · Activity · Network (Following, Followers), and the shelf's own page: /u/?username&shelf (or &shelf=<id>, the older links): its name with Share beside it (Share to story, Download image, Copy link), who made it, the shelf itself (its books on the grey panel, as the profile has them; the 9:16 story is only made for Share), and On this shelf with + Add to my shelf (to the right of the shelf on a wide window); for its owner Edit, Make private or public, Delete
+shelves/index.html    every public shelf as a card, newest first, 24 at a time (Load more); Your shelf
+members/index.html    Find @username (people by the start of a username or name, each with FOLLOW), and Recently active: the people behind the newest shelves
+settings/index.html   your settings (signed in only): PROFILE (display name, bio), PHOTO (cut square, made small, sent to the Worker), ACCOUNT (private profile). A profile's Edit profile comes here
+feed/index.html       the feed: /feed/, FOLLOWING · YOU · EVERYONE, a line for each shelf saved ("@abc shelved my films · 2h") with its card, and for each film or book logged ("@abc watched Gummo · today") with its worn cover, small (72 x 108px), and the caption beside it, newest first
+worker-address.js     sends Worker requests to its workers.dev address on networks that block api.shelfstackd.com
+favicon.svg           the mark: three spines on a shelf. favicon-32.png, favicon.ico and apple-touch-icon.png are made from it (tests/art.js); every page links them
+favicon.ico           the same mark for a browser that asks for /favicon.ico whatever the page says (without it, that request is a 404 on every page)
+.well-known/appspecific/com.chrome.devtools.json   an empty answer for Chrome, which asks every localhost site for this file while its DevTools are open (the other 404 in the network panel). Nothing reads it
+og.jpg                the picture a shared link shows (1200 x 630: the logo and a shelf); every page names it in its og: and twitter: tags
+sample-shelf.jpg      the builder's sample shelf (it's only at build/?sample now: a new shelf starts empty) as a picture; home shows it ("a shelf, for example") while there are no public shelves. Made by tests/art.js
+spinetip.js           a shelf's picture: hovering a spine shows "Title (year) · creator", pressing it goes to its row in the list (a shelf's page, and the builder's preview). It uses the places shelf.js says it drew each book
+cards.js              shelf cards: finds the books in a shelf's preview picture and cuts the 2:3 card round them (home, the feed, profiles), keeping what it found per preview key
+site.css              the look every page shares: one :root block of variables (the 950px column, the type scale, the 4/8/12/16/24/40 spacing, the 3px radius) and what uses them everywhere (the top bar, headings, buttons, fields, shelf cards, tabs, sheets, the footer: two lines of small print). A page's own <style> holds only what that page alone needs
+nav.js                the top bar on every page: who is signed in, the account menu (Home, Profile, Shelf, Activity, Network, Settings, Sign out), + ADD and the ▾ next to it. The places are in each page's markup, in one order signed in or out: ⚡ · Shelves · Members · search
+404.html              what GitHub Pages sends for an address that isn't there: a line and the way home. Its links start at the root (/), since it's served at any depth
 admin.html            approve or delete archive uploads (needs the admin token); read reports (Google sign-in, admins only)
+tests/                checks for the pages: Playwright, axe, html-validate (see Tests). The site never loads anything from here
 worker/               Cloudflare Worker: name lookup, scan search, image proxy (what the live site uses)
 backend/              older self-hosted search server (not used right now)
   api/                FastAPI app
@@ -27,33 +46,90 @@ backend/              older self-hosted search server (not used right now)
    Enforce HTTPS). Its DNS is on Cloudflare: the four GitHub Pages A records and four AAAA records on the root and `www`
    as a CNAME to `reflexgod.github.io`, all "DNS only" so GitHub can issue the certificate. The old address redirects here.
 
-At this point uploads, spine cutting from scans, the shelf and story export all work. Search by name needs step 2.
+At this point uploads, spine cutting from scans and the shelf all work (saving and sharing need accounts, below). Search by name needs step 2.
 
 ## Worker (what the live site uses)
 
 A free Cloudflare Worker in `worker/` does the parts a static page can't: it looks titles up on TMDB and
-Open Library, finds DVD and book scans with the Brave Image Search API, and passes scan images through with
-CORS so the page can cut the spine out of them in the browser (`findSpine()` in `index.html`).
-The TMDB and Brave keys live only in the Worker, as secrets.
+Open Library, finds DVD and book scans with image searches (Serper, SerpApi, Brave, then archive.org: see Where scans
+come from), and passes scan images through with CORS so the page can cut the spine out of them in the browser
+(`findSpine()` in `add.js`). The keys live only in the Worker, as secrets; it never logs them or sends them back.
 
 | Endpoint | What it returns |
 |---|---|
-| `/identify?q=&want=all\|movie\|book` | `{results:[{kind,title,year,creator,cover}]}` |
-| `/scans?title=&year=&kind=movie\|book&creator=&round=0-3` | one Brave search per round: up to 10 wrap-shaped (or single-spine) scans whose page names the title, plus approved archive spines first in round 0: `{results:[...], round, more}` |
+| `/identify?q=&want=all\|movie\|book[&suggest=1]` | `{results:[{kind,title,year,creator,cover}]}`: up to 5 films (TMDB) and 5 books (Open Library: only those whose title or author has what was typed, each title once, most-read first, without the government reports it files as books). `suggest=1` is a half-typed title: answered the same, but not kept in KV |
+| `/scans?title=&year=&kind=movie\|book&creator=&round=0-3` | one query per round: up to 10 wrap-shaped (or single-spine) scans whose page names the title, plus approved archive spines first in round 0: `{results:[...], round, more}`, with `capped: true` when nothing usable was found and a provider was at its cap (see Where scans come from) |
 | `/img?url=` | the image, with CORS. http(s) and `image/*` only, 8 MB max, private addresses blocked, 3 redirects max |
 | `POST /archive?kind=&title=&year=&author=` | a PNG of one spine (300 KB max, at least 3 times taller than wide), re-encoded and kept as *pending* |
 | `/archive/img?id=` | an approved archive spine |
 | `POST /report?id=` | one report per visitor; the third sends an approved spine back to pending |
 | `/admin/list`, `POST /admin/approve`, `POST /admin/delete` | for `admin.html`, with `Authorization: Bearer <ADMIN_TOKEN>` |
+| `/admin/usage` | with the admin token: today's searches by each provider, its cap, whether it's out for the day, whether it has a key (never the key), and Serper's credits used |
+| `/admin/raw?provider=serper\|serpapi\|brave\|archiveorg&q=` | with the admin token: what that one provider says, before any filtering. Costs one search. For checking a key, or tuning the filters |
 | `POST /m/upload?kind=avatar|wall|png` | signed in: a profile photo, a wall or a wall PNG (PNG, JPEG or WebP by its first bytes, 2 MB max) into R2 under a random key; walls and PNGs only for Pro. 20 a minute and 200 a day per account, 20,000 a day in all: `{key}` |
 | `/m/img?k=` | one of those pictures |
 | `POST /m/delete?k=` | signed in: deletes one of your own pictures, once no shelf of yours and not your profile uses it |
 
-The Worker answers at `https://api.shelfstackd.com` (a custom domain, in `wrangler.toml`); the site uses only that address.
+The Worker answers at `https://api.shelfstackd.com` (a custom domain, in `wrangler.toml`). On networks that block that
+domain (some college and office Wi-Fi block new domains), a request that fails with a network error is sent again to the
+same Worker at its workers.dev address, and the tab keeps using it for the session (`worker-address.js`). So keep
+`workers_dev = true`.
 CORS is open only to `https://shelfstackd.com`, `https://www.shelfstackd.com`, `https://reflexgod.github.io` and
 `http://localhost:8080`. `/identify` and `/scans`
-are cached in Workers KV for 30 days (so each title costs one Brave search), images are cached 30 days,
+are cached in Workers KV (so a title is searched for once: `/identify` answers for 30 days, what the scan searches said for a year, or a week when they found nothing), images are cached 30 days,
 and each visitor is limited to about 30 searches and 150 images a minute.
+
+### Where scans come from
+
+For each round of a title, `/scans` looks in this order and stops at the first place that gives a usable scan (one the
+wrap and spine filters keep):
+
+| | Provider | Key (a Worker secret) | Cap, in `[vars]` | Why that number |
+|---|---|---|---|---|
+| 1 | what's already kept in KV, and approved archive spines | | | costs nothing |
+| 2 | Serper, Google Images (`google.serper.dev/images`) | `SERPER_KEY` | `SERPER_DAILY_CAP = "100"` a day, `SERPER_TOTAL_CAP = "2400"` credits in all | 2,500 free credits, once; a 100-result search costs 2 |
+| 3 | SerpApi, `google_images` | `SERPAPI_KEY` | `SERPAPI_DAILY_CAP = "8"` | 250 free a month: 8 a day is at most 248 |
+| 4 | Brave Image Search | `BRAVE_API_KEY` | `BRAVE_DAILY_CAP = "30"` | bills after about 1,000 a month: 30 a day is at most 930 |
+| 5 | archive.org's search (round 0 only) | none | `ARCHIVE_ORG_DAILY_CAP = "100"` | free; the cap is only manners |
+
+- **Counting.** Each search is counted in the `Archive` Durable Object before it's made, in one step, so a cap can't be
+  passed; if the count can't be read the search isn't made. Counts start again at midnight UTC. Serper's credits are
+  counted in all, not by the day (its answer says what a search cost, and the count follows that): when
+  `SERPER_TOTAL_CAP` is reached Serper is passed over for good, until you raise the number.
+- **Out for the day.** A provider that answers 401, 402, 403 or 429 (a bad key, no credit left, too many) is left alone
+  until tomorrow. Any other failure (a 400, a 500, no answer) only passes that one search on to the next provider.
+- **Serper and quotes.** Serper answers 400 to a search with double quotes in it (`"gummo" 1997 dvd cover`), so it's
+  asked without them; the filters look for the whole title in each result anyway. SerpApi and Brave still get the title
+  in quotes. If Serper answers 400 all the same, it's asked once more with the plainest search there is
+  (`<title> <year> dvd cover`, or `<title> book cover`) before the search goes on to SerpApi; the two count as one
+  search. `/admin/raw` takes the quotes out too, but asks only once, so a 400 shows as it is.
+- **No key, no provider.** One whose secret isn't set is passed over. `0` as its cap turns one off.
+- **Same answer whoever gives it.** Every provider's answer is turned into the same list, the same filters and edition
+  rules run on it, and the result has the shape it always had. What was found is kept under `raw1:` as before.
+- **Nothing usable.** When every provider was asked, that's kept like any answer. When one was at its cap, out for the
+  day or not answering, `/scans` says `capped: true` (the dialog then says "Spine search is resting for today. Here’s
+  one made from the cover.") and what there is is kept for a day only, so the title gets its turn tomorrow.
+- **archive.org** finds items, not pictures, and doesn't say how large a picture is: the Worker takes up to 4 image
+  items with the title in theirs, their largest original JPEGs and PNGs (6 at most), and reads each one's size from
+  its first bytes. It finds less than the others; it's the last, free place to look.
+
+To add or change a key: `cd worker && npx wrangler secret put SERPER_KEY` (or `SERPAPI_KEY`, `BRAVE_API_KEY`) and paste
+it. A secret takes effect at once, with no deploy. To change a cap, edit the number in `worker/wrangler.toml` and
+deploy. To see today's counts:
+
+```
+curl -H "Authorization: Bearer <ADMIN_TOKEN>" https://api.shelfstackd.com/admin/usage
+curl -H "Authorization: Bearer <ADMIN_TOKEN>" "https://api.shelfstackd.com/admin/raw?provider=serper&q=%22gummo%22+1997+dvd+cover"
+```
+
+The second asks one provider alone and shows what it said (it costs one search): the way to check that a key works.
+`/health` says which providers have a key (`scans`), without the admin token. Every page's footer says "Search by
+Brave", after TMDB's line and Open Library.
+
+`cd worker && npm test` runs the whole chain in the runtime `wrangler dev` uses, against made-up providers
+(`test/providers.mjs`): the order, the caps, out-for-the-day, Serper's credits, `/admin/usage`, Serper asked without
+quotes and its second try after a 400, and that no key comes back in any answer. It needs no keys and spends nothing. To try the real providers on this machine, put their keys in
+`worker/.dev.vars` (one `NAME=value` a line; the file is never committed) and run `npx wrangler dev`.
 
 ### Set up once
 
@@ -64,10 +140,12 @@ In `worker/`:
 3. `npx wrangler kv namespace create SPINE_CACHE`, then put the id it prints into `wrangler.toml`.
 4. `npx wrangler secret put TMDB_TOKEN` and paste the TMDB "API Read Access Token" (themoviedb.org → Settings → API).
 5. `npx wrangler secret put BRAVE_API_KEY` and paste the Brave Search API key (api-dashboard.search.brave.com).
+   `npx wrangler secret put SERPER_KEY` (serper.dev) and `npx wrangler secret put SERPAPI_KEY` (serpapi.com), the same way. Any of the three can be left out: `/scans` uses the ones that are there.
    `npx wrangler secret put ADMIN_TOKEN` and paste a long random string of your own. It's the password for `admin.html`; keep it only in a password manager.
 6. `npx wrangler deploy`. It prints the Worker address, e.g. `https://spinestack.NAME.workers.dev`.
-7. In `index.html`, `u/index.html` and `admin.html`, `window.SPINESTACK_WORKER` is the Worker's address
-   (`https://api.shelfstackd.com`). Keep `window.SPINESTACK_TMDB` empty.
+7. In `index.html`, `build/index.html`, `u/index.html`, `feed/index.html`, `shelves/index.html`, `members/index.html`, `settings/index.html` and `admin.html`, `window.SPINESTACK_WORKER` is the Worker's address
+   (`https://api.shelfstackd.com`) and `window.SPINESTACK_WORKER_FALLBACK` its workers.dev address. Keep
+   `window.SPINESTACK_TMDB` empty.
 
 ### Archive
 
@@ -84,27 +162,88 @@ minute stale. Both fit the Workers Free plan and need no card.
 
 ### Update
 
-`cd worker && npx wrangler deploy`. Secrets and the KV cache stay as they are. If you change how `/scans`
-filters results, bump the `sc…:` cache key prefix in `src/index.js` so old cached answers aren't reused.
+`cd worker && npx wrangler deploy`. Secrets and the KV cache stay as they are. To try a change first without deploying:
+`cd worker && npx wrangler dev` runs the Worker on this machine (`http://127.0.0.1:8787`, with its own empty KV and
+Durable Object; films need `TMDB_TOKEN` in `worker/.dev.vars`).
+If you change what `/identify` answers, bump its cache key prefix in `src/index.js` (`id4:` now) so answers kept
+before the change aren't reused. `/scans` keeps what the providers said as it came (`raw1:`), and its filters run again on that.
 
 ### How a real spine is found
 
-1. The page asks the Worker for one round at a time, at most 4 per title, and stops once two good spines turn up, to save Brave searches.
+0. In the Add to your shelf dialog (`add.js`, opened by + ADD on any page and by the builder's Add box) a title is
+   looked up as it's typed: a search starts 300 ms after the last key and replaces the one before it, Enter searches at
+   once. Up to six results show, films and books together, the closest titles first (the same as what was typed, then
+   starting with it, then containing it); ↑ ↓ move through them and Enter picks one.
+1. The page asks the Worker for one round at a time, at most 4 per title, and stops once two good spines turn up, to save searches.
    Films: `"<title>" <year> dvd cover`, `"<title>" <year> dvd cover english`, `"<title>" dvd cover scan`, `"<title>" criterion dvd`.
    Books: `"<title>" <author> book cover spine`, `"<title>" <author> book spine`, `"<title>" spine`, `<title> <author> full cover wrap`.
 2. It keeps images shaped like a wrap (1.3–1.9 wide for films, 1.2–2.4 for books) or like a single spine (4 times taller than wide), whose title or address contains the whole title; one-word titles also need the year or director.
 3. The page loads each scan through `/img`, and `findSpine()` looks for the strip between back and front: two clear edges near the middle, about 5 % wide for a DVD, lettering on it, an even colour down it. Photos of open cases and books on a table are turned down.
-4. Each cut gets a score from 0 to 100. A film's best cut goes on the shelf by itself only at 75 or more (in tests right spines scored 76–97 and wrong ones up to 69) **and** when it looks like the English edition; books always let you pick, unless the spine comes from the archive. Cuts under 45 aren't shown, and each page gives one option at most.
+4. Each cut gets a score from 0 to 100. A film's best cut is picked for you only at 75 or more (in tests right spines scored 76–97 and wrong ones up to 69) **and** when it looks like the English edition; books always let you pick, unless the spine comes from the archive. Cuts under 45 aren't shown, and each page gives one option at most.
    Editions: the Worker marks a scan as another edition when its page title, address or file name has another language or region (Polish, Deutsch, español, français, 日本, region 2, `.pl`/`.de`/… pages, `nl`/`ger`/… in file names) and marks VHS tapes. With **Edition: English** (the default) English DVDs and Blu-rays come first; VHS comes last either way. **Any** drops the language rule.
-5. With no good scan, the page falls back to a spine made from the poster or cover.
+5. With no good scan, or when the day's searches are used up, the pick is a spine made from the poster or cover.
+   Add to shelf puts the picked one on the shelf.
 
 ## Profiles
 
-`/u/?username` (a real file, so GitHub Pages answers 200 and link previews work): photo, name, @username, the numbers,
-the featured shelf drawn on its own, recent shelves, bio, most shelved. `/u/?username&shelf=<id>` shows one shelf. The
-owner gets Edit profile (photo, name, bio, featured shelf, Private profile). The header's @username and the Profile link
-in My shelves lead there; "Open in builder" on your own shelf opens `index.html?open=<id>`.
-Private shelves (the tick in My shelves) and private profiles show only to their owner.
+`/u/?username` (a real file, so GitHub Pages answers 200 and link previews work): photo, name, @username, the numbers
+(Spines on their shelf, Following, Followers: at the right on a wide window, and on a phone one small line of links
+under the name, "2 spines · 1 following · 2 followers"), then the tabs. Profile has their shelf, big, across the column, with its
+name under it; then Watchlist (up to 6, shown to anyone who can see the profile) and, on your own, From friends (what
+the people you follow logged lately and you haven't, up to 6); the bio beside them. `/u/?username&shelf` is the
+shelf's own page, and `/u/?username&shelf=<id>` still opens a shelf by its id. The owner gets Edit profile (photo,
+name, bio, Private profile). The header's @username and the Profile link lead there.
+
+**One shelf each.** A person's shelf is the main one (`pinned_shelf_id`) if one was picked before, otherwise the one
+saved last; the builder opens and saves that same one (`yourShelf()` in `build/`, `theShelf()` in `u/`). There's no
+Shelves tab, no "+ new shelf", no Make main and no main shelf in Settings any more. Accounts that made more than one
+before keep the others in the database: nothing lists them, and their old links still open them (`?open=<id>` in the
+builder too). The database doesn't enforce one shelf; `supabase/migrations/0007_logs_watchlist.sql` ends with the query and
+the index that would, for the owner to decide. On your own profile, Edit under your shelf goes to the builder; with no
+shelf yet it says "Your shelf is empty." with Make your shelf. Spines put on a shelf before signing in (or before
+your shelf had loaded) go on yours, after what's there, once you're signed in. (The builder used to open in a frame
+over the profile, `?embed`; old links of that kind are sent on to the builder itself.)
+
+**Watchlist and From friends.** On your own profile each watchlist title has Remove and Watched (Read for a book),
+and each From friends title Keep (onto your watchlist, saying whose log it came from), Remove (kept out for good) and
+Watched / Read. Watched / Read opens + ADD's Log it on that title, and logging a title takes it off your watchlist.
+Private shelves (Who can view: Private in the builder) show only to their owner. A private profile shows others only its photo,
+display name and @username; its public shelf, its logs and its watchlist show to its owner and the followers it accepted.
+
+## Logs, the watchlist, and what the database needs for them
+
++ ADD has three choices: **Put on shelf** (as before), **Log it** and **Watchlist**. Log it is a film watched or a book
+read, with a caption if you want one (280 characters); it goes on the feed as "@you watched Gummo · today" (or "read"),
+with its cover drawn by `wear.js`: one corner dog-eared, a few fine scratches, rubbed edges and a little fade, worked out
+from when it was logged, so it's lightly worn that day (two or three scratches show), more faded after a week and more
+worn after a month. On the feed the cover is small, 72 x 108px, with the caption beside it. No stamp,
+nothing written on it. The time on a log's line is by the day: today, yesterday, then 3d, 2w. Your own logs have Delete
+on your profile's Activity. Log it and Watchlist never search for spines, and need an account with a username (signed
+out, the dialog says so with Sign in).
+
+These use tables that migration `0007` adds. **`supabase/migrations/0007_logs_watchlist.sql` was run on the live
+database on 2 October 2026**, by the owner, in the SQL Editor. It adds `logs`, `watchlist` (6 at most, each title
+once), `friend_hides` (what you removed from From friends), `log_counts` (the day's count of logs, the database's
+own), `title_key()`, and two functions: `activity()` (the feed: shelves and logs together) and `from_friends()`.
+`supabase/tests/rls_phase4.sql` is its test, written like `rls_phase3.sql`. Both tests passed on the live database
+after the run (`ALL PHASE 4 CHECKS PASSED`, `ALL PHASE 3 CHECKS PASSED`), as they had on a local Postgres 16 before
+it. From outside, a visitor gets the feed from `activity()`, and "permission denied" for `from_friends()` and for
+`log_counts`. `docs/RUN-0007.md` has the steps that were followed and a way to take it out again;
+`docs/proposed-0007.md` says what each page asks the database for.
+
+The live pages are still `main`, which doesn't ask for any of this: logs and the watchlist reach the site when
+`letterboxd-flow` is merged. On a database without `0007` the pages do without: the feed asks for `activity()` once,
+and on "not found" uses `feed()` from `0006` (shelves only); a profile shows no Watchlist and no From friends, and
+Activity is shelves only; Log it and Watchlist say "Logging isn’t open yet" and "The watchlist isn’t open yet".
+
+## Follows and the feed
+
+FOLLOW on a profile follows a public profile at once and sends a request to a private one (its owner answers under
+REQUESTS on their profile). FOLLOWING and FOLLOWERS open the lists, 30 at a time. 100 follows and unfollows an hour
+per account, counted in the database. `/feed/` shows public shelves and logs, 20 at a time: EVERYONE from public
+profiles, FOLLOWING from the people you follow, YOU your own. A shelf moves up only when it's saved in the builder
+(`shelves.saved_at`); renaming it doesn't. All of it is decided in the database (`0006`, and `activity()` from
+`0007`), not in the page. A log posted with + ADD on the feed puts the tab back at the top, with it there.
 
 Photos, walls and PNGs live in the R2 bucket `shelfstackd-media` (binding `MEDIA`). Create it once, in `worker/`:
 `npx wrangler r2 bucket create shelfstackd-media`, then `npx wrangler deploy`. Keep `USER_R2` commented out: binding it
@@ -118,14 +257,15 @@ signed-out visitors never load the Supabase library.
 - **Where things live:** text rows (profiles, shelves, shelf items) in the Supabase project "shelfstackd"
   (Mumbai, free plan). Images a saved shelf needs, and each shelf's small preview, in the Worker's KV
   (`ub:<user id>/...`); archive spines and TMDB / Open Library covers are pointed at, not copied.
-- **Keys:** only the Project URL and the *publishable* key are used, in `index.html` and in `worker/wrangler.toml`
+- **Keys:** only the Project URL and the *publishable* key are used, in `index.html`, `build/index.html`, `u/index.html`, `feed/index.html`, `shelves/index.html`, `members/index.html`, `settings/index.html` and in `worker/wrangler.toml`
   `[vars]`. Both are public; Row Level Security protects every table. The secret / service_role key isn't used
   anywhere and must never be added to the page, the repo or the Worker.
-- **Database:** run each file in `supabase/migrations/` once, in order, in the dashboard's SQL Editor. Then run the
-  test for the newest one (`supabase/tests/rls_phase2.sql` after `0002`): it plays two users and a signed-out visitor,
+- **Database:** run each file in `supabase/migrations/` once, in order, in the dashboard's SQL Editor (the live
+  database has them all, `0001` to `0007`; there is no `0003`). Then run the test for the newest one
+  (`supabase/tests/rls_phase4.sql` after `0007`, `rls_phase3.sql` after `0006`): it plays a few users and a signed-out visitor,
   undoes everything, and ends with `ALL ... CHECKS PASSED` (or stops at the first `FAIL:`). `rls_phase1.sql` is for a
   database with `0001` only.
-- **Pro:** two switches that must agree: `SHELFSTACKD_PRO_REQUIRED` in `index.html` (what the page offers) and
+- **Pro:** two switches that must agree: `SHELFSTACKD_PRO_REQUIRED` in `build/index.html` (what the page offers) and
   `app_config.pro_required` in the database (what the database and the Worker allow). Both are off, so everyone gets Pro.
   With them on, an account is Pro when `profiles.is_pro` is true (set in the SQL Editor; never from the page).
 - **Admins** can read reports. Add yourself once in the SQL Editor:
@@ -133,14 +273,160 @@ signed-out visitors never load the Supabase library.
 - **Sign-in addresses:** Supabase → Authentication → URL Configuration: Site URL `https://shelfstackd.com`; it allows
   `https://shelfstackd.com/**`, `https://reflexgod.github.io/spinestack/**` (until the move settles) and `http://localhost:8080/**`. Google's client sends people back to
   `https://fiukspnovrlzlcdekcnb.supabase.co/auth/v1/callback`.
-- **Email sign-in** is built but off (`SPINESTACK_EMAIL_LOGIN = false` in `index.html`, and the Email provider is
+- **Email sign-in** is built but off (`SPINESTACK_EMAIL_LOGIN = false` in `build/index.html`, and the Email provider is
   off in Supabase) until email can be sent from shelfstackd.com.
-- **Limits:** 6 spines a shelf (20 with Pro; over 10 they stand in two rows), 200 shelves an account; the Worker saves at most 150 images a day per account and
+- **Limits:** one shelf each on the site (the database still allows 200 an account: see Profiles), 6 spines a shelf (20 with Pro; over 10 they stand in two rows), 50 logs a day and 6 on a watchlist (the database holds both, since 0007); the Worker saves at most 150 images a day per account and
   600 a day in all (KV's free plan allows 1,000 writes a day). To move images to R2 later, create a bucket and
   uncomment the `USER_R2` binding in `wrangler.toml`; the same keys are used there.
 - **Staying awake:** Supabase pauses free projects after a week without activity; the Worker's daily cron
   (03:00 UTC) makes one tiny read so it doesn't.
 - **Privacy:** `privacy.html`. Accounts are for people 18 or older.
+
+## Libraries
+
+No build step, no framework. A page loads a library only from `cdn.jsdelivr.net`, at an exact version, with an
+`integrity` hash (as the Supabase script is loaded); `tests/specs/libraries.spec.js` checks that. Menus and popups use
+the browser's own `<dialog>` and `popover`; relative times use `Intl.RelativeTimeFormat`. All MIT, except Lucide (ISC).
+
+| Library | For | File on `cdn.jsdelivr.net/npm/` | `integrity` |
+|---|---|---|---|
+| Supabase JS 2.117.2 | accounts | `@supabase/supabase-js@2.117.2/dist/umd/supabase.js` | `sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok` |
+| Floating UI core 1.8.0 | needed by Floating UI DOM | `@floating-ui/core@1.8.0/dist/floating-ui.core.umd.min.js` | `sha384-HNCdK6HYLs4EKIDg2Ml3NdfNMVD/LcFbGXnagRABpWmpJjiEuhrtSIckScRnqDOD` |
+| Floating UI DOM 1.8.0 | keeps the account menu and the ▾ menus on screen | `@floating-ui/dom@1.8.0/dist/floating-ui.dom.umd.min.js` | `sha384-h02fHnOrZRtL8NvKyMkr2vfTxUr0lTnQdZexzrbPfME4nd74qGfOZ97tbiroJo1Y` |
+| SortableJS 1.15.7 | dragging spines into order in the builder | `sortablejs@1.15.7/Sortable.min.js` | `sha384-DgmC6Xe2bSN2WjTDXzWYbUbxyhNP+NNkGDR/g78pCXV7E7rcVTGxVg0uIVCUUcBc` |
+| Cropper.js 1.6.3 | square crop of a profile photo | `cropperjs@1.6.3/dist/cropper.min.js` | `sha384-aKBOyDyHi7nysLl4xSArmbTpotGkhOQNGnSQaljyIveY3ofQZ3GWak4U9F5NcPxI` |
+| | its stylesheet | `cropperjs@1.6.3/dist/cropper.min.css` | `sha384-4B0iRmDz7QrXJK2xob77YvAC46zoUOJDr2MOKrkWWR7QoJg9i63rGSnCwIjGYGHs` |
+| browser-image-compression 2.0.2 | shrinks the photo before upload (the Worker takes 2 MB at most) | `browser-image-compression@2.0.2/dist/browser-image-compression.js` | `sha384-dHP9fwqd9BAiDh9uJ0p10khgbbcFMh34bVEiCnJ1Ah/AT2T2k4t572VEo3WXzxXp` |
+| Lucide 1.49.0 | icons (zap, search, chevron-down, x, plus) | pasted into the pages as inline SVG, not loaded | |
+
+Supabase loads on a page only for someone signed in or signing in; Floating UI by `nav.js`, only for someone signed
+in, who has the menus; SortableJS by the builder; Cropper.js and browser-image-compression by `settings/`, when a photo
+is first chosen there (the compression runs on the page itself, not in its web worker, which would fetch the library
+again with no integrity check). To change a
+version: `curl -s <file's address> | openssl dgst -sha384 -binary | openssl base64 -A` gives the new hash.
+
+## Tests
+
+In `tests/`, with its own `package.json`. Once: `npm install`, then `npm run setup` (downloads Playwright's Chromium).
+
+```
+cd tests
+npm run test:all     # html-validate, then Playwright
+npm test             # Playwright only
+npm run test:html    # html-validate only
+npx playwright test specs/site.spec.js --project=phone-390    # one file, at one width
+```
+
+- **Playwright** (`specs/site.spec.js`) opens every page at 1280 px and at 390 px, signed out and signed in: the top
+  bar is there with its places in one order (⚡ · Shelves · Members · search, signed in or out), the page doesn't scroll
+  sideways, nothing is logged as an error, signed-out home loads its shelves, and
+  old builder links at the root go on to `/build/`. The account menu: its seven items with Sign out last, open by tap,
+  by mouse and by keyboard, closed by Esc and by a click outside, always inside the window; Sign out signs out.
+- **The builder and + ADD** (`specs/build.spec.js`): + ADD opens the dialog on every page and Esc closes it;
+  search, pick, Add to shelf on the builder (no reload) and from another page (which goes to the builder, where your
+  shelf opens with the spine after what was there, or starts it); the builder's fields, Style shut with its one line,
+  a row's controls opening one at a time, ↑ ↓ and dragging; Save signed out, signed in before you have a shelf, and
+  signed in with one (saved over, never a second shelf); spines put on before signing in going on your shelf after,
+  `?open=<id>`, `?new`, old `?embed` links, Edit under your shelf and Make your shelf on your profile, your shelf being
+  changed surviving a trip to another page (and giving way to an older shelf that's opened by its link), Cancel; the order of the
+  page, dragging a spine on the preview (mouse, and hold-then-drag with a finger), and the caption: it follows the
+  Name, and with no name the preview's faint "your shelf" is not in the picture saved with the shelf. A shelf has one
+  name: Style has no Caption, and a shelf that had a caption of its own is saved with its name as both. The bar has
+  only Cancel and Save, side by side at 360 to 430px. Clear asks first (Cancel and Esc leave the spines); the sample
+  shelf just goes.
+- **The dialog's search** (`specs/add.spec.js`): suggestions while typing with one search for a word typed quickly, a
+  slower earlier answer dropped, six results in order of closeness, ↑ ↓ Enter Esc, Enter searching at once, the
+  loading and nothing-found lines, at the right of the All · Films · Books row (nothing held open, nothing moving);
+  the capped answer from `/scans` and its message; every page's footer (TMDB's line, Open Library, Search by Brave,
+  Privacy, hello@shelfstackd.com, and nothing else, in small print); the builder's count and limit, its empty shelf,
+  and the note under the preview clear of the Save bar.
+- **The look** (`specs/look.spec.js`): the content and the bar's contents in one 950px column on every page, the type
+  scale, one black button a screen, shelf cards six across at 150px (three on a phone) cut 2:3, the profile's name,
+  numbers (on a phone, one small line under the name and no band) and tabs, and its shelf across the column on the
+  wash.
+- **Who you both know** (in `specs/profile.spec.js`): "Follows you" by the name of someone who follows you, and
+  "Followed by @a, @b and N others" under the bio, read from the follows and the followers list that are already there.
+- **A profile's tabs** (`specs/profile.spec.js`): Profile · Activity · Network, their addresses and ← → (and an old
+  `#shelves` link landing on Profile); their shelf first, big, across the column, then the watchlist, and no Most
+  shelved; Activity's lines for shelves and logs, a log's worn cover and caption; Network's Following and Followers and
+  the numbers that open them; the account menu's links changing the tab on your own profile without loading it again,
+  and its Shelf going to your shelf's page. Your watchlist (Remove, Watched or Read) and From friends (Keep, Remove,
+  Watched or Read), what each sends, and Watched opening Log it on that title; and both left out, with Activity
+  shelves only, before the database has them.
+- **A shelf's page** (`specs/shelf.spec.js`): its heading, Share (the story to a share sheet or saved, the picture,
+  the link), the "Saved." line once after Save, the shelf itself on the grey panel (not the story: nothing drawn behind
+  the books, and on the first screen on a phone), and the list of what's on it, to its right on a wide window and
+  under it on a phone; the way back as plain grey text, a small action dashed, Delete dashed in grey; + Add to my shelf putting that same spine on your shelf with nothing searched for;
+  for its owner Edit, Make private, renaming it in the heading, and Delete only after the confirm (then back to the
+  profile); `/u/?name&shelf` as their shelf, and with none yet; a shelf that isn't there.
+- **Spines on a picture** (`specs/tips.spec.js`): on a shelf's page and on the builder's preview, the tooltip over a
+  spine, a press going to its row and marking it, and a drag on the preview not counting as a press.
+- **Settings** (`specs/settings.spec.js`): signed out and with no username yet; the three tabs and their addresses;
+  Profile's Save sending the name and bio (no main shelf to pick); a photo cut square, made small (WebP, under the Worker's 2 MB),
+  sent to the Worker and saved, then removed; Cancel; the private profile switch; a profile's links here.
+- **Shelf cards** (`specs/cards.spec.js`): on home, the feed and a profile, a pile, covers and a row are each in the
+  middle of their card with room round them, the caption and the "made with" line clipped off, on the story's colour;
+  a picture is looked at once (kept per preview key); a picture with no plain background, or one that comes without
+  CORS, still shows with the stylesheet's cut.
+- **Home's copy** (in `specs/site.spec.js`): signed out, the newest shelf large (cut to its books, a link to it), the
+  one line under it from the left, Make a shelf as the one black button (the bar's + outlined there), How it works
+  in three steps, with no "lets you" tiles; signed in, the welcome and ⚡ All activity; no em dash and no
+  rule-of-three line; no ellipsis on a placeholder or a menu item (home's welcome line keeps its one).
+- **Shelves and Members** (`specs/shelves.spec.js`, `specs/members.spec.js`): every shelf as a card, 24 at a time and
+  what Load more asks for; one people search 300 ms after the last key, Enter at once, the search kept in the address,
+  FOLLOW and UNFOLLOW, FOLLOW signed out (sign-in, then finished once back), Recently active.
+- **Titles and icons** (`specs/meta.spec.js`): every page has its own title and a description of a sensible length,
+  links the three icons (which exist, at the right sizes) and names the share picture (1200 x 630); a profile's and a
+  shelf's title carry the person's name.
+- **A page that isn't there** (`specs/notfound.spec.js`): any missing address, however deep, gets `404.html` with the
+  status 404 (`tests/serve.js` does what GitHub Pages does), styled, with a link home that works from there.
+- **Privacy** (`specs/privacy.spec.js`): the page's sections, and that it says what the site does now (the feed, being
+  found, follows, private shelves and profiles, Settings, the photo).
+- **Nothing missing** (`specs/requests.spec.js`): every page, signed out and signed in, gets an answer for everything
+  it asks this site for; and the two things a browser asks for by itself (`/favicon.ico`, and Chrome's DevTools file)
+  are there.
+- **An empty site** (`specs/empty.spec.js`): with no public shelves, home shows the sample shelf where the newest one would be, and
+  shelves, members and the feed each say so in a line.
+- **The feed** (`specs/feed.spec.js`): the three tabs and which one opens, what a line says for a shelf and for a log
+  (with the clock held still, so "today", "2h" and "1w" are known), Load more, a log's cover (72 x 108px, in line
+  with the text, the caption beside it on a phone too) more worn the older it is, You, signed out, a log posted with + ADD showing at
+  the top, the feed before the database has logs (shelves only, from `feed()`), and ← → between the tabs.
+- **+ ADD's three choices** (`specs/log.spec.js`): Put on shelf · Log it · Watchlist, Put on shelf first, the
+  dialog's title for each; Log it's cover, caption and Post (what it sends, "watched" or "read", and no spine searched
+  for); Watchlist's Add to watchlist, and the database's answers when it's full or the title is already there; a title
+  keeping its place when the choice changes; signed out and with no username yet; before the database has logs.
+- **A new account** (`specs/newuser.spec.js`, with `mockNetwork`'s `fresh`: a username and nothing else): home says
+  "Welcome" (not "Welcome back") and what to do first; your empty shelf, watchlist, From friends, Activity, Following
+  and Followers each say what to do next, with a link to Members where that's it; someone else's empty lists stay
+  plain; the feed's Following and You; the username sheet speaks of one shelf.
+- **No connection** (`specs/offline.spec.js`): signed in, with the database out of reach, Settings, the feed's You tab
+  and a profile say "Couldn’t reach shelfstackd", the bar offers no Finish sign-up, and the builder's Save says the
+  account couldn't load instead of asking for a username. A page tells "couldn't read your account" (`unreachable`)
+  apart from "no username yet". With nothing reachable, Log it's Post says so and stays open, and the Add dialog's
+  search says it didn't answer, with the last search's titles gone.
+- **Press areas on a phone** (`specs/taps.spec.js`, phone only): on every page, in the Add dialog, the menus, the
+  sign-in sheet and the builder's Style, a press 21px up, down, left or right of a control's middle still lands on it,
+  as `elementFromPoint` finds it. On a touch screen (`pointer:coarse`) a small control takes its press in the 44 x 44px
+  round its middle (a see-through `::before`), and close rows are a press apart; on a mouse nothing changes. Left out:
+  links inside a sentence. The logo is in: the bar's two rows are 44px apart, middle to middle.
+- **A log's worn cover** (`specs/wear.spec.js`): 2:3, the top right corner folded away, nothing ever written on it,
+  lightly worn on the day (a few fine scratches show, and the fold's hairline and shadow show on a white poster), more
+  faded after a week and more worn after a month, and the same log worn the same way every time.
+
+`npm run shots` (in `tests/`) saves screenshots of home (and home with no shelves yet), the builder, a profile's tabs,
+your own profile (and with no shelf yet), a shelf's page, the feed (and before the database has logs), + ADD (its
+choices, Log it, Watchlist), shelves, members, settings, privacy and the not-found page at 1280px and 390px into
+`tests/shots/`, with the tests' made-up data, the real fonts, and the clock held at 30 September 2026, 14:00 UTC.
+- **axe** (`specs/a11y.spec.js`) runs on every page, `privacy.html` and `admin.html` too: nothing serious or critical.
+- **html-validate** reads every HTML file with its recommended rules, except that inline `style` is allowed and the
+  doctype is lowercase (`tests/.htmlvalidate.json`).
+- The tests never reach Supabase, the Worker, Google Fonts or jsDelivr, and never use a real account: `tests/site.js`
+  answers those requests with made-up people and shelves, a made-up signed-in session, and the libraries from
+  `tests/node_modules`. They serve the repo's files themselves (`tests/serve.js`, port 8181). A new page goes into
+  `PAGES` in `tests/site.js`.
+
+`npm run art` makes the site's own pictures again and saves them at the root: the sample shelf (`sample-shelf.jpg`), the
+share picture (`og.jpg`) and the icons (from `favicon.svg`). Run it when the builder's sample shelf or the mark changes.
 
 ## 2. Run the backend (optional, not used right now)
 
@@ -153,7 +439,7 @@ On your laptop first:
 3. In `backend/searxng/settings.yml`, replace `change-me-to-a-long-random-string` with any long random text.
 4. In `backend/` run `docker compose up --build`.
 5. Open http://localhost:8000 — the backend serves the website too. For its search to be the one the page uses, set
-   `window.SPINESTACK_API = "http://localhost:8000";` in `index.html` (while it's empty, the page uses the Worker and
+   `window.SPINESTACK_API = "http://localhost:8000";` in `build/index.html` (while it's empty, the page uses the Worker and
    doesn't look for a backend).
 
 Online, for free: an Oracle Cloud "Always Free" VM.
@@ -161,7 +447,7 @@ Online, for free: an Oracle Cloud "Always Free" VM.
 1. Create the VM (Ubuntu), install Docker, copy this repo onto it.
 2. Do steps 2–4 above. In `.env` set `ALLOWED_ORIGINS=https://YOURNAME.github.io`.
 3. The GitHub Pages site is HTTPS, so the backend must be HTTPS too. Point a domain or free subdomain at the VM and put Caddy in front of port 8000 (Caddy gets the certificate automatically).
-4. In `index.html`, set `window.SPINESTACK_API = "https://your-backend-address";`, commit, and GitHub Pages picks it up.
+4. In `build/index.html`, set `window.SPINESTACK_API = "https://your-backend-address";`, commit, and GitHub Pages picks it up.
 
 ## Keys
 

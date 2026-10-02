@@ -4,11 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
-<title>shelfstackd archive</title>
+<title>Archive admin · shelfstackd</title>
+<meta name="description" content="For the people who run shelfstackd: approve archive uploads and read reports.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#FFFFFF">
 <script>
   /* Same Worker as index.html. The admin token is never stored here: you type it each time,
      and it stays in this tab's sessionStorage only. */
   window.SPINESTACK_WORKER = "https://api.shelfstackd.com";
+  window.SPINESTACK_WORKER_FALLBACK = "https://spinestack.spinestack-worker.workers.dev";
   /* Reports are read from Supabase by an admin signed in with Google (public keys, as in index.html; the
      admins table in the database decides who may read them). */
   window.SPINESTACK_SUPABASE_URL = "https://fiukspnovrlzlcdekcnb.supabase.co";
@@ -59,6 +65,7 @@ li img{height:220px;width:auto;display:block;background:#F2F2F2}
   <h1>Archive</h1>
   <p class="grey">Spines people cut from their own scans. Nothing shows up in search until it's approved here.</p>
   <form id="login" autocomplete="off">
+    <!-- [html-validate-disable-next autocomplete-password -- the admin token is typed each time and never offered back] -->
     <input type="password" id="token" placeholder="Admin token" aria-label="Admin token" autocomplete="off">
     <button class="btn" type="submit">Open</button>
   </form>
@@ -80,6 +87,7 @@ li img{height:220px;width:auto;display:block;background:#F2F2F2}
     </div>
   </section>
 </main>
+<script src="worker-address.js?v=20261001a"></script>
 <script>
 (() => {
 const $ = s => document.querySelector(s), W = String(window.SPINESTACK_WORKER || '').replace(/\/+$/, '');
@@ -169,7 +177,7 @@ $('#repIn').addEventListener('click', async () => {
   try { const c = await supa(); const {error} = await c.auth.signInWithOAuth({provider:'google', options:{redirectTo: location.origin + location.pathname}}); if (error) throw error; }
   catch (e){ $('#repIn').insertAdjacentHTML('afterend', `<p class="status err">${esc(e.message)}</p>`); }
 });
-$('#repOut').addEventListener('click', async () => { await sb.auth.signOut(); $('#repList').innerHTML = ''; status(''); show(); });
+$('#repOut').addEventListener('click', async () => { await sb.auth.signOut({scope: 'local'}); $('#repList').innerHTML = ''; status(''); show(); });
 if (hasSession() || returning()) supa().then(show).catch(e => status(e.message, true));
 })();
 </script>
