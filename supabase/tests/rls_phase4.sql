@@ -1,6 +1,7 @@
 -- shelfstackd, phase 4: checks logs, the watchlist, From friends and activity() after migration 0007
 -- (supabase/migrations/0007_logs_watchlist.sql). Run it in the Supabase dashboard (SQL Editor -> New query -> paste ->
 -- Run). It passed on the live database on 2 October 2026.
+-- Since 0008 it also makes D's watchlist public (watchlist_public), so run it on a database that has 0008.
 -- It makes throwaway users inside a transaction and rolls everything back at the end: nothing is kept.
 -- The last result says "ALL PHASE 4 CHECKS PASSED". Any failed check stops with an error that starts "FAIL:".
 -- Real accounts can be in the database, so every check looks only at the test's own rows.
@@ -37,6 +38,7 @@ insert into public.profiles (id, username) values ('00000000-0000-4000-8000-0000
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000004d0","role":"authenticated"}', true);
 insert into public.profiles (id, username) values ('00000000-0000-4000-8000-0000000004d0', 'rls4_d');
 update public.profiles set is_private = true where id = '00000000-0000-4000-8000-0000000004d0';
+update public.profiles set watchlist_public = true where id = '00000000-0000-4000-8000-0000000004d0';   -- 0008: D's watchlist is public, so the follower check below sees it
 insert into public.logs (kind, title, year, caption) values ('movie', 'Stalker', 1979, 'd only');
 insert into public.watchlist (kind, title, year) values ('movie', 'Paris, Texas', 1984);
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000004e0","role":"authenticated"}', true);

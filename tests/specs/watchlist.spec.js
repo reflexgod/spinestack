@@ -2,7 +2,7 @@
 // read, the covers (worn), and on your own a box that adds a title straight in (the + ADD dialog's search, no dialog
 // and no spine search), a dotted + first, Remove and Watched / Read. It holds 6. Anywhere else a cover or a spine shows
 // (the feed, someone's shelf, From friends), a bookmark on hover, or ••• on a phone, puts it on your watchlist; signed
-// out that's the sign-in sheet first. Private by default once docs/proposed-0008-watchlist-privacy.sql is run.
+// out that's the sign-in sheet first. Private by default once supabase/migrations/0008_watchlist_privacy.sql is run.
 const { test, expect } = require('@playwright/test');
 const { SHELVES, WATCHLIST, SB_URL, CORS, mockNetwork, watchErrors, open, putAside } = require('../site');
 

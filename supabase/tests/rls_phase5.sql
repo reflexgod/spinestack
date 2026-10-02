@@ -1,7 +1,8 @@
--- shelfstackd, PROPOSED 0008's checks: a watchlist is private until its owner makes it public
--- (docs/proposed-0008-watchlist-privacy.sql). Run it after that file, in the Supabase dashboard (SQL Editor -> New
--- query -> paste -> Run). It makes throwaway users inside a transaction and rolls everything back: nothing is kept.
--- The last result says "ALL 0008 CHECKS PASSED". A failed check stops with an error that starts "FAIL:".
+-- shelfstackd, phase 5: checks that a watchlist is private until its owner makes it public, after migration 0008
+-- (supabase/migrations/0008_watchlist_privacy.sql). Run it in the Supabase dashboard (SQL Editor -> New query ->
+-- paste -> Run). It passed on the live database on 2 October 2026.
+-- It makes throwaway users inside a transaction and rolls everything back at the end: nothing is kept.
+-- The last result says "ALL 0008 CHECKS PASSED". Any failed check stops with an error that starts "FAIL:".
 --
 -- The people:  A public (keeps a watchlist)   B public (a visitor who follows no one)   C public (follows D, accepted)
 --              D private (keeps a watchlist)

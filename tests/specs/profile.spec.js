@@ -189,6 +189,12 @@ test('your watchlist: a strip on Profile; on its tab each cover has Remove and W
   await expect(page.locator('#watchSec h2')).toHaveText('Watchlist 2 of 6 See all →');
   await expect(page.locator('#watchStrip li')).toHaveCount(2);
   await expect(page.locator('#watchStrip').getByRole('button')).toHaveCount(0);
+  // small covers, up to four in one row: about 100px wide (80px on a phone), 2:3, left-aligned
+  const covers = await page.locator('#watchStrip canvas').evaluateAll(cs => cs.map(c => { const r = c.getBoundingClientRect(); return [r.left, r.top, r.width, r.height]; }));
+  const wide = test.info().project.name.startsWith('phone') ? 80 : 100, col = await page.locator('#watchStrip').boundingBox();
+  for (const [x, y, w, h] of covers){ expect(Math.abs(w - wide)).toBeLessThanOrEqual(1); expect(Math.abs(h - wide * 1.5)).toBeLessThanOrEqual(1); expect(Math.abs(y - covers[0][1])).toBeLessThanOrEqual(1); }
+  expect(Math.abs(covers[0][0] - col.x)).toBeLessThanOrEqual(1);
+  expect(4 * wide + 3 * 12).toBeLessThanOrEqual(col.width);   // room for four in the row, on a phone too
   await expect(page.locator('#friendsSec h2')).toHaveText('From friends');
   await expect(page.locator('#friends li')).toHaveCount(2);
   await expect(row(page, 'friends', 'Gummo')).toContainText('from @mira');

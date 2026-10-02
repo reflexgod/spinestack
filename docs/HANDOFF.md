@@ -29,6 +29,11 @@ every file is and how the Worker, the accounts and the tests are set up.
   database has them, so they do now; the live pages are `main`, which doesn't ask for them, until the merge. Not tried
   yet: a signed-in page of this branch against the live database (nobody has logged anything; `docs/LAUNCH.md` step 7
   does it on a phone after the merge). `docs/proposed-0007.md` says what each page asks.
+- **Migration `0008` is in the live database too.** The owner ran it on 2 October 2026 and its test passed:
+  `supabase/migrations/0008_watchlist_privacy.sql` (`profiles.watchlist_public`, false for everyone, and the watchlist
+  read policies that ask `watchlist_is_public()`), test `supabase/tests/rls_phase5.sql` (`ALL 0008 CHECKS PASSED`).
+  Every watchlist is now private until its owner presses Make public on their Watchlist tab. `rls_phase4.sql` makes its
+  private D's watchlist public (one line, next to the one that makes D private), so it needs `0008` as well.
 
 ## Rules
 
@@ -41,7 +46,7 @@ These are the owner's standing rules. They apply to every change, in any session
    from `cdn.jsdelivr.net` at an exact version with an `integrity` hash. Copy is plain English: no em dashes, no
    rule-of-three lines, no "lets you" tiles. `tests/specs/look.spec.js`, `libraries.spec.js` and the copy checks in
    `site.spec.js` hold most of this in place; keep them passing rather than changing them to fit.
-2. **No new migrations without asking.** `supabase/migrations/` stops at `0007` (there is no `0003`). If a feature
+2. **No new migrations without asking.** `supabase/migrations/` stops at `0008` (there is no `0003`). If a feature
    seems to need a new table, column, policy or function, stop and ask first. Several features on this branch were
    built to read what is already there for that reason (the feed's You tab, "Follows you", "Followed by").
 3. **Don't touch the drawing in `shelf.js`.** It draws the spines and the story, and the builder and the profiles both
@@ -249,7 +254,8 @@ never reached a commit isn't here, so ask before assuming the list is complete.
    step 5 there only checks that). Tasks 6
    and 7 below are steps in it. **The design review** (`docs/DESIGN-REVIEW.md`) is applied, all but 4 (see "Done in
    the third session").
-   `0007` was run as it was written: a watchlist of 6 that visitors can see, 50 logs a day, 180 days of From friends.
+   `0007` was run as it was written: a watchlist of 6, 50 logs a day, 180 days of From friends. `0008` (run the same
+   day) made each watchlist private until its owner makes it public.
    Still open in `docs/proposed-0007.md`: whether to make one shelf each a rule in the database (the index at the end
    of the SQL is commented out, and wasn't run).
 
@@ -275,7 +281,7 @@ never reached a commit isn't here, so ask before assuming the list is complete.
    own is the owner's call. `tests/specs/add.spec.js` checks the line, so the test changes with it.
 6. **Merging into `main`** is the owner's. The first merge was on 2 October (`be5a44b`). The four fixes from the live
    test are next: run both test suites, then merge as `docs/LAUNCH.md` step 6 has it. (The live database has `0004`
-   to `0007`.)
+   to `0008`.)
 7. **Done: the page tests were run on the laptop** on 2 October, and `requests.spec.js` passes with the Chromium
    Playwright 1.63 asks for (it failed in the cloud container only because of an older Chromium). Run them again
    before the merge, as `docs/LAUNCH.md` step 6 says.

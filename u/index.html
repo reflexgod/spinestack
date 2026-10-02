@@ -100,7 +100,7 @@
 .pgrid{display:grid;gap:var(--s6);margin-top:var(--s6)}
 .pmain{display:grid;gap:var(--s6);min-width:0}
 /* the watchlist on the Profile tab: up to four of its covers, and See all */
-.wstrip{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(var(--cards),minmax(0,1fr));gap:var(--card-gap)}
+.wstrip{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,var(--wcov));justify-content:start;gap:var(--s3);--wcov:100px}   /* up to four in one row: 100px covers, 80px on a phone */
 .wstrip:empty{display:none}
 .wstrip a{display:block;line-height:0}
 .wstrip canvas{display:block;width:100%;height:auto;aspect-ratio:2/3}
@@ -228,7 +228,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
   .statcol:has(> #reqBtn[hidden]){display:none}     /* with no requests waiting, nothing is left in it */
   #reqBtn{justify-self:start}
   #featWrap{--sh:180px}
-  .wstrip li:nth-child(n+4){display:none}   /* three across on a phone */
+  .wstrip{--wcov:80px}
   .titles li{grid-template-columns:40px minmax(0,1fr)}
   .tacts{grid-column:2;justify-content:flex-start}
 }
@@ -783,7 +783,7 @@ async function paintHero(){
    a strip of up to four covers and See all; its own tab (#watchlist) has them all, worn (wear.js), with what they want
    to see and read over them. Yours has a box to add one (the + ADD dialog's search, add.js), a dotted + first, and
    Remove and Watched (or Read) on each. From friends (yours only) is what the people you follow logged lately, that you
-   haven't. A watchlist is private once docs/proposed-0008-watchlist-privacy.sql is run (profiles.watchlist_public):
+   haven't. A watchlist is private once migration 0008 is run (profiles.watchlist_public):
    until then there's no such column, and it's seen as before, by whoever can see the profile. ---------- */
 const lists = {watch: [], friends: [], privacy: null};   // privacy: null before 0008; then true (public) or false
 const coverOf = ref => ref ? `${WORKER}/img?url=${encodeURIComponent(String(ref).replace(/^url:/, ''))}` : '';
@@ -823,7 +823,7 @@ async function paintWatch(){
   $('#watchAll').hidden = !lists.watch.length;
   $('#watchStrip').replaceChildren(...lists.watch.slice(0, 4).map(r => {
     const li = document.createElement('li'), a = document.createElement('a');
-    a.href = '#watchlist'; a.setAttribute('aria-label', `${r.title}${r.year ? ` (${r.year})` : ''}, on the watchlist`); a.append(wornCover(r));
+    a.href = '#watchlist'; a.setAttribute('aria-label', `${r.title}${r.year ? ` (${r.year})` : ''}, on the watchlist`); a.append(wornCover(r, 100));
     li.append(a); return li;
   }));
   $('#watchNone').hidden = !!lists.watch.length;
