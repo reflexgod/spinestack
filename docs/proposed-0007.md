@@ -31,6 +31,10 @@ through `profile_is_public()` and `approved_follower_of()`, as `feed()` does.
   trigger (an upsert, under the same lock), so deleting a log and posting it again can't fill the feed. The day is UTC.
   Nothing is granted on it and it has no policies: only the trigger, which runs as the table's owner, touches it, and it
   lets a person's days before yesterday go as they post.
+- **From friends keeps 500 removals a person at most.** The friend_hides trigger takes a lock for the person
+  (`'hides:'`), lets removals older than 180 days go, then refuses the 501st with "That's 500 titles removed from From
+  friends, the most it keeps." The profile shows that as its message. (Letting the oldest go instead of refusing is a
+  one-line change, if that's preferred.)
 
 ## What the pages ask for
 

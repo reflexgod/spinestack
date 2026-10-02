@@ -165,6 +165,32 @@ do $$ declare i int; begin
     raise exception 'FAIL: A put a title on C''s watchlist';
   exception when insufficient_privilege then null; end;
 end $$;
+-- ---------- From friends keeps 500 removals a person at most; ones older than 180 days go first ----------
+reset role;
+insert into public.friend_hides (owner, item_key)
+  select '00000000-0000-4000-8000-0000000004a0', 'book:filler ' || i || ':' from generate_series(1, 498) i;   -- with Stalker's, 499
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000004a0","role":"authenticated"}', true);
+do $$ begin
+  insert into public.friend_hides (item_key) values ('book:the five hundredth:');
+  begin
+    insert into public.friend_hides (item_key) values ('book:one more:');
+    raise exception 'FAIL: a 501st removal was kept';
+  exception when raise_exception then if sqlerrm like 'FAIL:%' then raise; end if; end;
+  if not hashtext('hides:00000000-0000-4000-8000-0000000004a0')::bigint = any (array(select (l.classid::bigint << 32) | l.objid::bigint from pg_locks l
+       where l.locktype = 'advisory' and l.pid = pg_backend_pid() and l.objsubid = 1)) then
+    raise exception 'FAIL: a removal didn''t take its person''s lock'; end if;
+end $$;
+reset role;
+update public.friend_hides set created_at = now() - interval '200 days' where owner = '00000000-0000-4000-8000-0000000004a0' and item_key = 'book:filler 1:';
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000004a0","role":"authenticated"}', true);
+insert into public.friend_hides (item_key) values ('book:after a while:');   -- the old one went, so this one fits
+do $$ begin
+  if exists (select 1 from public.friend_hides where item_key = 'book:filler 1:') then raise exception 'FAIL: a removal from 200 days ago is still kept'; end if;
+  if (select count(*) from public.friend_hides) <> 500 then raise exception 'FAIL: A doesn''t have 500 removals'; end if;
+end $$;
+
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000004b0","role":"authenticated"}', true);
 do $$ declare n int; begin
   delete from public.watchlist where owner = '00000000-0000-4000-8000-0000000004a0';

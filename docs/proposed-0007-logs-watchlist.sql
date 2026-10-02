@@ -20,7 +20,7 @@
 --     (log_counts), so deleting one doesn't make room for another. You can delete your own.
 --   * watchlist: up to 6 titles, each title once. Logging a title takes it off your watchlist.
 --   * friend_hides: the titles you pressed Remove on in From friends, so they don't come back (kept 180 days, as long
---     as From friends looks back).
+--     as From friends looks back; 500 at most).
 --   * title_key(): one key per title (film or book, its title in lower case with its spaces tidied, its year), so the
 --     same title is the same title in logs, the watchlist and From friends.
 --   * functions for the pages: activity() (the feed: shelves and logs together, newest first) and from_friends().
@@ -146,12 +146,17 @@ create table public.friend_hides (
 );
 alter table public.friend_hides enable row level security;
 
--- From friends looks back 180 days, so a removal is kept that long
+-- From friends looks back 180 days, so a removal is kept that long, and 500 at most a person (under their lock, as
+-- logs are, so two at once can't both be the 500th)
 create function public.friend_hides_before_insert() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
+  perform pg_advisory_xact_lock(hashtext('hides:' || new.owner));
   new.created_at := now();
   delete from public.friend_hides h where h.owner = new.owner and h.created_at < now() - interval '180 days';
+  if (select count(*) from public.friend_hides h where h.owner = new.owner) >= 500 then
+    raise exception 'That''s 500 titles removed from From friends, the most it keeps. They come off after 180 days.' using errcode = 'P0001';
+  end if;
   return new;
 end $$;
 revoke execute on function public.friend_hides_before_insert() from public, anon, authenticated;
