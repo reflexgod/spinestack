@@ -2,12 +2,13 @@
 
 Written on 2 October 2026, before this work moves from the laptop to a cloud session, and brought up to date the same
 day in that cloud session, after one shelf each, logs, the watchlist and From friends (see "Done in the cloud
-session"), and again after the launch pass (see "Done in the second cloud session"). Read this first, then `README.md`, which says what every file is and how the Worker, the accounts and the
-tests are set up.
+session"), again after the launch pass (see "Done in the second cloud session"), and again back on the laptop, after
+the design review was applied (see "Done in the third session"). Read this first, then `README.md`, which says what
+every file is and how the Worker, the accounts and the tests are set up.
 
 ## Where things stand
 
-- **Branch:** `letterboxd-flow`, pushed to `origin` (github.com/reflexgod/spinestack). It is 67 commits ahead of
+- **Branch:** `letterboxd-flow`, pushed to `origin` (github.com/reflexgod/spinestack). It is 84 commits ahead of
   `main` and has everything from the older local branches in it (`phase2-profiles`, `phase3-feed`, `profile-polish`,
   `domain-move`, `drop-fallback`), so no other branch needs pushing.
 - **`main` is the live site.** GitHub Pages serves shelfstackd.com from `main`, which is still at `064ac13`. Nothing on
@@ -132,6 +133,44 @@ Each item is its own commit, so any one can be reverted.
   Nothing in it is changed.
 - **D. `docs/LAUNCH.md`**: the owner's launch steps in order, with commands.
 
+## Done in the third session (2 October 2026, on the laptop)
+
+The owner's answers to the design review, applied. Each item is a commit of its own, and each one reverts cleanly by
+itself (`git revert <commit>` was tried for every one, on a copy of the branch).
+
+- **1.** A shelf's page shows the shelf on the grey panel, as the profile's hero does, not the 9:16 story. The story
+  is only made for Share.
+- **2.** A log's cover on the feed and in Activity is 72 x 108px (`--cover` in `site.css`), with the caption beside it.
+- **3.** Wear starts at 0.25, the first three scratches always show, and the dog-ear has a hairline and a soft shadow
+  (`wear.js`). The same log is still drawn the same way every time.
+- **4.** Not done, by the owner's choice: the bar still says SHELVES.
+- **5.** The Add dialog's titles have no ellipsis, and what the search says sits on the All · Films · Books row.
+- **6.** Signed-out home: the newest public shelf, large, then one line and Make a shelf in black (the bar's + is
+  outlined on that screen), and How it works in three steps, which is nowhere else now.
+- **7.** Every page's footer is two lines of small print: TMDB's line, Open Library, Search by Brave, Privacy,
+  hello@shelfstackd.com.
+- **8.** On a phone a profile's numbers are one small line of links under the name.
+- **9.** No ellipsis on a placeholder or a menu item. Home's welcome line keeps its one.
+- **10.** The bar's places are ⚡ · SHELVES · MEMBERS · search, signed in or out.
+- **11.** 12px more between the bar's two rows on a phone, so the logo takes a press.
+- **12.** One name in the builder: Style's Caption is gone, and the Name is the story's caption.
+- **13.** The way back is plain grey text, small actions are dashed, the ones that lose something are grey, and Clear
+  asks first.
+
+Also in this session:
+
+- The builder's Cancel and Save stay side by side on a phone. This was the one `taps.spec.js` check failing on the
+  laptop, and a real fault on phones a little wider than 390px.
+- `docs/LAUNCH.md` step 5: the Worker needs no deploy (the Serper fix has been live since 2 October).
+- New `?v=` versions on `site.css`, `nav.js`, `add.js`, `wear.js` and `spinetip.js`.
+- The README, this file, `docs/FOUND-NOT-FIXED.md` and the top of `docs/DESIGN-REVIEW.md` were brought up to date in
+  one commit at the end, not item by item, so that the item commits revert cleanly. After reverting an item, its lines
+  in the README need putting back by hand.
+- `docs/review/after/` has pictures of 1, 2, 3, 6, 7 and 8 as they are now.
+
+Left as it was, for the owner to decide: renaming a shelf on its own page or on the profile still changes only its
+name, so its story keeps the old caption until the shelf is next saved in the builder (12 made the two one there).
+
 ## What's tested
 
 Both suites were run on 2 October 2026 on the laptop (Windows 11, Node 26).
@@ -154,6 +193,9 @@ Both suites were run on 2 October 2026 on the laptop (Windows 11, Node 26).
 - **After the second cloud session** (same container): html-validate clean, then Playwright 458 passed, 16 skipped,
   4 failed, the same 4 `requests.spec.js` checks (the icons' loads, cancelled by this container's Chromium), and
   `npm run shots` made all 50. New specs: `taps.spec.js`, `offline.spec.js`, `newuser.spec.js`.
+- **After the third session** (the laptop: Windows 11, Node 26, the Chromium that Playwright 1.63 asks for):
+  html-validate clean, then Playwright 484 passed, 20 skipped, none failed, `requests.spec.js` included, and
+  `npm run shots` made all 50. The Worker's suite wasn't run: nothing in `worker/` changed.
 - **The proposed SQL** was run on a local Postgres 16 (a stand-in for Supabase's `auth` schema, then `0001` to `0006`,
   then the proposal): no errors; `rls_phase3.sql` and `docs/proposed-rls_phase4.sql` both passed. Not on Supabase.
 - **Not tested by anything here:**
@@ -173,7 +215,8 @@ never reached a commit isn't here, so ask before assuming the list is complete.
 0. **Launch: `docs/LAUNCH.md`** (the owner) has the order: run 0007, publish the Google sign-in, hello@ with
    Cloudflare Email Routing, a Brave spending limit, merge into `main`, test on a phone (the Worker needs no deploy:
    step 5 there only checks that). Tasks 6
-   and 7 below are steps in it. **The design review** (`docs/DESIGN-REVIEW.md`) is waiting on the owner's answers.
+   and 7 below are steps in it. **The design review** (`docs/DESIGN-REVIEW.md`) is applied, all but 4 (see "Done in
+   the third session").
    Before then, review `docs/proposed-0007-logs-watchlist.sql` (the owner). `docs/proposed-0007.md` lists what to decide: the
    watchlist's 6, whether visitors see a watchlist, 50 logs a day, From friends' 180 days, and whether to make one shelf
    each a rule in the database. Once agreed, `docs/RUN-0007.md` has the exact steps in the SQL Editor and the checks.
@@ -201,8 +244,9 @@ never reached a commit isn't here, so ask before assuming the list is complete.
 6. **Merging into `main`** makes all of the above the live site. Not until the owner says so. Before it: the owner
    confirms the live database has `0004`, `0005` and `0006` (the pages on this branch need them), and `0007` once it's
    agreed, and both test suites pass.
-7. **Run the page tests on the laptop** to confirm `requests.spec.js` passes with the Chromium Playwright 1.63 asks
-   for (it failed in the cloud container only because of an older Chromium, before and after the change).
+7. **Done: the page tests were run on the laptop** on 2 October, and `requests.spec.js` passes with the Chromium
+   Playwright 1.63 asks for (it failed in the cloud container only because of an older Chromium). Run them again
+   before the merge, as `docs/LAUNCH.md` step 6 says.
 
 ## How to run the tests
 

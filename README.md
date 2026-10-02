@@ -5,16 +5,16 @@ Live at https://shelfstackd.com (this repository and its folders keep the old wo
 Type a film or a book, get its real spine, put it on your shelf (one each), save it to your profile. From its page the shelf can be shared as an Instagram story. You can also log a film or a book you watched or read, which goes on the feed with its cover, and keep a watchlist.
 
 ```
-index.html            the home page (GitHub Pages serves this). Signed out: one line about the site, Make a shelf, and the newest public shelves; signed in: a welcome, new shelves from people you follow (⚡ All activity), then Just shelved. Links to the old builder here (/?open=, /#shelf) go on to build/
-build/index.html      the shelf builder (Your shelf: there's one shelf each, and signed in it opens yours): Add, the spines as a list (drag one there or on the preview to move it), Style, the preview; at the bottom its name, who can view it, Cancel · Save
+index.html            the home page (GitHub Pages serves this). Signed out: the newest public shelf, large, then one line about the site and Make a shelf (the black button on that screen), How it works in three steps, and the next newest shelves; signed in: a welcome, new shelves from people you follow (⚡ All activity), then Just shelved. Links to the old builder here (/?open=, /#shelf) go on to build/
+build/index.html      the shelf builder (Your shelf: there's one shelf each, and signed in it opens yours): Add, the spines as a list (drag one there or on the preview to move it), Style, the preview; at the bottom its name (one name: it's the caption on the story too), who can view it, Cancel · Save. Clear asks first
 add.js                + ADD on every page: the Add dialog. Three choices at the top: Put on shelf (suggestions as you type, then the spine choices and Add to shelf; the spine finder lives here), Log it (the cover as the feed will show it, a caption if you want one, Post) and Watchlist (Add to watchlist)
-wear.js               a log's cover, worn: one corner dog-eared, fine scratches, rubbed edges and a little fade, drawn on a canvas from how long ago it was logged (nearly new that day, faded after a week, worn after a month). No stamp and nothing written on it
+wear.js               a log's cover, worn: one corner dog-eared (a hairline round the fold and a soft shadow under it, so it reads on a white poster), fine scratches, rubbed edges and a little fade, drawn on a canvas from how long ago it was logged (lightly worn that day, with two or three scratches to see; faded after a week, worn after a month). No stamp and nothing written on it
 shelf.js              draws the spines and the story (and says where it drew each book); build/ and u/ both use it, so a shelf looks the same everywhere
-u/index.html          profiles: /u/?username with its tabs Profile (their shelf, big, then Watchlist and, on your own, From friends) · Activity · Network (Following, Followers), and the shelf's own page: /u/?username&shelf (or &shelf=<id>, the older links): its name with Share beside it (Share to story, Download image, Copy link), who made it, the story, and On this shelf with + Add to my shelf (to the right of the story on a wide window); for its owner Edit, Make private or public, Delete
+u/index.html          profiles: /u/?username with its tabs Profile (their shelf, big, then Watchlist and, on your own, From friends) · Activity · Network (Following, Followers), and the shelf's own page: /u/?username&shelf (or &shelf=<id>, the older links): its name with Share beside it (Share to story, Download image, Copy link), who made it, the shelf itself (its books on the grey panel, as the profile has them; the 9:16 story is only made for Share), and On this shelf with + Add to my shelf (to the right of the shelf on a wide window); for its owner Edit, Make private or public, Delete
 shelves/index.html    every public shelf as a card, newest first, 24 at a time (Load more); Your shelf
 members/index.html    Find @username (people by the start of a username or name, each with FOLLOW), and Recently active: the people behind the newest shelves
 settings/index.html   your settings (signed in only): PROFILE (display name, bio), PHOTO (cut square, made small, sent to the Worker), ACCOUNT (private profile). A profile's Edit profile comes here
-feed/index.html       the feed: /feed/, FOLLOWING · YOU · EVERYONE, a line for each shelf saved ("@abc shelved my films · 2h") with its card, and for each film or book logged ("@abc watched Gummo · today") with its worn cover and caption, newest first
+feed/index.html       the feed: /feed/, FOLLOWING · YOU · EVERYONE, a line for each shelf saved ("@abc shelved my films · 2h") with its card, and for each film or book logged ("@abc watched Gummo · today") with its worn cover, small (72 x 108px), and the caption beside it, newest first
 worker-address.js     sends Worker requests to its workers.dev address on networks that block api.shelfstackd.com
 favicon.svg           the mark: three spines on a shelf. favicon-32.png, favicon.ico and apple-touch-icon.png are made from it (tests/art.js); every page links them
 favicon.ico           the same mark for a browser that asks for /favicon.ico whatever the page says (without it, that request is a 404 on every page)
@@ -23,8 +23,8 @@ og.jpg                the picture a shared link shows (1200 x 630: the logo and 
 sample-shelf.jpg      the builder's sample shelf (it's only at build/?sample now: a new shelf starts empty) as a picture; home shows it ("a shelf, for example") while there are no public shelves. Made by tests/art.js
 spinetip.js           a shelf's picture: hovering a spine shows "Title (year) · creator", pressing it goes to its row in the list (a shelf's page, and the builder's preview). It uses the places shelf.js says it drew each book
 cards.js              shelf cards: finds the books in a shelf's preview picture and cuts the 2:3 card round them (home, the feed, profiles), keeping what it found per preview key
-site.css              the look every page shares: one :root block of variables (the 950px column, the type scale, the 4/8/12/16/24/40 spacing, the 3px radius) and what uses them everywhere (the top bar, headings, buttons, fields, shelf cards, tabs, sheets, the footer). A page's own <style> holds only what that page alone needs
-nav.js                the top bar on every page: who is signed in, the account menu (Home, Profile, Shelf, Activity, Network, Settings, Sign out), + ADD and the ▾ next to it
+site.css              the look every page shares: one :root block of variables (the 950px column, the type scale, the 4/8/12/16/24/40 spacing, the 3px radius) and what uses them everywhere (the top bar, headings, buttons, fields, shelf cards, tabs, sheets, the footer: two lines of small print). A page's own <style> holds only what that page alone needs
+nav.js                the top bar on every page: who is signed in, the account menu (Home, Profile, Shelf, Activity, Network, Settings, Sign out), + ADD and the ▾ next to it. The places are in each page's markup, in one order signed in or out: ⚡ · Shelves · Members · search
 404.html              what GitHub Pages sends for an address that isn't there: a line and the way home. Its links start at the root (/), since it's served at any depth
 admin.html            approve or delete archive uploads (needs the admin token); read reports (Google sign-in, admins only)
 tests/                checks for the pages: Playwright, axe, html-validate (see Tests). The site never loads anything from here
@@ -124,7 +124,7 @@ curl -H "Authorization: Bearer <ADMIN_TOKEN>" "https://api.shelfstackd.com/admin
 
 The second asks one provider alone and shows what it said (it costs one search): the way to check that a key works.
 `/health` says which providers have a key (`scans`), without the admin token. Every page's footer says "Search by
-Brave".
+Brave", after TMDB's line and Open Library.
 
 `cd worker && npm test` runs the whole chain in the runtime `wrangler dev` uses, against made-up providers
 (`test/providers.mjs`): the order, the caps, out-for-the-day, Serper's credits, `/admin/usage`, Serper asked without
@@ -170,7 +170,7 @@ before the change aren't reused. `/scans` keeps what the providers said as it ca
 
 ### How a real spine is found
 
-0. In the Add to your shelf… dialog (`add.js`, opened by + ADD on any page and by the builder's Add box) a title is
+0. In the Add to your shelf dialog (`add.js`, opened by + ADD on any page and by the builder's Add box) a title is
    looked up as it's typed: a search starts 300 ms after the last key and replaces the one before it, Enter searches at
    once. Up to six results show, films and books together, the closest titles first (the same as what was typed, then
    starting with it, then containing it); ↑ ↓ move through them and Enter picks one.
@@ -187,7 +187,8 @@ before the change aren't reused. `/scans` keeps what the providers said as it ca
 ## Profiles
 
 `/u/?username` (a real file, so GitHub Pages answers 200 and link previews work): photo, name, @username, the numbers
-(Spines on their shelf, Following, Followers), then the tabs. Profile has their shelf, big, across the column, with its
+(Spines on their shelf, Following, Followers: at the right on a wide window, and on a phone one small line of links
+under the name, "2 spines · 1 following · 2 followers"), then the tabs. Profile has their shelf, big, across the column, with its
 name under it; then Watchlist (up to 6, shown to anyone who can see the profile) and, on your own, From friends (what
 the people you follow logged lately and you haven't, up to 6); the bio beside them. `/u/?username&shelf` is the
 shelf's own page, and `/u/?username&shelf=<id>` still opens a shelf by its id. The owner gets Edit profile (photo,
@@ -214,7 +215,8 @@ display name and @username; its public shelf, its logs and its watchlist show to
 + ADD has three choices: **Put on shelf** (as before), **Log it** and **Watchlist**. Log it is a film watched or a book
 read, with a caption if you want one (280 characters); it goes on the feed as "@you watched Gummo · today" (or "read"),
 with its cover drawn by `wear.js`: one corner dog-eared, a few fine scratches, rubbed edges and a little fade, worked out
-from when it was logged, so it's nearly new that day, more faded after a week and more worn after a month. No stamp,
+from when it was logged, so it's lightly worn that day (two or three scratches show), more faded after a week and more
+worn after a month. On the feed the cover is small, 72 x 108px, with the caption beside it. No stamp,
 nothing written on it. The time on a log's line is by the day: today, yesterday, then 3d, 2w. Your own logs have Delete
 on your profile's Activity. Log it and Watchlist never search for spines, and need an account with a username (signed
 out, the dialog says so with Sign in).
@@ -312,7 +314,8 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 ```
 
 - **Playwright** (`specs/site.spec.js`) opens every page at 1280 px and at 390 px, signed out and signed in: the top
-  bar is there, the page doesn't scroll sideways, nothing is logged as an error, signed-out home loads its shelves, and
+  bar is there with its places in one order (⚡ · Shelves · Members · search, signed in or out), the page doesn't scroll
+  sideways, nothing is logged as an error, signed-out home loads its shelves, and
   old builder links at the root go on to `/build/`. The account menu: its seven items with Sign out last, open by tap,
   by mouse and by keyboard, closed by Esc and by a click outside, always inside the window; Sign out signs out.
 - **The builder and + ADD** (`specs/build.spec.js`): + ADD opens the dialog on every page and Esc closes it;
@@ -323,15 +326,20 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   `?open=<id>`, `?new`, old `?embed` links, Edit under your shelf and Make your shelf on your profile, your shelf being
   changed surviving a trip to another page (and giving way to an older shelf that's opened by its link), Cancel; the order of the
   page, dragging a spine on the preview (mouse, and hold-then-drag with a finger), and the caption: it follows the
-  Name, and with no name the preview's faint "your shelf" is not in the picture saved with the shelf. The bar has
-  only Cancel and Save.
+  Name, and with no name the preview's faint "your shelf" is not in the picture saved with the shelf. A shelf has one
+  name: Style has no Caption, and a shelf that had a caption of its own is saved with its name as both. The bar has
+  only Cancel and Save, side by side at 360 to 430px. Clear asks first (Cancel and Esc leave the spines); the sample
+  shelf just goes.
 - **The dialog's search** (`specs/add.spec.js`): suggestions while typing with one search for a word typed quickly, a
   slower earlier answer dropped, six results in order of closeness, ↑ ↓ Enter Esc, Enter searching at once, the
-  loading and nothing-found lines; the capped answer from `/scans` and its message; "Search by Brave" in every
-  footer; the builder's count and limit, its empty shelf, and the note under the preview clear of the Save bar.
+  loading and nothing-found lines, at the right of the All · Films · Books row (nothing held open, nothing moving);
+  the capped answer from `/scans` and its message; every page's footer (TMDB's line, Open Library, Search by Brave,
+  Privacy, hello@shelfstackd.com, and nothing else, in small print); the builder's count and limit, its empty shelf,
+  and the note under the preview clear of the Save bar.
 - **The look** (`specs/look.spec.js`): the content and the bar's contents in one 950px column on every page, the type
   scale, one black button a screen, shelf cards six across at 150px (three on a phone) cut 2:3, the profile's name,
-  numbers and tabs, and its shelf across the column on the wash.
+  numbers (on a phone, one small line under the name and no band) and tabs, and its shelf across the column on the
+  wash.
 - **Who you both know** (in `specs/profile.spec.js`): "Follows you" by the name of someone who follows you, and
   "Followed by @a, @b and N others" under the bio, read from the follows and the followers list that are already there.
 - **A profile's tabs** (`specs/profile.spec.js`): Profile · Activity · Network, their addresses and ← → (and an old
@@ -342,8 +350,9 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   Watched or Read), what each sends, and Watched opening Log it on that title; and both left out, with Activity
   shelves only, before the database has them.
 - **A shelf's page** (`specs/shelf.spec.js`): its heading, Share (the story to a share sheet or saved, the picture,
-  the link), the "Saved." line once after Save, and the list of what's on it, to the right of the story on a wide
-  window and under it on a phone; + Add to my shelf putting that same spine on your shelf with nothing searched for;
+  the link), the "Saved." line once after Save, the shelf itself on the grey panel (not the story: nothing drawn behind
+  the books, and on the first screen on a phone), and the list of what's on it, to its right on a wide window and
+  under it on a phone; the way back as plain grey text, a small action dashed, Delete dashed in grey; + Add to my shelf putting that same spine on your shelf with nothing searched for;
   for its owner Edit, Make private, renaming it in the heading, and Delete only after the confirm (then back to the
   profile); `/u/?name&shelf` as their shelf, and with none yet; a shelf that isn't there.
 - **Spines on a picture** (`specs/tips.spec.js`): on a shelf's page and on the builder's preview, the tooltip over a
@@ -355,8 +364,10 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   middle of their card with room round them, the caption and the "made with" line clipped off, on the story's colour;
   a picture is looked at once (kept per preview key); a picture with no plain background, or one that comes without
   CORS, still shows with the stylesheet's cut.
-- **Home's copy** (in `specs/site.spec.js`): signed out, the one line, the small grey one and Make a shelf, with no
-  "lets you" tiles; signed in, the welcome and ⚡ All activity; no em dash and no rule-of-three line.
+- **Home's copy** (in `specs/site.spec.js`): signed out, the newest shelf large (cut to its books, a link to it), the
+  one line under it from the left, Make a shelf as the one black button (the bar's + outlined there), How it works
+  in three steps, with no "lets you" tiles; signed in, the welcome and ⚡ All activity; no em dash and no
+  rule-of-three line; no ellipsis on a placeholder or a menu item (home's welcome line keeps its one).
 - **Shelves and Members** (`specs/shelves.spec.js`, `specs/members.spec.js`): every shelf as a card, 24 at a time and
   what Load more asks for; one people search 300 ms after the last key, Enter at once, the search kept in the address,
   FOLLOW and UNFOLLOW, FOLLOW signed out (sign-in, then finished once back), Recently active.
@@ -370,11 +381,11 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **Nothing missing** (`specs/requests.spec.js`): every page, signed out and signed in, gets an answer for everything
   it asks this site for; and the two things a browser asks for by itself (`/favicon.ico`, and Chrome's DevTools file)
   are there.
-- **An empty site** (`specs/empty.spec.js`): with no public shelves, home shows the sample shelf under the hero, and
+- **An empty site** (`specs/empty.spec.js`): with no public shelves, home shows the sample shelf where the newest one would be, and
   shelves, members and the feed each say so in a line.
 - **The feed** (`specs/feed.spec.js`): the three tabs and which one opens, what a line says for a shelf and for a log
-  (with the clock held still, so "today", "2h" and "1w" are known), Load more, a log's cover (a card's size, in line
-  with the text, the caption beside it) more worn the older it is, You, signed out, a log posted with + ADD showing at
+  (with the clock held still, so "today", "2h" and "1w" are known), Load more, a log's cover (72 x 108px, in line
+  with the text, the caption beside it on a phone too) more worn the older it is, You, signed out, a log posted with + ADD showing at
   the top, the feed before the database has logs (shelves only, from `feed()`), and ← → between the tabs.
 - **+ ADD's three choices** (`specs/log.spec.js`): Put on shelf · Log it · Watchlist, Put on shelf first, the
   dialog's title for each; Log it's cover, caption and Post (what it sends, "watched" or "read", and no spine searched
@@ -393,10 +404,10 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   sign-in sheet and the builder's Style, a press 21px up, down, left or right of a control's middle still lands on it,
   as `elementFromPoint` finds it. On a touch screen (`pointer:coarse`) a small control takes its press in the 44 x 44px
   round its middle (a see-through `::before`), and close rows are a press apart; on a mouse nothing changes. Left out:
-  links inside a sentence, and the logo (its row is 32px above the places' row, which `docs/DESIGN-REVIEW.md` has).
+  links inside a sentence. The logo is in: the bar's two rows are 44px apart, middle to middle.
 - **A log's worn cover** (`specs/wear.spec.js`): 2:3, the top right corner folded away, nothing ever written on it,
-  nearly new on the day, more faded after a week and more worn after a month, and the same log worn the same way every
-  time.
+  lightly worn on the day (a few fine scratches show, and the fold's hairline and shadow show on a white poster), more
+  faded after a week and more worn after a month, and the same log worn the same way every time.
 
 `npm run shots` (in `tests/`) saves screenshots of home (and home with no shelves yet), the builder, a profile's tabs,
 your own profile (and with no shelf yet), a shelf's page, the feed (and before the database has logs), + ADD (its

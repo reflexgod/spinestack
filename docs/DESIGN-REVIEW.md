@@ -1,7 +1,14 @@
 # Design review, 2 October 2026
 
-For the 4:30 review. **Nothing in this list has been changed.** Each item has a picture, what's wrong (measured where
-it can be), and a suggested fix to agree or throw out. The fixes are small unless they say otherwise.
+**Applied the same day, after the review.** 1, 2, 3 and 5 to 13 were done, each with the fix suggested here and each
+in a commit of its own (`git log --grep "design review"` lists them), so any one can be reverted. 4 was left as it is:
+the bar still says SHELVES. Where the owner asked for more than the suggestion: 3's wear starts at 0.25 and the
+dog-ear has a hairline and a soft shadow; 6's home is the newest shelf large, one line and Make a shelf in black, with
+How it works kept short and on home only; 7's footer has Search by Brave too; 13's Clear asks first. Pictures of 1, 2,
+3, 6, 7 and 8 as they are now are in `docs/review/after/`, under the names used below.
+
+What follows is the review as it was written for the 4:30 meeting, before any of it was changed. Each item has a
+picture, what's wrong (measured where it can be), and a suggested fix. The fixes are small unless they say otherwise.
 
 The pictures are in `docs/review/`, made with the tests' made-up accounts and shelves (`tests/site.js`), the real
 fonts, and the clock at 30 September 2026, 14:00 UTC; phone pictures are a 390px-wide window. `npm run shots` (in
