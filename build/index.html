@@ -185,6 +185,7 @@ em.pro{margin:0 var(--s1)}
 .barname input[type=text]{height:32px;padding-block:0}
 .barleft{flex:1 1 0;display:flex;flex-wrap:wrap;gap:var(--s1) var(--s4);align-items:baseline;justify-content:flex-end;min-width:0;padding-bottom:var(--s1)}   /* a note takes the room that's left, and wraps in it */
 .barleft:has(#saveNote:empty){display:none}
+.baracts{flex:none;display:flex;gap:var(--s4);align-items:flex-end}   /* Cancel and Save stay side by side: one never goes to the row above the other */
 .mkbar .note{margin:0}
 footer{margin-top:0}
 .uname{display:flex;align-items:center;gap:var(--s1);border:1px solid var(--ink);border-radius:var(--radius);padding:0 0 0 var(--s3)}
@@ -316,8 +317,10 @@ footer{margin-top:0}
       <div class="seg2"><label><input type="radio" name="vis" value="public" checked>Public</label><label><input type="radio" name="vis" value="private">Private</label></div>
     </fieldset>
     <span class="barleft"><span class="note" id="saveNote" role="status"></span></span>
-    <button class="dash sm" id="cancelBtn" type="button">Cancel</button>
-    <button class="btn primary" id="saveShelf" type="button" hidden>Save</button>
+    <span class="baracts">
+      <button class="dash sm" id="cancelBtn" type="button">Cancel</button>
+      <button class="btn primary" id="saveShelf" type="button" hidden>Save</button>
+    </span>
   </div>
 </main>
 

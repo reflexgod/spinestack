@@ -123,9 +123,9 @@ test('the builder is your shelf\'s page: name, who can view, Add, the list, Styl
   await style.getByRole('checkbox', { name: 'Wood shelf' }).check();
   await expect(style.locator('#styleLine')).toHaveText('Stacked · Clean · Paper · Wood shelf');
   // the bar: Cancel and Save, nothing else (the story is shared from the saved shelf's page); Save is the black button
-  expect(await page.locator('.mkbar > button:visible').allTextContents()).toEqual(['Cancel', 'Save']);
+  expect(await page.locator('.mkbar button:visible').allTextContents()).toEqual(['Cancel', 'Save']);
   await expect(page.getByText(/share sheet|Share to Instagram|Save story/i)).toHaveCount(0);
-  expect(await page.locator('.mkbar > button.primary:visible').allTextContents()).toEqual(['Save']);
+  expect(await page.locator('.mkbar button.primary:visible').allTextContents()).toEqual(['Save']);
   const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(sideways).toBeLessThanOrEqual(0);
   expect(errors).toEqual([]);
@@ -428,6 +428,21 @@ test('the order: Add, the spines, Style; then Name and Who can view right above 
     expect(preview.y + preview.height).toBeLessThanOrEqual(await top('#stylePanel'));
   } else expect(preview.x).toBeGreaterThan((await page.locator('#shelf').boundingBox()).x + 300);
 });
+
+// On a phone a little wider than 390px (or with another font) there was room for Cancel beside Who can view, so it sat
+// on the row above Save, and a press under Cancel landed on Save.
+for (const width of [360, 390, 412, 430]) {
+  test(`Cancel and Save stay side by side at ${width}px`, async ({ page }) => {
+    test.skip(!isPhone(), 'a phone\'s widths');
+    await page.setViewportSize({ width, height: 844 });
+    await mockNetwork(page, { signedIn: true });
+    await open(page, '/build/');
+    const cancel = await page.locator('#cancelBtn').boundingBox(), save = await page.locator('#saveShelf').boundingBox(), who = await page.locator('fieldset.who').boundingBox();
+    expect(Math.abs((cancel.y + cancel.height) - (save.y + save.height))).toBeLessThanOrEqual(1);   // one row, their feet in line
+    expect(cancel.x + cancel.width).toBeLessThan(save.x);
+    expect(cancel.y).toBeGreaterThanOrEqual(who.y + who.height);                                    // under Name and Who can view
+  });
+}
 
 /* ---------- dragging a spine on the preview ---------- */
 // a point on the preview, as fractions of its width and height (the sample shelf's four spines stand across the
