@@ -1,13 +1,13 @@
 /* shelfstackd: the look every page shares. The numbers are here once, as variables; a page's own <style> uses them
-   and adds only what that page alone needs. Black ink on white paper, Geist Mono, one 950px column. */
+   and adds only what that page alone needs. Black ink on white paper, Courier Prime, one 950px column. */
 :root{
   --paper:#FFFFFF; --ink:#000000; --grey:#6B6B6B; --hair:#D9D9D9; --wash:#F3F3F3;
-  --mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --mono:"Courier Prime","Courier New",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 
   /* one column: every page's content, and the top bar's, sit in it */
   --col:950px; --gutter:24px;
 
-  /* type (Geist Mono runs wide, so it stays small) */
+  /* type (Courier Prime runs wide, so it stays small) */
   --fs-body:13px;      /* text */
   --fs-title:22px;     /* a page's title: weight 400, in its own case */
   --fs-dialog:16px;    /* a sheet's or dialog's title */

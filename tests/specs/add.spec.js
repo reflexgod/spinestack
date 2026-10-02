@@ -5,7 +5,7 @@ const { test, expect } = require('@playwright/test');
 const { PAGES, mockNetwork, watchErrors, open } = require('../site');
 
 const isPhone = () => test.info().project.name.startsWith('phone');
-const dialog = page => page.getByRole('dialog', { name: /add to your shelf/i });
+const dialog = page => page.getByRole('dialog', { name: /^add to (your|the) shelf$/i });   // "the" signed out
 const box = d => d.getByRole('combobox', { name: 'Film or book name' });
 const options = d => d.getByRole('option');
 const names = d => d.locator('#addRows .t').evaluateAll(els => els.map(e => e.firstChild.textContent.trim()));
@@ -211,7 +211,7 @@ test('the Name box suggests a name, the count shows the limit, and an empty shel
   await mockNetwork(page);
   await open(page, '/build/');
   await expect(page.getByRole('textbox', { name: 'Name' })).toHaveAttribute('placeholder', 'e.g. 2am films');
-  await expect(page.locator('#books .empty')).toContainText('Your shelf is empty.');
+  await expect(page.locator('#books .empty')).toContainText('Nothing on this shelf yet.');   // signed out: not "your shelf"
   await expect(page.locator('#count')).toHaveText('(0 of 20)');   // everyone has Pro's 20 for now
   await page.locator('header.top .add').click();
   const d = dialog(page);

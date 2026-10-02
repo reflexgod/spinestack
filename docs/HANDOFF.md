@@ -35,7 +35,7 @@ every file is and how the Worker, the accounts and the tests are set up.
 These are the owner's standing rules. They apply to every change, in any session.
 
 1. **Our look.** Every page uses `site.css` and its variables, and nothing else for shared things: black ink on white
-   paper, Geist Mono, one 950px column that the top bar's contents share, the type scale in `:root`, only the
+   paper, Courier Prime (Geist Mono only on canvases shelf.js draws), one 950px column that the top bar's contents share, the type scale in `:root`, only the
    4/8/12/16/24/40 spacing, the 3px radius, one black button a screen, shelf cards 2:3 and six across (three on a
    phone). A page's own `<style>` holds only what that page alone needs. No build step and no framework; a library only
    from `cdn.jsdelivr.net` at an exact version with an `integrity` hash. Copy is plain English: no em dashes, no

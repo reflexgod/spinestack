@@ -108,3 +108,28 @@ test('the feed shows each shelf as the same 2:3 card as home, under the line abo
   expect(card.left - (await box(page.locator('.item .fa').first())).right).toBeGreaterThan(0);   // and clear of the photo
   expect(await css(page.locator('.item .pic').first(), 'borderTopLeftRadius')).toEqual({ borderTopLeftRadius: '3px' });
 });
+
+// The type is Courier Prime (400, 700 and italic 400, from Google Fonts with display=swap) on every page, not Geist Mono.
+// Pages that draw shelves (home, the builder, profiles) also load Geist Mono, for shelf.js's caption and a plain
+// cover's title on the canvas, and the spines' own faces
+test('every page sets its type in Courier Prime, loaded from Google Fonts at 400, 700 and italic 400', async () => {
+  const fs = require('fs'), path = require('path'), { ROOT } = require('../site');
+  const files = ['index.html', '404.html', 'privacy.html', 'admin.html', ...['build', 'feed', 'members', 'settings', 'shelves', 'u'].map(d => d + '/index.html')];
+  for (const f of files) {
+    const html = fs.readFileSync(path.join(ROOT, f), 'utf8'), link = (html.match(/https:\/\/fonts\.googleapis\.com\/css2\?[^"]+/) || [''])[0];
+    expect(link, f).toContain('family=Courier+Prime:ital,wght@0,400;0,700;1,400');
+    expect(link, f).toContain('display=swap');
+    if (!['index.html', 'build/index.html', 'u/index.html'].includes(f)) expect(link, f).not.toContain('Geist');
+  }
+  expect(fs.readFileSync(path.join(ROOT, 'site.css'), 'utf8')).toMatch(/--mono:"Courier Prime",/);
+});
+for (const pg of [...PAGES, { name: 'privacy', path: '/privacy.html' }]) {
+  test(`${pg.name}: the text, the bar and the buttons are in Courier Prime`, async ({ page }) => {
+    await mockNetwork(page, { signedIn: true });
+    await open(page, pg.path);
+    for (const sel of ['body', '.top a', '.btn:visible, button:visible']) {
+      const el = page.locator(sel).first();
+      if (await el.count()) expect((await css(el, 'fontFamily')).fontFamily, `${pg.name} ${sel}`).toMatch(/^"Courier Prime"/);
+    }
+  });
+}

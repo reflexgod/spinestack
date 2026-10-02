@@ -39,6 +39,21 @@ test('three choices, Put on shelf first; the dialog\'s title says which', async 
   expect(errors).toEqual([]);
 });
 
+// Signed out there's no "your" in the dialog's title: Put on shelf adds to the shelf being made, and Watchlist (like
+// Log it) asks you to sign in
+test('signed out, the dialog\'s titles don\'t say "your", and Log it and Watchlist ask to sign in', async ({ page }) => {
+  await mockNetwork(page);
+  await open(page, '/feed/?everyone');
+  await page.locator('header.top .add').click();
+  await expect(dialog(page)).toHaveAccessibleName('Add to the shelf');
+  for (const [choice, title, ask] of [['Log it', 'Log a film or book', 'Sign in to log films and books.'], ['Watchlist', 'Watchlist', 'Sign in to keep a watchlist.'], ['Put on shelf', 'Add to the shelf', null]]) {
+    await dialog(page).getByRole('radio', { name: choice }).check();
+    await expect(dialog(page)).toHaveAccessibleName(title);
+    if (ask) { await expect(page.locator('#addNeedText')).toHaveText(ask); await expect(page.locator('#addNeedGo')).toHaveText('Sign in'); }
+    expect(await dialog(page).innerText()).not.toMatch(/\byour\b/i);
+  }
+});
+
 test('Log it: the cover as the feed shows it, an optional caption, and Post; no spine is searched for', async ({ page }) => {
   const errors = watchErrors(page), net = await mockNetwork(page, { signedIn: true });
   let scans = 0; page.on('request', r => { if (r.url().includes('/scans?')) scans++; });
