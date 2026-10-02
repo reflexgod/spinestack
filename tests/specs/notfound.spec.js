@@ -28,9 +28,9 @@ for (const at of ['/nope', '/shelves/nothing/here/', '/u/mira/shelf.html']) {
   });
 }
 
-test('the not-found page\'s other links: the logo, Shelves, Members, Privacy', async ({ page }) => {
+test('the not-found page\'s other links: the logo, Shelves, Members, and the footer every page has', async ({ page }) => {
   await mockNetwork(page);
   await page.goto('/a/b/c');
   const hrefs = await page.locator('a').evaluateAll(as => as.map(a => a.getAttribute('href')));
-  expect(hrefs).toEqual(['/', '/shelves/', '/members/', '/', '/shelves/', '/privacy.html']);
+  expect(hrefs).toEqual(['/', '/shelves/', '/members/', '/', '/shelves/', 'https://openlibrary.org/', 'https://search.brave.com/', '/privacy.html', 'mailto:hello@shelfstackd.com']);
 });

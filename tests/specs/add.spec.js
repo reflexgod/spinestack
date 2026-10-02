@@ -146,13 +146,27 @@ test('when spine search is capped, the dialog says it is resting and offers the 
   expect(errors).toEqual([]);
 });
 
-for (const pg of [...PAGES, { name: 'privacy', path: '/privacy.html' }]) {
-  test(`${pg.name}: the footer credits Brave`, async ({ page }) => {
+// the footer, the same on every page: TMDB's line and Search by Brave (each asks for it), Open Library, Privacy and
+// where to write, as small print
+for (const pg of [...PAGES, { name: 'privacy', path: '/privacy.html' }, { name: 'not found', path: '/nope' }]) {
+  test(`${pg.name}: the footer credits TMDB, Open Library and Brave, with Privacy and where to write, in a line or two`, async ({ page }) => {
     await mockNetwork(page);
     await open(page, pg.path);
-    const credit = page.getByRole('link', { name: 'Search by Brave' });
+    const foot = page.locator('footer');
+    await expect(foot).toContainText('This product uses the TMDB API but is not endorsed or certified by TMDB.');
+    await expect(foot.getByRole('link', { name: 'Open Library' })).toHaveAttribute('href', 'https://openlibrary.org/');
+    const credit = foot.getByRole('link', { name: 'Search by Brave' });
     await expect(credit).toBeVisible();
     await expect(credit).toHaveAttribute('href', 'https://search.brave.com/');
+    expect(await foot.getByRole('link', { name: 'Privacy' }).evaluate(a => new URL(a.href).pathname)).toBe('/privacy.html');
+    await expect(foot.getByRole('link', { name: 'hello@shelfstackd.com' })).toHaveAttribute('href', 'mailto:hello@shelfstackd.com');
+    await expect(foot.locator('a')).toHaveCount(4);
+    // small print, not a landing page's footer: no headings, steps or button, grey on white, and short (it was 635px
+    // tall on a phone, black, with How it works in it)
+    await expect(foot.locator('h2, h3, ol, .btn')).toHaveCount(0);
+    await expect(foot).not.toContainText(/how it works/i);
+    expect(await foot.evaluate(el => { const s = getComputedStyle(el); return [s.backgroundColor, s.color, s.fontSize]; })).toEqual(['rgba(0, 0, 0, 0)', 'rgb(107, 107, 107)', '11px']);
+    expect((await foot.boundingBox()).height).toBeLessThanOrEqual(isPhone() ? 160 : 100);
   });
 }
 

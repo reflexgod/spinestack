@@ -193,28 +193,27 @@ textarea{resize:vertical;line-height:1.5}
 .x{position:absolute;top:var(--s2);right:var(--s3);background:none;border:0;font:400 22px var(--mono);cursor:pointer;color:var(--ink);padding:var(--s1)}
 .toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + var(--s4));transform:translateX(-50%);background:var(--ink);color:var(--paper);border-radius:var(--radius);padding:var(--s2) var(--s4);font-size:var(--fs-card);max-width:calc(100% - 2*var(--s4));z-index:40}
 
-/* ---------- the footer: black, the width of the window, its contents in the column ---------- */
-footer{background:var(--ink);color:var(--paper);margin-top:var(--s6);padding:var(--s6) max(var(--gutter), calc((100% - var(--col))/2)) var(--s5)}
-.fgrid{display:grid;grid-template-columns:1.1fr 1.3fr 1fr;gap:var(--s6)}
-footer h3{font-size:var(--fs-section);font-weight:400;text-transform:uppercase;letter-spacing:var(--track);color:#B5B5B5;margin:0 0 var(--s3)}
-footer p,footer li{font-size:var(--fs-card)}
-footer ol{margin:0;padding-left:1.3em;display:grid;gap:var(--s1)}
-.fbtn{display:inline-block;font:600 var(--fs-btn)/1.35 var(--mono);text-transform:uppercase;letter-spacing:.04em;text-decoration:none;color:var(--paper);border:1px solid var(--paper);border-radius:var(--radius);padding:var(--btn-pad)}
-.fbase{margin-top:var(--s5);border-top:1px solid #555;padding-top:var(--s3);display:flex;justify-content:space-between;gap:var(--s2) var(--s4);flex-wrap:wrap;font-size:var(--fs-small)}
-@media (max-width:820px){ .fgrid{grid-template-columns:1fr;gap:var(--s5)} }
+/* ---------- the footer: small print, one or two lines on a wide window, the same on every page. Where the data comes
+   from (TMDB and Brave each ask for their line), then Privacy and where to write. Its contents sit in the column, under
+   a hairline the width of the window, as the top bar's do over one. How it works is on home ---------- */
+footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--s2) var(--s5);margin-top:var(--s6);border-top:1px solid var(--hair);
+  padding:var(--s4) max(var(--gutter), calc((100% - var(--col))/2)) var(--s5);font-size:var(--fs-small);color:var(--grey)}
+footer p{margin:0}
+.fnav{display:flex;gap:var(--s4)}
 
 /* ---------- a touch screen: every control takes a press anywhere in the 44 x 44px round its middle (Apple asks for
    44, Google for 48), and looks just the same: a clear ::before reaches past any edge nearer than 22px to its middle.
    A link inside a sentence is left as it is. Fields are 44px tall, in 16px type, so a phone doesn't zoom in when one
    is pressed. A page adds its own controls to this in its own <style>, with the same ::before. ---------- */
 @media (pointer:coarse){
-  .top a,.acct,.tabs button,.btn,.dash,h2 .more,.fbtn,.fbase a,.items .fa,.person .pa,.person .pn,.statlink button,.check,.linkish{position:relative}
-  :is(.top a,.acct,.tabs button,.btn,.dash,h2 .more,.fbtn,.fbase a,.items .fa,.person .pa,.person .pn,.statlink button,.check,.linkish,.x)::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))}
+  .top a,.acct,.tabs button,.btn,.dash,h2 .more,.fnav a,.items .fa,.person .pa,.person .pn,.statlink button,.check,.linkish{position:relative}
+  :is(.top a,.acct,.tabs button,.btn,.dash,h2 .more,.fnav a,.items .fa,.person .pa,.person .pn,.statlink button,.check,.linkish,.x)::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))}
   .check input{position:relative}   /* the box stays on top of its own press area */
   .items .fa,.person .pa{overflow:visible}   /* the round photo is cut by its own corners instead, so the press area isn't */
   .items .fa img,.person .pa img{position:absolute;inset:0;border-radius:50%}
   .top .add,.top .addmore{min-width:44px;justify-content:center}
   input[type=text],input[type=email],input[type=search],input[type=url],select,textarea{font-size:16px;min-height:44px}
+  footer{row-gap:var(--s4)}   /* Privacy's press area stays clear of the line above it */
 }
 /* the second row of the bar scrolls sideways inside itself, so its links' press areas need room inside it */
 @media (pointer:coarse) and (max-width:820px){ .links{padding:var(--s2) 14px;margin:calc(-1 * var(--s2)) -14px 0;flex-basis:calc(100% + 28px)} }

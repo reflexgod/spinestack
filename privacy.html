@@ -27,12 +27,11 @@
 <style>
 /* a page to read: the shared column, with the text kept to a comfortable width in it */
 body{line-height:1.65}
-main{padding-bottom:var(--s6)}
 main > *{max-width:680px}
 .ptop{display:flex;justify-content:space-between;align-items:center;gap:var(--s4);max-width:none;margin-bottom:var(--s6)}
 .ptop a{text-decoration:none;font-size:var(--fs-nav);font-weight:500;letter-spacing:var(--track);text-transform:uppercase}
 .ptop .r{display:flex;gap:var(--s5)}
-@media (pointer:coarse){ .ptop a,p.grey > a{position:relative} :is(.ptop a,p.grey > a)::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))} }   /* 44 x 44px to press (see site.css) */
+@media (pointer:coarse){ .ptop a{position:relative} .ptop a::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))} }   /* 44 x 44px to press (see site.css) */
 h1{margin-bottom:var(--s1)}
 h2{margin-top:var(--s6)}
 li{margin:0 0 var(--s2)}
@@ -121,7 +120,11 @@ ul{padding-left:1.2em;margin:0 0 var(--s3)}
 
   <h2>Contact</h2>
   <p>Questions or requests: <a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a>.</p>
-  <p class="grey" style="margin-top:var(--s6)"><a href="https://search.brave.com/" target="_blank" rel="noopener">Search by Brave</a></p>
 </main>
+
+<footer>
+  <p>Film data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB. Book data from <a href="https://openlibrary.org/" target="_blank" rel="noopener">Open Library</a>. <a href="https://search.brave.com/" target="_blank" rel="noopener">Search by Brave</a>.</p>
+  <p class="fnav"><a href="privacy.html">Privacy</a><a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a></p>
+</footer>
 </body>
 </html>

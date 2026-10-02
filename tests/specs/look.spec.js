@@ -20,7 +20,7 @@ for (const pg of [...PAGES, { name: 'own profile', path: '/u/?tester' }]) {
     expect(Math.abs(add.right - main.right)).toBeLessThanOrEqual(1);   // the last item's right edge is the content's
     expect(bar.width).toBe(width);                                      // the bar, and the hairline under it, run across
     expect((await css(page.locator('header.top'), 'borderBottomWidth')).borderBottomWidth).toBe('1px');
-    const foot = await box(page.locator('footer .fgrid'));
+    const foot = await box(page.locator('footer p').first());
     if (!isPhone()) expect(Math.abs(foot.left - main.left)).toBeLessThanOrEqual(1);
   });
 
