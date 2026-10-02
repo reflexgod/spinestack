@@ -48,7 +48,7 @@ test('a shelf\'s page: hovering a spine says what it is, and pressing it goes to
 test('the builder\'s preview: the tooltip, a press going to the spine\'s row, and a drag not counting as a press', async ({ page }) => {
   test.skip(isPhone(), 'hovering and dragging with a mouse');
   const errors = watchErrors(page);
-  await mockNetwork(page);
+  await mockNetwork(page, { signedIn: true, ownShelf: false });
   await open(page, '/build/?sample');
   await page.waitForTimeout(300);
   const tip = page.locator('#stage .spinetip'), rows = page.locator('#books .book');
@@ -76,7 +76,7 @@ test('the builder\'s preview: the tooltip, a press going to the spine\'s row, an
 
 test('with a finger on the builder\'s preview, a tap on a spine goes to its row', async ({ page }) => {
   test.skip(!isPhone(), 'a tap');
-  await mockNetwork(page);
+  await mockNetwork(page, { signedIn: true, ownShelf: false });
   await open(page, '/build/?sample');
   await page.waitForTimeout(300);
   await page.locator('#story').scrollIntoViewIfNeeded();

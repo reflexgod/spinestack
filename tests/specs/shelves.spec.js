@@ -1,6 +1,6 @@
 // Shelves (/shelves/): Make a shelf (Your shelf, signed in), then every public shelf as a card, 24 at a time, Load more.
 const { test, expect } = require('@playwright/test');
-const { SHELVES, SB_URL, CORS, feedRow, mockNetwork, watchErrors, open } = require('../site');
+const { SHELVES, SB_URL, CORS, feedRow, mockNetwork, watchErrors, open, putAside } = require('../site');
 
 test('Shelves, signed out: the title, Make a shelf, and every public shelf as a card cut round its books', async ({ page }) => {
   const errors = watchErrors(page), net = await mockNetwork(page);
@@ -20,7 +20,9 @@ test('Shelves, signed out: the title, Make a shelf, and every public shelf as a 
   const box = await first.locator('.pic').boundingBox();
   expect(box.height / box.width).toBeCloseTo(1.5, 1);
   await start.click();
-  await expect(page).toHaveURL(/\/build\/$/);   // the builder: a new shelf
+  await expect(page.locator('#signSheet')).toBeVisible();   // signed out: sign in first (the site is read only)
+  await expect(page.locator('#signSheet .sheetbox p:not(.note)').first()).toHaveText('Sign in to start your shelf.');
+  await expect(page).toHaveURL(/\/shelves\/$/);
   expect(errors).toEqual([]);
   expect(net.unknown).toEqual([]);
 });
@@ -72,4 +74,15 @@ test('Shelves: 24 at a time; Load more asks for the ones after the last shown', 
   await expect(cards.nth(24).locator('a')).toBeFocused();   // the keyboard goes on from the first new card
   const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(sideways).toBeLessThanOrEqual(0);
+});
+
+test('Shelves, signed out: Make a shelf, then signing in, goes on to the builder', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, ownShelf: false });
+  const signBack = await putAside(page);
+  await open(page, '/shelves/');
+  await page.locator('main').getByRole('link', { name: 'Make a shelf' }).click();
+  await expect(page.locator('#signSheet')).toBeVisible();
+  await signBack(); await page.reload();
+  await expect(page).toHaveURL(/\/build\/$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your shelf');
 });

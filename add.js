@@ -684,10 +684,11 @@ async function resolve(p){
 }
 
 /* ---------- Put on shelf, Log it, Watchlist ---------- */
+/* The watchlist holds this many titles. The database holds the same number (watchlist_before_insert() in
+   supabase/migrations/0007_logs_watchlist.sql): change both together. Pages read it as Add.WATCH_CAP. */
+const WATCH_CAP = 6, FULL = `Your watchlist is full (${WATCH_CAP}). Remove one to add another.`;
 const TITLES = {shelf: 'Add to your shelf', log: 'Log a film or book', watch: 'Add to your watchlist'};   // no ellipsis: on a title it reads as cut off
-// signed out there's no "your" yet: the shelf being made, and a watchlist to sign in for
-const VISITOR_TITLES = {shelf: 'Add to the shelf', log: 'Log a film or book', watch: 'Watchlist'};
-const visitor = () => { if (account().user) return false; try { return !Object.keys(localStorage).some(k => /^sb-.+-auth-token$/.test(k)); } catch { return true; } };
+
 const what = () => ($('input[name=addWhat]:checked') || {}).value || 'shelf';
 // who is signed in, as the page's bar knows it (nav.js)
 const account = () => (window.Nav && Nav.account ? Nav.account() : {}) || {};
@@ -704,7 +705,7 @@ function paintNeed(){
 $('#addNeedGo').addEventListener('click', () => { close(); if (window.Nav && Nav.signIn) Nav.signIn(); });
 // another choice: the title already picked goes to that choice's step 2
 function paintWhat(switched){
-  $('#addTitle').textContent = (visitor() ? VISITOR_TITLES : TITLES)[what()];
+  $('#addTitle').textContent = TITLES[what()];
   if (paintNeed() || !switched) return;
   if (!picked){ $('#addQ').focus(); return; }
   if (what() === 'shelf'){ $('#addPost').hidden = true; findSpines(picked); } else showPost(picked);
@@ -724,7 +725,7 @@ function showPost(m){
   $('#addPostTitle').textContent = m.title + (m.year ? ' (' + m.year + ')' : ''); $('#addPostBy').textContent = m.creator ? '· ' + m.creator : '';
   $('#addSayWrap').hidden = !log;
   $('#addPostGo').textContent = log ? 'Post' : 'Add to watchlist'; $('#addPostGo').disabled = false;
-  $('#addFeedLine').textContent = log ? `On the feed: ${a.profile ? '@' + a.profile.username : 'you'} ${verb(m)} ${m.title} · today` : 'It shows on your profile, under Watchlist, which holds 6.';
+  $('#addFeedLine').textContent = log ? `On the feed: ${a.profile ? '@' + a.profile.username : 'you'} ${verb(m)} ${m.title} · today` : `It shows on your profile, under Watchlist, which holds ${WATCH_CAP}.`;
   if (log){ cov.replaceChildren(); withWear(() => { if (run === covRun) cov.replaceChildren(Wear.cover({src, seed: keyOf(m), at: new Date().toISOString(), label: `The cover of ${m.title}, as the feed shows it`, width: 120})); }); }
   else cov.innerHTML = src ? `<img src="${esc(src)}" alt="The cover of ${esc(m.title)}" crossorigin="anonymous">` : '<span class="blank"></span>';
   $('#addPost').hidden = false;
@@ -738,6 +739,7 @@ const rowOf = m => ({kind: m.kind === 'movie' ? 'movie' : 'book', title: String(
 function saveError(e, status, log){
   const c = (e && e.code) || '';
   if (c === '23505') return 'It’s already on your watchlist.';
+  if (c === 'P0001' && !log && /watchlist holds/i.test(e.message || '')) return FULL;
   if (c === 'P0001' && e.message) return e.message;
   if (status === 404 || /^(PGRST20[25]|42P01|42883)$/.test(c)) return log ? 'Logging isn’t open yet. Try again soon.' : 'The watchlist isn’t open yet. Try again soon.';
   if (/fetch|network/i.test((e && e.message) || '')) return 'Couldn’t reach shelfstackd. Check your connection and try again.';
@@ -754,12 +756,17 @@ $('#addPostGo').addEventListener('click', async () => {
   if (!m || paintNeed()) return;
   btn.disabled = true; sstatus(log ? 'Posting…' : 'Adding…');
   let r;
-  try { r = log ? await a.sb.from('logs').insert({...rowOf(m), caption: $('#addSay').value.trim().slice(0, 280)}) : await a.sb.from('watchlist').insert(rowOf(m)); }
+  if (!log){
+    const w = await watch(m);
+    if (!w.ok || w.already){ btn.disabled = false; sstatus(esc(w.error), true); return; }
+    close(); return;
+  }
+  try { r = await a.sb.from('logs').insert({...rowOf(m), caption: $('#addSay').value.trim().slice(0, 280)}); }
   catch (err){ r = {error: err}; }
   if (r.error){ btn.disabled = false; sstatus(esc(saveError(r.error, r.status, log)), true); return; }
   close();
-  pageToast(log ? `Logged ${m.title}. It’s on the feed.` : `${m.title} is on your watchlist.`);
-  document.dispatchEvent(new CustomEvent('shelfstackd:added', {detail: {what: log ? 'log' : 'watch', item: m}}));
+  pageToast(`Logged ${m.title}. It’s on the feed.`);
+  document.dispatchEvent(new CustomEvent('shelfstackd:added', {detail: {what: 'log', item: m}}));
 });
 
 /* ---------- opening and closing ---------- */
@@ -801,6 +808,74 @@ function setServer(on, recent){
   el.hidden = !items.length; el.querySelector('span').textContent = items.slice(0, 8).join(', ');
 }
 
-window.Add = {open, close, isOpen: () => dlg.open, setShelf: s => { shelf = s; }, setToast: fn => { say = fn; }, setServer, takePending, resolve,
+/* ---------- the watchlist, from anywhere: Add.watch(item, {from}) puts a title ({kind, title, year, creator, cover}) on
+   the watchlist of whoever is signed in (from: the id of the person whose log it was kept from), says so in the page's
+   toast and on document ("shelfstackd:added"), and gives {ok, already, full, error}. Nothing is searched for. ---------- */
+async function watch(m, opt = {}){
+  const a = account();
+  if (!(a.sb && a.user && a.profile)) return {ok: false, error: a.user ? 'Pick a username first.' : 'Sign in to keep a watchlist.'};
+  let r;
+  try { r = await a.sb.from('watchlist').insert({...rowOf(m), ...(opt.from ? {from_user: opt.from} : {})}); }
+  catch (err){ r = {error: err}; }
+  if (r.error){
+    const error = saveError(r.error, r.status, false), already = r.error.code === '23505', full = error === FULL;
+    return {ok: already, already, full, error};   // already: it's on it, so ok; the caller says so
+  }
+  pageToast(`${m.title} is on your watchlist.`);
+  document.dispatchEvent(new CustomEvent('shelfstackd:added', {detail: {what: 'watch', item: m}}));
+  return {ok: true};
+}
+
+/* ---------- the same title search, in a page: Add.attachSearch({input, list, onPick}) makes a text box suggest as it's
+   typed, as the dialog's does (one search 250 ms after the last key, a newer one cancelling the one before, six at
+   most, closest first, ↑ ↓ Enter Esc), in its own list under it. onPick(item) is called with the one picked. Gives
+   {clear()}. The list is a <ul role="listbox">; its rows are .t (title, with .y the year), .k (Film or Book), .by. ---------- */
+function attachSearch({input, list, onPick, say: tell = () => {}}){
+  let t = 0, ctl = null, run = 0, shown = [], on = -1;
+  const id = list.id || (list.id = 'sugg' + Math.random().toString(36).slice(2, 7));
+  input.setAttribute('role', 'combobox'); input.setAttribute('aria-autocomplete', 'list'); input.setAttribute('aria-controls', id); input.setAttribute('aria-expanded', 'false');
+  list.setAttribute('role', 'listbox');
+  const paint = () => {
+    list.innerHTML = shown.map((m, i) => `<li role="option" id="${id}-${i}" data-i="${i}" aria-selected="${i === on}"><span class="t">${esc(m.title)}${m.year ? ` <span class="y">${esc(m.year)}</span>` : ''}</span> <span class="k">${m.kind === 'movie' ? 'Film' : 'Book'}</span>${m.creator ? ` <span class="by">${esc(m.creator)}</span>` : ''}</li>`).join('');
+    list.hidden = !shown.length; input.setAttribute('aria-expanded', String(!!shown.length));
+    if (on >= 0) input.setAttribute('aria-activedescendant', `${id}-${on}`); else input.removeAttribute('aria-activedescendant');
+  };
+  const clear = () => { clearTimeout(t); run++; if (ctl){ ctl.abort(); ctl = null; } shown = []; on = -1; paint(); tell(''); };
+  async function go(typed){
+    clearTimeout(t);
+    const q = input.value.trim(), key = 'all|' + q.toLowerCase(), mine = ++run;
+    if (ctl){ ctl.abort(); ctl = null; }
+    if (!q){ clear(); return; }
+    let results = seen.get(key);
+    if (!results){
+      tell('Searching…');
+      const c = ctl = new AbortController();
+      try { results = await lookUp(q, 'all', typed, c.signal); }
+      catch (err){ if (mine !== run || (err && err.name === 'AbortError')) return; shown = []; paint(); tell('The search didn’t answer. Try again in a moment.'); return; }
+      finally { if (ctl === c) ctl = null; }
+      if (mine !== run) return;
+      seen.set(key, results = results || []);
+    }
+    shown = rank(results, q); on = shown.length ? 0 : -1; paint();
+    tell(shown.length ? '' : `Nothing found for "${q}". Try the original title or the author.`);
+  }
+  const pick = i => { const m = shown[i]; if (!m) return; clear(); input.value = ''; onPick(m); };
+  input.addEventListener('input', () => {
+    clearTimeout(t);
+    if (input.value.trim().length < 2){ run++; if (ctl){ ctl.abort(); ctl = null; } shown = []; on = -1; paint(); tell(''); return; }
+    t = setTimeout(() => go(true), WAIT);
+  });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter'){ e.preventDefault(); if (shown.length && on >= 0) pick(on); else go(false); return; }
+    if (e.key === 'Escape'){ if (shown.length){ e.preventDefault(); clear(); } return; }
+    if ((e.key !== 'ArrowDown' && e.key !== 'ArrowUp') || !shown.length) return;
+    e.preventDefault(); on = (on + (e.key === 'ArrowDown' ? 1 : -1) + shown.length) % shown.length; paint();
+  });
+  list.addEventListener('mousedown', e => e.preventDefault());   // the box keeps the focus
+  list.addEventListener('click', e => { const li = e.target.closest('[role=option]'); if (li) pick(+li.dataset.i); });
+  return {clear};
+}
+
+window.Add = {open, close, watch, attachSearch, WATCH_CAP, isOpen: () => dlg.open, setShelf: s => { shelf = s; }, setToast: fn => { say = fn; }, setServer, takePending, resolve,
   extractPalette, findSpine, findSoloSpine, EDITION};
 })();

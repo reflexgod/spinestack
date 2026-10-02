@@ -1,7 +1,7 @@
 // Every page with the top bar, signed out and signed in: the bar is there, the page doesn't scroll sideways, nothing
 // is logged as an error, and nothing asks the network for something the tests don't know about.
 const { test, expect } = require('@playwright/test');
-const { PAGES, SHELVES, PEOPLE, FRIEND_SHELVES, FRIEND_LOGS, LOGS, ITEMS_BY_SHELF, feedRow, mockNetwork, watchErrors, open } = require('../site');
+const { PAGES, SHELVES, PEOPLE, FRIEND_SHELVES, FRIEND_LOGS, LOGS, ITEMS_BY_SHELF, feedRow, mockNetwork, watchErrors, open, putAside } = require('../site');
 
 const pathOf = link => link.evaluate(a => new URL(a.href).pathname);
 const isPhone = () => test.info().project.name.startsWith('phone');
@@ -278,7 +278,8 @@ test('signed-out home: a wall of the newest spines from different shelves on a s
   await expect(page).toHaveURL(new RegExp(`/u/\\?mira&shelf=${SHELVES[1].id}$`));
   await page.goBack();
   await page.getByRole('link', { name: 'Make a shelf' }).click();
-  await expect(page).toHaveURL(/\/build\/$/);
+  await expect(page.locator('#signSheet')).toBeVisible();   // signed out: sign in first (the site is read only)
+  await expect(page.locator('#signSheet .sheetbox p:not(.note)').first()).toHaveText('Sign in to start your shelf.');
   expect(errors).toEqual([]);
 });
 
@@ -314,6 +315,30 @@ test('signed-out home\'s spine wall: with only a few spines on the site, they st
   expect(Math.max(...st.spines.map(x => x.h))).toBeLessThanOrEqual(isPhone() ? 200 : 280);
   expect(Math.max(...st.spines.map(x => x.w))).toBeLessThan(60);                                  // spines, not panels
   await expect(page.locator('#sample')).toBeHidden();
+});
+
+// Signed out the site is read only; signing in from Make a shelf goes on to the builder, and from + ADD to the Add dialog
+test('signed out, Make a shelf asks to sign in, and once signed in the builder opens', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, ownShelf: false });
+  const signBack = await putAside(page);
+  await open(page, '/');
+  await page.getByRole('link', { name: 'Make a shelf' }).click();
+  await expect(page.locator('#signSheet')).toBeVisible();
+  await signBack(); await page.reload();
+  await expect(page).toHaveURL(/\/build\/$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your shelf');
+});
+test('signed out, + ADD asks to sign in, and once signed in the Add dialog opens where you were', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  const signBack = await putAside(page);
+  await open(page, '/feed/?everyone');
+  await page.locator('header.top .add').click();
+  await expect(page.locator('#signSheet')).toBeVisible();
+  await signBack(); await page.reload();
+  await expect(page.getByRole('dialog', { name: 'Add to your shelf' })).toBeVisible();
+  await expect(page).toHaveURL(/\/feed\//);
+  await page.keyboard.press('Escape'); await page.reload();
+  await expect(page.getByRole('dialog', { name: 'Add to your shelf' })).toBeHidden();   // once, not every time
 });
 
 test('signed-in home: a welcome by name, the row from people you follow with All activity, then Just shelved', async ({ page }) => {

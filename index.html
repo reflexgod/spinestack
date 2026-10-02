@@ -204,7 +204,7 @@ h2 .more.zapped svg{width:12px;height:12px;flex:none}
 <script src="cards.js?v=20261002a"></script>
 <script src="wear.js?v=20261004a"></script>
 <script src="bare.js?v=20261006a"></script>
-<script src="nav.js?v=20261008c"></script>
+<script src="nav.js?v=20261010a"></script>
 <script>
 (() => {
 /* Home. Signed out: a wall of the newest spines, one line about the site and Make a shelf, how it works, then the
@@ -406,6 +406,8 @@ function paintWall(){
   }
   wall.w = innerWidth;
 }
+// Make a shelf, signed out: the sign-in sheet, then the builder (nothing is made before signing in)
+$('#start').addEventListener('click', e => { if (Nav.visitor()){ e.preventDefault(); Nav.needAccount('build'); } });
 // no public shelf to show: the builder's sample shelf, so the page still shows what one is
 function sample(){ $('#sample').hidden = false; $('#wallCap').hidden = false; }
 

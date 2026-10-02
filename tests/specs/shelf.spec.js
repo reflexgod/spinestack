@@ -2,7 +2,7 @@
 // wash (the story is only for Share), what's on it with + Add to my shelf (beside the picture on a wide window), and
 // for its owner Edit, Make private or public, and Delete with a confirm.
 const { test, expect } = require('@playwright/test');
-const { SHELVES, ME, CORS, mockNetwork, watchErrors, open } = require('../site');
+const { SHELVES, ME, CORS, mockNetwork, watchErrors, open, putAside } = require('../site');
 
 const theirs = SHELVES[1], mine = SHELVES[3];   // @mira's "shelf number 1"; the made-up account's second shelf
 const rows = page => page.locator('#oneItems li');
@@ -290,10 +290,11 @@ test('someone else\'s shelf: a title already on your shelf says "On your shelf" 
   expect(await offered(page)).toEqual(['On your shelf', '+ Add to my shelf']);   // The Waves is on yours; Journey by Moonlight isn't
   const said = rows(page).first().locator('.onmine');
   expect(await said.evaluate(el => { const s = getComputedStyle(el); return [s.color, s.fontSize, s.textTransform]; })).toEqual(['rgb(107, 107, 107)', '11px', 'none']);
-  await expect(rows(page).first().getByRole('button')).toHaveCount(0);
-  // where the button would be: at the right of its row
-  const row = await rows(page).first().boundingBox(), at = await said.boundingBox();
-  expect(Math.abs(at.x + at.width - (row.x + row.width))).toBeLessThanOrEqual(1);
+  await expect(rows(page).first().getByRole('button', { name: /add to my shelf/i })).toHaveCount(0);   // only its watchlist button (specs/watchlist.spec.js)
+  // where the button would be: at the right of its row (on a touch screen, just before its •••)
+  const more = rows(page).first().locator('.wmorewrap'), end = await more.isVisible() ? (await more.boundingBox()).x : (await rows(page).first().boundingBox()).x + (await rows(page).first().boundingBox()).width;
+  const at = await said.boundingBox();
+  expect(Math.abs(at.x + at.width - end)).toBeLessThanOrEqual(13);
   // the same film in another year is another title
   await myShelfHolds(page, [['book', 'The Waves', 2019], ['movie', 'The Waves', 1931]]);
   await open(page, `/u/?mira&shelf=${theirs.id}`);
@@ -325,34 +326,26 @@ test('with no shelf of your own yet, every title is offered', async ({ page }) =
   expect(await offered(page)).toEqual(['+ Add to my shelf', '+ Add to my shelf']);
 });
 
-// Signed out there's no shelf to add to: no + Add to my shelf and no "On your shelf" beside the titles, and under the
-// list one Make a shelf, the page's black button (the bar's + is outlined, as on home)
-test('signed out, a shelf\'s page offers Make a shelf, not + Add to my shelf', async ({ page }) => {
+// Signed out the site is read only: + Add to my shelf is there, and opens the sign-in sheet; once signed in, the
+// builder opens with that spine on your shelf. Nothing else a visitor could change is on the page
+test('signed out, + Add to my shelf opens the sign-in sheet, and once signed in the spine goes on your shelf', async ({ page }) => {
   const errors = watchErrors(page);
-  await mockNetwork(page);
+  await mockNetwork(page, { signedIn: true, ownShelf: false });
+  const signBack = await putAside(page);
   await open(page, `/u/?mira&shelf=${theirs.id}`);
   await expect(rows(page)).toHaveCount(2);
-  expect(await offered(page)).toEqual(['', '']);
-  await expect(page.locator('#oneItems').getByRole('button')).toHaveCount(0);
-  expect(await page.locator('main').innerText()).not.toMatch(/add to my shelf|on your shelf|your shelf/i);   // what shows
+  expect(await offered(page)).toEqual(['+ Add to my shelf', '+ Add to my shelf']);
   for (const t of ['Edit', 'Make private', 'Make public', 'Delete']) await expect(page.locator('main').getByRole('button', { name: t, exact: true })).toHaveCount(0);
   await expect(page.locator('main').getByRole('link', { name: 'Edit', exact: true })).toHaveCount(0);
-  const make = page.locator('main').getByRole('link', { name: 'Make a shelf' });
-  await expect(make).toHaveAttribute('href', '../build/');
-  const list = await page.locator('#oneItems').boundingBox(), at = await make.boundingBox();
-  expect(at.y).toBeGreaterThan(list.y + list.height);                                           // under the list
-  const bg = el => getComputedStyle(el).backgroundColor;
-  expect(await make.evaluate(bg)).toBe('rgb(0, 0, 0)');
-  expect(await page.locator('header.top .add').evaluate(bg)).toBe('rgb(255, 255, 255)');      // one black button a screen
-  await make.click();
+  await rows(page).nth(1).getByRole('button', { name: '+ Add to my shelf' }).click();
+  await expect(page).toHaveURL(new RegExp(`shelf=${theirs.id}$`));   // still here: nothing goes to the builder yet
+  await expect(page.locator('#signSheet')).toBeVisible();
+  await expect(page.locator('#signSheet .sheetbox p:not(.note)').first()).toHaveText('Sign in to start your shelf.');
+  // back from Google, signed in: on to the builder, with the spine on your shelf
+  await signBack(); await page.reload();
   await expect(page).toHaveURL(/\/build\/$/);
+  await expect.poll(() => titles(page)).toEqual(['Journey by Moonlight']);
   expect(errors).toEqual([]);
-});
-test('signed in, a shelf\'s page has no Make a shelf under the list', async ({ page }) => {
-  await mockNetwork(page, { signedIn: true });
-  await open(page, `/u/?mira&shelf=${theirs.id}`);
-  await expect(rows(page)).toHaveCount(2);
-  await expect(page.locator('main').getByRole('link', { name: 'Make a shelf' })).toBeHidden();
 });
 
 test('if your own shelf can\'t be read, every title is offered, as before', async ({ page }) => {

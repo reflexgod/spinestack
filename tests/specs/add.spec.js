@@ -9,8 +9,9 @@ const dialog = page => page.getByRole('dialog', { name: /^add to (your|the) shel
 const box = d => d.getByRole('combobox', { name: 'Film or book name' });
 const options = d => d.getByRole('option');
 const names = d => d.locator('#addRows .t').evaluateAll(els => els.map(e => e.firstChild.textContent.trim()));
+const NEW = { signedIn: true, ownShelf: false };   // signed out the site is read only: these are someone signed in, with no shelf yet
 async function openDialog(page, opt, path = '/') {
-  const net = await mockNetwork(page, opt);
+  const net = await mockNetwork(page, { ...NEW, ...opt });
   await open(page, path);
   await page.locator('header.top .add').click();
   await expect(dialog(page)).toBeVisible();
@@ -166,7 +167,7 @@ test('when spine search is capped, the dialog says it is resting and offers the 
 // (TMDB's line and logo, Open Library, Search by Brave) are under About, on the privacy page
 for (const pg of [...PAGES, { name: 'privacy', path: '/privacy.html' }, { name: 'not found', path: '/nope' }]) {
   test(`${pg.name}: the footer is one line: About · Privacy · hello@shelfstackd.com`, async ({ page }) => {
-    await mockNetwork(page);
+    await mockNetwork(page, NEW);
     await open(page, pg.path);
     const foot = page.locator('footer');
     expect((await foot.innerText()).replace(/\s+/g, ' ').trim()).toBe('About · Privacy · hello@shelfstackd.com');
@@ -277,7 +278,7 @@ test('the Add dialog says "Search by Brave", small and grey, under the spines a 
 /* ---------- 4. the builder's smaller touches ---------- */
 test('the preview is not hidden by the Save bar', async ({ page }) => {
   test.skip(isPhone(), 'on a phone the preview is in the page, not beside it');
-  await mockNetwork(page);
+  await mockNetwork(page, NEW);
   await open(page, '/build/');
   const stage = await page.locator('#stage').boundingBox(), bar = await page.locator('.mkbar').boundingBox();
   expect(stage.height).toBeGreaterThan(200);
@@ -285,10 +286,10 @@ test('the preview is not hidden by the Save bar', async ({ page }) => {
 });
 
 test('the Name box suggests a name, the count shows the limit, and an empty shelf says so', async ({ page }) => {
-  await mockNetwork(page);
+  await mockNetwork(page, NEW);
   await open(page, '/build/');
   await expect(page.getByRole('textbox', { name: 'Name' })).toHaveAttribute('placeholder', 'e.g. 2am films');
-  await expect(page.locator('#books .empty')).toContainText('Nothing on this shelf yet.');   // signed out: not "your shelf"
+  await expect(page.locator('#books .empty')).toContainText('Your shelf is empty.');
   await expect(page.locator('#count')).toHaveText('(0 of 20)');   // everyone has Pro's 20 for now
   await page.locator('header.top .add').click();
   const d = dialog(page);
@@ -300,7 +301,7 @@ test('the Name box suggests a name, the count shows the limit, and an empty shel
 
 test('a full shelf: Add and upload are off and say why, and work again when a spine is removed', async ({ page }) => {
   const errors = watchErrors(page);
-  await mockNetwork(page);
+  await mockNetwork(page, NEW);
   await open(page, '/build/');
   const png = Buffer.from(await page.evaluate(() => {
     const c = document.createElement('canvas'); c.width = 60; c.height = 90;

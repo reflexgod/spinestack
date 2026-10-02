@@ -282,10 +282,18 @@ function watchErrors(page){
   return errors;
 }
 
+/* signed out for now (after mockNetwork with signedIn): the made-up session is put aside, and the function this gives
+   puts it back, as when someone comes back from signing in with Google */
+async function putAside(page){
+  await open(page, '/privacy.html');
+  const kv = await page.evaluate(() => { const k = Object.keys(localStorage).find(x => /^sb-.+-auth-token$/.test(x)); const v = [k, localStorage.getItem(k)]; localStorage.removeItem(k); return v; });
+  return () => page.evaluate(([k, v]) => localStorage.setItem(k, v), kv);
+}
+
 /* open a page and wait until it has finished asking for things */
 async function open(page, pathname){
   await page.goto(pathname);
   await page.waitForLoadState('networkidle');
 }
 
-module.exports = { ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, LOGS, FRIENDS, FRIEND_SHELVES, FRIEND_LOGS, ITEMS_BY_SHELF, WATCHLIST, FROM_FRIENDS, PICTURE, STORY, CAPTION, MADE_WITH, CORS, WORKER, SB_URL, feedRow, storyPicture, mockNetwork, watchErrors, open };
+module.exports = { ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, LOGS, FRIENDS, FRIEND_SHELVES, FRIEND_LOGS, ITEMS_BY_SHELF, WATCHLIST, FROM_FRIENDS, PICTURE, STORY, CAPTION, MADE_WITH, CORS, WORKER, SB_URL, feedRow, storyPicture, mockNetwork, watchErrors, open, putAside };

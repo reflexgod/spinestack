@@ -4,7 +4,8 @@ const { test, expect } = require('@playwright/test');
 const { PAGES, SHELVES, ME, mockNetwork, watchErrors, open } = require('../site');
 
 const isPhone = () => test.info().project.name.startsWith('phone');
-const dialog = page => page.getByRole('dialog', { name: /^add to (your|the) shelf$/i });   // "the" signed out
+const dialog = page => page.getByRole('dialog', { name: /^add to (your|the) shelf$/i });
+const NEW = { signedIn: true, ownShelf: false };   // signed out the builder is closed: someone signed in, with no shelf yet, starts empty
 const rows = page => page.locator('#books .book');
 const titles = page => page.locator('#books .book .bt').allTextContents();
 const spines = d => d.getByRole('radiogroup', { name: 'Which spine' }).getByRole('radio');   // the choices in step 2
@@ -43,7 +44,7 @@ for (const pg of PAGES) {
 
 test('on the builder: search, pick, Add to shelf puts the spine on the shelf without loading the page again', async ({ page }) => {
   const errors = watchErrors(page);
-  await mockNetwork(page);
+  await mockNetwork(page, NEW);
   await open(page, '/build/');
   await expect(page.locator('#books .empty')).toBeVisible();   // a new shelf starts empty
   await page.evaluate(() => { window.__same = true; });
@@ -88,7 +89,7 @@ test('before you have a shelf, Add to shelf from another page starts it', async 
 });
 
 test('the Add field on the builder opens the same dialog, searching for what was typed', async ({ page }) => {
-  await mockNetwork(page);
+  await mockNetwork(page, NEW);
   await open(page, '/build/');
   await page.getByRole('textbox', { name: 'Add' }).fill('waves');
   await page.keyboard.press('Enter');
@@ -133,7 +134,7 @@ test('the builder is your shelf\'s page: name, who can view, Add, the list, Styl
 });
 
 test('a spine’s Spine, Text and ✕ show only when its row is pressed, one row at a time', async ({ page }) => {
-  await mockNetwork(page);
+  await mockNetwork(page, NEW);
   await open(page, '/build/?sample');   // four spines to work with
   const row = n => rows(page).nth(n), remove = n => row(n).getByRole('button', { name: /^Remove/ });
   await expect(page.locator('#books .bbody:visible')).toHaveCount(0);
@@ -154,7 +155,7 @@ test('a spine’s Spine, Text and ✕ show only when its row is pressed, one row
 });
 
 test('reordering: ↑ ↓ from the keyboard, and dragging a row by its dots', async ({ page }) => {
-  await mockNetwork(page);
+  await mockNetwork(page, NEW);
   await open(page, '/build/?sample');
   const before = await titles(page);
   await rows(page).nth(0).locator('.bopen').click();
@@ -173,13 +174,24 @@ test('reordering: ↑ ↓ from the keyboard, and dragging a row by its dots', as
   await expect.poll(() => titles(page)).toEqual([before[3], before[1], before[0], before[2]]);
 });
 
-test('Save, signed out, asks you to sign in', async ({ page }) => {
-  await mockNetwork(page);
+// Signed out the site is read only: the builder is closed, a line and Continue with Google, and nothing is searched
+test('signed out, /build/ is "Sign in to make your shelf." with Continue with Google, not the builder', async ({ page }) => {
+  const errors = watchErrors(page), net = await mockNetwork(page);
+  let worker = 0; page.on('request', r => { if (/\/(identify|scans)\?/.test(r.url())) worker++; });
   await open(page, '/build/');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sign in to make your shelf.');
+  const go = page.locator('main').getByRole('button', { name: 'Continue with Google' });
+  await expect(go).toBeVisible();
+  for (const hidden of ['#findQ', '#books', '#stage', '.mkbar', '#stylePanel']) await expect(page.locator(hidden).first()).toBeHidden();
+  expect(await page.locator('main').innerText()).not.toMatch(/Add to shelf|Save|Spines|Style/i);   // what shows
+  // + ADD here is the sign-in sheet too, and the Add box is nowhere to type in
   await page.locator('header.top .add').click();
-  await addGummo(page);
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeVisible();
+  await expect(page.locator('#sheet')).toBeVisible();
+  await expect(page.locator('#signinPane > p').first()).toHaveText('Sign in to start your shelf.');
+  await expect(page.getByRole('dialog', { name: /^add to/i })).toHaveCount(0);
+  expect(worker).toBe(0);
+  expect(net.asked).toEqual([]);
+  expect(errors).toEqual([]);
 });
 
 test('Save, signed in, before you have a shelf: the name and Private are saved, then the shelf’s own page opens', async ({ page }) => {
@@ -224,24 +236,6 @@ test('signed in with a shelf: the builder opens it, and Save saves over it (neve
   expect(items.map(i => i.title)).toEqual(['The Waves', 'Journey by Moonlight', 'Gummo']);
   await expect(page).toHaveURL(new RegExp(`/u/\\?tester&shelf=${mine.id}$`));
   expect(errors).toEqual([]);
-});
-
-test('spines put on a shelf before signing in go on your shelf once you are, after what was there', async ({ page }) => {
-  await mockNetwork(page, { signedIn: true });
-  await open(page, '/privacy.html');
-  // signed out on this device for now: the session is put aside, and the builder loads without it
-  const session = await page.evaluate(() => { const k = Object.keys(localStorage).find(x => /^sb-.+-auth-token$/.test(x)); const v = [k, localStorage.getItem(k)]; localStorage.removeItem(k); return v; });
-  await open(page, '/build/');
-  await expect(page.locator('#books .empty')).toBeVisible();
-  await page.locator('header.top .add').click();
-  await addGummo(page);
-  await page.waitForFunction(() => !!sessionStorage.getItem('spinestack-draft'));
-  await page.waitForTimeout(700);
-  // signed in again (as coming back from Google): your shelf opens, with Gummo after its spines, not saved yet
-  await page.evaluate(([k, v]) => localStorage.setItem(k, v), session);
-  await open(page, '/build/');
-  await expect.poll(() => titles(page)).toEqual(['The Waves', 'Journey by Moonlight', 'Gummo']);
-  await expect(page.locator('#toast')).toHaveText('Gummo is on your shelf now. Save to keep it.');
 });
 
 test('a shelf has one name: Style has no Caption, and a shelf that had a caption of its own is saved with its name as both', async ({ page }) => {
@@ -341,7 +335,7 @@ test('your shelf, being changed, is still being changed after another page; an o
 });
 
 test('the shelf being made is still there after leaving the page and coming back', async ({ page }) => {
-  await mockNetwork(page);
+  await mockNetwork(page, NEW);
   await open(page, '/build/');
   await page.locator('header.top .add').click();
   await addGummo(page);
@@ -362,14 +356,14 @@ test('the shelf being made is still there after leaving the page and coming back
 });
 
 test('Cancel asks first, then drops the shelf being made', async ({ page }) => {
-  await mockNetwork(page);
+  await mockNetwork(page, NEW);
   await open(page, '/build/');
   await page.locator('header.top .add').click();
   await addGummo(page);
   await page.waitForFunction(() => !!sessionStorage.getItem('spinestack-draft'));
   await page.getByRole('button', { name: 'Cancel' }).click();
   await page.getByRole('button', { name: 'Discard changes?' }).click();
-  await expect(page).toHaveURL(/127\.0\.0\.1:\d+\/$/);   // signed out: home
+  await expect(page).toHaveURL(/\/u\/\?tester$/);   // back to your profile
   await open(page, '/build/');
   await expect(page.locator('#books .empty')).toBeVisible();   // an empty shelf again
 });
@@ -452,7 +446,7 @@ const onPreview = async (page, fx, fy) => { const b = await page.locator('#story
 test('dragging a spine on the preview with a mouse moves it, and the list follows', async ({ page }) => {
   test.skip(isPhone(), 'a mouse');
   const errors = watchErrors(page);
-  await mockNetwork(page);
+  await mockNetwork(page, NEW);
   await open(page, '/build/?sample');
   const before = await titles(page);
   const from = await onPreview(page, .26, .6), to = await onPreview(page, .9, .6);
@@ -478,7 +472,7 @@ test('dragging a spine on the preview with a mouse moves it, and the list follow
 
 test('with a finger: holding a spine and then dragging moves it; a quick swipe across the preview does not', async ({ page }) => {
   test.skip(!isPhone(), 'a finger');
-  await mockNetwork(page);
+  await mockNetwork(page, NEW);
   await open(page, '/build/?sample');
   await page.locator('#story').scrollIntoViewIfNeeded();
   const before = await titles(page), stage = page.locator('#stage');
@@ -556,12 +550,12 @@ test('a shelf saved with no name has no caption', async ({ page }) => {
 });
 
 /* ---------- a new shelf starts empty ---------- */
-test('the builder starts empty: "Nothing on this shelf yet." and three titles to try, each a search in the Add dialog', async ({ page }) => {
-  const errors = watchErrors(page), net = await mockNetwork(page);
+test('the builder starts empty: "Your shelf is empty." and three titles to try, each a search in the Add dialog', async ({ page }) => {
+  const errors = watchErrors(page), net = await mockNetwork(page, NEW);
   await open(page, '/build/');
   await expect(rows(page)).toHaveCount(0);
   const empty = page.locator('#books .empty');
-  await expect(empty.locator('p').first()).toHaveText('Nothing on this shelf yet.');   // signed out
+  await expect(empty.locator('p').first()).toHaveText('Your shelf is empty.');
   await expect(empty.locator('.try')).toHaveText(/^Try:/);
   const chips = empty.getByRole('button');
   await expect(chips).toHaveText(['Gummo', 'The Waves', 'Kids']);
@@ -589,7 +583,7 @@ test('the builder starts empty: "Nothing on this shelf yet." and three titles to
 });
 
 test('the sample shelf is only at ?sample, for the tests and the picture of a shelf', async ({ page }) => {
-  await mockNetwork(page);
+  await mockNetwork(page, NEW);
   await open(page, '/build/?sample');
   await expect(rows(page)).toHaveCount(4);
   await expect(page.locator('#sampleNote')).toBeVisible();
@@ -598,12 +592,12 @@ test('the sample shelf is only at ?sample, for the tests and the picture of a sh
 /* ---------- Clear asks first ---------- */
 test('Clear asks first, as Delete does: Cancel and Esc leave the spines, Clear takes them off; it is grey, as the things that lose something are', async ({ page }) => {
   const errors = watchErrors(page);
-  await mockNetwork(page);
+  await mockNetwork(page, NEW);
   await open(page, '/build/');
   await page.locator('header.top .add').click();
   await addGummo(page);
   expect(await titles(page)).toEqual(['Gummo']);
-  const clear = page.locator('#clear'), ask = page.getByRole('dialog', { name: 'Clear this shelf?' });   // signed out: not "your shelf"
+  const clear = page.locator('#clear'), ask = page.getByRole('dialog', { name: 'Clear your shelf?' });
   expect(await clear.evaluate(el => { const s = getComputedStyle(el); return [s.color, s.backgroundImage.includes('repeating-linear-gradient')]; })).toEqual(['rgb(107, 107, 107)', true]);
   // at the right of the Spines heading, on its line
   const h2 = await page.locator('#shelf h2').boundingBox(), at = await clear.boundingBox();
@@ -624,7 +618,7 @@ test('Clear asks first, as Delete does: Cancel and Esc leave the spines, Clear t
   await clear.click();
   await ask.getByRole('button', { name: 'Clear' }).click();
   await expect(ask).toBeHidden();
-  await expect(page.locator('#books .empty')).toContainText('Nothing on this shelf yet.');
+  await expect(page.locator('#books .empty')).toContainText('Your shelf is empty.');
   await expect(clear).toBeHidden();
   expect(errors).toEqual([]);
 });
@@ -641,7 +635,7 @@ test('Clear on your saved shelf says it stays as it was until Save', async ({ pa
 });
 
 test('the sample shelf clears without asking: it is not yours to lose', async ({ page }) => {
-  await mockNetwork(page);
+  await mockNetwork(page, NEW);
   await open(page, '/build/?sample');
   await expect(rows(page)).toHaveCount(4);
   await page.locator('#clear').click();
@@ -650,23 +644,6 @@ test('the sample shelf clears without asking: it is not yours to lose', async ({
 });
 
 
-// Signed out, the shelf being made isn't anyone's yet: the page is New shelf, and nothing on it says "your shelf" (the
-// title, the empty line, the toast when a spine goes on, Clear's question). Signed in it's Your shelf
-test('signed out, the builder is New shelf and says "the shelf", never "your shelf"; signed in, Your shelf', async ({ page }) => {
-  await mockNetwork(page);
-  await open(page, '/build/');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('New shelf');
-  await expect(page).toHaveTitle('New shelf · shelfstackd');
-  await expect(page.locator('#books .empty p').first()).toHaveText('Nothing on this shelf yet.');
-  await page.locator('header.top .add').click();
-  await addGummo(page);
-  await expect(page.locator('#toast')).toHaveText('Gummo added to the shelf.');
-  await page.locator('#clear').click();
-  await expect(page.getByRole('dialog', { name: 'Clear this shelf?' })).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.locator('main')).not.toContainText(/your shelf/i);
-  await expect(page.locator('#saveNote')).toHaveText('Sign in to keep this shelf and open it again later.');
-});
 test('signed in with no shelf yet, the builder is Your shelf, and an empty one says so', async ({ page }) => {
   await mockNetwork(page, { signedIn: true, ownShelf: false });
   await open(page, '/build/');
