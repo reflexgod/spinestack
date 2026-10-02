@@ -5,8 +5,8 @@
 
    It checks the order (Serper, SerpApi, Brave, archive.org), stopping at the first usable scan, each provider's daily
    cap, a provider being left alone for the day after a 429, Serper's credit count, what's kept, /admin/usage, Serper
-   being asked without double quotes (and once more, more plainly, after a 400), and that no key ever comes back in
-   an answer. */
+   being asked without double quotes (and once more, more plainly, after a 400), that no key ever comes back in an
+   answer, and /identify giving a book's author in Latin letters when Open Library has them. */
 import {Miniflare, convertV4MiniflareOptions} from 'miniflare';
 import {build} from 'esbuild';
 import assert from 'node:assert/strict';
@@ -73,6 +73,22 @@ async function outbound(request) {
     if (url.pathname.startsWith('/metadata/')) return json({result: [{name: 'full wrap.jpg', source: 'original', size: '300000'}, {name: '__ia_thumb.jpg', source: 'original', size: '30000'}, {name: 'full wrap_thumb.jpg', source: 'derivative', size: '9000'}]});
     if (url.pathname.startsWith('/download/')) { assert.equal(request.headers.get('Range'), 'bytes=0-65535'); return new Response(jpegHead(1500, 1000), {status: 206, headers: {'Content-Type': 'image/jpeg'}}); }
   }
+  // Open Library, for /identify's books: an author whose name comes in Japanese script, with Latin-script names in
+  // the search result, only in the author record, or nowhere
+  if (url.hostname === 'openlibrary.org' && url.pathname === '/search.json') {
+    const q = url.searchParams.get('q');
+    assert.match(url.searchParams.get('fields'), /author_alternative_name/);
+    const doc = {title: q, author_name: ['村上春樹'], author_key: ['OL1A'], first_publish_year: 1987, cover_i: 1, edition_count: 40, readinglog_count: 900};
+    if (q === 'norwegian wood') doc.author_alternative_name = ['ムラカミハルキ', 'Haruki Murakami', 'Murakami Haruki'];
+    if (q === 'kafka on the shore') doc.author_key = ['OL2A'];
+    if (q === 'the waves') Object.assign(doc, {author_name: ['Virginia Woolf'], author_key: ['OL3A']});
+    return json({docs: [doc]});
+  }
+  if (url.hostname === 'openlibrary.org' && url.pathname.startsWith('/authors/')) {
+    calls.push('author ' + url.pathname);
+    return json(url.pathname === '/authors/OL2A.json' ? {name: '村上春樹', alternate_names: ['村上 春樹', 'Haruki Murakami']} : {name: '村上春樹', alternate_names: ['村上 春樹']});
+  }
+  if (url.hostname === 'www.wikidata.org') return json({search: []});
   calls.push('?? ' + url.href);
   return new Response('not a provider', {status: 404});
 }
@@ -108,6 +124,13 @@ try {
   r = await scans(mf, 'alpha one');
   assert.deepEqual([r.from, calls, r.body.results.length], ['raw', [], 1]);
   ok('the same title again comes from what was kept: no search');
+
+  fresh();
+  r = await ask(mf, `/scans?kind=movie&title=${encodeURIComponent('alpha one')}&year=1999&round=0&cacheonly=1`);
+  assert.deepEqual([r.body.cached, r.body.results.length, calls], [true, 1, []]);
+  r = await ask(mf, `/scans?kind=movie&title=${encodeURIComponent('alpha one')}&year=1999&round=1&cacheonly=1`);
+  assert.deepEqual([r.body.cached, r.body.results.length, calls], [false, 0, []]);
+  ok('cacheonly=1 never searches, and says whether that round was kept (cached: true or false)');
 
   plan = {serper: 'junk', serpapi: 'wrap'};
   r = await scans(mf, 'beta two');
@@ -248,6 +271,24 @@ try {
   assert.deepEqual([r.status, r.body.error, calls], [502, 'Serper answered 400', ['serper']]);
   assert.equal((await usage(mf)).serper.out, false);
   ok('/admin/raw: the quotes come out there too, and a 400 is shown as it is, asked once');
+} finally { await mf.dispose(); }
+
+/* ---------- /identify: a book's author in Latin letters ---------- */
+mf = worker();
+try {
+  const book = async q => { fresh(); return (await ask(mf, `/identify?want=book&q=${encodeURIComponent(q)}`)).body.results[0]; };
+  let b = await book('norwegian wood');
+  assert.deepEqual([b.title, b.creator, calls.filter(c => c.startsWith('author'))], ['norwegian wood', 'Haruki Murakami', []]);
+  ok('an author given as 村上春樹: the first Latin-script name in author_alternative_name (no author record asked for)');
+  b = await book('kafka on the shore');
+  assert.deepEqual([b.creator, calls.filter(c => c.startsWith('author'))], ['Haruki Murakami', ['author /authors/OL2A.json']]);
+  ok('none in the search result: the first Latin-script name in the author record\'s alternate_names');
+  b = await book('after dark');
+  assert.equal(b.creator, '村上春樹');
+  ok('no Latin-script name anywhere: the name stays as it came');
+  b = await book('the waves');
+  assert.deepEqual([b.creator, calls.filter(c => c.startsWith('author'))], ['Virginia Woolf', []]);
+  ok('a name already in Latin letters is used as it is, with nothing more asked');
 } finally { await mf.dispose(); }
 
 /* ---------- no key ever comes back ---------- */
