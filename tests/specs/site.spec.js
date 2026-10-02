@@ -24,10 +24,11 @@ for (const signedIn of [false, true]) {
           await expect(link).toBeVisible();
           expect(await pathOf(link)).toBe(to);
         }
-        await expect(bar.getByRole('link', { name: 'New shelf' })).toBeVisible();
+        await expect(bar.getByRole('link', { name: 'Add a film or a book' })).toBeVisible();
+        if (!isPhone()) await expect(bar.locator('.add')).toHaveText('Add');   // + ADD (a phone shows just the +)
         const first = bar.locator('.links a').first();
         if (signedIn) {
-          // logo · you ▾ · ⚡ · SHELVES · MEMBERS · search · + SHELF ▾
+          // logo · you ▾ · ⚡ · SHELVES · MEMBERS · search · + ADD ▾
           await expect(bar.locator('#acctBtn')).toBeVisible();
           await expect(bar.locator('#acctBtn')).toHaveAccessibleName('@tester, your account');
           if (isPhone()) await expect(bar.locator('#acctBtn .who')).toBeHidden(); else await expect(bar.locator('#acctBtn .who')).toHaveText('@tester');   // a phone shows just the photo
@@ -36,7 +37,7 @@ for (const signedIn of [false, true]) {
           await expect(bar.getByRole('link', { name: 'Search' })).toBeVisible();
           await expect(bar.locator('#addMore')).toBeVisible();
         } else {
-          // logo · SHELVES · MEMBERS · ⚡ · SIGN IN · + SHELF
+          // logo · SHELVES · MEMBERS · ⚡ · SIGN IN · + ADD
           await expect(bar.locator('#signInBtn')).toHaveText(/sign in/i);
           await expect(bar.locator('#acctBtn')).toBeHidden();
           await expect(first).toHaveText(/shelves/i);
@@ -54,7 +55,7 @@ for (const signedIn of [false, true]) {
   });
 }
 
-/* ---------- the account menu and the ▾ next to + SHELF ---------- */
+/* ---------- the account menu and the ▾ next to + ADD ---------- */
 test.describe('account menu', () => {
   for (const pg of PAGES) {
     test(`${pg.name}: its items, Sign out last; Esc and a click outside close it`, async ({ page }) => {
@@ -176,7 +177,7 @@ test('every sign-out is for this device only', () => {
   }
 });
 
-test('the ▾ next to + SHELF has one item: Upload a scan…', async ({ page }) => {
+test('the ▾ next to + ADD has one item: Upload a scan…', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/feed/?everyone');
   const menu = page.getByRole('menu', { name: 'More ways to add' });
@@ -218,7 +219,7 @@ test('signed-in home: a welcome by name, the row from people you follow with All
   await open(page, '/');
   await expect(page.locator('#hello')).toHaveText('Welcome back, @tester. Here’s what people you follow have been shelving…');
   await expect(page.locator('#hello a')).toHaveAttribute('href', 'u/?tester');
-  await expect(page.locator('main').getByRole('link', { name: /new shelf/i })).toHaveCount(0);   // + SHELF in the bar is the way to a new shelf
+  await expect(page.locator('main').getByRole('link', { name: /new shelf/i })).toHaveCount(0);   // + ADD in the bar is the way to a new shelf
   await expect(page.locator('#in h2')).toHaveText([/^New from people you follow/, /^Just shelved/]);
   const all = page.locator('#in').getByRole('link', { name: 'All activity' });
   await expect(all).toHaveAttribute('href', 'feed/?following');

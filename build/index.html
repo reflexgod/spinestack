@@ -216,7 +216,7 @@ footer{margin-top:0}
     <a class="find" href="../members/" aria-label="Search" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
   </nav>
   <a class="signin" id="signInBtn" href="#" hidden>Sign in</a>
-  <span class="addwrap"><a class="btn add" href="#search" aria-current="page" aria-label="New shelf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Shelf</span></a><button class="btn addmore" id="addMore" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More ways to add" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></span>
+  <span class="addwrap"><a class="btn add" href="#search" aria-current="page" aria-label="Add a film or a book"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Add</span></a><button class="btn addmore" id="addMore" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More ways to add" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></span>
 </header>
 
 <main class="mk">
@@ -363,8 +363,8 @@ footer{margin-top:0}
 
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
-<script src="../nav.js?v=20261002a"></script>
-<script src="../add.js?v=20261001d"></script>
+<script src="../nav.js?v=20261002b"></script>
+<script src="../add.js?v=20261002a"></script>
 <script>
 (() => {
 const $ = s => document.querySelector(s);
@@ -372,7 +372,7 @@ const story = $('#story'), sctx = story.getContext('2d');
 const W = 1080, H = 1920;
 // the spines and the story are drawn by shelf.js (shared with the profile page)
 const {FONTS, STYLES, crop, loadImg, isReal, TEX, texture, isDark, posterTitle, DEFAULT_CAPTION} = Shelf;
-// the colour picking and the spine finder live in add.js (the + SHELF dialog uses them on every page)
+// the colour picking and the spine finder live in add.js (the + ADD dialog uses them on every page)
 const {extractPalette, findSpine, findSoloSpine} = Add;
 // ?new (+ new shelf on your profile): an empty shelf to begin with, not the sample
 const FRESH = new URLSearchParams(location.search).has('new');
@@ -623,7 +623,7 @@ function shelve(b){
   books.push(b); renderList(); return true;
 }
 
-/* ---------- Add: the same dialog + SHELF opens (add.js) ---------- */
+/* ---------- Add: the same dialog + ADD opens (add.js) ---------- */
 const TMDB = String(window.SPINESTACK_TMDB || '').trim();
 const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
 const direct = !window.claude;   // the Claude preview can't reach other sites
@@ -633,7 +633,7 @@ const timeout = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(()
 Add.setShelf({has: key => books.some(b => b.key === key), count: key => books.filter(b => (b.key || '').split('#')[0] === key).length,
   add: f => { const ok = shelve(newBook(f)); if (ok) toast(f.title + ' added to your shelf.'); return ok; }});
 $('#findForm').addEventListener('submit', e => { e.preventDefault(); const q = $('#findQ').value.trim(); $('#findQ').value = ''; Add.open({query: q}); });
-Nav.onUpload(() => $('#file').click());   // "Upload a scan…" in the ▾ next to + SHELF
+Nav.onUpload(() => $('#file').click());   // "Upload a scan…" in the ▾ next to + ADD
 
 /* ---------- uploads ---------- */
 function titleFromName(name){ let t = (name||'').replace(/\.[a-z0-9]+$/i,'').replace(/[_\-+]+/g,' ').replace(/\s+/g,' ').trim(); if (/^(image|img|download|images|screenshot|photo|unnamed|pasted)\b/i.test(t) || /^[\d\s]+$/.test(t) || t.length > 60) t = ''; return t; }
@@ -1386,7 +1386,7 @@ async function openShelf(id){
 }
 
 /* The shelf being made waits in this tab: while Google signs you in (the page leaves and comes back), and while
-   you're on another page, so + SHELF there adds to it. It's kept again shortly after each change, for an hour. */
+   you're on another page, so + ADD there adds to it. It's kept again shortly after each change, for an hour. */
 const DRAFT = 'spinestack-draft';
 const idb = (() => {
   let db = null;
@@ -1426,7 +1426,7 @@ async function restoreDraft(d){
 }
 
 Add.setToast(toast);
-/* opening: the sample shelf (or an empty one for ?new), then a draft or ?open=<id>, then a spine picked with + SHELF
+/* opening: the sample shelf (or an empty one for ?new), then a draft or ?open=<id>, then a spine picked with + ADD
    on another page, which was waiting to be put on */
 (async () => {
   boot();

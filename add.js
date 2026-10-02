@@ -1,11 +1,11 @@
-/* + SHELF: the "Add to your shelf…" dialog, the same on every page. Step 1 is a search box (All / Films / Books under
+/* + ADD: the "Add to your shelf…" dialog, the same on every page. Step 1 is a search box (All / Films / Books under
    it) that suggests titles as you type: up to six, films and books together, the closest titles first; ↑ ↓ move
    through them and Enter picks. Picking a result goes to step 2, which finds that title's spines (the Worker finds DVD and book scans, the
    browser cuts the spine out of each) and shows the choices with an Add to shelf button. On the builder that puts the
    spine on the shelf being made. Anywhere else the choice is handed to the builder (sessionStorage), which opens with
    it on the shelf.
    The search, the colour picking and the spine finder moved here from the builder as they were. Needs shelf.js.
-   nav.js loads this file the first time + SHELF is pressed; the builder loads it itself. */
+   nav.js loads this file the first time + ADD is pressed; the builder loads it itself. */
 (() => {
 if (window.Add) return;
 const {hex, lum, contrast, sat, dist, crop, posterTitle, loadImg, isCase, makeSpine} = Shelf;

@@ -1,8 +1,8 @@
 /* The top bar's behaviour, the same on every page. Each page keeps its own copy of the bar's markup and CSS; this file
-   fills in who is signed in, builds the two menus (the account menu, and the ▾ next to + SHELF) and opens and closes
+   fills in who is signed in, builds the two menus (the account menu, and the ▾ next to + ADD) and opens and closes
    them. A page calls Nav.paint({user, profile}) whenever that changes (profile: id, username, display_name,
    avatar_key), and says what its own Sign in, Finish sign-up and Sign out do: Nav.onSignIn(fn), Nav.onFinish(fn),
-   Nav.onSignOut(fn). + SHELF opens the Add to your shelf… dialog (add.js, loaded the first time it's pressed).
+   Nav.onSignOut(fn). + ADD opens the Add to your shelf… dialog (add.js, loaded the first time it's pressed).
    Load it after shelf.js and worker-address.js, before the page's own script. */
 (() => {
   const ROOT = new URL('.', document.currentScript.src).href;   // the site's root: this file sits there
@@ -165,8 +165,8 @@
     else if (on.finish){ e.preventDefault(); on.finish(); }   // signed in, no username yet (elsewhere the link goes to the builder, which asks)
   });
 
-  /* ---------- + SHELF: the Add to your shelf… dialog ---------- */
-  // add.js draws spines with shelf.js, which every page with the bar loads. If either can't be had, + SHELF is the
+  /* ---------- + ADD: the Add to your shelf… dialog ---------- */
+  // add.js draws spines with shelf.js, which every page with the bar loads. If either can't be had, + ADD is the
   // plain link to the builder it always was.
   const addLink = q('.add');
   let adding = null;
@@ -174,7 +174,7 @@
     if (window.Add){ window.Add.open(opt); return Promise.resolve(true); }
     if (!window.Shelf) return Promise.resolve(false);
     adding = adding || new Promise(res => {
-      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261001d';
+      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261002a';
       s.onload = () => res(!!window.Add); s.onerror = () => { adding = null; s.remove(); res(false); };
       document.head.appendChild(s);
     });

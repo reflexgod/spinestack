@@ -1,4 +1,4 @@
-// + SHELF (the Add to your shelf… dialog) and the builder: New shelf / Edit shelf, the spines as a list, Style, the
+// + ADD (the Add to your shelf… dialog) and the builder: New shelf / Edit shelf, the spines as a list, Style, the
 // preview, and Cancel · Save · Save story.
 const { test, expect } = require('@playwright/test');
 const { PAGES, SHELVES, ME, mockNetwork, watchErrors, open } = require('../site');
@@ -21,7 +21,7 @@ async function addGummo(page) {
 
 /* ---------- the dialog ---------- */
 for (const pg of PAGES) {
-  test(`${pg.name}: + SHELF opens the dialog with only a search box, and Esc closes it`, async ({ page }) => {
+  test(`${pg.name}: + ADD opens the dialog with only a search box, and Esc closes it`, async ({ page }) => {
     const net = await mockNetwork(page, { signedIn: true }), errors = watchErrors(page);
     await open(page, pg.path);
     await page.locator('header.top .add').click();
@@ -285,7 +285,7 @@ test('the shelf being made is still there after leaving the page and coming back
   await d.getByRole('button', { name: 'Add to shelf' }).click();
   await expect(page).toHaveURL(/\/build\/$/);
   await expect(rows(page)).toHaveCount(2);
-  expect(await titles(page)).toEqual(['Gummo', 'The Waves']);   // + SHELF added to the shelf being made
+  expect(await titles(page)).toEqual(['Gummo', 'The Waves']);   // + ADD added to the shelf being made
   await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue('my films');
 });
 
@@ -306,7 +306,7 @@ test('upload a scan: the link and the ▾ menu both open the file picker, and th
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/build/');
-  // "Upload a scan…" in the ▾ next to + SHELF
+  // "Upload a scan…" in the ▾ next to + ADD
   await page.locator('#addMore').click();
   const fromMenu = page.waitForEvent('filechooser');
   await page.getByRole('menuitem', { name: 'Upload a scan…' }).click();

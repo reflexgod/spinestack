@@ -7,7 +7,7 @@ Type a film or a book, get its real spine, put it on a shelf, save the shelf as 
 ```
 index.html            the home page (GitHub Pages serves this). Signed out: one line about the site, Make a shelf, and the newest public shelves; signed in: a welcome, new shelves from people you follow (⚡ All activity), then Just shelved. Links to the old builder here (/?open=, /#shelf) go on to build/
 build/index.html      the shelf builder (New shelf / Edit shelf): Add, the spines as a list (drag one there or on the preview to move it), Style, the preview; at the bottom its name, who can view it, Cancel · Save · Save story
-add.js                + SHELF on every page: the Add to your shelf… dialog (suggestions as you type, then the spine choices and Add to shelf); the spine finder lives here
+add.js                + ADD on every page: the Add to your shelf… dialog (suggestions as you type, then the spine choices and Add to shelf); the spine finder lives here
 shelf.js              draws the spines and the story (and says where it drew each book); build/ and u/ both use it, so a shelf looks the same everywhere
 u/index.html          profiles: /u/?username with its tabs Profile (the main shelf first) · Shelves · Activity · Network (Following, Followers), and one shelf: /u/?username&shelf=<id>
 shelves/index.html    every public shelf as a card, newest first, 24 at a time (Load more); Start a new shelf
@@ -22,7 +22,7 @@ og.jpg                the picture a shared link shows (1200 x 630: the logo and 
 sample-shelf.jpg      the builder's sample shelf as a picture; home shows it ("a shelf, for example") while there are no public shelves. Made by tests/art.js
 cards.js              shelf cards: finds the books in a shelf's preview picture and cuts the 2:3 card round them (home, the feed, profiles), keeping what it found per preview key
 site.css              the look every page shares: one :root block of variables (the 950px column, the type scale, the 4/8/12/16/24/40 spacing, the 3px radius) and what uses them everywhere (the top bar, headings, buttons, fields, shelf cards, tabs, sheets, the footer). A page's own <style> holds only what that page alone needs
-nav.js                the top bar on every page: who is signed in, the account menu (Sign out is its last item), + SHELF and the ▾ next to it
+nav.js                the top bar on every page: who is signed in, the account menu (Sign out is its last item), + ADD and the ▾ next to it
 404.html              what GitHub Pages sends for an address that isn't there: a line and the way home. Its links start at the root (/), since it's served at any depth
 admin.html            approve or delete archive uploads (needs the admin token); read reports (Google sign-in, admins only)
 tests/                checks for the pages: Playwright, axe, html-validate (see Tests). The site never loads anything from here
@@ -123,7 +123,7 @@ before the change aren't reused. `/scans` keeps what Brave said as it came (`raw
 
 ### How a real spine is found
 
-0. In the Add to your shelf… dialog (`add.js`, opened by + SHELF on any page and by the builder's Add box) a title is
+0. In the Add to your shelf… dialog (`add.js`, opened by + ADD on any page and by the builder's Add box) a title is
    looked up as it's typed: a search starts 300 ms after the last key and replaces the one before it, Enter searches at
    once. Up to six results show, films and books together, the closest titles first (the same as what was typed, then
    starting with it, then containing it); ↑ ↓ move through them and Enter picks one.
@@ -231,7 +231,7 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   bar is there, the page doesn't scroll sideways, nothing is logged as an error, signed-out home loads its shelves, and
   old builder links at the root go on to `/build/`. The account menu: its seven items with Sign out last, open by tap,
   by mouse and by keyboard, closed by Esc and by a click outside, always inside the window; Sign out signs out.
-- **The builder and + SHELF** (`specs/build.spec.js`): + SHELF opens the dialog on every page and Esc closes it;
+- **The builder and + ADD** (`specs/build.spec.js`): + ADD opens the dialog on every page and Esc closes it;
   search, pick, Add to shelf on the builder (no reload) and from another page (which goes to the builder); the
   builder's fields, Style shut with its one line, a row's controls opening one at a time, ↑ ↓ and dragging; Save
   signed out and signed in, `?open=<id>`, `?new`, old `?embed` links, a profile's links to the builder, the shelf being

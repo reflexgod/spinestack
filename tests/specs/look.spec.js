@@ -43,9 +43,9 @@ for (const pg of [...PAGES, { name: 'own profile', path: '/u/?tester' }]) {
     expect(await css(btn, 'fontSize', 'fontWeight', 'textTransform', 'borderTopLeftRadius')).toEqual({ fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', borderTopLeftRadius: '3px' });
     const any = page.locator('main .btn:visible, .mkbar .btn:visible').first();
     if (await any.count()) expect(await css(any, 'paddingTop', 'paddingLeft')).toEqual({ paddingTop: '7px', paddingLeft: '12px' });
-    // one black button a screen: + SHELF (its ▾ is part of it), or Save in the builder
-    const black = await page.locator('.btn.primary:visible').evaluateAll(els => [...new Set(els.map(e => e.closest('.addwrap') ? '+ SHELF' : e.textContent.trim()))]);
-    expect(black).toEqual([pg.name === 'build' ? 'Save' : '+ SHELF']);
+    // one black button a screen: + ADD (its ▾ is part of it), or Save in the builder
+    const black = await page.locator('.btn.primary:visible').evaluateAll(els => [...new Set(els.map(e => e.closest('.addwrap') ? '+ ADD' : e.textContent.trim()))]);
+    expect(black).toEqual([pg.name === 'build' ? 'Save' : '+ ADD']);
   });
 }
 
