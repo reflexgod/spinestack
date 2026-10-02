@@ -128,13 +128,13 @@ for (const pg of [...PAGES, { name: 'privacy', path: '/privacy.html' }]) {
 }
 
 /* ---------- 4. the builder's smaller touches ---------- */
-test('the note under the preview is not hidden by the Save bar', async ({ page }) => {
+test('the preview is not hidden by the Save bar', async ({ page }) => {
   test.skip(isPhone(), 'on a phone the preview is in the page, not beside it');
   await mockNetwork(page);
   await open(page, '/build/');
-  const note = await page.locator('#exportNote').boundingBox(), bar = await page.locator('.mkbar').boundingBox();
-  expect(note.height).toBeGreaterThan(0);
-  expect(note.y + note.height).toBeLessThanOrEqual(bar.y);
+  const stage = await page.locator('#stage').boundingBox(), bar = await page.locator('.mkbar').boundingBox();
+  expect(stage.height).toBeGreaterThan(200);
+  expect(stage.y + stage.height).toBeLessThanOrEqual(bar.y);
 });
 
 test('the Name box suggests a name, the count shows the limit, and an empty shelf says so', async ({ page }) => {

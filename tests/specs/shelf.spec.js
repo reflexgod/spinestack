@@ -8,7 +8,7 @@ const rows = page => page.locator('#oneItems li');
 const titles = page => page.locator('#books .book .bt').allTextContents();
 const sent = (page, method, part) => page.waitForRequest(r => r.method() === method && r.url().includes(part));
 
-test('someone\'s shelf: its name, who made it and when, Copy link, the story, and what\'s on it', async ({ page }) => {
+test('someone\'s shelf: its name, who made it and when, the story, and what\'s on it', async ({ page }) => {
   const errors = watchErrors(page), net = await mockNetwork(page, { signedIn: true });
   await open(page, `/u/?mira&shelf=${theirs.id}`);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('shelf number 1');
@@ -17,10 +17,8 @@ test('someone\'s shelf: its name, who made it and when, Copy link, the story, an
   await expect(by).toHaveText(/^by @mira· .*2026 · 2 spines$/);
   await expect(by.getByRole('link', { name: '@mira' })).toHaveAttribute('href', '/u/?mira');
   await expect(page.locator('#oneShelf canvas')).toBeVisible();
-  // not yours: Copy link and Report, nothing else
-  await expect(page.locator('#oneActs').locator('button:visible, a:visible')).toHaveText(['Copy link', 'Report']);
-  await page.getByRole('button', { name: 'Copy link' }).click();
-  await expect(page.locator('#toast')).toHaveText(new RegExp(`Link copied\\.|/u/\\?mira&shelf=${theirs.id}`));
+  // not yours: Report, and nothing else under the heading
+  await expect(page.locator('#oneActs').locator('button:visible, a:visible')).toHaveText(['Report']);
   // On this shelf: a row for each spine
   await expect(page.getByRole('heading', { level: 2, name: 'On this shelf' })).toBeVisible();
   await expect(rows(page)).toHaveCount(2);
@@ -67,7 +65,7 @@ test('your own shelf: Edit, Make main, Make private, and Delete after a confirm'
   await mockNetwork(page, { signedIn: true });
   const at = `/u/?tester&shelf=${mine.id}`;
   await open(page, at);
-  await expect(page.locator('#oneActs').locator('button:visible, a:visible')).toHaveText(['Copy link', 'Edit', 'Make main', 'Make private', 'Delete']);
+  await expect(page.locator('#oneActs').locator('button:visible, a:visible')).toHaveText(['Edit', 'Make main', 'Make private', 'Delete']);
   await expect(page.locator('#oneActs').getByRole('link', { name: 'Edit' })).toHaveAttribute('href', `../build/?open=${mine.id}`);
   // Make main
   let req = sent(page, 'PATCH', '/rest/v1/profiles');
@@ -218,5 +216,89 @@ test('a covers shelf whose books have no picture still draws, each with a plain 
   await open(page, '/u/?longusername_twenty1');            // and a profile whose main shelf is one
   await expect(page.locator('#featLink canvas')).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+/* ---------- Share, by a shelf's name ---------- */
+const shareMenu = page => page.getByRole('menu', { name: 'Share', exact: true });
+// a PNG's size, from the file
+const pngSize = file => { const b = require('fs').readFileSync(file); return [b.subarray(1, 4).toString(), b.readUInt32BE(16), b.readUInt32BE(20)]; };
+
+for (const [whose, at] of [['someone\'s public shelf', `/u/?mira&shelf=${theirs.id}`], ['your own shelf', `/u/?tester&shelf=${mine.id}`]]) {
+  test(`${whose}: Share is a small button by the name, with Share to story, Download image and Copy link`, async ({ page }) => {
+    const errors = watchErrors(page);
+    await mockNetwork(page, { signedIn: true });
+    await open(page, at);
+    await expect(page.locator('#oneItems li')).toHaveCount(2);
+    const share = page.getByRole('button', { name: 'Share', exact: true });
+    await expect(share).toBeVisible();
+    await expect(share.locator('svg')).toHaveCount(1);
+    // small, and on the name's line, after it
+    const b = await share.boundingBox(), h = await page.getByRole('heading', { level: 1 }).boundingBox();
+    expect(b.width).toBeLessThanOrEqual(32);
+    expect(b.x).toBeGreaterThanOrEqual(h.x + h.width);
+    expect(Math.abs(b.y + b.height / 2 - (h.y + h.height / 2))).toBeLessThanOrEqual(6);
+    await share.click();
+    await expect(shareMenu(page)).toBeVisible();
+    await expect(share).toHaveAttribute('aria-expanded', 'true');
+    await expect(shareMenu(page).getByRole('menuitem')).toHaveText(['Share to story', 'Download image', 'Copy link']);
+    // Copy link
+    await shareMenu(page).getByRole('menuitem', { name: 'Copy link' }).click();
+    await expect(shareMenu(page)).toBeHidden();
+    await expect(page.locator('#toast')).toHaveText(new RegExp('Link copied\\.|' + at.replace(/[?]/g, '\\?')));
+    // Download image: the whole story, 1080 x 1920
+    await share.click();
+    let download = page.waitForEvent('download');
+    await shareMenu(page).getByRole('menuitem', { name: 'Download image' }).click();
+    let file = await download;
+    expect(file.suggestedFilename()).toBe('shelfstackd-story.png');
+    expect(pngSize(await file.path())).toEqual(['PNG', 1080, 1920]);
+    await expect(page.locator('#toast')).toHaveText('Downloaded shelfstackd-story.png.');
+    // Share to story: this browser has no share sheet for pictures, so it's saved, with what to do next
+    await share.click();
+    download = page.waitForEvent('download');
+    await shareMenu(page).getByRole('menuitem', { name: 'Share to story' }).click();
+    file = await download;
+    expect(pngSize(await file.path())).toEqual(['PNG', 1080, 1920]);
+    await expect(page.locator('#toast')).toHaveText('Saved as shelfstackd-story.png. Add it to your Instagram story.');
+    // Esc shuts the menu and goes back to the button
+    await share.click();
+    await page.keyboard.press('Escape');
+    await expect(shareMenu(page)).toBeHidden();
+    await expect(share).toBeFocused();
+    expect(errors).toEqual([]);
+  });
+}
+
+test('on a phone with a share sheet, Share to story hands the picture to it', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, `/u/?mira&shelf=${theirs.id}`);
+  await expect(page.locator('#oneItems li')).toHaveCount(2);
+  // a browser that can share files, and a finger for a pointer: put on the page itself, and checked before anything is pressed
+  const ready = await page.evaluate(() => {
+    window.__shared = [];
+    Object.defineProperty(navigator, 'canShare', { configurable: true, value: d => !!(d && d.files && d.files.length) });
+    Object.defineProperty(navigator, 'share', { configurable: true, value: async d => { window.__shared.push(d.files.map(f => `${f.name} ${f.type} ${f.size > 1000}`)); } });
+    const mm = window.matchMedia.bind(window);
+    Object.defineProperty(window, 'matchMedia', { configurable: true, value: q => q === '(pointer:coarse)' ? { matches: true, media: q, addEventListener() {}, removeEventListener() {} } : mm(q) });
+    return navigator.canShare({ files: [new File(['x'], 'a.png', { type: 'image/png' })] }) && matchMedia('(pointer:coarse)').matches;
+  });
+  expect(ready).toBe(true);
+  let downloads = 0; page.on('download', () => downloads++);
+  await page.getByRole('button', { name: 'Share', exact: true }).click();
+  await expect(shareMenu(page)).toBeVisible();
+  await shareMenu(page).getByRole('menuitem', { name: 'Share to story' }).click();
+  await expect(page.locator('#toast')).toHaveText(/^Making the picture…$|^$/);
+  // the page says it's making the picture (a browser can take a few seconds over a PNG this size), then the picture
+  // goes to the share sheet: nothing is saved, and the line is taken away
+  await expect.poll(() => page.evaluate(() => window.__shared), { timeout: 20000 }).toEqual([['shelfstackd-story.png image/png true']]);
+  await expect(page.locator('#toast')).toBeHidden();
+  expect(downloads).toBe(0);
+});
+
+test('a shelf that isn\'t there has no Share', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/u/?mira&shelf=cccccccc-cccc-4ccc-8ccc-cccccccccccc');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('This shelf is private, or it was deleted.');
+  await expect(page.getByRole('button', { name: 'Share', exact: true })).toBeHidden();
 });
 

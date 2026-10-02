@@ -2,14 +2,14 @@
 
 Live at https://shelfstackd.com (this repository and its folders keep the old working name, spinestack).
 
-Type a film or a book, get its real spine, put it on a shelf, save the shelf as an Instagram story.
+Type a film or a book, get its real spine, put it on a shelf, save the shelf to your profile. From its page the shelf can be shared as an Instagram story.
 
 ```
 index.html            the home page (GitHub Pages serves this). Signed out: one line about the site, Make a shelf, and the newest public shelves; signed in: a welcome, new shelves from people you follow (⚡ All activity), then Just shelved. Links to the old builder here (/?open=, /#shelf) go on to build/
-build/index.html      the shelf builder (New shelf / Edit shelf): Add, the spines as a list (drag one there or on the preview to move it), Style, the preview; at the bottom its name, who can view it, Cancel · Save · Share to Instagram
+build/index.html      the shelf builder (New shelf / Edit shelf): Add, the spines as a list (drag one there or on the preview to move it), Style, the preview; at the bottom its name, who can view it, Cancel · Save
 add.js                + ADD on every page: the Add to your shelf… dialog (suggestions as you type, then the spine choices and Add to shelf); the spine finder lives here
 shelf.js              draws the spines and the story (and says where it drew each book); build/ and u/ both use it, so a shelf looks the same everywhere
-u/index.html          profiles: /u/?username with its tabs Profile (the main shelf first) · Shelves · Activity · Network (Following, Followers), and one shelf's own page: /u/?username&shelf=<id> (its name, who made it, Copy link, the story, On this shelf with + Add to my shelf; for its owner Edit, Make main, Make private or public, Delete)
+u/index.html          profiles: /u/?username with its tabs Profile (the main shelf first) · Shelves · Activity · Network (Following, Followers), and one shelf's own page: /u/?username&shelf=<id> (its name with Share beside it: Share to story, Download image, Copy link; who made it, the story, On this shelf with + Add to my shelf; for its owner Edit, Make main, Make private or public, Delete)
 shelves/index.html    every public shelf as a card, newest first, 24 at a time (Load more); Start a new shelf
 members/index.html    Find @username (people by the start of a username or name, each with FOLLOW), and Recently active: the people behind the newest shelves
 settings/index.html   your settings (signed in only): PROFILE (display name, bio, main shelf), PHOTO (cut square, made small, sent to the Worker), ACCOUNT (private profile). A profile's Edit profile comes here
@@ -45,7 +45,7 @@ backend/              older self-hosted search server (not used right now)
    Enforce HTTPS). Its DNS is on Cloudflare: the four GitHub Pages A records and four AAAA records on the root and `www`
    as a CNAME to `reflexgod.github.io`, all "DNS only" so GitHub can issue the certificate. The old address redirects here.
 
-At this point uploads, spine cutting from scans, the shelf and story export all work. Search by name needs step 2.
+At this point uploads, spine cutting from scans and the shelf all work (saving and sharing need accounts, below). Search by name needs step 2.
 
 ## Worker (what the live site uses)
 
@@ -238,7 +238,8 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   signed out and signed in, `?open=<id>`, `?new`, old `?embed` links, a profile's links to the builder, the shelf being
   made surviving a trip to another page (and giving way to a saved shelf that's opened), Cancel; the order of the
   page, dragging a spine on the preview (mouse, and hold-then-drag with a finger), and the caption: it follows the
-  Name, and with no name the preview's faint "your shelf" is not in the saved story.
+  Name, and with no name the preview's faint "your shelf" is not in the picture saved with the shelf. The bar has
+  only Cancel and Save.
 - **The dialog's search** (`specs/add.spec.js`): suggestions while typing with one search for a word typed quickly, a
   slower earlier answer dropped, six results in order of closeness, ↑ ↓ Enter Esc, Enter searching at once, the
   loading and nothing-found lines; the capped answer from `/scans` and its message; "Search by Brave" in every
@@ -253,7 +254,8 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   links changing the tab on your own profile without loading it again.
 - **A shelf's page, and your cards** (`specs/shelf.spec.js`): on your profile a card opens the shelf's page and its ···
   menu has Edit, Make main, Make private or public and Delete (inside the window, ↓ and Esc, shut by a press outside).
-  On the shelf's page: its heading, Copy link and the list of what's on it; + Add to my shelf
+  On the shelf's page: its heading, Share (the story to a share sheet or saved, the picture, the link), the "Saved."
+  line once after Save, and the list of what's on it; + Add to my shelf
   putting that same spine on the shelf being built with nothing searched for; for its owner Edit, Make main, Make
   private, renaming it in the heading, and Delete only after the confirm; a shelf that isn't there.
 - **Spines on a picture** (`specs/tips.spec.js`): on a shelf's page and on the builder's preview, the tooltip over a

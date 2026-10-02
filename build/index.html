@@ -35,7 +35,7 @@
   })();
 </script>
 <title>Make a shelf · shelfstackd</title>
-<meta name="description" content="Build a shelf of real film and book spines, then save it as an Instagram story.">
+<meta name="description" content="Build a shelf of real film and book spines and save it to your profile, where you can share it.">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
@@ -43,7 +43,7 @@
 <meta property="og:site_name" content="shelfstackd">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Make a shelf · shelfstackd">
-<meta property="og:description" content="Build a shelf of real film and book spines, then save it as an Instagram story.">
+<meta property="og:description" content="Build a shelf of real film and book spines and save it to your profile, where you can share it.">
 <meta property="og:url" content="https://shelfstackd.com/build/">
 <meta property="og:image" content="https://shelfstackd.com/og.jpg">
 <meta property="og:image:width" content="1200">
@@ -57,7 +57,7 @@
 <link rel="stylesheet" href="../site.css?v=20261002e">
 <style>
 /* the builder, laid out like a new-list page: Add, the spines as a list, Style, and the live preview beside them.
-   The bottom area stays in view: the shelf's name and who can view it, with Cancel · Save · Share to Instagram (beside them
+   The bottom area stays in view: the shelf's name and who can view it, with Cancel and Save (beside them
    on a wide window, under them on a phone). site.css has everything shared */
 .mkgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:var(--s5) var(--s6);align-items:start}
 .mkform{display:grid;gap:var(--s5);min-width:0}
@@ -157,7 +157,7 @@ em.pro{margin:0 var(--s1)}
 .pngadd .range{justify-self:stretch;max-width:340px}
 
 /* the live preview: beside the form, and it stays in view while the form scrolls. Its height leaves room for the
-   top bar above it and, below it, its note and the Cancel · Save · Share to Instagram bar */
+   top bar above it and, below it, the Cancel and Save bar */
 .mkside{position:sticky;top:64px;display:grid;gap:var(--s2);justify-items:center}
 .phone{border:1px solid var(--ink);border-radius:var(--s5);padding:var(--s1);width:min(100%, 300px, calc((100vh - 264px)*9/16));min-width:200px;margin:0 auto}
 .mkside .note{margin:0;text-align:center}
@@ -175,7 +175,7 @@ em.pro{margin:0 var(--s1)}
 .pngr{pointer-events:auto;position:absolute;left:50%;top:-34px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:var(--paper);border:1px solid var(--ink);cursor:grab;touch-action:none}
 .pngr::after{content:"";position:absolute;left:6px;top:13px;width:1px;height:20px;background:var(--ink)}
 
-/* the bottom area: Name and Who can view, then Cancel, Save and Share to Instagram (the story as a picture: it isn't a second Save); always at the bottom of the window */
+/* the bottom area: Name and Who can view, then Cancel and Save; always at the bottom of the window. (Sharing the story is on the saved shelf's own page.) */
 .mkbar{position:sticky;bottom:0;z-index:4;display:flex;flex-wrap:wrap;gap:var(--s2) var(--s4);align-items:flex-end;justify-content:flex-end;background:var(--paper);border-top:1px solid var(--hair);
   margin-top:var(--s6);padding:var(--s3) 0 calc(var(--s3) + env(safe-area-inset-bottom,0px))}
 .barname{flex:0 1 300px;min-width:150px}
@@ -189,9 +189,6 @@ footer{margin-top:0}
 .uname input[type=text]:focus{outline:none}
 .uname:focus-within{outline:2px solid var(--ink);outline-offset:2px}
 .toast{bottom:calc(env(safe-area-inset-bottom,0px) + 96px);z-index:20}   /* above the bottom area */
-.modal{position:fixed;inset:0;background:rgba(255,255,255,.92);display:grid;place-items:center;padding:var(--s4);z-index:30}
-.modal-card{background:var(--paper);border:1px solid var(--ink);border-radius:var(--radius);padding:var(--s4);max-width:380px;width:100%;display:grid;gap:var(--s3);max-height:calc(100% - 2*var(--s4));overflow:auto}
-.modal-card img{width:100%;max-width:230px;margin:0 auto;display:block}
 
 /* narrower: one column, in this order: Add, the spines, the preview, Style */
 @media (max-width:900px){
@@ -290,11 +287,10 @@ footer{margin-top:0}
       <div class="phone"><div class="stage" id="stage"><canvas id="story" width="1080" height="1920" role="img" aria-label="Story preview"></canvas>
         <div class="spinebox" id="spineBox" hidden></div>
         <div class="pngbox" id="pngBox" hidden><button class="pngx" id="pngX" type="button" aria-label="Remove this PNG">✕</button><span class="pngh" id="pngH" aria-hidden="true"></span><span class="pngr" id="pngR" aria-hidden="true"></span></div></div></div>
-      <p class="note" id="exportNote"></p>
     </div>
   </div>
 
-  <!-- the bottom area, always in view: what the shelf is called and who can view it, with Cancel · Save · Share to Instagram -->
+  <!-- the bottom area, always in view: what the shelf is called and who can view it, with Cancel and Save -->
   <div class="mkbar">
     <label class="field barname"><span class="lbl">Name</span><input type="text" id="shelfName" placeholder="e.g. 2am films" maxlength="60" autocomplete="off" spellcheck="false"></label>
     <fieldset class="field who"><legend class="lbl">Who can view</legend>
@@ -303,7 +299,6 @@ footer{margin-top:0}
     <span class="barleft"><button class="dash sm" id="saveNew" type="button" hidden>Save as a new shelf</button><span class="note" id="saveNote" role="status"></span></span>
     <button class="dash sm" id="cancelBtn" type="button">Cancel</button>
     <button class="btn primary" id="saveShelf" type="button" hidden>Save</button>
-    <button class="btn" id="exportBtn" type="button">Share to Instagram</button>
   </div>
 </main>
 
@@ -356,14 +351,6 @@ footer{margin-top:0}
   <div class="fbase"><span>© 2026 SHELFSTACKD. All rights reserved.</span><span><a href="https://search.brave.com/" target="_blank" rel="noopener">Search by Brave</a></span><span>Not affiliated with any studio or publisher.</span></div>
 </footer>
 
-<div class="modal" id="modal" hidden>
-  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="mtitle">
-    <b id="mtitle">SAVE YOUR STORY</b>
-    <img id="mimg" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="Your story image">
-    <p>Press and hold the image on a phone, or right-click it on a computer, and choose Save image. Then add it to your Instagram story.</p>
-    <button class="btn primary" id="mclose" type="button">Done</button>
-  </div>
-</div>
 <div class="toast" id="toast" hidden></div>
 
 <script src="../shelf.js?v=20261002a"></script>
@@ -439,7 +426,7 @@ const PRO_TAG = '<em class="pro">PRO</em>';
 const proNote = (el, msg) => { el.innerHTML = PRO_TAG + esc(msg); };
 function proToast(msg){ toast(msg); $('#toast').insertAdjacentHTML('afterbegin', PRO_TAG); }
 /* Your own wall and PNGs (Pro). They stay in this page while you make the shelf and go to the Worker only when you
-   save it (so a story needs no account), and they're deleted from storage once no saved shelf of yours uses them. */
+   save it (nothing is uploaded before that), and they're deleted from storage once no saved shelf of yours uses them. */
 const media = {wall: null, pngs: []};   // wall: {img, blob, name, small, dark, key}; pngs: [{img, blob, key, x, y, w, rot, opacity}]
 const art = () => ({wall: media.wall && media.wall.img, wallDark: !!(media.wall && media.wall.dark), pngs: media.pngs});
 const walled = () => settings.theme === 'wall' && !!media.wall;
@@ -454,10 +441,9 @@ const usesPro = () => !!settings.plank || walled() || media.pngs.length > 0;
 const keysOf = pro => [pro && pro.wall_key, ...((pro && pro.wall_items) || []).map(p => p.key)].filter(Boolean);
 // this page's shelf, drawn by shelf.js
 let layout = {captionBottom: 150, booksTop: null, spots: []};   // where the preview's caption ends, its books begin, and each book is
-let exporting = false;   // while the story is being saved, the preview holds the story and nothing else
 const renderStory = (x = sctx, f = settings.filter, fast = false) => {
   const r = Shelf.renderStory(x, f, fast, books, settings, false, art());
-  if (x === sctx){ layout = r; if (!exporting && !settings.caption.trim()) captionHint(x); }
+  if (x === sctx){ layout = r; if (!settings.caption.trim()) captionHint(x); }
   return r;
 };
 // With no name yet, the preview says where it will go, lightly. Only this preview: never the story that's saved or
@@ -982,39 +968,7 @@ if (window.SpineTip) SpineTip.attach(stage, {canvas: () => story, spots: () => l
   quiet: () => !!(pull && pull.active) || !!grab || Date.now() - pulledAt < 400, skip: e => !!e.target.closest('#pngBox'),
   pick: i => { const b = books[i]; if (b) SpineTip.flash(document.querySelector(`#books .book[data-id="${b.id}"]`)); }});
 
-/* ---------- export: Claude download, phone share sheet, or plain download ---------- */
-let downloads = null;
-if (window.claude && window.claude.use) window.claude.use('downloads').then(d => { downloads = d; }).catch(() => {});
 let toastT = 0; function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 4200); }
-let lastUrl = null;
-function fallback(blob){ if (lastUrl) URL.revokeObjectURL(lastUrl); lastUrl = URL.createObjectURL(blob); $('#mimg').src = lastUrl; $('#modal').hidden = false; $('#mclose').focus(); }
-$('#mclose').addEventListener('click', () => $('#modal').hidden = true);
-$('#modal').addEventListener('click', e => { if (e.target.id === 'modal') $('#modal').hidden = true; });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#modal').hidden = true; });
-$('#exportBtn').addEventListener('click', async () => {
-  if (!books.length){ toast('Add something to your shelf first.'); return; }
-  await Promise.all(Object.values(TEX).map(t => t.ready).filter(Boolean));
-  exporting = true; renderStory();   // the story alone: no "your shelf" where a name would be
-  const back = () => { exporting = false; redraw(); };
-  let blobOk = true;
-  try { story.toBlob(() => {}); } catch { blobOk = false; }
-  if (!blobOk){ back(); toast('One image can’t be exported. Remove it and try again.'); return; }
-  story.toBlob(async blob => {
-    back();
-    if (!blob){ toast('Couldn’t create the image. Try again.'); return; }
-    if (downloads){
-      try { await downloads.save({filename:'shelfstackd-story.png', data:blob}); toast('Saved. Open Instagram, add a story, pick this image.'); return; }
-      catch (err){ if (err && err.code === 'declined'){ toast('Save cancelled.'); return; } if (err && err.code === 'rate_limited'){ toast('A save prompt is already open.'); return; } fallback(blob); return; }
-    }
-    const file = new File([blob], 'shelfstackd-story.png', {type:'image/png'});
-    const plain = server || !window.claude;
-    if (plain && navigator.canShare && navigator.canShare({files:[file]}) && matchMedia('(pointer:coarse)').matches){
-      try { await navigator.share({files:[file]}); return; } catch (err){ if (err && err.name === 'AbortError') return; }
-    }
-    if (plain){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'shelfstackd-story.png'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('Downloaded shelfstackd-story.png.'); return; }
-    fallback(blob);
-  }, 'image/png');
-});
 
 // Edition (English or Any): which scans a search looks for first. Kept on this device, where the dialog reads it.
 const edition = () => { try { return localStorage.getItem(Add.EDITION) === 'any' ? 'any' : 'english'; } catch { return 'english'; } };
@@ -1046,9 +1000,6 @@ async function boot(){
     const h = await fetch(API + '/api/health', {signal:ctl.signal}).then(r => r.ok ? r.json() : null);
     server = !!(h && h.ok);
   } catch { server = false; }
-  // Share to Instagram: a phone opens its share sheet; a computer has none for pictures, so it saves the picture
-  $('#exportNote').textContent = matchMedia('(pointer:coarse)').matches ? 'Share to Instagram opens the share sheet. Pick Instagram, then Story.'
-    : 'Share to Instagram saves the story as a picture here. On a phone it opens the share sheet.';
   let recent = [];
   if (server){
     try { const r = await fetch(API + '/api/recent').then(r => r.json()); recent = r.recent.map(x => x.title); } catch {}
@@ -1301,7 +1252,9 @@ async function saveShelf(asNew){
     forgetArt(keysOf(was && was.pro).filter(k => !keysOf(pro).includes(k)));
     acct.shelfId = id; toast(updating ? 'Shelf updated.' : 'Shelf saved.');
     await loadMine();
-    // saved: this shelf is no longer being made, and its own page is the place to see it
+    // saved: this shelf is no longer being made, and its own page is the place to see it (and to share it from: the
+    // page says so once, when it's told the shelf was just saved)
+    try { sessionStorage.setItem('shelfstackd-saved', id); } catch {}
     booted = false; clearTimeout(draftT); dropDraft(); location.href = '../u/?' + acct.profile.username + '&shelf=' + id;
   } catch (e){ toast(friendly(e)); }
   finally { saving = false; $('#saveShelf').disabled = false; paintAcct(); }

@@ -370,7 +370,7 @@ $('#addQ').addEventListener('keydown', e => {
 $('#addRows').addEventListener('click', e => { const li = e.target.closest('[role=option]'); if (li) pick(+li.dataset.i); });
 $('#addRows').addEventListener('pointermove', e => { const li = e.target.closest('[role=option]'); if (li && +li.dataset.i !== active){ active = +li.dataset.i; paintActive(); } });
 
-/* An image that fails this would stop Share to Instagram from working, so it never goes on the shelf. */
+/* An image that fails this couldn’t be drawn into a shelf’s picture or its story, so it never goes on the shelf. */
 const canvasSafe = img => { try { const c = document.createElement('canvas'); c.width = c.height = 1; const x = c.getContext('2d'); x.drawImage(img, 0, 0, 1, 1); c.toDataURL(); return true; } catch { return false; } };
 /* Picking a match looks for real spines in DVD and book scans (the Worker finds them, the browser cuts them).
    A clearly good one is picked for you; otherwise you pick. With no scans, the pick is a spine made from the

@@ -1,5 +1,5 @@
 // + ADD (the Add to your shelf… dialog) and the builder: New shelf / Edit shelf, the spines as a list, Style, the
-// preview, and Cancel · Save · Share to Instagram.
+// preview, and Cancel · Save.
 const { test, expect } = require('@playwright/test');
 const { PAGES, SHELVES, ME, mockNetwork, watchErrors, open } = require('../site');
 
@@ -111,8 +111,9 @@ test('the builder is a new-shelf page: name, who can view, Add, the list, Style 
   await style.getByRole('button', { name: 'Stacked' }).click();
   await style.getByRole('checkbox', { name: 'Wood shelf' }).check();
   await expect(style.locator('#styleLine')).toHaveText('Stacked · Clean · Paper · Wood shelf');
-  // the bar: Cancel, Save, Share to Instagram, in that order; only Save is the black button
-  expect(await page.locator('.mkbar > button:visible').allTextContents()).toEqual(['Cancel', 'Save', 'Share to Instagram']);
+  // the bar: Cancel and Save, nothing else (the story is shared from the saved shelf's page); Save is the black button
+  expect(await page.locator('.mkbar > button:visible').allTextContents()).toEqual(['Cancel', 'Save']);
+  await expect(page.getByText(/share sheet|Share to Instagram|Save story/i)).toHaveCount(0);
   expect(await page.locator('.mkbar > button.primary:visible').allTextContents()).toEqual(['Save']);
   const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(sideways).toBeLessThanOrEqual(0);
@@ -186,6 +187,11 @@ test('Save, signed in: the name and Private are saved, then the shelf’s own pa
   expect(shelf.caption).toBe('my films');   // a new shelf's name is the caption on its story too
   expect(items.map(i => i.title)).toEqual(['Gummo']);
   await expect(page).toHaveURL(new RegExp(`/u/\\?tester&shelf=${shelf.id}$`));
+  // on the shelf's page: said once, with where sharing is
+  await expect(page.locator('#toast')).toHaveText('Saved. Share it from the ↗ icon.');
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('#toast')).toBeHidden();
   expect(errors).toEqual([]);
 });
 
@@ -332,16 +338,16 @@ test('upload a scan: the link and the ▾ menu both open the file picker, and th
   expect(errors).toEqual([]);
 });
 
-test('the order: Add, the spines, Style; then Name and Who can view right above Cancel · Save · Share to Instagram', async ({ page }) => {
+test('the order: Add, the spines, Style; then Name and Who can view right above Cancel · Save', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/build/');
   const top = async sel => (await page.locator(sel).boundingBox()).y, bottom = async sel => { const b = await page.locator(sel).boundingBox(); return b.y + b.height; };
   expect(await top('#search')).toBeLessThan(await top('#shelf'));
   expect(await bottom('#shelf')).toBeLessThanOrEqual(await top('#stylePanel'));
   // the name and who can view it come after everything else in the page, with the bar right after them
-  const order = await page.evaluate(() => ['#stylePanel', '#shelfName', 'input[name=vis]', '#cancelBtn', '#saveShelf', '#exportBtn'].map(s => document.querySelector(s))
+  const order = await page.evaluate(() => ['#stylePanel', '#shelfName', 'input[name=vis]', '#cancelBtn', '#saveShelf'].map(s => document.querySelector(s))
     .map((el, i, all) => i === 0 || (all[i - 1].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) > 0));
-  expect(order).toEqual([true, true, true, true, true, true]);
+  expect(order).toEqual([true, true, true, true, true]);
   // they're in the bottom area, which stays in view: side by side, the buttons beside them (under them on a phone)
   await expect(page.locator('.mkbar #shelfName')).toBeInViewport();
   await expect(page.locator('.mkbar fieldset.who')).toBeInViewport();
@@ -426,23 +432,18 @@ const captionBand = (page, src) => page.evaluate(async src => {
   return { dark, faint };
 }, src);
 
-test('the caption on the preview follows the Name; with no name it is a faint "your shelf" that is not in the saved story', async ({ page }) => {
-  test.skip(isPhone(), 'the saved story is a download here; on a phone it goes to the share sheet');
+test('the caption on the preview follows the Name; with no name it is a faint "your shelf" that is not in the picture saved with the shelf', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
-  await open(page, '/build/?sample');
+  await open(page, '/build/');
+  await page.locator('header.top .add').click();
+  await addGummo(page);
   await page.waitForTimeout(300);
   // no name: no caption, only the hint, lightly
   await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue('');
   const hint = await captionBand(page);
   expect(hint.dark).toBe(0);
   expect(hint.faint).toBeGreaterThan(200);
-  // the story that's saved has nothing there
-  const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Share to Instagram' }).click();
-  const file = await (await download).path();
-  const saved = await captionBand(page, 'data:image/png;base64,' + require('fs').readFileSync(file).toString('base64'));
-  expect(saved).toEqual({ dark: 0, faint: 0 });
   // a name: it's the caption, in ink, and Style's Caption box has it too
   await page.getByRole('textbox', { name: 'Name' }).fill('2am films');
   await expect.poll(async () => (await captionBand(page)).dark).toBeGreaterThan(500);
@@ -452,6 +453,19 @@ test('the caption on the preview follows the Name; with no name it is a faint "y
   await page.getByRole('textbox', { name: 'Name' }).fill('');
   await expect.poll(async () => (await captionBand(page)).dark).toBe(0);
   await expect(page.getByRole('textbox', { name: 'Caption' })).toHaveValue('');
+  // saved like that, the shelf's picture has nothing where the hint was
+  const sent = page.waitForRequest(r => r.method() === 'POST' && r.url().includes('/u/preview?shelf='));
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  const req = await sent, picture = `data:${req.headers()['content-type']};base64,${req.postDataBuffer().toString('base64')}`;
+  await page.waitForURL(/\/u\/\?tester&shelf=/);
+  const saved = await page.evaluate(async src => {
+    const im = new Image(); im.src = src; await im.decode();
+    const c = document.createElement('canvas'); c.width = 1080; c.height = 1920; const x = c.getContext('2d'); x.drawImage(im, 0, 0, 1080, 1920);
+    const d = x.getImageData(80, 240, 620, 60).data; let marks = 0;
+    for (let i = 0; i < d.length; i += 4) if ((d[i] + d[i + 1] + d[i + 2]) / 3 < 235) marks++;
+    return marks;
+  }, picture);
+  expect(saved).toBe(0);
   expect(errors).toEqual([]);
 });
 

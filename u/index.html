@@ -95,7 +95,12 @@
 #viewShelf .pic1 canvas{display:block;height:auto;max-width:100%;width:min(100%, 460px, calc(74vh * 9 / 16));border:1px solid var(--hair);border-radius:var(--radius)}
 /* a shelf's own page: its name, who made it and when, what can be done with it; under the story, what's on it */
 .shead{display:grid;gap:var(--s2);margin-bottom:var(--s5)}
-.shead h1{margin:0}
+.shead h1{margin:0;min-width:0}
+.stitle{display:flex;gap:var(--s2) var(--s3);align-items:center;flex-wrap:wrap}
+/* Share, by the shelf's name: a small button with an icon */
+.iconbtn{display:grid;place-items:center;flex:none;width:28px;height:28px;padding:0;border:1px solid var(--ink);border-radius:var(--radius);background:var(--paper);color:var(--ink);cursor:pointer}
+.iconbtn:hover,.iconbtn[aria-expanded="true"]{background:var(--wash)}
+.iconbtn svg{width:14px;height:14px;display:block}
 .sby{margin:0;display:flex;gap:var(--s1) var(--s2);align-items:center;flex-wrap:wrap}
 .sby a{font-weight:500;text-decoration:none}
 .sby a:hover,.sby a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
@@ -260,11 +265,14 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
     <section id="viewShelf" hidden>
       <a class="dash sm back" id="backLink" href="#">← All shelves</a>
       <div class="shead">
-        <!-- [html-validate-disable-next empty-heading -- the shelf's name is filled in once it loads; the page is hidden until then] -->
-        <h1 id="oneCap"></h1>
+        <div class="stitle">
+          <!-- [html-validate-disable-next empty-heading -- the shelf's name is filled in once it loads; the page is hidden until then] -->
+          <h1 id="oneCap"></h1>
+          <!-- icon: Lucide 1.49.0 share-2 (ISC), pasted in -->
+          <button class="iconbtn" id="shareBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Share" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg></button>
+        </div>
         <p class="sby" id="oneBy"></p>
         <div class="sacts" id="oneActs">
-          <button class="btn" id="copyShelf" type="button">Copy link</button>
           <a class="btn" id="openBuilder" href="../build/" hidden>Edit</a>
           <button class="dash sm" id="oneMain" type="button" data-act="main" hidden>Make main</button>
           <button class="dash sm" id="onePrivacy" type="button" data-act="privacy" hidden>Make private</button>
@@ -695,14 +703,18 @@ async function paintMost(){
 }
 /* ---------- one shelf on its own page: its name, who made it and when, what can be done with it, the story, and
    under it what's on the shelf, a row for each spine with + Add to my shelf ---------- */
-const shown = {rows: [], list: []};   // the shelf on the page: its saved rows, and the books made from them (the same order)
+const shown = {shelf: null, rows: [], list: [], wall: null, pngs: []};   // the shelf on the page: its saved rows, the books made from them (the same order), its wall and PNGs
+const SAVED = 'shelfstackd-saved';   // the builder leaves the id of a shelf it has just saved here
 async function showShelf(id){
   $('#viewProfile').hidden = true; $('#viewShelf').hidden = false;
   document.querySelector('.phead').hidden = true; $('#privNote').hidden = true;   // the shelf has its own heading, and its maker is in it
   const p = view.profile, s = view.shelves.find(x => x.id === id), mine = view.mine;
   $('#backLink').href = pageUrl(p.username) + '#shelves';
   $('#backLink').textContent = '← @' + p.username;
-  $('#oneActs').hidden = $('#oneBy').hidden = !s; $('#oneOn').hidden = true;
+  $('#oneActs').hidden = $('#oneBy').hidden = $('#shareBtn').hidden = !s; $('#oneOn').hidden = true;
+  shown.shelf = s || null; shown.rows = []; shown.list = [];
+  // straight from Save in the builder: said once, with where sharing is
+  try { if (mine && sessionStorage.getItem(SAVED) === id){ sessionStorage.removeItem(SAVED); toast('Saved. Share it from the ↗ icon.'); } } catch {}
   if (!s){ $('#oneCap').textContent = 'This shelf is private, or it was deleted.'; $('#oneShelf').replaceChildren(); return; }
   if (mine) $('#oneCap').replaceChildren(nameButton(s)); else $('#oneCap').textContent = shelfName(s);   // yours: press its name to rename it
   const main = mine && (featured() || {}).id === s.id;
@@ -721,7 +733,7 @@ async function showShelf(id){
     [pairs, wall, pngs] = await Promise.all([Promise.all(rows.map(async r => [r, await bookOf(r)])).then(a => a.filter(x => x[1])), wallOf(s), pngsOf(s)]);
   } catch { pairs = []; }
   const list = pairs.map(x => x[1]);
-  shown.rows = pairs.map(x => x[0]); shown.list = list;
+  shown.rows = pairs.map(x => x[0]); shown.list = list; shown.wall = wall; shown.pngs = pngs;
   const draw = () => { const c = list.length && storyCanvas(list, s, wall, pngs); $('#oneShelf').replaceChildren(...(c ? [c] : [])); };
   draw(); view.drawn.push(draw);
   paintItems();
@@ -753,10 +765,42 @@ $('#oneItems').addEventListener('click', e => {
 const spineLabel = r => r ? (r.title || 'Untitled') + (r.year ? ` (${r.year})` : '') + (r.author ? ' · ' + r.author : '') : '';
 if (window.SpineTip) SpineTip.attach($('#oneShelf'), {pointer: true, canvas: () => $('#oneShelf canvas'), spots: () => ($('#oneShelf canvas') || {}).spots,
   label: i => spineLabel(shown.rows[i]), pick: i => SpineTip.flash($('#oneItems').children[i])});
-$('#copyShelf').addEventListener('click', async () => {
-  const url = location.origin + pageUrl(view.profile.username, SHELF);
-  try { await navigator.clipboard.writeText(url); toast('Link copied.'); } catch { toast(url); }
-});
+/* Share, by the shelf's name: its story as a picture (to a phone's share sheet, or saved here), the picture alone, or
+   the link. The story is drawn again for this, whole, as the builder made it. */
+const STORY_FILE = 'shelfstackd-story.png';
+async function storyBlob(){
+  if (!shown.shelf || !shown.list.length) throw new Error('This shelf’s pictures haven’t loaded. Try again in a moment.');
+  await Promise.all([fontsReady, ...Object.values(Shelf.TEX).map(t => t.ready).filter(Boolean)]);
+  const c = storyCanvas(shown.list, shown.shelf, shown.wall, shown.pngs);
+  return new Promise((res, rej) => {
+    const no = () => rej(new Error('One picture on this shelf can’t be put in a story.'));
+    try { c.toBlob(b => b ? res(b) : no(), 'image/png'); } catch { no(); }
+  });
+}
+function saveFile(blob){
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = STORY_FILE;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+async function shareShelf(what){
+  if (what === 'link'){
+    const url = location.origin + pageUrl(view.profile.username, SHELF);
+    try { await navigator.clipboard.writeText(url); toast('Link copied.'); } catch { toast(url); }
+    return;
+  }
+  toast('Making the picture…');   // a browser can take a few seconds over it
+  let blob; try { blob = await storyBlob(); } catch (err){ toast(friendly(err)); return; }
+  if (what === 'story'){
+    // a phone has a share sheet for pictures (pick Instagram, then Story); a computer doesn't, so the picture is saved
+    const file = new File([blob], STORY_FILE, {type: 'image/png'});
+    if (navigator.canShare && navigator.canShare({files: [file]}) && matchMedia('(pointer:coarse)').matches){
+      $('#toast').hidden = true;
+      try { await navigator.share({files: [file]}); return; } catch (err){ if (err && err.name === 'AbortError') return; }
+    }
+    saveFile(blob); toast('Saved as ' + STORY_FILE + '. Add it to your Instagram story.');
+    return;
+  }
+  saveFile(blob); toast('Downloaded ' + STORY_FILE + '.');
+}
 $('#oneActs').addEventListener('click', e => { const act = e.target.closest('[data-act]'); if (act) cardAction(act); });
 
 /* ---------- your own shelves, from here: each card's links and a shelf page's buttons (opening one, and a new one,
@@ -819,8 +863,9 @@ function startRename(btn){
   f.addEventListener('blur', () => finish(true, false));
 }
 document.addEventListener('click', e => { const b = e.target.closest('button[data-rename]'); if (b && view.mine){ e.preventDefault(); startRename(b); } });
-/* your cards' ··· menu: Edit, Make main, Make private or public, Delete (which asks first). One menu for every card:
-   it's filled for the card whose ··· was pressed and put under that button, inside the window. */
+/* The small menu under a button: your cards' ··· (Edit, Make main, Make private or public, Delete, which asks first),
+   and Share on a shelf's page (Share to story, Download image, Copy link). One menu for all of them: it's filled for
+   the button that was pressed and put under it, inside the window. */
 const cardMenu = document.createElement('div');
 cardMenu.id = 'cardMenu'; cardMenu.className = 'menu cardmenu'; cardMenu.setAttribute('role', 'menu'); cardMenu.hidden = true;
 document.body.append(cardMenu);
@@ -838,18 +883,24 @@ function closeCardMenu(refocus){
   if (b){ b.setAttribute('aria-expanded', 'false'); if (refocus && b.isConnected) b.focus(); }
 }
 function openCardMenu(btn){
-  const s = view.shelves.find(x => x.id === btn.dataset.more); if (!s) return;
+  const share = btn.id === 'shareBtn', s = share ? shown.shelf : view.shelves.find(x => x.id === btn.dataset.more); if (!s) return;
   closeCardMenu(false); closeMenu();
-  const main = (featured() || {}).id === s.id, item = (act, text) => `<button type="button" role="menuitem" data-act="${act}" data-id="${s.id}">${text}</button>`;
-  cardMenu.innerHTML = `<a role="menuitem" href="../build/?open=${s.id}">Edit</a>` + (s.is_public && !main ? item('main', 'Make main') : '') + item('privacy', s.is_public ? 'Make private' : 'Make public') + item('delete', 'Delete');
-  cardMenu.setAttribute('aria-label', 'More for ' + shelfName(s));
+  if (share){
+    cardMenu.innerHTML = [['story', 'Share to story'], ['download', 'Download image'], ['link', 'Copy link']].map(([k, text]) => `<button type="button" role="menuitem" data-share="${k}">${text}</button>`).join('');
+    cardMenu.setAttribute('aria-label', 'Share');
+  } else {
+    const main = (featured() || {}).id === s.id, item = (act, text) => `<button type="button" role="menuitem" data-act="${act}" data-id="${s.id}">${text}</button>`;
+    cardMenu.innerHTML = `<a role="menuitem" href="../build/?open=${s.id}">Edit</a>` + (s.is_public && !main ? item('main', 'Make main') : '') + item('privacy', s.is_public ? 'Make private' : 'Make public') + item('delete', 'Delete');
+    cardMenu.setAttribute('aria-label', 'More for ' + shelfName(s));
+  }
   cardMenu.hidden = false; cardBtn = btn; btn.setAttribute('aria-expanded', 'true');
   placeCardMenu(); cardMenu.firstElementChild.focus();
 }
 cardMenu.addEventListener('click', e => {
-  const act = e.target.closest('[data-act]'), from = cardBtn;
+  const act = e.target.closest('[data-act]'), share = e.target.closest('[data-share]'), from = cardBtn;
   closeCardMenu(false);
-  if (act){ if (from && from.isConnected) from.focus(); cardAction(act); }   // Edit is a link: it goes to the builder by itself
+  if ((act || share) && from && from.isConnected) from.focus();
+  if (act) cardAction(act); else if (share) shareShelf(share.dataset.share);   // Edit is a link: it goes to the builder by itself
 });
 cardMenu.addEventListener('keydown', e => {
   const items = [...cardMenu.querySelectorAll('[role="menuitem"]')], i = items.indexOf(document.activeElement), to = n => { e.preventDefault(); items[(n + items.length) % items.length].focus(); };
@@ -859,7 +910,7 @@ cardMenu.addEventListener('keydown', e => {
 addEventListener('resize', placeCardMenu);
 addEventListener('scroll', placeCardMenu, {passive: true});   // it stays by its button as the page moves
 document.addEventListener('click', e => {
-  const more = e.target.closest('[data-more]');
+  const more = e.target.closest('[data-more], #shareBtn');
   if (more){ if (cardBtn === more) closeCardMenu(false); else openCardMenu(more); return; }
   if (!e.target.closest('#cardMenu')) closeCardMenu(false);
 });

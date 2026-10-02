@@ -112,3 +112,11 @@ test('axe: your profile with a card\'s ··· menu open', async ({ page }) => {
   await clean(page);
 });
 
+test('axe: a shelf\'s page with Share open', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/u/?mira&shelf=aaaaaaaa-aaaa-4aaa-8aaa-000000000001');
+  await page.getByRole('button', { name: 'Share', exact: true }).click();
+  await expect(page.getByRole('menu', { name: 'Share', exact: true })).toBeVisible();
+  await clean(page);
+});
+
