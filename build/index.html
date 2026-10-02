@@ -1440,8 +1440,14 @@ async function restoreDraft(d){
 }
 
 Add.setToast(toast);
-/* opening: an empty shelf, then a draft or ?open=<id>, then a spine picked with + ADD
-   on another page, which was waiting to be put on */
+// a spine picked on a shelf's page (u/: + Add to my shelf): the saved row itself, so it's the same pictures and nothing
+// is searched for again
+const ADD_ROW = 'shelfstackd-add-row';
+function takeRow(){
+  try { const v = JSON.parse(sessionStorage.getItem(ADD_ROW) || 'null'); sessionStorage.removeItem(ADD_ROW); return v && v.row && Date.now() - v.at < 10*60e3 ? v.row : null; } catch { return null; }
+}
+/* opening: an empty shelf, then a draft or ?open=<id>, then a spine picked with + ADD on another page, or with
+   + Add to my shelf on a shelf's page, which was waiting to be put on */
 (async () => {
   boot();
   await startAccounts();
@@ -1452,6 +1458,15 @@ Add.setToast(toast);
     $('#saveNote').textContent = ''; paintAcct();
     if (f){ if (shelve(newBook(f))) toast(p.m.title + ' added to your shelf.'); }
     else { toast('Couldn’t add ' + p.m.title + '. Search for it again.'); Add.open({query: p.m.title}); }
+  }
+  const row = takeRow();
+  if (row){
+    const name = row.title || 'That spine';
+    $('#saveNote').textContent = 'Adding ' + name + '…';
+    let b = null; try { b = await rebuild({...row, item_id: undefined}); } catch {}   // a book of its own here, with a new id
+    $('#saveNote').textContent = '';
+    if (!b) toast('Couldn’t add ' + name + '. Its picture didn’t load.');
+    else { if (b.source === 'your saved shelf') b.source = 'a saved shelf'; if (shelve(b)) toast(name + ' added to your shelf.'); }
   }
   booted = true; scheduleDraft();
 })();

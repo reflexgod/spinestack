@@ -9,7 +9,7 @@ index.html            the home page (GitHub Pages serves this). Signed out: one 
 build/index.html      the shelf builder (New shelf / Edit shelf): Add, the spines as a list (drag one there or on the preview to move it), Style, the preview; at the bottom its name, who can view it, Cancel · Save · Share to Instagram
 add.js                + ADD on every page: the Add to your shelf… dialog (suggestions as you type, then the spine choices and Add to shelf); the spine finder lives here
 shelf.js              draws the spines and the story (and says where it drew each book); build/ and u/ both use it, so a shelf looks the same everywhere
-u/index.html          profiles: /u/?username with its tabs Profile (the main shelf first) · Shelves · Activity · Network (Following, Followers), and one shelf: /u/?username&shelf=<id>
+u/index.html          profiles: /u/?username with its tabs Profile (the main shelf first) · Shelves · Activity · Network (Following, Followers), and one shelf's own page: /u/?username&shelf=<id> (its name, who made it, Copy link, the story, On this shelf with + Add to my shelf; for its owner Edit, Make main, Make private or public, Delete)
 shelves/index.html    every public shelf as a card, newest first, 24 at a time (Load more); Start a new shelf
 members/index.html    Find @username (people by the start of a username or name, each with FOLLOW), and Recently active: the people behind the newest shelves
 settings/index.html   your settings (signed in only): PROFILE (display name, bio, main shelf), PHOTO (cut square, made small, sent to the Worker), ACCOUNT (private profile). A profile's Edit profile comes here
@@ -248,6 +248,9 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **A profile's tabs** (`specs/profile.spec.js`): the four tabs, their addresses and ← →; the main shelf first on
   Profile; Activity's lines; Network's Following and Followers and the numbers that open them; the account menu's
   links changing the tab on your own profile without loading it again.
+- **A shelf's page** (`specs/shelf.spec.js`): its heading, Copy link and the list of what's on it; + Add to my shelf
+  putting that same spine on the shelf being built with nothing searched for; for its owner Edit, Make main, Make
+  private, renaming it in the heading, and Delete only after the confirm; a shelf that isn't there.
 - **Settings** (`specs/settings.spec.js`): signed out and with no username yet; the three tabs and their addresses;
   Profile's Save sending the name, bio and main shelf; a photo cut square, made small (WebP, under the Worker's 2 MB),
   sent to the Worker and saved, then removed; Cancel; the private profile switch; a profile's links here.

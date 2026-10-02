@@ -16,6 +16,8 @@ const SHOTS = [
   { name: 'profile-activity', path: '/u/?mira#activity', signedIn: true },
   { name: 'profile-network', path: '/u/?mira#network', signedIn: true },
   { name: 'own-profile', path: '/u/?tester', signedIn: true },
+  { name: 'shelf-page', path: '/u/?mira&shelf=aaaaaaaa-aaaa-4aaa-8aaa-000000000001', signedIn: true },
+  { name: 'own-shelf-page', path: '/u/?tester&shelf=aaaaaaaa-aaaa-4aaa-8aaa-000000000003', signedIn: true },
   { name: 'feed', path: '/feed/?everyone', signedIn: true },
   { name: 'feed-you', path: '/feed/?you', signedIn: true },
   { name: 'shelves', path: '/shelves/', signedIn: true },

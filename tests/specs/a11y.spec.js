@@ -94,3 +94,13 @@ test('axe: members, with people found', async ({ page }) => {
   await clean(page);
 });
 
+// a shelf's own page, someone's and yours
+for (const [name, at] of [['someone\'s', '/u/?mira&shelf=aaaaaaaa-aaaa-4aaa-8aaa-000000000001'], ['your own', '/u/?tester&shelf=aaaaaaaa-aaaa-4aaa-8aaa-000000000003']]) {
+  test(`axe: a shelf's page, ${name}`, async ({ page }) => {
+    await mockNetwork(page, { signedIn: true });
+    await open(page, at);
+    await expect(page.locator('#oneItems li')).toHaveCount(2);
+    await clean(page);
+  });
+}
+

@@ -80,7 +80,25 @@
 .feat .pic1{display:block;line-height:0}
 .feat .pic1 canvas{display:block;max-width:100%;height:auto;width:calc(var(--w, 600) * var(--fk) * 1px)}
 /* one shelf on its own page: the story itself, bigger */
-#viewShelf .pic1 canvas{width:min(100%, 460px, calc(74vh * 9 / 16));border:1px solid var(--hair);border-radius:var(--radius)}
+#viewShelf .pic1{display:block;position:relative;line-height:0;width:fit-content;max-width:100%}
+#viewShelf .pic1 canvas{display:block;height:auto;max-width:100%;width:min(100%, 460px, calc(74vh * 9 / 16));border:1px solid var(--hair);border-radius:var(--radius)}
+/* a shelf's own page: its name, who made it and when, what can be done with it; under the story, what's on it */
+.shead{display:grid;gap:var(--s2);margin-bottom:var(--s5)}
+.shead h1{margin:0}
+.sby{margin:0;display:flex;gap:var(--s1) var(--s2);align-items:center;flex-wrap:wrap}
+.sby a{font-weight:500;text-decoration:none}
+.sby a:hover,.sby a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
+.sacts{display:flex;gap:var(--s3) var(--s4);align-items:center;flex-wrap:wrap;margin-top:var(--s2)}
+.onshelf{margin-top:var(--s6);max-width:680px}
+.spines{list-style:none;margin:0;padding:0}
+.spines li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:var(--s3);align-items:center;padding:var(--s2) 0;border-bottom:1px solid var(--hair)}
+.spines .sthumb{display:grid;place-items:center;height:56px}
+.spines .sthumb canvas{display:block}
+.spines .st{display:grid;min-width:0}
+.spines .st b{font-weight:500;overflow-wrap:anywhere}
+.spines .st b span{font-weight:400;color:var(--grey)}
+.spines .st > span{color:var(--grey);font-size:var(--fs-small);overflow-wrap:anywhere}
+.row{display:flex;gap:var(--s3) var(--s4);align-items:center;flex-wrap:wrap}
 .featmeta{justify-self:stretch;display:flex;gap:var(--s1) var(--s3);flex-wrap:wrap;align-items:baseline}
 .featmeta b{font-weight:500}
 /* your own shelves' cards: the name renames it, and under it are its links */
@@ -223,7 +241,24 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 
     <section id="viewShelf" hidden>
       <a class="dash sm back" id="backLink" href="#">← All shelves</a>
-      <div class="feat"><div class="pic1" id="oneShelf"></div><div class="featmeta"><b id="oneCap"></b><span class="grey" id="oneMeta"></span><a class="dash sm" id="openBuilder" href="../build/" hidden style="margin-left:auto">Open in builder</a><button class="dash sm grey" id="reportShelf" type="button" hidden style="margin-left:auto">Report</button></div></div>
+      <div class="shead">
+        <!-- [html-validate-disable-next empty-heading -- the shelf's name is filled in once it loads; the page is hidden until then] -->
+        <h1 id="oneCap"></h1>
+        <p class="sby" id="oneBy"></p>
+        <div class="sacts" id="oneActs">
+          <button class="btn" id="copyShelf" type="button">Copy link</button>
+          <a class="btn" id="openBuilder" href="../build/" hidden>Edit</a>
+          <button class="dash sm" id="oneMain" type="button" data-act="main" hidden>Make main</button>
+          <button class="dash sm" id="onePrivacy" type="button" data-act="privacy" hidden>Make private</button>
+          <button class="dash sm" id="oneDelete" type="button" data-act="delete" hidden>Delete</button>
+          <button class="dash sm grey" id="reportShelf" type="button" hidden>Report</button>
+        </div>
+      </div>
+      <div class="pic1" id="oneShelf"></div>
+      <section class="onshelf" id="oneOn" hidden>
+        <h2>On this shelf</h2>
+        <ol class="spines" id="oneItems"></ol>
+      </section>
     </section>
   </div>
 </main>
@@ -248,6 +283,17 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
       <ul class="people" id="people"></ul>
       <p class="grey" id="peopleNone" hidden></p>
       <button class="dash sm" id="peopleMore" type="button" hidden>Load more</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet" id="confirmSheet" hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div class="sheetbox">
+    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <div>
+      <h2 id="confirmTitle">Delete this shelf?</h2>
+      <p id="confirmText"></p>
+      <div class="row"><button class="btn" id="confirmYes" type="button">Delete</button><button class="dash sm" data-close type="button">Cancel</button></div>
     </div>
   </div>
 </div>
@@ -405,7 +451,18 @@ $('#googleBtn').addEventListener('click', async () => {
 /* sheets */
 let sheetFrom = null;
 function openSheet(id, focus){ sheetFrom = document.activeElement; $(id).hidden = false; const f = $(focus); if (f) f.focus(); }
-function closeSheets(){ document.querySelectorAll('.sheet').forEach(s => s.hidden = true); if (sheetFrom && sheetFrom.focus) sheetFrom.focus(); }
+function closeSheets(){
+  document.querySelectorAll('.sheet').forEach(s => s.hidden = true); if (sheetFrom && sheetFrom.isConnected && sheetFrom.focus) sheetFrom.focus();
+  if (asked){ const no = asked; asked = null; no(false); }   // a question shut without an answer is a no
+}
+// "Delete this shelf?": true only when the sheet's own button is pressed
+let asked = null;
+function sure(title, text, yes){
+  $('#confirmTitle').textContent = title; $('#confirmText').textContent = text; $('#confirmYes').textContent = yes;
+  openSheet('#confirmSheet', '#confirmYes');
+  return new Promise(res => { asked = res; });
+}
+$('#confirmYes').addEventListener('click', () => { const yes = asked; asked = null; closeSheets(); if (yes) yes(true); });
 document.querySelectorAll('.sheet').forEach(s => s.addEventListener('click', e => { if (e.target === s || e.target.closest('[data-close]')) closeSheets(); }));
 document.addEventListener('keydown', e => { if (e.key === 'Escape'){ closeSheets(); closeMenu(); } });
 
@@ -604,30 +661,74 @@ async function paintMost(){
   const draw = () => $('#most').replaceChildren(...smallSpines(list, 130));
   draw(); view.drawn.push(draw);
 }
-// one shelf on its own: the story, bigger (as its card shows it)
+/* ---------- one shelf on its own page: its name, who made it and when, what can be done with it, the story, and
+   under it what's on the shelf, a row for each spine with + Add to my shelf ---------- */
+const shown = {rows: [], list: []};   // the shelf on the page: its saved rows, and the books made from them (the same order)
 async function showShelf(id){
   $('#viewProfile').hidden = true; $('#viewShelf').hidden = false;
-  const p = view.profile, s = view.shelves.find(x => x.id === id);
+  document.querySelector('.phead').hidden = true; $('#privNote').hidden = true;   // the shelf has its own heading, and its maker is in it
+  const p = view.profile, s = view.shelves.find(x => x.id === id), mine = view.mine;
   $('#backLink').href = pageUrl(p.username) + '#shelves';
   $('#backLink').textContent = '← @' + p.username;
-  if (!s){ $('#oneCap').textContent = 'This shelf is private, or it was deleted.'; $('#oneMeta').textContent = ''; $('#oneShelf').replaceChildren(); $('#openBuilder').hidden = $('#reportShelf').hidden = true; return; }
-  $('#oneCap').textContent = shelfName(s);
-  $('#oneMeta').textContent = `${spines(countOf(s))} · ${fmtDate(s.updated_at)}`;
-  $('#openBuilder').hidden = !view.mine; $('#openBuilder').href = '../build/?open=' + s.id;
-  $('#reportShelf').hidden = view.mine; $('#reportShelf').dataset.id = s.id;
+  $('#oneActs').hidden = $('#oneBy').hidden = !s; $('#oneOn').hidden = true;
+  if (!s){ $('#oneCap').textContent = 'This shelf is private, or it was deleted.'; $('#oneShelf').replaceChildren(); return; }
+  if (mine) $('#oneCap').replaceChildren(nameButton(s)); else $('#oneCap').textContent = shelfName(s);   // yours: press its name to rename it
+  const main = mine && (featured() || {}).id === s.id;
+  $('#oneBy').innerHTML = `<span>by <a href="${esc(pageUrl(p.username))}">@${esc(p.username)}</a></span><span class="grey">· ${esc(fmtDate(s.updated_at))} · ${spines(countOf(s))}</span>` +
+    (s.is_public ? '' : '<span class="tag">private</span>') + (main ? '<span class="tag">main</span>' : '');
+  // yours: Edit, Make main, Make private or public, Delete. Anyone else's: Report.
+  $('#openBuilder').hidden = !mine; $('#openBuilder').href = '../build/?open=' + s.id;
+  for (const [b, on] of [[$('#oneMain'), mine && s.is_public && !main], [$('#onePrivacy'), mine], [$('#oneDelete'), mine]]){ b.hidden = !on; b.dataset.id = s.id; b.disabled = false; }
+  $('#onePrivacy').textContent = s.is_public ? 'Make private' : 'Make public';
+  $('#reportShelf').hidden = mine; $('#reportShelf').dataset.id = s.id;
   titled(`${shelfName(s)} by ${person(p)}`, `${shelfName(s)}: a shelf by ${person(p)} on shelfstackd.`);
   await fontsReady;
-  let list = [], wall = null, pngs = [];
-  try { [list, wall, pngs] = await Promise.all([books(await api(`shelf_items?select=${ITEM_COLS}&shelf_id=eq.${s.id}&order=position`)), wallOf(s), pngsOf(s)]); } catch { list = []; }
+  let pairs = [], wall = null, pngs = [];
+  try {
+    const rows = await api(`shelf_items?select=${ITEM_COLS}&shelf_id=eq.${s.id}&order=position`);
+    [pairs, wall, pngs] = await Promise.all([Promise.all(rows.map(async r => [r, await bookOf(r)])).then(a => a.filter(x => x[1])), wallOf(s), pngsOf(s)]);
+  } catch { pairs = []; }
+  const list = pairs.map(x => x[1]);
+  shown.rows = pairs.map(x => x[0]); shown.list = list;
   const draw = () => { const c = list.length && storyCanvas(list, s, wall, pngs); $('#oneShelf').replaceChildren(...(c ? [c] : [])); };
   draw(); view.drawn.push(draw);
+  paintItems();
 }
+// On this shelf: each spine small, its title and year, who made it, Film or Book, and + Add to my shelf
+function paintItems(){
+  const ol = $('#oneItems');
+  ol.replaceChildren(...shown.rows.map((r, i) => {
+    const li = document.createElement('li'); li.dataset.i = i;
+    li.innerHTML = `<span class="sthumb" aria-hidden="true"></span>
+      <span class="st"><b>${esc(r.title || 'Untitled')}${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${esc([r.author, r.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · '))}</span></span>
+      <button class="dash sm" type="button" data-add="${i}">+ Add to my shelf</button>`;
+    return li;
+  }));
+  const draw = () => smallSpines(shown.list, 56).forEach((sp, i) => { const at = ol.children[i]; if (at) at.querySelector('.sthumb').replaceChildren(sp); });
+  draw(); view.drawn.push(draw);
+  $('#oneOn').hidden = !shown.rows.length;
+}
+// + Add to my shelf: the saved row itself goes to the builder (the same pictures, nothing searched for again), which
+// puts it on the shelf being made there
+const ADD_ROW = 'shelfstackd-add-row';
+$('#oneItems').addEventListener('click', e => {
+  const b = e.target.closest('[data-add]'), r = b && shown.rows[+b.dataset.add]; if (!r) return;
+  try { sessionStorage.setItem(ADD_ROW, JSON.stringify({at: Date.now(), row: {kind: r.kind, title: r.title, author: r.author, year: r.year, spine_src: r.spine_src, cover_src: r.cover_src, look: r.look}})); }
+  catch { toast('Couldn’t take it to the builder. Try again.'); return; }
+  location.href = '../build/';
+});
+$('#copyShelf').addEventListener('click', async () => {
+  const url = location.origin + pageUrl(view.profile.username, SHELF);
+  try { await navigator.clipboard.writeText(url); toast('Link copied.'); } catch { toast(url); }
+});
+$('#oneActs').addEventListener('click', e => { const act = e.target.closest('[data-act]'); if (act) cardAction(act); });
 
-/* ---------- your own shelves, from here: each card's links (opening one, and a new one, are links to the builder) ---------- */
+/* ---------- your own shelves, from here: each card's links and a shelf page's buttons (opening one, and a new one,
+   are links to the builder) ---------- */
 async function cardAction(b){
   const act = b.dataset.act, id = b.dataset.id, s = view.shelves.find(x => x.id === id);
   if (!s) return;
-  if (act === 'delete' && !b.dataset.sure){ b.dataset.sure = '1'; b.textContent = 'sure? delete'; setTimeout(() => { if (b.isConnected){ delete b.dataset.sure; b.textContent = 'delete'; } }, 4000); return; }
+  if (act === 'delete' && !(await sure(`Delete “${shelfName(s)}”?`, 'The shelf and its picture go for good. This can’t be undone.', 'Delete'))) return;
   b.disabled = true;
   try {
     if (act === 'main'){
@@ -648,6 +749,7 @@ async function cardAction(b){
       workerPost('/u/forget?shelf=' + id).catch(() => {});
       const pro = s.pro || {};
       for (const k of [pro.wall_key, ...(pro.wall_items || []).map(p => p.key)].filter(Boolean)) workerPost('/m/delete?k=' + encodeURIComponent(k)).catch(() => {});
+      if (SHELF){ location.replace(pageUrl(view.profile.username) + '#shelves'); return; }   // its own page is gone: back to your shelves
       await refresh(); toast('Shelf deleted.');
     }
   } catch (err){ toast(friendly(err)); if (b.isConnected) b.disabled = false; }
