@@ -8,11 +8,14 @@ every file is and how the Worker, the accounts and the tests are set up.
 
 ## Where things stand
 
-- **Branch:** `letterboxd-flow`, pushed to `origin` (github.com/reflexgod/spinestack). It is 85 commits ahead of
-  `main` and has everything from the older local branches in it (`phase2-profiles`, `phase3-feed`, `profile-polish`,
-  `domain-move`, `drop-fallback`), so no other branch needs pushing.
-- **`main` is the live site.** GitHub Pages serves shelfstackd.com from `main`, which is still at `064ac13`. Nothing on
-  this branch is on the live pages yet. **Do not merge into `main`** until the owner says so.
+- **Branch:** `letterboxd-flow`, pushed to `origin` (github.com/reflexgod/spinestack). It has everything from the
+  older local branches in it (`phase2-profiles`, `phase3-feed`, `profile-polish`, `domain-move`, `drop-fallback`), so
+  no other branch needs pushing.
+- **`main` is the live site, and it has this branch as it was at `b9adc3b`.** The owner merged it on 2 October 2026
+  (the merge commit on `main` is `be5a44b`), so shelfstackd.com now has one shelf each, logs, the watchlist, From
+  friends and the design review. The branch is 5 commits ahead of that: the four fixes from the live test (see "Done
+  after the live test") and this note. They aren't live until the owner merges again. **A session doesn't merge into
+  `main`**: the owner does.
 - **The Worker is deployed by the owner, by hand, from this branch.** On 2 October `https://api.shelfstackd.com/health`
   listed all four scan providers, so the provider chain (`848541c`) is live. The Serper fix after it (`3774d06`) was
   deployed and checked live the same day, and nothing in `worker/` has changed since: **nothing is waiting to be
@@ -178,6 +181,24 @@ Also in this session:
 Left as it was, for the owner to decide: renaming a shelf on its own page or on the profile still changes only its
 name, so its story keeps the old caption until the shelf is next saved in the builder (12 made the two one there).
 
+## Done after the live test (2 October 2026)
+
+The owner merged into `main`, tried the live site, and found these. Each is its own commit on `letterboxd-flow`, with
+tests, waiting for the owner's next merge.
+
+1. **Home no longer tells someone with a shelf to start one.** With nothing from the people you follow, home looks
+   whether you have a shelf: with one it's still "Welcome back" and "Follow a few people to see their shelves here.";
+   only someone with no shelf gets "Welcome" and the Start your shelf line.
+2. **A shelf's page doesn't offer a title to a shelf that has it.** Your own shelf has no + ADD TO MY SHELF beside its
+   titles; on someone else's, a title that's on your shelf says "On your shelf" in grey.
+3. **Home's "New from people you follow" has logs too.** It asks `activity()` (`feed()` on a database without it) and
+   draws the newest six as the feed does: a log with its small worn cover and caption, a shelf with its card, two
+   across on a wide window.
+4. **The footer is one line**: About · Privacy · hello@shelfstackd.com. The credits are a Credits section at the end
+   of `privacy.html` (About goes to `#credits`): TMDB's logo (`tmdb.svg`, their file, unchanged) over their line, Open
+   Library, Search by Brave. The Add dialog says "Search by Brave" under the spines a search found. `site.css` and
+   `add.js` are at `?v=20261005a`.
+
 ## What's tested
 
 Both suites were run on 2 October 2026 on the laptop (Windows 11, Node 26).
@@ -203,6 +224,8 @@ Both suites were run on 2 October 2026 on the laptop (Windows 11, Node 26).
 - **After the third session** (the laptop: Windows 11, Node 26, the Chromium that Playwright 1.63 asks for):
   html-validate clean, then Playwright 484 passed, 20 skipped, none failed, `requests.spec.js` included, and
   `npm run shots` made all 50. The Worker's suite wasn't run: nothing in `worker/` changed.
+- **After the live test's fixes** (the laptop, the same day): html-validate clean, then Playwright 508 passed, 20
+  skipped, none failed. Not tried against the live site: these four fixes aren't on it until the next merge.
 - **`0007`'s SQL** was run on a local Postgres 16 first (a stand-in for Supabase's `auth` schema, then `0001` to
   `0006`, then `0007`): no errors; `rls_phase3.sql` and `rls_phase4.sql` both passed. Then on Supabase, by the owner, on
   2 October: the same two tests passed in the SQL Editor, and the three visitor checks of `docs/RUN-0007.md` step 6
@@ -246,12 +269,13 @@ never reached a commit isn't here, so ask before assuming the list is complete.
 4. **Nothing to clean up in KV after the fix.** A title whose search fell through to another provider and found a scan
    is kept as usual; one that found nothing while a provider was failing was kept for a day only, so it gets its turn
    with Serper by itself.
-5. **"Search by Brave" is in every footer**, but Serper and SerpApi (both Google Images) are now asked before Brave.
-   Whether the credit line should change is the owner's call. `tests/specs/add.spec.js` checks the line, so the test
-   changes with it.
-6. **Merging into `main`** makes all of the above the live site. Not until the owner says so. Before it: the owner
-   confirms both test suites pass. (The live database has `0004` to `0007`: `docs/RUN-0007.md`'s first check found
-   `0004`, `0005` and `0006`, and `0007` was run after it, on 2 October.)
+5. **"Search by Brave" is under the spines in the Add dialog** and in `privacy.html`'s Credits (it was in every
+   footer). Serper and SerpApi (both Google Images) are asked before Brave, and the dialog can't tell which of them
+   found a scan, so the line shows whenever spines were searched for. Whether Serper or SerpApi need a line of their
+   own is the owner's call. `tests/specs/add.spec.js` checks the line, so the test changes with it.
+6. **Merging into `main`** is the owner's. The first merge was on 2 October (`be5a44b`). The four fixes from the live
+   test are next: run both test suites, then merge as `docs/LAUNCH.md` step 6 has it. (The live database has `0004`
+   to `0007`.)
 7. **Done: the page tests were run on the laptop** on 2 October, and `requests.spec.js` passes with the Chromium
    Playwright 1.63 asks for (it failed in the cloud container only because of an older Chromium). Run them again
    before the merge, as `docs/LAUNCH.md` step 6 says.
