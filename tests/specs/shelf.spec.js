@@ -2,7 +2,7 @@
 // wash (the story is only for Share), what's on it with + Add to my shelf (beside the picture on a wide window), and
 // for its owner Edit, Make private or public, and Delete with a confirm.
 const { test, expect } = require('@playwright/test');
-const { SHELVES, ME, mockNetwork, watchErrors, open } = require('../site');
+const { SHELVES, ME, CORS, mockNetwork, watchErrors, open } = require('../site');
 
 const theirs = SHELVES[1], mine = SHELVES[3];   // @mira's "shelf number 1"; the made-up account's second shelf
 const rows = page => page.locator('#oneItems li');
@@ -38,7 +38,9 @@ test('someone\'s shelf: its name, who made it and when, the shelf itself, and wh
   await expect(first.locator('.st b')).toHaveText('The Waves 1931');
   await expect(first.locator('.st > span')).toHaveText('Virginia Woolf · Book');
   await expect(first.locator('.sthumb canvas')).toHaveCount(1);
-  await expect(first.getByRole('button', { name: '+ Add to my shelf' })).toBeVisible();
+  // both titles are on the made-up account's own shelf already: "On your shelf", not + Add to my shelf
+  await expect(rows(page).locator('.onmine')).toHaveText(['On your shelf', 'On your shelf']);
+  await expect(page.locator('#oneItems').getByRole('button', { name: '+ Add to my shelf' })).toHaveCount(0);
   // the list is beside the picture on a wide window, its top in line with the picture's; under it on a phone
   const pic = await page.locator('#oneShelf').boundingBox(), list = await page.locator('#oneOn').boundingBox();
   if (test.info().project.name.startsWith('desktop')){
@@ -267,5 +269,68 @@ test('the way back is plain grey text, a small action is dashed, and one that lo
   expect(await look(page.getByRole('button', { name: 'Delete' }))).toEqual({ dashed: true, grey: true, capitals: true });    // it loses the shelf
   await back.click();
   await expect(page).toHaveURL(/\/u\/\?tester$/);
+});
+
+/* ---------- a title that's already on your shelf isn't offered to it again ---------- */
+// the made-up account's own shelf answered with only these titles (the tests' shelves all hold the same two otherwise)
+const myShelfHolds = (page, titles) => page.route(u => u.pathname === '/rest/v1/shelf_items' && u.searchParams.get('shelf_id') === 'eq.' + SHELVES[0].id, route => {
+  if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
+  return route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify(titles.map((t, i) => ({ position: i, kind: t[0], title: t[1], year: t[2] }))) });
+});
+const offered = page => page.locator('#oneItems li').evaluateAll(lis => lis.map(li => li.querySelector('[data-add]') ? '+ Add to my shelf' : (li.querySelector('.onmine') || {}).textContent || ''));
+
+test('someone else\'s shelf: a title already on your shelf says "On your shelf" in grey; one that isn\'t has + Add to my shelf', async ({ page }) => {
+  const errors = watchErrors(page);
+  await mockNetwork(page, { signedIn: true });
+  await myShelfHolds(page, [['book', 'the waves ', 1931], ['movie', 'Gummo', 1997]]);   // the same title, typed a little differently
+  const asked = page.waitForRequest(r => r.url().includes('/rest/v1/shelf_items') && r.url().includes(SHELVES[0].id));
+  await open(page, `/u/?mira&shelf=${theirs.id}`);
+  expect(new URL((await asked).url()).searchParams.get('select')).toBe('kind,title,year');   // your own shelf (the one saved last), only what's needed to compare
+  await expect(rows(page)).toHaveCount(2);
+  expect(await offered(page)).toEqual(['On your shelf', '+ Add to my shelf']);   // The Waves is on yours; Journey by Moonlight isn't
+  const said = rows(page).first().locator('.onmine');
+  expect(await said.evaluate(el => { const s = getComputedStyle(el); return [s.color, s.fontSize, s.textTransform]; })).toEqual(['rgb(107, 107, 107)', '11px', 'none']);
+  await expect(rows(page).first().getByRole('button')).toHaveCount(0);
+  // where the button would be: at the right of its row
+  const row = await rows(page).first().boundingBox(), at = await said.boundingBox();
+  expect(Math.abs(at.x + at.width - (row.x + row.width))).toBeLessThanOrEqual(1);
+  // the same film in another year is another title
+  await myShelfHolds(page, [['book', 'The Waves', 2019], ['movie', 'The Waves', 1931]]);
+  await open(page, `/u/?mira&shelf=${theirs.id}`);
+  expect(await offered(page)).toEqual(['+ Add to my shelf', '+ Add to my shelf']);
+  expect(errors).toEqual([]);
+});
+
+test('your own shelf: nothing is offered beside its titles (they\'re on it)', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/u/?tester&shelf');
+  await expect(rows(page)).toHaveCount(2);
+  expect(await offered(page)).toEqual(['', '']);
+  await expect(page.locator('#oneItems').getByRole('button')).toHaveCount(0);
+  await expect(page.locator('#oneItems')).not.toContainText(/add to my shelf|on your shelf/i);
+});
+
+test('an older shelf of yours: only the titles that aren\'t on your shelf are offered to it', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await myShelfHolds(page, [['book', 'Journey by Moonlight', 1937]]);
+  await open(page, `/u/?tester&shelf=${mine.id}`);   // from before there was one shelf each: not the one saved last
+  await expect(rows(page)).toHaveCount(2);
+  expect(await offered(page)).toEqual(['+ Add to my shelf', '']);
+});
+
+test('with no shelf of your own yet, or signed out, every title is offered', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, ownShelf: false });
+  await open(page, `/u/?mira&shelf=${theirs.id}`);
+  await expect(rows(page)).toHaveCount(2);
+  expect(await offered(page)).toEqual(['+ Add to my shelf', '+ Add to my shelf']);
+});
+
+test('if your own shelf can\'t be read, every title is offered, as before', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await page.route(u => u.pathname === '/rest/v1/shelf_items' && u.searchParams.get('shelf_id') === 'eq.' + SHELVES[0].id, route =>
+    route.request().method() === 'OPTIONS' ? route.fulfill({ status: 204, headers: CORS }) : route.fulfill({ status: 500, headers: CORS, contentType: 'application/json', body: '{"message":"no"}' }));
+  await open(page, `/u/?mira&shelf=${theirs.id}`);
+  await expect(rows(page)).toHaveCount(2);
+  expect(await offered(page)).toEqual(['+ Add to my shelf', '+ Add to my shelf']);
 });
 

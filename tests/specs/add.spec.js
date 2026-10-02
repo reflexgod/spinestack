@@ -146,29 +146,56 @@ test('when spine search is capped, the dialog says it is resting and offers the 
   expect(errors).toEqual([]);
 });
 
-// the footer, the same on every page: TMDB's line and Search by Brave (each asks for it), Open Library, Privacy and
-// where to write, as small print
+// the footer, the same on every page: one line of small print, About · Privacy · hello@shelfstackd.com. The credits
+// (TMDB's line and logo, Open Library, Search by Brave) are under About, on the privacy page
 for (const pg of [...PAGES, { name: 'privacy', path: '/privacy.html' }, { name: 'not found', path: '/nope' }]) {
-  test(`${pg.name}: the footer credits TMDB, Open Library and Brave, with Privacy and where to write, in a line or two`, async ({ page }) => {
+  test(`${pg.name}: the footer is one line: About · Privacy · hello@shelfstackd.com`, async ({ page }) => {
     await mockNetwork(page);
     await open(page, pg.path);
     const foot = page.locator('footer');
-    await expect(foot).toContainText('This product uses the TMDB API but is not endorsed or certified by TMDB.');
-    await expect(foot.getByRole('link', { name: 'Open Library' })).toHaveAttribute('href', 'https://openlibrary.org/');
-    const credit = foot.getByRole('link', { name: 'Search by Brave' });
-    await expect(credit).toBeVisible();
-    await expect(credit).toHaveAttribute('href', 'https://search.brave.com/');
-    expect(await foot.getByRole('link', { name: 'Privacy' }).evaluate(a => new URL(a.href).pathname)).toBe('/privacy.html');
+    expect((await foot.innerText()).replace(/\s+/g, ' ').trim()).toBe('About · Privacy · hello@shelfstackd.com');
+    await expect(foot.locator('a')).toHaveText(['About', 'Privacy', 'hello@shelfstackd.com']);
+    expect(await foot.getByRole('link', { name: 'About' }).evaluate(a => { const u = new URL(a.href); return u.pathname + u.hash; })).toBe('/privacy.html#credits');
+    expect(await foot.getByRole('link', { name: 'Privacy' }).evaluate(a => { const u = new URL(a.href); return u.pathname + u.hash; })).toBe('/privacy.html');
     await expect(foot.getByRole('link', { name: 'hello@shelfstackd.com' })).toHaveAttribute('href', 'mailto:hello@shelfstackd.com');
-    await expect(foot.locator('a')).toHaveCount(4);
-    // small print, not a landing page's footer: no headings, steps or button, grey on white, and short (it was 635px
-    // tall on a phone, black, with How it works in it)
-    await expect(foot.locator('h2, h3, ol, .btn')).toHaveCount(0);
-    await expect(foot).not.toContainText(/how it works/i);
+    // small grey print on one line, with no credits in it any more (they made it three lines on a phone)
     expect(await foot.evaluate(el => { const s = getComputedStyle(el); return [s.backgroundColor, s.color, s.fontSize]; })).toEqual(['rgba(0, 0, 0, 0)', 'rgb(107, 107, 107)', '11px']);
-    expect((await foot.boundingBox()).height).toBeLessThanOrEqual(isPhone() ? 160 : 100);
+    const tops = await foot.locator('a').evaluateAll(as => as.map(a => Math.round(a.getBoundingClientRect().top)));
+    expect(new Set(tops).size).toBe(1);
+    expect((await foot.locator('.fnav').boundingBox()).height).toBeLessThan(22);
+    expect((await foot.boundingBox()).height).toBeLessThanOrEqual(64);
+    await expect(foot).not.toContainText(/TMDB|Open Library|Brave|how it works/i);
+    await expect(foot.locator('h2, h3, ol, .btn, img')).toHaveCount(0);
+    // About goes to the Credits (signed out, Settings opens its sign-in sheet over the page: that's shut first)
+    if (await page.locator('.sheet:not([hidden])').count()) await page.keyboard.press('Escape');
+    await foot.getByRole('link', { name: 'About' }).click();
+    await expect(page).toHaveURL(/\/privacy\.html#credits$/);
+    await expect(page.getByRole('heading', { name: 'Credits' })).toBeInViewport();
   });
 }
+
+test('the Add dialog says "Search by Brave", small and grey, under the spines a search found', async ({ page }) => {
+  await openDialog(page, {}, '/feed/?everyone');
+  const d = dialog(page), by = d.getByRole('link', { name: 'Search by Brave' });
+  await expect(by).toBeHidden();   // nothing has been searched for yet: the titles come from TMDB and Open Library
+  await box(d).fill('gummo');
+  await expect(options(d)).toHaveCount(1);
+  await expect(by).toBeHidden();
+  await options(d).first().click();
+  await expect(d.getByRole('radiogroup', { name: 'Which spine' }).getByRole('radio')).toHaveCount(2);
+  await expect(by).toBeVisible();
+  await expect(by).toHaveAttribute('href', 'https://search.brave.com/');
+  expect(await by.evaluate(el => { const s = getComputedStyle(el); return [s.color, s.fontSize]; })).toEqual(['rgb(107, 107, 107)', '11px']);
+  // under the spines, on the line of Add to shelf, at the left
+  const at = await by.boundingBox(), found = await d.locator('#addFound').boundingBox(), go = await d.getByRole('button', { name: 'Add to shelf' }).boundingBox();
+  expect(at.y).toBeGreaterThanOrEqual(found.y + found.height);
+  expect(Math.abs(at.x - found.x)).toBeLessThanOrEqual(4);
+  expect(at.x + at.width).toBeLessThan(go.x);
+  expect(Math.abs(at.y + at.height / 2 - (go.y + go.height / 2))).toBeLessThanOrEqual(2);
+  // Log it and Watchlist search for no spines, so they don't say it
+  await d.getByRole('radio', { name: 'Log it' }).check();
+  await expect(by).toBeHidden();
+});
 
 /* ---------- 4. the builder's smaller touches ---------- */
 test('the preview is not hidden by the Save bar', async ({ page }) => {

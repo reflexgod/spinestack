@@ -5,12 +5,13 @@ Live at https://shelfstackd.com (this repository and its folders keep the old wo
 Type a film or a book, get its real spine, put it on your shelf (one each), save it to your profile. From its page the shelf can be shared as an Instagram story. You can also log a film or a book you watched or read, which goes on the feed with its cover, and keep a watchlist.
 
 ```
-index.html            the home page (GitHub Pages serves this). Signed out: the newest public shelf, large, then one line about the site and Make a shelf (the black button on that screen), How it works in three steps, and the next newest shelves; signed in: a welcome, new shelves from people you follow (⚡ All activity), then Just shelved. Links to the old builder here (/?open=, /#shelf) go on to build/
+index.html            the home page (GitHub Pages serves this). Signed out: the spine wall (one strip of the newest spines from different public shelves, a few from each person, up to 24, standing on a thin shelf line, each shelf's spines a link to it; 280px tall at most, 200px on a phone, where the rest scroll sideways; the sample shelf while there are none), then one line about the site and Make a shelf (the black button on that screen), How it works in three steps, and the newest shelves; signed in: a welcome, New from people you follow (⚡ All activity: a row of cards, one for each person you follow with the newest thing they shelved or logged, a log's worn cover or a shelf's spines on the grey panel, their photo and @username in a thin bar under it, and under the card watched, read or shelved and the date; six across, three on a phone and the rest sideways), then Just shelved. Links to the old builder here (/?open=, /#shelf) go on to build/
 build/index.html      the shelf builder (Your shelf: there's one shelf each, and signed in it opens yours): Add, the spines as a list (drag one there or on the preview to move it), Style, the preview; at the bottom its name (one name: it's the caption on the story too), who can view it, Cancel · Save. Clear asks first
 add.js                + ADD on every page: the Add dialog. Three choices at the top: Put on shelf (suggestions as you type, then the spine choices and Add to shelf; the spine finder lives here), Log it (the cover as the feed will show it, a caption if you want one, Post) and Watchlist (Add to watchlist)
+bare.js               saved shelves drawn small from their rows in shelf_items: each row back into a book (its pictures through the Worker), then the shelf cut out of a bare story, as the profile's hero draws it (home's cards), or its spines one by one, all at one scale (home's spine wall). The same as u/'s own: keep them in step
 wear.js               a log's cover, worn: one corner dog-eared (a hairline round the fold and a soft shadow under it, so it reads on a white poster), fine scratches, rubbed edges and a little fade, drawn on a canvas from how long ago it was logged (lightly worn that day, with two or three scratches to see; faded after a week, worn after a month). No stamp and nothing written on it
 shelf.js              draws the spines and the story (and says where it drew each book); build/ and u/ both use it, so a shelf looks the same everywhere
-u/index.html          profiles: /u/?username with its tabs Profile (their shelf, big, then Watchlist and, on your own, From friends) · Activity · Network (Following, Followers), and the shelf's own page: /u/?username&shelf (or &shelf=<id>, the older links): its name with Share beside it (Share to story, Download image, Copy link), who made it, the shelf itself (its books on the grey panel, as the profile has them; the 9:16 story is only made for Share), and On this shelf with + Add to my shelf (to the right of the shelf on a wide window); for its owner Edit, Make private or public, Delete
+u/index.html          profiles: /u/?username with its tabs Profile (their shelf, big, then Watchlist and, on your own, From friends) · Activity · Network (Following, Followers), and the shelf's own page: /u/?username&shelf (or &shelf=<id>, the older links): its name with Share beside it (Share to story, Download image, Copy link), who made it, the shelf itself (its books on the grey panel, as the profile has them; the 9:16 story is only made for Share), and On this shelf with + Add to my shelf (to the right of the shelf on a wide window; a title that's already on your own shelf says "On your shelf" instead, and on your own shelf nothing is offered); for its owner Edit, Make private or public, Delete
 shelves/index.html    every public shelf as a card, newest first, 24 at a time (Load more); Your shelf
 members/index.html    Find @username (people by the start of a username or name, each with FOLLOW), and Recently active: the people behind the newest shelves
 settings/index.html   your settings (signed in only): PROFILE (display name, bio), PHOTO (cut square, made small, sent to the Worker), ACCOUNT (private profile). A profile's Edit profile comes here
@@ -18,12 +19,14 @@ feed/index.html       the feed: /feed/, FOLLOWING · YOU · EVERYONE, a line for
 worker-address.js     sends Worker requests to its workers.dev address on networks that block api.shelfstackd.com
 favicon.svg           the mark: three spines on a shelf. favicon-32.png, favicon.ico and apple-touch-icon.png are made from it (tests/art.js); every page links them
 favicon.ico           the same mark for a browser that asks for /favicon.ico whatever the page says (without it, that request is a 404 on every page)
+tmdb.svg              TMDB's logo, their own file as it comes (the "primary short" one from themoviedb.org/about/logos-attribution), shown small in privacy.html's Credits: their terms ask for it beside their line
+privacy.html          what the site keeps and who sees it; at its end, Credits (#credits, where About in every footer goes): TMDB's logo and line, Open Library, Search by Brave
 .well-known/appspecific/com.chrome.devtools.json   an empty answer for Chrome, which asks every localhost site for this file while its DevTools are open (the other 404 in the network panel). Nothing reads it
 og.jpg                the picture a shared link shows (1200 x 630: the logo and a shelf); every page names it in its og: and twitter: tags
 sample-shelf.jpg      the builder's sample shelf (it's only at build/?sample now: a new shelf starts empty) as a picture; home shows it ("a shelf, for example") while there are no public shelves. Made by tests/art.js
 spinetip.js           a shelf's picture: hovering a spine shows "Title (year) · creator", pressing it goes to its row in the list (a shelf's page, and the builder's preview). It uses the places shelf.js says it drew each book
 cards.js              shelf cards: finds the books in a shelf's preview picture and cuts the 2:3 card round them (home, the feed, profiles), keeping what it found per preview key
-site.css              the look every page shares: one :root block of variables (the 950px column, the type scale, the 4/8/12/16/24/40 spacing, the 3px radius) and what uses them everywhere (the top bar, headings, buttons, fields, shelf cards, tabs, sheets, the footer: two lines of small print). A page's own <style> holds only what that page alone needs
+site.css              the look every page shares: one :root block of variables (the 950px column, the type scale, the 4/8/12/16/24/40 spacing, the 3px radius) and what uses them everywhere (the top bar, headings, buttons, fields, shelf cards, tabs, sheets, the footer: one line, About · Privacy · hello@shelfstackd.com). A page's own <style> holds only what that page alone needs
 nav.js                the top bar on every page: who is signed in, the account menu (Home, Profile, Shelf, Activity, Network, Settings, Sign out), + ADD and the ▾ next to it. The places are in each page's markup, in one order signed in or out: ⚡ · Shelves · Members · search
 404.html              what GitHub Pages sends for an address that isn't there: a line and the way home. Its links start at the root (/), since it's served at any depth
 admin.html            approve or delete archive uploads (needs the admin token); read reports (Google sign-in, admins only)
@@ -123,8 +126,8 @@ curl -H "Authorization: Bearer <ADMIN_TOKEN>" "https://api.shelfstackd.com/admin
 ```
 
 The second asks one provider alone and shows what it said (it costs one search): the way to check that a key works.
-`/health` says which providers have a key (`scans`), without the admin token. Every page's footer says "Search by
-Brave", after TMDB's line and Open Library.
+`/health` says which providers have a key (`scans`), without the admin token. The Add dialog says "Search by Brave"
+under the spines a search found, and so do the Credits on `privacy.html`, which every page's footer links as About.
 
 `cd worker && npm test` runs the whole chain in the runtime `wrangler dev` uses, against made-up providers
 (`test/providers.mjs`): the order, the caps, out-for-the-day, Serper's credits, `/admin/usage`, Serper asked without
@@ -337,8 +340,9 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **The dialog's search** (`specs/add.spec.js`): suggestions while typing with one search for a word typed quickly, a
   slower earlier answer dropped, six results in order of closeness, ↑ ↓ Enter Esc, Enter searching at once, the
   loading and nothing-found lines, at the right of the All · Films · Books row (nothing held open, nothing moving);
-  the capped answer from `/scans` and its message; every page's footer (TMDB's line, Open Library, Search by Brave,
-  Privacy, hello@shelfstackd.com, and nothing else, in small print); the builder's count and limit, its empty shelf,
+  the capped answer from `/scans` and its message; "Search by Brave", small and grey, under the spines a search found
+  (not before a search, and not in Log it or Watchlist); every page's footer (one line of small grey print: About ·
+  Privacy · hello@shelfstackd.com, About going to the Credits, and no credits in it); the builder's count and limit, its empty shelf,
   and the note under the preview clear of the Save bar.
 - **The look** (`specs/look.spec.js`): the content and the bar's contents in one 950px column on every page, the type
   scale, one black button a screen, shelf cards six across at 150px (three on a phone) cut 2:3, the profile's name,
@@ -356,7 +360,8 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **A shelf's page** (`specs/shelf.spec.js`): its heading, Share (the story to a share sheet or saved, the picture,
   the link), the "Saved." line once after Save, the shelf itself on the grey panel (not the story: nothing drawn behind
   the books, and on the first screen on a phone), and the list of what's on it, to its right on a wide window and
-  under it on a phone; the way back as plain grey text, a small action dashed, Delete dashed in grey; + Add to my shelf putting that same spine on your shelf with nothing searched for;
+  under it on a phone; the way back as plain grey text, a small action dashed, Delete dashed in grey; + Add to my shelf putting that same spine on your shelf with nothing searched for, and not offered for a title your shelf
+  already has ("On your shelf" on someone else's shelf, nothing on your own);
   for its owner Edit, Make private, renaming it in the heading, and Delete only after the confirm (then back to the
   profile); `/u/?name&shelf` as their shelf, and with none yet; a shelf that isn't there.
 - **Spines on a picture** (`specs/tips.spec.js`): on a shelf's page and on the builder's preview, the tooltip over a
@@ -364,13 +369,20 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **Settings** (`specs/settings.spec.js`): signed out and with no username yet; the three tabs and their addresses;
   Profile's Save sending the name and bio (no main shelf to pick); a photo cut square, made small (WebP, under the Worker's 2 MB),
   sent to the Worker and saved, then removed; Cancel; the private profile switch; a profile's links here.
-- **Shelf cards** (`specs/cards.spec.js`): on home, the feed and a profile, a pile, covers and a row are each in the
+- **Shelf cards** (`specs/cards.spec.js`): on home's Just shelved, the feed and a profile, a pile, covers and a row are each in the
   middle of their card with room round them, the caption and the "made with" line clipped off, on the story's colour;
   a picture is looked at once (kept per preview key); a picture with no plain background, or one that comes without
   CORS, still shows with the stylesheet's cut.
-- **Home's copy** (in `specs/site.spec.js`): signed out, the newest shelf large (cut to its books, a link to it), the
+- **Home's copy** (in `specs/site.spec.js`): signed out, the spine wall (the newest spines, three from each person
+  first and then more from the same shelves up to 24, each shelf's spines one link to it in their order on it, on a
+  1px line, 280px at most and fitting across the column, 200px on a phone and sideways, never stretched, in the middle
+  when there are only a few), the
   one line under it from the left, Make a shelf as the one black button (the bar's + outlined there), How it works
-  in three steps, with no "lets you" tiles; signed in, the welcome and ⚡ All activity; no em dash and no
+  in three steps, with no "lets you" tiles; signed in, the welcome and ⚡ All activity, and New from people you follow
+  as a row of cards (from `activity()`, one for each person, the newest thing from them: a log's worn cover, a shelf's
+  spines on the grey panel, the thin bar with their photo and @username, watched, read or shelved and the date under
+  it, no captions; 2:3, a 1px border, no shadow, six across or three on a phone and the rest sideways; shelves only,
+  from `feed()`, on a database without logs; an empty panel when a shelf's spines can't be read); no em dash and no
   rule-of-three line; no ellipsis on a placeholder or a menu item (home's welcome line keeps its one).
 - **Shelves and Members** (`specs/shelves.spec.js`, `specs/members.spec.js`): every shelf as a card, 24 at a time and
   what Load more asks for; one people search 300 ms after the last key, Enter at once, the search kept in the address,
@@ -381,11 +393,12 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **A page that isn't there** (`specs/notfound.spec.js`): any missing address, however deep, gets `404.html` with the
   status 404 (`tests/serve.js` does what GitHub Pages does), styled, with a link home that works from there.
 - **Privacy** (`specs/privacy.spec.js`): the page's sections, and that it says what the site does now (the feed, being
-  found, follows, private shelves and profiles, Settings, the photo).
+  found, follows, private shelves and profiles, Settings, the photo); and its Credits: TMDB's logo (their file,
+  unchanged, loaded, 14px tall) over their line, Open Library and Search by Brave.
 - **Nothing missing** (`specs/requests.spec.js`): every page, signed out and signed in, gets an answer for everything
   it asks this site for; and the two things a browser asks for by itself (`/favicon.ico`, and Chrome's DevTools file)
   are there.
-- **An empty site** (`specs/empty.spec.js`): with no public shelves, home shows the sample shelf where the newest one would be, and
+- **An empty site** (`specs/empty.spec.js`): with no public shelves, home shows the sample shelf on the spine wall's line, and
   shelves, members and the feed each say so in a line.
 - **The feed** (`specs/feed.spec.js`): the three tabs and which one opens, what a line says for a shelf and for a log
   (with the clock held still, so "today", "2h" and "1w" are known), Load more, a log's cover (72 x 108px, in line
@@ -396,7 +409,8 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   for); Watchlist's Add to watchlist, and the database's answers when it's full or the title is already there; a title
   keeping its place when the choice changes; signed out and with no username yet; before the database has logs.
 - **A new account** (`specs/newuser.spec.js`, with `mockNetwork`'s `fresh`: a username and nothing else): home says
-  "Welcome" (not "Welcome back") and what to do first; your empty shelf, watchlist, From friends, Activity, Following
+  "Welcome" (not "Welcome back") and what to do first (only someone with no shelf is told to start one: with a shelf
+  and nothing from people they follow it's still "Welcome back", and "Follow a few people to see their shelves here."); your empty shelf, watchlist, From friends, Activity, Following
   and Followers each say what to do next, with a link to Members where that's it; someone else's empty lists stay
   plain; the feed's Following and You; the username sheet speaks of one shelf.
 - **No connection** (`specs/offline.spec.js`): signed in, with the database out of reach, Settings, the feed's You tab
@@ -413,7 +427,8 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   lightly worn on the day (a few fine scratches show, and the fold's hairline and shadow show on a white poster), more
   faded after a week and more worn after a month, and the same log worn the same way every time.
 
-`npm run shots` (in `tests/`) saves screenshots of home (and home with no shelves yet), the builder, a profile's tabs,
+`npm run shots` (in `tests/`) saves screenshots of home (signed in, following five more made-up people so its row of
+cards is full; signed out; and with no shelves yet), the builder, a profile's tabs,
 your own profile (and with no shelf yet), a shelf's page, the feed (and before the database has logs), + ADD (its
 choices, Log it, Watchlist), shelves, members, settings, privacy and the not-found page at 1280px and 390px into
 `tests/shots/`, with the tests' made-up data, the real fonts, and the clock held at 30 September 2026, 14:00 UTC.
@@ -472,7 +487,7 @@ Keys go in `backend/.env` only. `.gitignore` already keeps `.env` and `data/` ou
 
 - Search engines sometimes rate-limit SearXNG, so results vary. The cache helps more over time.
 - Scans are the studios' and publishers' artwork; each spine links to where it was found. To remove one, delete its files in `backend/data/media/` and its row in `backend/data/cache.db`.
-- TMDB requires the credit line that's already in the page footer.
+- TMDB requires its credit line and logo: they're in `privacy.html`'s Credits, which every page's footer links as About.
 
 ## To do
 

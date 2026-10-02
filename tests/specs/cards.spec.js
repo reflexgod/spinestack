@@ -33,7 +33,7 @@ async function cutRound(loc, layout, dark){
   return s;
 }
 
-for (const [name, path, root] of [['home', '/', '#folRow'], ['the feed', '/feed/?following', '#items'], ['a profile\'s Activity', '/u/?mira#activity', '#acts']]) {
+for (const [name, path, root] of [['home', '/', '#inGrid'], ['the feed', '/feed/?following', '#items'], ['a profile\'s Activity', '/u/?mira#activity', '#acts']]) {
   test(`${name}: each card is cut round its books, whatever the layout`, async ({ page }) => {
     const errors = watchErrors(page);
     await mockNetwork(page, { signedIn: true });
@@ -56,15 +56,20 @@ test('your own Activity\'s cards are cut the same way', async ({ page }) => {
 
 test('a picture is looked at once: what was found is kept per preview key, for this visit and the next', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
-  await open(page, '/');
-  await cutRound(card(page, '#folRow', pile), 'stack', false);
-  // home shows @mira's shelves twice (people you follow, and just shelved): six pictures, each looked at once
-  const cards = await page.locator('.pic img').count(), looked = await page.evaluate(() => Cards.measured);
-  expect(looked).toBeLessThan(cards);
+  await open(page, '/feed/?following');
+  await cutRound(card(page, '#items', pile), 'stack', false);
+  // each shelf's picture once, however many cards show it
+  const keys = await page.locator('.pic img').evaluateAll(els => els.map(im => new URL(im.src).searchParams.get('k')));
+  await expect.poll(() => page.evaluate(() => Cards.measured)).toBe(new Set(keys).size);
   await expect.poll(() => page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('shelfstackd-crops-1') || '{}')))).toContain(pile.preview_key);
+  // home, then: the same pictures in Just shelved are not looked at again
+  await open(page, '/');
+  await cutRound(card(page, '#inGrid', pile), 'stack', false);
+  const home = await page.locator('#inGrid .pic img').evaluateAll(els => els.map(im => new URL(im.src).searchParams.get('k')));
+  expect(await page.evaluate(() => Cards.measured)).toBe(home.filter(k => !keys.includes(k)).length);
   await page.reload();
   await page.waitForLoadState('networkidle');
-  await cutRound(card(page, '#folRow', pile), 'stack', false);
+  await cutRound(card(page, '#inGrid', pile), 'stack', false);
   expect(await page.evaluate(() => Cards.measured)).toBe(0);
 });
 

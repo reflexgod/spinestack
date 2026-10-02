@@ -32,5 +32,5 @@ test('the not-found page\'s other links: the logo, Shelves, Members, and the foo
   await mockNetwork(page);
   await page.goto('/a/b/c');
   const hrefs = await page.locator('a').evaluateAll(as => as.map(a => a.getAttribute('href')));
-  expect(hrefs).toEqual(['/', '/shelves/', '/members/', '/', '/shelves/', 'https://openlibrary.org/', 'https://search.brave.com/', '/privacy.html', 'mailto:hello@shelfstackd.com']);
+  expect(hrefs).toEqual(['/', '/shelves/', '/members/', '/', '/shelves/', '/privacy.html#credits', '/privacy.html', 'mailto:hello@shelfstackd.com']);
 });

@@ -8,7 +8,7 @@ const { mockNetwork, PICTURE, SHELVES } = require('./site');
 
 const PORT = 8183, BASE = `http://127.0.0.1:${PORT}`, OUT = path.resolve(process.argv[2] || path.join(__dirname, 'shots'));
 const SHOTS = [
-  { name: 'home', path: '/', signedIn: true },
+  { name: 'home', path: '/', signedIn: true, friends: true },   // following five more people, so the row of cards is full
   { name: 'home-signed-out', path: '/', signedIn: false },
   { name: 'home-empty', path: '/', signedIn: false, empty: true },
   { name: 'build', path: '/build/', signedIn: true },
@@ -54,7 +54,7 @@ const LAYOUTS = Object.fromEntries(SHELVES.map(s => [s.id, s.layout]));
 async function drawPreviews(page) {
   await page.evaluate(async LAYOUTS => {
     if (!window.Shelf) return;
-    const imgs = [...document.querySelectorAll('.thumbs .pic img, .items .pic img, #leadLink img')]; if (!imgs.length) return;   // #leadLink: signed-out home's large shelf
+    const imgs = [...document.querySelectorAll('.thumbs .pic img, .items .pic img')]; if (!imgs.length) return;
     await Promise.all(['500 52px "Geist Mono"', '600 40px Oswald'].map(f => document.fonts.load(f).catch(() => {})));
     const pal = [['#161616', '#F1EEE6'], ['#F2B6C5', '#1F2E26'], ['#1C1B21', '#E8D23C'], ['#EFE7D6', '#3B2E25'], ['#24456B', '#F3E9D2'], ['#7A1F1F', '#F5E6C8']];
     const cover = (bg, fg) => { const c = document.createElement('canvas'); c.width = 400; c.height = 600; const x = c.getContext('2d'); x.fillStyle = bg; x.fillRect(0, 0, 400, 600); x.fillStyle = fg; x.beginPath(); x.arc(200, 220, 80, 0, 7); x.fill(); return c; };
@@ -89,7 +89,7 @@ async function drawPreviews(page) {
       for (const shot of SHOTS) {
         const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: w < 500 ? 2 : 1 });
         await page.clock.setFixedTime(new Date('2026-09-30T14:00:00Z'));
-        await mockNetwork(page, { signedIn: shot.signedIn, realFonts: true, empty: !!shot.empty, logs: shot.logs !== false, ownShelf: shot.ownShelf !== false });
+        await mockNetwork(page, { signedIn: shot.signedIn, realFonts: true, empty: !!shot.empty, logs: shot.logs !== false, ownShelf: shot.ownShelf !== false, friends: !!shot.friends });
         await page.goto(BASE + shot.path); await page.waitForLoadState('networkidle');
         await page.evaluate(() => document.fonts.ready);
         await drawPreviews(page);

@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700&display=swap">
-<link rel="stylesheet" href="site.css?v=20261004a">
+<link rel="stylesheet" href="site.css?v=20261005a">
 <style>
 /* a page to read: the shared column, with the text kept to a comfortable width in it */
 body{line-height:1.65}
@@ -36,6 +36,8 @@ h1{margin-bottom:var(--s1)}
 h2{margin-top:var(--s6)}
 li{margin:0 0 var(--s2)}
 ul{padding-left:1.2em;margin:0 0 var(--s3)}
+/* Credits: TMDB's logo, as it comes, small */
+.tmdb{display:block;height:14px;width:auto;margin:0 0 var(--s2)}
 </style>
 </head>
 <body>
@@ -120,11 +122,16 @@ ul{padding-left:1.2em;margin:0 0 var(--s3)}
 
   <h2>Contact</h2>
   <p>Questions or requests: <a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a>.</p>
+
+  <!-- About, in every page's footer, comes here. TMDB's terms ask for their logo and this sentence; Brave's for its line -->
+  <h2 id="credits">Credits</h2>
+  <img class="tmdb" src="tmdb.svg" alt="TMDB" width="108" height="14">
+  <p>Film data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+  <p>Book data from <a href="https://openlibrary.org/" target="_blank" rel="noopener">Open Library</a>. <a href="https://search.brave.com/" target="_blank" rel="noopener">Search by Brave</a>.</p>
 </main>
 
 <footer>
-  <p>Film data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB. Book data from <a href="https://openlibrary.org/" target="_blank" rel="noopener">Open Library</a>. <a href="https://search.brave.com/" target="_blank" rel="noopener">Search by Brave</a>.</p>
-  <p class="fnav"><a href="privacy.html">Privacy</a><a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a></p>
+  <p class="fnav"><a href="privacy.html#credits">About</a><span aria-hidden="true">·</span><a href="privacy.html">Privacy</a><span aria-hidden="true">·</span><a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a></p>
 </footer>
 </body>
 </html>
