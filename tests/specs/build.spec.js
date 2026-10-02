@@ -215,7 +215,7 @@ test('?open=<id> is Edit shelf, with the shelf’s name, who can view it, and it
   expect(errors).toEqual([]);
 });
 
-test('your own profile: + new shelf goes to the builder with an empty shelf, and a card’s open to Edit shelf', async ({ page }) => {
+test('your own profile: + new shelf goes to the builder with an empty shelf, and a card’s ··· menu has Edit', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   const mine = SHELVES.find(s => s.owner === ME.id);
@@ -227,7 +227,8 @@ test('your own profile: + new shelf goes to the builder with an empty shelf, and
   await expect(page.locator('#books .empty')).toContainText('Your shelf is empty.');
   await expect(page.locator('header.top')).toBeVisible();
   await open(page, '/u/?tester');
-  await page.locator('#recent li.own').first().getByRole('link', { name: 'open', exact: true }).click();
+  await page.locator('#recent li.own').first().getByRole('button', { name: /^More for / }).click();
+  await page.getByRole('menu', { name: /^More for / }).getByRole('menuitem', { name: 'Edit' }).click();
   await expect(page).toHaveURL(/\/build\/$/);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Edit shelf');
   await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue(mine.name);

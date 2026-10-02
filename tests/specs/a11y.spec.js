@@ -104,3 +104,11 @@ for (const [name, at] of [['someone\'s', '/u/?mira&shelf=aaaaaaaa-aaaa-4aaa-8aaa
   });
 }
 
+test('axe: your profile with a card\'s ··· menu open', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/u/?tester#shelves');
+  await page.locator('#all li.own').first().getByRole('button', { name: /^More for / }).click();
+  await expect(page.getByRole('menu', { name: /^More for / })).toBeVisible();
+  await clean(page);
+});
+

@@ -249,7 +249,9 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **A profile's tabs** (`specs/profile.spec.js`): the four tabs, their addresses and ← →; the main shelf first on
   Profile; Activity's lines; Network's Following and Followers and the numbers that open them; the account menu's
   links changing the tab on your own profile without loading it again.
-- **A shelf's page** (`specs/shelf.spec.js`): its heading, Copy link and the list of what's on it; + Add to my shelf
+- **A shelf's page, and your cards** (`specs/shelf.spec.js`): on your profile a card opens the shelf's page and its ···
+  menu has Edit, Make main, Make private or public and Delete (inside the window, ↓ and Esc, shut by a press outside).
+  On the shelf's page: its heading, Copy link and the list of what's on it; + Add to my shelf
   putting that same spine on the shelf being built with nothing searched for; for its owner Edit, Make main, Make
   private, renaming it in the heading, and Delete only after the confirm; a shelf that isn't there.
 - **Spines on a picture** (`specs/tips.spec.js`): on a shelf's page and on the builder's preview, the tooltip over a
