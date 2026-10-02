@@ -148,6 +148,7 @@
 .spines .st b{font-weight:500;overflow-wrap:anywhere}
 .spines .st b span{font-weight:400;color:var(--grey)}
 .spines .st > span{color:var(--grey);font-size:var(--fs-small);overflow-wrap:anywhere}
+.spines .onmine{color:var(--grey);font-size:var(--fs-small);white-space:nowrap}   /* "On your shelf", where + Add to my shelf would be */
 .row{display:flex;gap:var(--s3) var(--s4);align-items:center;flex-wrap:wrap}
 /* a shelf's name that renames it when pressed (the hero's, and a shelf page's heading) */
 .name{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;cursor:text;text-align:left;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
@@ -488,7 +489,7 @@ async function startSession(){
     if (err) toast('Sign-in didn’t finish: ' + err);
     me.user = session && session.user;
     if (me.user){
-      const rows = await api(`profiles?select=id,username,display_name,avatar_key&id=eq.${me.user.id}`);
+      const rows = await api(`profiles?select=id,username,display_name,avatar_key,pinned_shelf_id&id=eq.${me.user.id}`);
       me.profile = rows[0] || null;
     }
     sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') location.reload(); });
@@ -798,7 +799,23 @@ document.addEventListener('shelfstackd:added', () => {
 });
 /* ---------- one shelf on its own page: its name, who made it and when, what can be done with it, the shelf itself
    (as the profile's hero draws it), and under it what's on the shelf, a row for each spine with + Add to my shelf ---------- */
-const shown = {shelf: null, rows: [], list: [], wall: null, pngs: []};   // the shelf on the page: its saved rows, the books made from them (the same order), its wall and PNGs
+const shown = {shelf: null, rows: [], list: [], wall: null, pngs: [], onMine: null};   // the shelf on the page: its saved rows, the books made from them (the same order), its wall and PNGs; onMine: the titles on your own shelf (see titlesOnMine)
+/* What's already on your own shelf, so a title that's there isn't offered to it again. Your shelf is the main one if
+   one was picked before, otherwise the one saved last (as theShelf() has it, and the builder). A title is the same
+   title by its kind, its name and its year (the builder's sameTitle). */
+const titleKey = r => [r.kind, String(r.title || '').trim().toLowerCase(), r.year || ''].join('|');
+async function myShelfId(){
+  if (!me.profile) return '';
+  if (view.mine) return (theShelf() || {}).id || '';
+  const list = await api(`shelves?select=id,saved_at,updated_at&owner=eq.${me.user.id}&hidden=is.false&order=saved_at.desc&limit=200`);
+  return (list.find(s => s.id === me.profile.pinned_shelf_id) || list.slice().sort((a, b) => new Date(savedAt(b)) - new Date(savedAt(a)))[0] || {}).id || '';
+}
+// the rows of your shelf, to compare with the rows of the shelf shown (id): null when it's that very shelf, [] with
+// no shelf or signed out, undefined when it couldn't be read (then every row offers + Add, as before)
+async function rowsOnMine(id){
+  try { const mine = await myShelfId(); return !mine ? [] : mine === id ? null : await api(`shelf_items?select=kind,title,year&shelf_id=eq.${mine}`); }
+  catch { return undefined; }
+}
 const SAVED = 'shelfstackd-saved';   // the builder leaves the id of a shelf it has just saved here
 async function showShelf(id){
   $('#viewProfile').hidden = true; $('#viewShelf').hidden = false;
@@ -808,7 +825,7 @@ async function showShelf(id){
   $('#backLink').textContent = '← @' + p.username;
   $('#oneBy').hidden = $('#shareBtn').hidden = !s; $('#oneOn').hidden = true;
   $('#oneActs').hidden = !s && !(mine && !id);
-  shown.shelf = s || null; shown.rows = []; shown.list = [];
+  shown.shelf = s || null; shown.rows = []; shown.list = []; shown.onMine = null;
   // straight from Save in the builder: said once, with where sharing is
   try { if (mine && sessionStorage.getItem(SAVED) === id){ sessionStorage.removeItem(SAVED); toast('Saved. Share it from the ↗ icon.'); } } catch {}
   if (!s){
@@ -830,24 +847,29 @@ async function showShelf(id){
   titled(`${shelfName(s)} by ${person(p)}`, `${shelfName(s)}: a shelf by ${person(p)} on shelfstackd.`);
   await fontsReady;
   let pairs = [], wall = null, pngs = [];
+  const mineRows = rowsOnMine(s.id);   // asked for at the same time as this shelf's own rows
   try {
     const rows = await api(`shelf_items?select=${ITEM_COLS}&shelf_id=eq.${s.id}&order=position`);
     [pairs, wall, pngs] = await Promise.all([Promise.all(rows.map(async r => [r, await bookOf(r)])).then(a => a.filter(x => x[1])), wallOf(s), pngsOf(s)]);
   } catch { pairs = []; }
   const list = pairs.map(x => x[1]);
   shown.rows = pairs.map(x => x[0]); shown.list = list; shown.wall = wall; shown.pngs = pngs;
+  const yours = await mineRows;
+  shown.onMine = yours === undefined ? null : new Set((yours || shown.rows).map(titleKey));
   const draw = () => { const c = list.length && bareShelf(list, s, wall); if (c) c.style.setProperty('--h', c.height); $('#oneShelf').replaceChildren(...(c ? [c] : [])); };
   draw(); view.drawn.push(draw);
   paintItems();
 }
-// On this shelf: each spine small, its title and year, who made it, Film or Book, and + Add to my shelf
+// On this shelf: each spine small, its title and year, who made it, Film or Book, and + Add to my shelf. A title
+// that's on your shelf already isn't offered to it again: on someone else's shelf it says "On your shelf" there, and on
+// your own it says nothing (every title on your own shelf is on your shelf)
 function paintItems(){
-  const ol = $('#oneItems');
+  const ol = $('#oneItems'), have = r => !!shown.onMine && shown.onMine.has(titleKey(r));
   ol.replaceChildren(...shown.rows.map((r, i) => {
     const li = document.createElement('li'); li.dataset.i = i;
     li.innerHTML = `<span class="sthumb" aria-hidden="true"></span>
       <span class="st"><b>${esc(r.title || 'Untitled')}${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${esc([r.author, r.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · '))}</span></span>
-      <button class="dash sm" type="button" data-add="${i}">+ Add to my shelf</button>`;
+      ${!have(r) ? `<button class="dash sm" type="button" data-add="${i}">+ Add to my shelf</button>` : view.mine ? '' : '<span class="onmine">On your shelf</span>'}`;
     return li;
   }));
   const draw = () => smallSpines(shown.list, 56).forEach((sp, i) => { const at = ol.children[i]; if (at) at.querySelector('.sthumb').replaceChildren(sp); });
