@@ -666,7 +666,7 @@ dlg.querySelectorAll('input[name=addWhat]').forEach(r => r.addEventListener('cha
 let wearing = null, covRun = 0;
 function withWear(fn){
   if (window.Wear){ fn(); return; }
-  wearing = wearing || new Promise(res => { const sc = document.createElement('script'); sc.src = ROOT + 'wear.js?v=20261002a'; sc.onload = sc.onerror = res; document.head.appendChild(sc); });
+  wearing = wearing || new Promise(res => { const sc = document.createElement('script'); sc.src = ROOT + 'wear.js?v=20261004a'; sc.onload = sc.onerror = res; document.head.appendChild(sc); });
   wearing.then(() => { if (window.Wear) fn(); });
 }
 const verb = m => m.kind === 'movie' ? 'watched' : 'read';
