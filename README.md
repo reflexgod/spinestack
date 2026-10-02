@@ -5,7 +5,7 @@ Live at https://shelfstackd.com (this repository and its folders keep the old wo
 Type a film or a book, get its real spine, put it on your shelf (one each), save it to your profile. From its page the shelf can be shared as an Instagram story. You can also log a film or a book you watched or read, which goes on the feed with its cover, and keep a watchlist.
 
 ```
-index.html            the home page (GitHub Pages serves this). Signed out: the newest public shelf, large, then one line about the site and Make a shelf (the black button on that screen), How it works in three steps, and the next newest shelves; signed in: a welcome, new shelves from people you follow (⚡ All activity), then Just shelved. Links to the old builder here (/?open=, /#shelf) go on to build/
+index.html            the home page (GitHub Pages serves this). Signed out: the newest public shelf, large, then one line about the site and Make a shelf (the black button on that screen), How it works in three steps, and the next newest shelves; signed in: a welcome, New from people you follow (the newest six shelves and logs from them, drawn as the feed draws them, with ⚡ All activity), then Just shelved. Links to the old builder here (/?open=, /#shelf) go on to build/
 build/index.html      the shelf builder (Your shelf: there's one shelf each, and signed in it opens yours): Add, the spines as a list (drag one there or on the preview to move it), Style, the preview; at the bottom its name (one name: it's the caption on the story too), who can view it, Cancel · Save. Clear asks first
 add.js                + ADD on every page: the Add dialog. Three choices at the top: Put on shelf (suggestions as you type, then the spine choices and Add to shelf; the spine finder lives here), Log it (the cover as the feed will show it, a caption if you want one, Post) and Watchlist (Add to watchlist)
 wear.js               a log's cover, worn: one corner dog-eared (a hairline round the fold and a soft shadow under it, so it reads on a white poster), fine scratches, rubbed edges and a little fade, drawn on a canvas from how long ago it was logged (lightly worn that day, with two or three scratches to see; faded after a week, worn after a month). No stamp and nothing written on it
@@ -371,7 +371,9 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   CORS, still shows with the stylesheet's cut.
 - **Home's copy** (in `specs/site.spec.js`): signed out, the newest shelf large (cut to its books, a link to it), the
   one line under it from the left, Make a shelf as the one black button (the bar's + outlined there), How it works
-  in three steps, with no "lets you" tiles; signed in, the welcome and ⚡ All activity; no em dash and no
+  in three steps, with no "lets you" tiles; signed in, the welcome and ⚡ All activity, and New from people you follow
+  with their logs too (from `activity()`: a log's small cover with its caption beside it; shelves only, from `feed()`,
+  on a database without logs); no em dash and no
   rule-of-three line; no ellipsis on a placeholder or a menu item (home's welcome line keeps its one).
 - **Shelves and Members** (`specs/shelves.spec.js`, `specs/members.spec.js`): every shelf as a card, 24 at a time and
   what Load more asks for; one people search 300 ms after the last key, Enter at once, the search kept in the address,

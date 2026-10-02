@@ -263,6 +263,55 @@ test('signed-in home: a welcome by name, the row from people you follow with All
   await expect(page.locator('#inGrid li')).toHaveCount(12);
 });
 
+test('signed-in home: New from people you follow has their logs too, drawn as the feed draws them', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.clock.setFixedTime(new Date('2026-09-30T14:00:00Z'));   // two hours after the newest made-up shelf, so the times are known
+  await mockNetwork(page, { signedIn: true });
+  const asked = page.waitForRequest(r => r.url().includes('/rest/v1/rpc/activity'));
+  let feeds = []; page.on('request', r => { if (r.url().includes('/rest/v1/rpc/feed')) feeds.push(r.postDataJSON().scope); });
+  await open(page, '/');
+  expect((await asked).postDataJSON()).toEqual({ scope: 'following', before: null, before_id: null, n: 6 });   // shelves and logs together
+  expect(feeds).toEqual(['everyone']);   // feed() is only asked for Just shelved
+  // the newest six from @mira, whom the made-up account follows: two of them logs
+  const lines = (await page.locator('#folRow .line').allTextContents()).map(t => t.replace(/\s+/g, ' ').trim());
+  expect(lines).toEqual(['@mira watched Gummo · today', '@mira shelved shelf number 1 · 1d', '@mira updated untitled shelf · 4d', '@mira read The Waves · 1w', '@mira shelved shelf number 7 · 1w',
+    '@mira updated a much longer shelf name that has to be cut short · 1w']);
+  // a log: its cover small and worn, the caption beside it, as on the feed
+  const log = page.locator('#folRow .item.log').first(), cover = log.locator('.cover canvas');
+  await expect(cover).toHaveAttribute('aria-label', 'Gummo (1997), watched by @mira');
+  const c = await cover.boundingBox(), say = await log.locator('.say').boundingBox(), line = await log.locator('.line').boundingBox();
+  expect([Math.round(c.width), Math.round(c.height)]).toEqual([72, 108]);
+  expect(Math.abs(c.x - line.x)).toBeLessThanOrEqual(1);
+  await expect(log.locator('.say')).toHaveText('The bathtub scene. Still thinking about it.');
+  expect(say.x).toBeGreaterThan(c.x + c.width);
+  expect(+(await cover.getAttribute('data-wear'))).toBeGreaterThan(0);
+  await expect(log.locator('.line a')).toHaveAttribute('href', 'u/?mira');
+  await expect(log.locator('.fa')).toHaveAttribute('href', 'u/?mira');
+  // a shelf: the feed's line, with its card under it, a link to the shelf
+  const shelf = page.locator('#folRow .item:not(.log)').first(), card = await shelf.locator('.pic').boundingBox();
+  await expect(shelf.locator('.line a').nth(1)).toHaveAttribute('href', `u/?mira&shelf=${SHELVES[1].id}`);
+  await expect(shelf.locator('.pic')).toHaveAttribute('href', `u/?mira&shelf=${SHELVES[1].id}`);
+  expect([Math.round(card.width), Math.round(card.height)]).toEqual([150, 225]);
+  // two across on a wide window, one on a phone; never wider than the page
+  const first = await page.locator('#folRow li').nth(0).boundingBox(), second = await page.locator('#folRow li').nth(1).boundingBox();
+  if (isPhone()) expect(second.y).toBeGreaterThan(first.y + first.height - 1); else { expect(Math.abs(second.y - first.y)).toBeLessThanOrEqual(1); expect(second.x).toBeGreaterThan(first.x + first.width); }
+  const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(sideways).toBeLessThanOrEqual(0);
+  expect(errors).toEqual([]);
+});
+
+test('signed-in home on a database without logs (0007 not run on it): the shelves of people you follow, from feed()', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, logs: false });
+  const asked = [];
+  page.on('request', r => { if (r.url().includes('/rest/v1/rpc/')) asked.push(new URL(r.url()).pathname.split('/').pop() + ' ' + r.postDataJSON().scope); });
+  await open(page, '/');
+  await expect(page.locator('#folRow li')).toHaveCount(6);
+  await expect(page.locator('#folRow .item.log')).toHaveCount(0);
+  for (const t of await page.locator('#folRow .line').allTextContents()) expect(t).toMatch(/^@mira (shelved|updated) /);
+  await expect(page.locator('#folRow .pic')).toHaveCount(6);
+  expect(asked.filter(a => / following$/.test(a))).toEqual(['activity following', 'feed following']);   // asked once, then the feed of 0006
+});
+
 // the copy: no em dashes, and no line that lists three things
 for (const signedIn of [false, true]) {
   test(`home's copy has no em dash and no rule-of-three line, signed ${signedIn ? 'in' : 'out'}`, async ({ page }) => {
