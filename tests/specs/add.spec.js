@@ -141,10 +141,8 @@ test('the Name box suggests a name, the count shows the limit, and an empty shel
   await mockNetwork(page);
   await open(page, '/build/');
   await expect(page.getByRole('textbox', { name: 'Name' })).toHaveAttribute('placeholder', 'e.g. 2am films');
-  await expect(page.locator('#count')).toHaveText('(4 of 20)');   // the sample shelf (everyone has Pro's 20 for now)
-  await page.getByRole('button', { name: 'Clear' }).click();
-  await expect(page.locator('#books')).toHaveText('Your shelf is empty. Add a film or a book above.');
-  await expect(page.locator('#count')).toHaveText('(0 of 20)');
+  await expect(page.locator('#books .empty')).toContainText('Your shelf is empty.');
+  await expect(page.locator('#count')).toHaveText('(0 of 20)');   // everyone has Pro's 20 for now
   await page.locator('header.top .add').click();
   const d = dialog(page);
   await box(d).fill('gummo');

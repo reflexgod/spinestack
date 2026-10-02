@@ -39,7 +39,7 @@ for (const [name, button] of [['the account menu', '#acctBtn'], ['the ▾ menu',
 // the builder with things open: a row's controls and Style
 test('axe: the builder with a row and Style open', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
-  await open(page, '/build/');
+  await open(page, '/build/?sample');
   await page.locator('#books .bopen').first().click();
   await page.locator('#stylePanel summary').click();
   await expect(page.locator('#layout')).toBeVisible();

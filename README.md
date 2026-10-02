@@ -19,7 +19,7 @@ favicon.svg           the mark: three spines on a shelf. favicon-32.png, favicon
 favicon.ico           the same mark for a browser that asks for /favicon.ico whatever the page says (without it, that request is a 404 on every page)
 .well-known/appspecific/com.chrome.devtools.json   an empty answer for Chrome, which asks every localhost site for this file while its DevTools are open (the other 404 in the network panel). Nothing reads it
 og.jpg                the picture a shared link shows (1200 x 630: the logo and a shelf); every page names it in its og: and twitter: tags
-sample-shelf.jpg      the builder's sample shelf as a picture; home shows it ("a shelf, for example") while there are no public shelves. Made by tests/art.js
+sample-shelf.jpg      the builder's sample shelf (it's only at build/?sample now: a new shelf starts empty) as a picture; home shows it ("a shelf, for example") while there are no public shelves. Made by tests/art.js
 cards.js              shelf cards: finds the books in a shelf's preview picture and cuts the 2:3 card round them (home, the feed, profiles), keeping what it found per preview key
 site.css              the look every page shares: one :root block of variables (the 950px column, the type scale, the 4/8/12/16/24/40 spacing, the 3px radius) and what uses them everywhere (the top bar, headings, buttons, fields, shelf cards, tabs, sheets, the footer). A page's own <style> holds only what that page alone needs
 nav.js                the top bar on every page: who is signed in, the account menu (Sign out is its last item), + ADD and the ▾ next to it

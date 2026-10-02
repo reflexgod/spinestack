@@ -11,6 +11,7 @@ const SHOTS = [
   { name: 'home-signed-out', path: '/', signedIn: false },
   { name: 'home-empty', path: '/', signedIn: false, empty: true },
   { name: 'build', path: '/build/', signedIn: true },
+  { name: 'build-spines', path: '/build/?sample', signedIn: true },
   { name: 'profile', path: '/u/?mira', signedIn: true },
   { name: 'profile-activity', path: '/u/?mira#activity', signedIn: true },
   { name: 'profile-network', path: '/u/?mira#network', signedIn: true },

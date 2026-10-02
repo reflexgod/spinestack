@@ -45,7 +45,7 @@ test('on the builder: search, pick, Add to shelf puts the spine on the shelf wit
   const errors = watchErrors(page);
   await mockNetwork(page);
   await open(page, '/build/');
-  await expect(rows(page)).toHaveCount(4);   // the sample shelf
+  await expect(page.locator('#books .empty')).toBeVisible();   // a new shelf starts empty
   await page.evaluate(() => { window.__same = true; });
   await page.locator('header.top .add').click();
   const d = dialog(page);
@@ -57,7 +57,7 @@ test('on the builder: search, pick, Add to shelf puts the spine on the shelf wit
   await expect(d.getByRole('option')).toHaveCount(2);
   await addGummo(page);
   await expect(d).toBeHidden();
-  expect(await titles(page)).toEqual(['Gummo']);   // the sample cleared, and the film is on
+  expect(await titles(page)).toEqual(['Gummo']);   // the film is on the shelf
   expect(await page.evaluate(() => window.__same)).toBe(true);
   await expect(page).toHaveURL(/\/build\/$/);
   expect(errors).toEqual([]);
@@ -122,7 +122,7 @@ test('the builder is a new-shelf page: name, who can view, Add, the list, Style 
 
 test('a spine’s Spine, Text and ✕ show only when its row is pressed, one row at a time', async ({ page }) => {
   await mockNetwork(page);
-  await open(page, '/build/');
+  await open(page, '/build/?sample');   // four spines to work with
   const row = n => rows(page).nth(n), remove = n => row(n).getByRole('button', { name: /^Remove/ });
   await expect(page.locator('#books .bbody:visible')).toHaveCount(0);
   await row(0).locator('.bopen').click();
@@ -143,7 +143,7 @@ test('a spine’s Spine, Text and ✕ show only when its row is pressed, one row
 
 test('reordering: ↑ ↓ from the keyboard, and dragging a row by its dots', async ({ page }) => {
   await mockNetwork(page);
-  await open(page, '/build/');
+  await open(page, '/build/?sample');
   const before = await titles(page);
   await rows(page).nth(0).locator('.bopen').click();
   await rows(page).nth(0).getByRole('button', { name: 'Move down' }).press('Enter');
@@ -224,7 +224,7 @@ test('your own profile: + new shelf goes to the builder with an empty shelf, and
   await page.getByRole('link', { name: '+ new shelf' }).first().click();
   await expect(page).toHaveURL(/\/build\/$/);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('New shelf');
-  await expect(page.locator('#books')).toHaveText('Your shelf is empty. Add a film or a book above.');   // empty, not the sample
+  await expect(page.locator('#books .empty')).toContainText('Your shelf is empty.');
   await expect(page.locator('header.top')).toBeVisible();
   await open(page, '/u/?tester');
   await page.locator('#recent li.own').first().getByRole('link', { name: 'open', exact: true }).click();
@@ -300,7 +300,7 @@ test('Cancel asks first, then drops the shelf being made', async ({ page }) => {
   await page.getByRole('button', { name: 'Discard changes?' }).click();
   await expect(page).toHaveURL(/127\.0\.0\.1:\d+\/$/);   // signed out: home
   await open(page, '/build/');
-  await expect(rows(page)).toHaveCount(4);   // the sample shelf again
+  await expect(page.locator('#books .empty')).toBeVisible();   // an empty shelf again
 });
 
 test('upload a scan: the link and the ▾ menu both open the file picker, and the picture goes on the shelf', async ({ page }) => {
@@ -323,7 +323,7 @@ test('upload a scan: the link and the ▾ menu both open the file picker, and th
     return c.toDataURL('image/png').split(',')[1];
   });
   await chooser.setFiles({ name: 'download.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
-  await expect(rows(page)).toHaveCount(1);   // the sample cleared, and the upload is on
+  await expect(rows(page)).toHaveCount(1);   // the upload is on the shelf
   // it has no title yet, so its row is open with the title box ready
   await expect(rows(page).first().getByRole('textbox', { name: 'Title' })).toBeFocused();
   await page.keyboard.type('Kids');
@@ -367,7 +367,7 @@ test('dragging a spine on the preview with a mouse moves it, and the list follow
   test.skip(isPhone(), 'a mouse');
   const errors = watchErrors(page);
   await mockNetwork(page);
-  await open(page, '/build/');
+  await open(page, '/build/?sample');
   const before = await titles(page);
   const from = await onPreview(page, .26, .6), to = await onPreview(page, .9, .6);
   await page.mouse.move(from.x, from.y);
@@ -393,7 +393,7 @@ test('dragging a spine on the preview with a mouse moves it, and the list follow
 test('with a finger: holding a spine and then dragging moves it; a quick swipe across the preview does not', async ({ page }) => {
   test.skip(!isPhone(), 'a finger');
   await mockNetwork(page);
-  await open(page, '/build/');
+  await open(page, '/build/?sample');
   await page.locator('#story').scrollIntoViewIfNeeded();
   const before = await titles(page), stage = page.locator('#stage');
   const touch = (type, pt) => stage.dispatchEvent(type, { pointerId: 7, pointerType: 'touch', isPrimary: true, bubbles: true, cancelable: true, clientX: pt.x, clientY: pt.y, button: 0, buttons: type === 'pointerup' ? 0 : 1 });
@@ -429,7 +429,7 @@ test('the caption on the preview follows the Name; with no name it is a faint "y
   test.skip(isPhone(), 'the saved story is a download here; on a phone it goes to the share sheet');
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
-  await open(page, '/build/');
+  await open(page, '/build/?sample');
   await page.waitForTimeout(300);
   // no name: no caption, only the hint, lightly
   await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue('');
@@ -462,5 +462,45 @@ test('a shelf saved with no name has no caption', async ({ page }) => {
   const saved = page.waitForRequest(r => r.url().includes('/rpc/save_shelf'));
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   expect((await saved).postDataJSON().shelf.caption).toBe('');
+});
+
+/* ---------- a new shelf starts empty ---------- */
+test('the builder starts empty: "Your shelf is empty." and three titles to try, each a search in the Add dialog', async ({ page }) => {
+  const errors = watchErrors(page), net = await mockNetwork(page);
+  await open(page, '/build/');
+  await expect(rows(page)).toHaveCount(0);
+  const empty = page.locator('#books .empty');
+  await expect(empty.locator('p').first()).toHaveText('Your shelf is empty.');
+  await expect(empty.locator('.try')).toHaveText(/^Try:/);
+  const chips = empty.getByRole('button');
+  await expect(chips).toHaveText(['Gummo', 'The Waves', 'Kids']);
+  await expect(page.locator('#sampleNote')).toBeHidden();
+  await expect(page.locator('#count')).toHaveText('(0 of 20)');
+  await expect(page.getByRole('button', { name: 'Clear' })).toBeHidden();
+  // a chip runs that search in the dialog
+  await chips.nth(1).click();
+  const d = dialog(page);
+  await expect(d).toBeVisible();
+  await expect(d.getByRole('combobox', { name: 'Film or book name' })).toHaveValue('The Waves');
+  await expect(d.getByRole('option', { name: /The Waves/ })).toBeVisible();
+  expect(net.asked).toContain('The Waves');
+  await d.getByRole('option', { name: /The Waves/ }).click();
+  await d.getByRole('button', { name: 'Add to shelf' }).click();
+  expect(await titles(page)).toEqual(['The Waves']);
+  await expect(empty).toHaveCount(0);
+  // taken off again: the chips are back
+  await rows(page).first().locator('.bopen').click();
+  await rows(page).first().getByRole('button', { name: /^Remove/ }).click();
+  await expect(chips).toHaveCount(3);
+  const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(sideways).toBeLessThanOrEqual(0);
+  expect(errors).toEqual([]);
+});
+
+test('the sample shelf is only at ?sample, for the tests and the picture of a shelf', async ({ page }) => {
+  await mockNetwork(page);
+  await open(page, '/build/?sample');
+  await expect(rows(page)).toHaveCount(4);
+  await expect(page.locator('#sampleNote')).toBeVisible();
 });
 

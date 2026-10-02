@@ -20,10 +20,10 @@ const bytes = dataUrl => Buffer.from(dataUrl.split(',')[1], 'base64');
   await new Promise(r => setTimeout(r, 700));
   const browser = await chromium.launch();
   try {
-    /* the sample shelf: the builder as it opens for a visitor, its story cut down to the books and their shadow */
+    /* the sample shelf: the builder with its sample on, the story cut down to the books and their shadow */
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     await mockNetwork(page, { realFonts: true });
-    await page.goto(BASE + '/build/'); await page.waitForLoadState('networkidle');
+    await page.goto(BASE + '/build/?sample'); await page.waitForLoadState('networkidle');   // the sample shelf is only there when asked for
     await page.evaluate(() => document.fonts.ready);
     await page.waitForTimeout(800);
     const shelf = await page.evaluate(() => {

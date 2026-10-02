@@ -116,7 +116,12 @@ input[type=color]::-webkit-color-swatch{border:0;border-radius:2px}
 .ib{width:24px;height:24px;border:1px solid var(--ink);border-radius:var(--radius);background:var(--paper);color:var(--ink);cursor:pointer;font:500 var(--fs-card) var(--mono);padding:0}
 .ib:hover{background:var(--wash)}
 .ib:disabled{opacity:.25;cursor:default;background:var(--paper)}
-.empty{padding:var(--s4) 0;color:var(--grey)}
+.empty{padding:var(--s4) 0;color:var(--grey);display:grid;gap:var(--s3)}
+.empty p{margin:0}
+/* Try: three titles to press, each a search in the Add dialog */
+.try{display:flex;gap:var(--s2);align-items:center;flex-wrap:wrap}
+.chip{font:400 var(--fs-card) var(--mono);color:var(--ink);background:var(--paper);border:1px solid var(--ink);border-radius:var(--radius);padding:var(--s1) var(--s2);cursor:pointer}
+.chip:hover{background:var(--wash)}
 #dragNote{margin:var(--s2) 0 0}
 
 /* Style: every look of the shelf in one panel, shut until asked for, with what's picked on its one line */
@@ -376,12 +381,15 @@ const {FONTS, STYLES, crop, loadImg, isReal, TEX, texture, isDark, posterTitle, 
 const {extractPalette, findSpine, findSoloSpine} = Add;
 // ?new (+ new shelf on your profile): an empty shelf to begin with, not the sample
 const FRESH = new URLSearchParams(location.search).has('new');
+// ?sample: the page opens with the sample shelf on it. Nobody is sent here: it's for the tests, and for tests/art.js,
+// which makes the picture of a shelf that home shows when the site is empty.
+const SAMPLE = new URLSearchParams(location.search).has('sample');
 let books = [], isSample = true, uid = 0, server = false;
 const settings = {caption:'', theme:'paper', layout:'row', varied:true, wood:false, plank:false, shelfColour:'#FFFFFF'};
 
 const API = String(window.SPINESTACK_API || '').replace(/\/+$/, '');
 
-/* ---------- sample shelf (drawn covers, no real artwork) ---------- */
+/* ---------- sample shelf (drawn covers, no real artwork): only with ?sample. A new shelf starts empty. ---------- */
 function drawCover(fn){ const c = document.createElement('canvas'); c.width = 400; c.height = 600; fn(c.getContext('2d')); return c; }
 function samples(){
   const waves = drawCover(x => { x.fillStyle = '#161616'; x.fillRect(0,0,400,600); x.strokeStyle = '#EDE7D6'; x.lineWidth = 3; for (let r = 0; r < 9; r++){ x.beginPath(); for (let i = 0; i <= 400; i += 8) x.lineTo(i, 300+r*22+Math.sin(i/30+r)*10); x.stroke(); } });
@@ -487,6 +495,7 @@ addEventListener('resize', redraw);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';   // Lucide chevron-down
 const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+const TRY = ['Gummo', 'The Waves', 'Kids'];
 let openId = null;   // the spine whose controls show: press a row to open it, and the one that was open shuts
 const byLine = b => [b.author, b.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · ');
 function renderList(){
@@ -495,7 +504,8 @@ function renderList(){
   $('#sampleNote').hidden = !isSample || !books.length;
   $('#clear').hidden = !books.length;
   const ol = $('#books');
-  if (!books.length){ ol.innerHTML = '<li class="empty">Your shelf is empty. Add a film or a book above.</li>'; redraw(); return; }
+  // an empty shelf says so, with three titles to try: each opens the Add dialog on that search
+  if (!books.length){ ol.innerHTML = `<li class="empty"><p>Your shelf is empty.</p><p class="try"><span>Try:</span>${TRY.map(t => `<button class="chip" type="button" data-try="${esc(t)}">${esc(t)}</button>`).join('')}</p></li>`; redraw(); return; }
   if (!books.some(b => b.id === openId)) openId = null;
   ol.innerHTML = books.map((b,i) => { const open = b.id === openId; return `
   <li class="book${open ? ' open' : ''}" data-id="${b.id}">
@@ -606,6 +616,8 @@ $('#books').addEventListener('input', e => {
   setNote(b); redraw();
 });
 $('#books').addEventListener('click', e => {
+  const chip = e.target.closest('[data-try]');
+  if (chip){ Add.open({query: chip.dataset.try}); return; }
   const head = e.target.closest('.bopen');
   if (head){ const id = head.closest('.book').dataset.id; openId = openId === id ? null : id; paintOpen(); return; }
   const btn = e.target.closest('[data-a]'); if (!btn) return;
@@ -1015,7 +1027,7 @@ document.querySelectorAll('input[name=vis]').forEach(r => r.addEventListener('ch
 
 /* ---------- boot ---------- */
 async function boot(){
-  if (FRESH){ books = []; isSample = false; } else books = samples();
+  if (SAMPLE) books = samples(); else { books = []; isSample = false; }
   renderList();
   // the old self-hosted backend: only looked for when its address is set, or when there's no Worker to use
   // (asking for /api/health on a plain site, like shelfstackd.com, only gets a 404)
@@ -1428,7 +1440,7 @@ async function restoreDraft(d){
 }
 
 Add.setToast(toast);
-/* opening: the sample shelf (or an empty one for ?new), then a draft or ?open=<id>, then a spine picked with + ADD
+/* opening: an empty shelf, then a draft or ?open=<id>, then a spine picked with + ADD
    on another page, which was waiting to be put on */
 (async () => {
   boot();
