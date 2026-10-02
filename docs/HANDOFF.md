@@ -2,12 +2,12 @@
 
 Written on 2 October 2026, before this work moves from the laptop to a cloud session, and brought up to date the same
 day in that cloud session, after one shelf each, logs, the watchlist and From friends (see "Done in the cloud
-session"). Read this first, then `README.md`, which says what every file is and how the Worker, the accounts and the
+session"), and again after the launch pass (see "Done in the second cloud session"). Read this first, then `README.md`, which says what every file is and how the Worker, the accounts and the
 tests are set up.
 
 ## Where things stand
 
-- **Branch:** `letterboxd-flow`, pushed to `origin` (github.com/reflexgod/spinestack). It is 49 commits ahead of
+- **Branch:** `letterboxd-flow`, pushed to `origin` (github.com/reflexgod/spinestack). It is 67 commits ahead of
   `main` and has everything from the older local branches in it (`phase2-profiles`, `phase3-feed`, `profile-polish`,
   `domain-move`, `drop-fallback`), so no other branch needs pushing.
 - **`main` is the live site.** GitHub Pages serves shelfstackd.com from `main`, which is still at `064ac13`. Nothing on
@@ -108,6 +108,29 @@ Also: `privacy.html` says what logs and the watchlist keep and who sees them; th
 "shelves"; long shelf names no longer push the profile and the shelf page wider than a phone (that was the 11px
 overflow on your own profile at 390px).
 
+## Done in the second cloud session (2 October 2026)
+
+Each item is its own commit, so any one can be reverted.
+
+- **A. The proposed 0007, hardened** (still not run): the logs and watchlist triggers take a per-person advisory lock
+  before counting (two tabs at once can't beat a limit); 50 logs a day counts what was posted (`log_counts`, an upsert
+  under the lock), not what's left; From friends keeps 500 removals a person; unfollowing clears `watchlist.from_user`;
+  a hidden log can't be deleted by its owner. Each has a check in `docs/proposed-rls_phase4.sql` that fails against
+  the SQL without it, all run on a local Postgres. `docs/RUN-0007.md`: the exact SQL Editor steps and checks, and an
+  undo.
+- **B. The launch pass** as a new account on a 390px phone and at 1280px, fixes only:
+  - signed in with no connection, a page no longer takes you for an account with no username (`offline.spec.js`);
+  - a new account's empty places each say what to do next, "add a bio" on a phone too (`newuser.spec.js`);
+  - every control takes a 44 × 44px press on a touch screen, and fields are 16px so iOS doesn't zoom
+    (`taps.spec.js`), with nothing changed for a mouse;
+  - the feed's link preview says shelves and logs, and `meta.spec.js` checks the preview tags;
+  - a failed search no longer leaves the last search's titles to pick.
+
+  What was found and left is in `docs/FOUND-NOT-FIXED.md`.
+- **C. `docs/DESIGN-REVIEW.md`**, with pictures in `docs/review/`: the design questions, each with a suggested fix.
+  Nothing in it is changed.
+- **D. `docs/LAUNCH.md`**: the owner's launch steps in order, with commands.
+
 ## What's tested
 
 Both suites were run on 2 October 2026 on the laptop (Windows 11, Node 26).
@@ -127,6 +150,9 @@ Both suites were run on 2 October 2026 on the laptop (Windows 11, Node 26).
   choices), `wear.spec.js` (the worn cover); `build`, `profile`, `shelf`, `feed`, `settings`, `look`, `cards`, `a11y`,
   `meta`, `privacy`, `site`, `shelves` and `empty` changed with the pages. The Worker's suite wasn't run: nothing in
   `worker/` changed.
+- **After the second cloud session** (same container): html-validate clean, then Playwright 458 passed, 16 skipped,
+  4 failed, the same 4 `requests.spec.js` checks (the icons' loads, cancelled by this container's Chromium), and
+  `npm run shots` made all 50. New specs: `taps.spec.js`, `offline.spec.js`, `newuser.spec.js`.
 - **The proposed SQL** was run on a local Postgres 16 (a stand-in for Supabase's `auth` schema, then `0001` to `0006`,
   then the proposal): no errors; `rls_phase3.sql` and `docs/proposed-rls_phase4.sql` both passed. Not on Supabase.
 - **Not tested by anything here:**
@@ -143,7 +169,10 @@ Both suites were run on 2 October 2026 on the laptop (Windows 11, Node 26).
 This list is what the repo and the last session show. Anything the owner asked for in an earlier conversation that
 never reached a commit isn't here, so ask before assuming the list is complete.
 
-0. **Review `docs/proposed-0007-logs-watchlist.sql`** (the owner). `docs/proposed-0007.md` lists what to decide: the
+0. **Launch: `docs/LAUNCH.md`** (the owner) has the order: run 0007, publish the Google sign-in, hello@ with
+   Cloudflare Email Routing, a Brave spending limit, deploy the Worker, merge into `main`, test on a phone. Tasks 1, 6
+   and 7 below are steps in it. **The design review** (`docs/DESIGN-REVIEW.md`) is waiting on the owner's answers.
+   Before then, review `docs/proposed-0007-logs-watchlist.sql` (the owner). `docs/proposed-0007.md` lists what to decide: the
    watchlist's 6, whether visitors see a watchlist, 50 logs a day, From friends' 180 days, and whether to make one shelf
    each a rule in the database. Once agreed, `docs/RUN-0007.md` has the exact steps in the SQL Editor and the checks.
    Until then Log it and Watchlist say they aren't open yet, and the feed and profiles show shelves only.
