@@ -391,6 +391,7 @@ async function search(typed){
     try { results = await lookUp(q, want, typed, ctl.signal); }
     catch (err){
       if (mine !== run || (err && err.name === 'AbortError')) return;   // a newer search took over
+      matches = []; shownFor = null; showMatches();   // the last search's titles go, so Enter can't pick one for this
       sstatus((server ? 'The search server' : 'The search') + ' didn’t answer. Try again in a moment.', true); return;
     }
     finally { if (asking === ctl) asking = null; }

@@ -387,7 +387,8 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **No connection** (`specs/offline.spec.js`): signed in, with the database out of reach, Settings, the feed's You tab
   and a profile say "Couldn’t reach shelfstackd", the bar offers no Finish sign-up, and the builder's Save says the
   account couldn't load instead of asking for a username. A page tells "couldn't read your account" (`unreachable`)
-  apart from "no username yet".
+  apart from "no username yet". With nothing reachable, Log it's Post says so and stays open, and the Add dialog's
+  search says it didn't answer, with the last search's titles gone.
 - **Press areas on a phone** (`specs/taps.spec.js`, phone only): on every page, in the Add dialog, the menus, the
   sign-in sheet and the builder's Style, a press 21px up, down, left or right of a control's middle still lands on it,
   as `elementFromPoint` finds it. On a touch screen (`pointer:coarse`) a small control takes its press in the 44 x 44px

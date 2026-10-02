@@ -51,3 +51,24 @@ test('the builder: Save says the account couldn\'t load, and doesn\'t ask for a 
   await expect(page.locator('#namePane')).toBeHidden();
   await expect(page.locator('#sheet')).toBeHidden();
 });
+
+test('with no connection at all, the Add dialog\'s search says it didn\'t answer, and Log it\'s Post says it couldn\'t reach shelfstackd', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/feed/?everyone');
+  const d = page.locator('#addDialog');
+  // Post first, with the search still there
+  await page.locator('header.top .add').click();
+  await d.getByRole('radio', { name: 'Log it' }).check();
+  await d.getByRole('combobox', { name: 'Film or book name' }).fill('gummo');
+  await d.getByRole('option', { name: /Gummo/ }).click();
+  await offline(page);
+  await d.getByRole('button', { name: 'Post' }).click();
+  await expect(d.locator('#addStatus')).toHaveText(SAYS, { timeout: 30000 });
+  await expect(d).toBeVisible();
+  // then the search, with everything off this site out of reach
+  await page.route(u => u.hostname !== '127.0.0.1', route => route.abort('internetdisconnected'));
+  await d.getByRole('button', { name: 'Change' }).click();
+  await d.getByRole('combobox', { name: 'Film or book name' }).fill('stalker');
+  await expect(d.getByText(/didn’t answer\. Try again in a moment\./)).toBeVisible({ timeout: 30000 });
+  await expect(d.getByRole('option')).toHaveCount(0);
+});
