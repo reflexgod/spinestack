@@ -10,7 +10,7 @@
   const ROOT = new URL('.', document.currentScript.src).href;   // the site's root: this file sits there
   const bar = document.querySelector('header.top'); if (!bar) return;
   const q = s => bar.querySelector(s);
-  const acctBtn = q('#acctBtn'), signBtn = q('#signInBtn'), moreBtn = q('#addMore'), addWrap = q('.addwrap'), links = q('.links'), zap = q('.zap'), find = q('.find');
+  const acctBtn = q('#acctBtn'), signBtn = q('#signInBtn'), moreBtn = q('#addMore'), addWrap = q('.addwrap');
   const on = {signIn: null, finish: null, signOut: null, upload: null};
   let state = {sb: null, user: null, profile: null};
 
@@ -139,18 +139,16 @@
   function paint(s){
     state = {sb: (s && s.sb) || null, user: (s && s.user) || null, profile: (s && s.profile) || null};
     const p = state.profile;
-    acctBtn.hidden = !p; signBtn.hidden = !!p || !!(s && s.unreachable); moreBtn.hidden = !p; find.hidden = !p;
+    acctBtn.hidden = !p; signBtn.hidden = !!p || !!(s && s.unreachable); moreBtn.hidden = !p;   // the places (⚡ · Shelves · Members · search) stay as they are, in one order, whoever you are
     addWrap.classList.toggle('split', !!p);
     if (!p){
       for (const m of menus) m.hide(false);
       signBtn.textContent = state.user ? 'Finish sign-up' : 'Sign in';
       signBtn.href = state.user ? ROOT + 'build/' : '#';
-      if (zap.nextElementSibling !== find) links.insertBefore(zap, find);   // SHELVES · MEMBERS · ⚡
       shownKey = undefined;
       return;
     }
     buildMenus(); fillAccount(p); loadLibs();
-    if (links.firstElementChild !== zap) links.prepend(zap);   // ⚡ · SHELVES · MEMBERS
     acctBtn.querySelector('.who').textContent = '@' + p.username;
     acctBtn.setAttribute('aria-label', '@' + p.username + ', your account');   // on a phone only the photo shows
     const ava = acctBtn.querySelector('.ava'), key = p.avatar_key || '';

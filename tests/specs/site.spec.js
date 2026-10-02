@@ -26,22 +26,25 @@ for (const signedIn of [false, true]) {
         }
         await expect(bar.getByRole('link', { name: 'Add a film or a book' })).toBeVisible();
         if (!isPhone()) await expect(bar.locator('.add')).toHaveText('Add');   // + ADD (a phone shows just the +)
-        const first = bar.locator('.links a').first();
+        // the places are in one order, signed in or out: ⚡ · SHELVES · MEMBERS · search (they used to change places)
+        const places = await bar.locator('.links a').evaluateAll(as => as.map(a => ({ name: a.getAttribute('aria-label') || a.textContent.trim(), left: a.getBoundingClientRect().left, shown: a.getBoundingClientRect().width > 0 })));
+        expect(places.map(p => p.name)).toEqual(['Activity', 'Shelves', 'Members', 'Search']);
+        expect(places.every(p => p.shown)).toBe(true);
+        expect(places.map(p => p.left)).toEqual(places.map(p => p.left).sort((a, b) => a - b));
+        const search = bar.getByRole('link', { name: 'Search' });
+        await expect(search).toBeVisible();
+        expect(await pathOf(search)).toBe('/members/');
         if (signedIn) {
           // logo · you ▾ · ⚡ · SHELVES · MEMBERS · search · + ADD ▾
           await expect(bar.locator('#acctBtn')).toBeVisible();
           await expect(bar.locator('#acctBtn')).toHaveAccessibleName('@tester, your account');
           if (isPhone()) await expect(bar.locator('#acctBtn .who')).toBeHidden(); else await expect(bar.locator('#acctBtn .who')).toHaveText('@tester');   // a phone shows just the photo
           await expect(bar.locator('#signInBtn')).toBeHidden();
-          await expect(first).toHaveAttribute('aria-label', 'Activity');
-          await expect(bar.getByRole('link', { name: 'Search' })).toBeVisible();
           await expect(bar.locator('#addMore')).toBeVisible();
         } else {
-          // logo · SHELVES · MEMBERS · ⚡ · SIGN IN · + ADD
+          // logo · ⚡ · SHELVES · MEMBERS · search · SIGN IN · + ADD
           await expect(bar.locator('#signInBtn')).toHaveText(/sign in/i);
           await expect(bar.locator('#acctBtn')).toBeHidden();
-          await expect(first).toHaveText(/shelves/i);
-          await expect(bar.getByRole('link', { name: 'Search' })).toBeHidden();
           await expect(bar.locator('#addMore')).toBeHidden();
         }
         await expect(page.getByText('Sign out', { exact: true }).locator('visible=true')).toHaveCount(0);   // only in the account menu
