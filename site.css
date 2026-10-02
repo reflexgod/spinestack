@@ -137,7 +137,7 @@ textarea{resize:vertical;line-height:1.5}
 .thumbs .by,.thumbs .meta{display:block;font-size:var(--fs-small);color:var(--grey);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ---------- activity: a line for each shelf saved ("@abc shelved my films · 2h"), and the shelf's card under it,
-   in line with the text. The feed has them, and a profile's Activity tab. ---------- */
+   in line with the text; and for each film or book logged. The feed has them, and a profile's Activity tab. ---------- */
 .items{list-style:none;margin:0;padding:0;display:grid;gap:var(--s5)}
 .items .item{display:grid;grid-template-columns:32px minmax(0,1fr);gap:var(--s3);align-items:center;min-width:0}
 .items .fa{width:32px;height:32px;border-radius:50%;border:1px solid var(--ink);background:var(--wash);overflow:hidden;display:grid;place-items:center;font-size:var(--fs-body);text-transform:uppercase;text-decoration:none;color:var(--ink)}
@@ -147,9 +147,16 @@ textarea{resize:vertical;line-height:1.5}
 .items .line a:hover,.items .line a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
 .items .ago{color:var(--grey);font-size:var(--fs-small);font-variant-numeric:tabular-nums;white-space:nowrap}
 .items .pic{grid-column:2;width:var(--card)}
+/* a film or a book logged ("@abc watched Gummo · today"): its cover, worn (wear.js), the size of a card, and the
+   caption beside it, or under it when there's no room */
+.items .line b{font-weight:500}
+.items .logbody{grid-column:2;display:flex;flex-wrap:wrap;gap:var(--s3) var(--s4);align-items:flex-start;min-width:0}
+.items .cover{display:block;flex:none;width:var(--card);line-height:0}
+.items .cover canvas{display:block;width:100%;height:auto}
+.items .say{margin:0;flex:1 1 220px;min-width:0;max-width:56ch;white-space:pre-line;overflow-wrap:anywhere}
 /* one person's own lines, on their profile: no photo beside each */
 .items.solo .item{grid-template-columns:minmax(0,1fr)}
-.items.solo .pic{grid-column:1}
+.items.solo .pic,.items.solo .logbody{grid-column:1}
 @media (max-width:640px){
   .items .item{grid-template-columns:28px minmax(0,1fr);gap:var(--s2)}
   .items .fa{width:28px;height:28px;font-size:var(--fs-card)}

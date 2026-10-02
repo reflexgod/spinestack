@@ -71,16 +71,15 @@ test('profile: the name, the numbers and their labels, and the tabs', async ({ p
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?mira');
   expect(await css(page.locator('#name'), 'fontSize', 'fontWeight')).toEqual({ fontSize: '22px', fontWeight: '400' });
-  expect(await css(page.locator('#nShelves'), 'fontSize', 'fontWeight')).toEqual({ fontSize: '20px', fontWeight: '700' });
+  expect(await css(page.locator('#nSpines'), 'fontSize', 'fontWeight')).toEqual({ fontSize: '20px', fontWeight: '700' });
   expect(await css(page.locator('.stats dt').first(), 'fontSize', 'textTransform', 'color')).toEqual({ fontSize: '10px', textTransform: 'uppercase', color: 'rgb(107, 107, 107)' });
   expect((await css(page.locator('.stats div').nth(1), 'borderLeftWidth')).borderLeftWidth).toBe('1px');   // a thin line between the numbers
   expect(await css(page.locator('#tabP'), 'fontSize', 'textTransform', 'color', 'borderBottomWidth', 'borderBottomColor')).toEqual({ fontSize: '13px', textTransform: 'none', color: 'rgb(0, 0, 0)', borderBottomWidth: '1px', borderBottomColor: 'rgb(0, 0, 0)' });
-  expect((await css(page.locator('#tabS'), 'color')).color).toBe('rgb(107, 107, 107)');
-  // its shelves: four cards across beside the bio, six on the Shelves tab
-  if (!isPhone()) {
-    const row = await page.locator('#recent li').evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().top)));
-    expect(row.filter(y => y === row[0]).length).toBe(4);
-  }
+  expect((await css(page.locator('#tabA'), 'color')).color).toBe('rgb(107, 107, 107)');
+  // its shelf: one, big, across the column, on the wash, with the 3px radius
+  const hero = await box(page.locator('#hero')), main = await box(page.locator('main'));
+  expect(Math.abs(hero.width - main.width)).toBeLessThanOrEqual(1);
+  expect(await css(page.locator('#hero'), 'backgroundColor', 'borderTopLeftRadius')).toEqual({ backgroundColor: 'rgb(243, 243, 243)', borderTopLeftRadius: '3px' });
 });
 
 test('the feed shows each shelf as the same 2:3 card as home, under the line about it, not the whole story', async ({ page }) => {

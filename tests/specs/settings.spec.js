@@ -46,26 +46,25 @@ test('the tabs are Profile · Photo · Account; #photo and #account open theirs'
   await expect(page.locator('#panelP')).toBeHidden();
 });
 
-test('Profile: your name, bio and main shelf are there, and Save sends those three', async ({ page }) => {
+test('Profile: your name and bio are there, and Save sends those two (one shelf each: no main shelf to pick)', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/settings/');
-  const name = page.getByRole('textbox', { name: 'Display name' }), bio = page.getByRole('textbox', { name: 'Bio' }), main = page.getByRole('combobox', { name: 'Main shelf' });
+  const name = page.getByRole('textbox', { name: 'Display name' }), bio = page.getByRole('textbox', { name: 'Bio' });
   await expect(name).toHaveValue('Test Person');
   await expect(bio).toHaveValue('A made-up account for the tests.');
-  await expect(main.locator('option')).toHaveCount(7);   // your most recent shelf, or one of your six
+  await expect(page.getByRole('combobox')).toHaveCount(0);
+  await expect(page.getByText(/main shelf/i)).toHaveCount(0);
   await expect(page.locator('#unameRO')).toHaveText('@tester');
   await expect(page.locator('#panelP').getByRole('link', { name: 'View profile' })).toHaveAttribute('href', '../u/?tester');
   await name.fill('  New Name  ');
   await bio.fill('Books now.');
   await expect(page.locator('#bioCount')).toHaveText('10 / 160');
-  await main.selectOption(SHELVES[3].id);
   const sent = patch(page);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
-  expect((await sent).postDataJSON()).toEqual({ display_name: 'New Name', bio: 'Books now.', pinned_shelf_id: SHELVES[3].id });
+  expect((await sent).postDataJSON()).toEqual({ display_name: 'New Name', bio: 'Books now.' });
   await expect(page.locator('#toast')).toHaveText('Profile saved.');
   await expect(name).toHaveValue('New Name');
-  await expect(main).toHaveValue(SHELVES[3].id);
   expect(errors).toEqual([]);
 });
 

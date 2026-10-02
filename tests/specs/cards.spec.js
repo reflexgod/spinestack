@@ -33,7 +33,7 @@ async function cutRound(loc, layout, dark){
   return s;
 }
 
-for (const [name, path, root] of [['home', '/', '#folRow'], ['the feed', '/feed/?following', '#items'], ['a profile\'s Shelves', '/u/?mira#shelves', '#all'], ['a profile\'s Activity', '/u/?mira#activity', '#acts']]) {
+for (const [name, path, root] of [['home', '/', '#folRow'], ['the feed', '/feed/?following', '#items'], ['a profile\'s Activity', '/u/?mira#activity', '#acts']]) {
   test(`${name}: each card is cut round its books, whatever the layout`, async ({ page }) => {
     const errors = watchErrors(page);
     await mockNetwork(page, { signedIn: true });
@@ -47,11 +47,11 @@ for (const [name, path, root] of [['home', '/', '#folRow'], ['the feed', '/feed/
   });
 }
 
-test('your own profile\'s cards are cut the same way', async ({ page }) => {
+test('your own Activity\'s cards are cut the same way', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
-  await open(page, '/u/?tester#shelves');
-  await cutRound(card(page, '#all', SHELVES[3]), 'stack', true);
-  await cutRound(card(page, '#all', SHELVES[0]), 'row', false);
+  await open(page, '/u/?tester#activity');
+  await cutRound(card(page, '#acts', SHELVES[3]), 'stack', true);
+  await cutRound(card(page, '#acts', SHELVES[0]), 'row', false);
 });
 
 test('a picture is looked at once: what was found is kept per preview key, for this visit and the next', async ({ page }) => {

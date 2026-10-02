@@ -1,9 +1,16 @@
-/* + ADD: the "Add to your shelf…" dialog, the same on every page. Step 1 is a search box (All / Films / Books under
-   it) that suggests titles as you type: up to six, films and books together, the closest titles first; ↑ ↓ move
-   through them and Enter picks. Picking a result goes to step 2, which finds that title's spines (the Worker finds DVD and book scans, the
-   browser cuts the spine out of each) and shows the choices with an Add to shelf button. On the builder that puts the
-   spine on the shelf being made. Anywhere else the choice is handed to the builder (sessionStorage), which opens with
-   it on the shelf.
+/* + ADD: the Add dialog, the same on every page. At the top, what to do with the title: Put on shelf (the default),
+   Log it, or Watchlist. Under that, a search box (All / Films / Books under it) that suggests titles as you type: up
+   to six, films and books together, the closest titles first; ↑ ↓ move through them and Enter picks.
+   Put on shelf: picking a result goes to step 2, which finds that title's spines (the Worker finds DVD and book scans,
+   the browser cuts the spine out of each) and shows the choices with an Add to shelf button. On the builder that puts
+   the spine on your shelf there. Anywhere else the choice is handed to the builder (sessionStorage), which opens your
+   shelf with it on.
+   Log it: the cover as the feed will show it (worn, wear.js), a caption if you want one, and Post, which saves a log
+   (the logs table, docs/proposed-0007-logs-watchlist.sql). Watchlist: the cover and Add to watchlist. Both need you
+   signed in, with a username; Nav.account() says who that is. Nothing is searched for spines in either.
+   After a log or a watchlist add, the dialog shuts and says so on document as "shelfstackd:added" ({what: 'log' or
+   'watch', item}), so a page can show it. Add.open({mode, item}) opens on a mode, and with an item ({kind, title,
+   year, creator, cover}) goes straight to its step 2 (a profile's Watched / Read).
    The search, the colour picking and the spine finder moved here from the builder as they were. Needs shelf.js.
    nav.js loads this file the first time + ADD is pressed; the builder loads it itself. */
 (() => {
@@ -206,14 +213,44 @@ css.textContent = `
 #addDialog .pick .lbl a{color:inherit}
 #addDialog .addfound .rule{flex:none;width:1px;height:var(--th);background:var(--hair,#D9D9D9)}
 #addDialog .addbar{display:flex;justify-content:flex-end;margin-top:var(--s4,16px)}
+/* what to do with it: three choices in a row, as the tabs are (the one picked black, a line under it) */
+#addDialog .addwhat{display:flex;flex-wrap:wrap;gap:var(--s2,8px) var(--s5,24px);margin:0 0 var(--s4,16px);border-bottom:1px solid var(--hair,#D9D9D9)}
+#addDialog .addwhat label{position:relative;cursor:pointer}
+#addDialog .addwhat input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+#addDialog .addwhat span{display:block;padding:0 0 var(--s2,8px);margin-bottom:-1px;color:var(--grey,#6B6B6B);border-bottom:1px solid transparent;white-space:nowrap}
+#addDialog .addwhat input:checked + span{color:var(--ink,#000);border-bottom-color:var(--ink,#000)}
+#addDialog .addwhat input:focus-visible + span{outline:2px solid var(--ink,#000);outline-offset:3px}
+#addDialog .addneed{margin:0;display:flex;flex-wrap:wrap;gap:var(--s2,8px) var(--s3,12px);align-items:baseline}
+/* Log it and Watchlist: the cover, and beside it the title, the caption and what happens */
+#addDialog #addPost{margin-top:var(--s4,16px)}
+#addDialog .addpost{display:grid;grid-template-columns:120px minmax(0,1fr);gap:var(--s4,16px);align-items:start}
+#addDialog .addcov{display:block;width:120px;aspect-ratio:2/3;line-height:0}
+#addDialog .addcov canvas{width:100%;height:auto;display:block}
+#addDialog .addcov img{width:100%;height:100%;object-fit:cover;display:block;border-radius:var(--radius,3px);background:var(--wash,#F3F3F3)}
+#addDialog .addcov .blank{display:block;width:100%;height:100%;border-radius:var(--radius,3px);background:var(--wash,#F3F3F3)}
+#addDialog .addpostf{display:grid;gap:var(--s3,12px);min-width:0}
+#addDialog .addpostf h3{margin:0}
+#addDialog .addsay{display:grid;gap:var(--s1,4px)}
+#addDialog .addsay textarea{width:100%;min-width:0;font:400 var(--fs-body,13px)/1.5 var(--mono,monospace);color:inherit;background:var(--paper,#fff);border:1px solid var(--ink,#000);border-radius:var(--radius,3px);padding:var(--s2,8px) var(--s3,12px);resize:vertical}
+#addDialog .addsay .lbl{font-size:var(--fs-label,10px);text-transform:uppercase;letter-spacing:var(--track,1px);color:var(--grey,#6B6B6B)}
+#addDialog .addsay .lbl i{font-style:normal;text-transform:none;letter-spacing:0}
+#addDialog .addfeedline{margin:0;font-size:var(--fs-small,11px);color:var(--grey,#6B6B6B);overflow-wrap:anywhere}
 /* on a phone it sits at the top, so the box and its suggestions stay above the keyboard */
-@media (max-width:520px){ #addDialog{padding:var(--s4,16px);margin-top:var(--s3,12px)} #addDialog .addfound{--th:220px;--tw:84px} }`;
+@media (max-width:520px){ #addDialog{padding:var(--s4,16px);margin-top:var(--s3,12px)} #addDialog .addfound{--th:220px;--tw:84px}
+  #addDialog .addpost{grid-template-columns:88px minmax(0,1fr);gap:var(--s3,12px)} #addDialog .addcov{width:88px} }`;
 document.head.appendChild(css);
 const dlg = document.createElement('dialog');
 dlg.id = 'addDialog'; dlg.setAttribute('aria-labelledby', 'addTitle');
 dlg.innerHTML = `
   <button class="addx" id="addClose" type="button" aria-label="Close">${ICON('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>')}</button>
   <h2 id="addTitle">Add to your shelf…</h2>
+  <div class="addwhat" role="radiogroup" aria-label="What to do with it">
+    <label><input type="radio" name="addWhat" value="shelf" checked><span>Put on shelf</span></label>
+    <label><input type="radio" name="addWhat" value="log"><span>Log it</span></label>
+    <label><input type="radio" name="addWhat" value="watch"><span>Watchlist</span></label>
+  </div>
+  <p class="addneed" id="addNeed" hidden><span id="addNeedText"></span> <button class="dash sm" id="addNeedGo" type="button"></button></p>
+  <div id="addFind">
   <form class="addsearch" id="addForm" autocomplete="off">
     <input type="text" id="addQ" placeholder="Gummo, The Waves, Kids..." aria-label="Film or book name" maxlength="120" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="addRows">
     <button type="submit" aria-label="Search">${ICON('<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>')}</button>
@@ -236,6 +273,18 @@ dlg.innerHTML = `
     <p class="grey" id="addNoReal" hidden>No real spine found yet. Upload a photo of yours on the builder to add it to the archive.</p>
     <p class="grey" id="addNote" hidden>Real DVD and book spines show up once the shelfstackd server is connected. Until then, upload a full DVD scan on the builder.</p>
     <div class="addbar"><button class="btn primary" id="addGo" type="button" disabled>Add to shelf</button></div>
+  </div>
+  <div id="addPost" hidden>
+    <div class="addpost">
+      <span class="addcov" id="addCov"></span>
+      <div class="addpostf">
+        <h3><span id="addPostTitle"></span> <small id="addPostBy"></small> <button class="dash sm" id="addPostChange" type="button">Change</button></h3>
+        <label class="addsay" id="addSayWrap"><span class="lbl">Caption <i>(optional)</i></span><textarea id="addSay" maxlength="280" rows="3"></textarea></label>
+        <p class="addfeedline" id="addFeedLine"></p>
+      </div>
+    </div>
+    <div class="addbar"><button class="btn primary" id="addPostGo" type="button">Post</button></div>
+  </div>
   </div>`;
 document.body.appendChild(dlg);
 const $ = s => dlg.querySelector(s);
@@ -326,7 +375,7 @@ async function search(typed){
   const noFilms = !server && !WORKER && !TMDB && want !== 'book';
   if (!server && !direct){ sstatus('Search runs on the shelfstackd server, which this preview doesn’t have. Upload a scan on the builder instead.', true); return; }
   if (noFilms && want === 'movie'){ sstatus('Film search needs a TMDB key. Books work without one.', true); $('#addMatches').hidden = true; paintActive(); return; }
-  current = null; $('#addSpines').hidden = true;
+  current = null; picked = null; $('#addSpines').hidden = true; $('#addPost').hidden = true;
   let results = seen.get(key);
   if (!results){
     sstatus('Searching…');
@@ -354,7 +403,9 @@ $('#addQ').addEventListener('input', () => {
   typing = setTimeout(() => search(true), WAIT);
 });
 dlg.querySelectorAll('input[name=addKind]').forEach(r => r.addEventListener('change', () => { if ($('#addQ').value.trim()) search(false); }));
-const pick = i => { const m = matches[i]; if (m) findSpines(m); };
+// a result picked: its spines (Put on shelf), or its post (Log it, Watchlist)
+let picked = null;
+const pick = i => { const m = matches[i]; if (!m) return; picked = m; if (what() === 'shelf') findSpines(m); else showPost(m); };
 // Enter: picks the highlighted result when the results on screen answer what's in the box; otherwise it searches now
 $('#addForm').addEventListener('submit', e => {
   e.preventDefault();
@@ -534,7 +585,7 @@ $('#addFound').addEventListener('click', e => {
 $('#addDupAdd').addEventListener('click', () => { if (current) findSpines(current.m, true); });
 $('#addDupCancel').addEventListener('click', () => { $('#addDup').hidden = true; $('#addSpines').hidden = true; $('#addMatches').hidden = !matches.length; current = null; paintActive(); $('#addQ').focus(); });
 // Change: back to the results, with the box ready for the arrow keys
-$('#addChange').addEventListener('click', () => { current = null; $('#addSpines').hidden = true; $('#addMatches').hidden = !matches.length; sstatus(''); paintActive(); $('#addQ').focus(); });
+$('#addChange').addEventListener('click', () => { current = null; picked = null; $('#addSpines').hidden = true; $('#addMatches').hidden = !matches.length; sstatus(''); paintActive(); $('#addQ').focus(); });
 const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./,''); } catch { return 'source'; } };
 
 /* ---------- Add to shelf ---------- */
@@ -569,20 +620,105 @@ async function resolve(p){
   return bookFields(cur, choice);
 }
 
+/* ---------- Put on shelf, Log it, Watchlist ---------- */
+const TITLES = {shelf: 'Add to your shelf…', log: 'Log a film or a book…', watch: 'Add to your watchlist…'};
+const what = () => ($('input[name=addWhat]:checked') || {}).value || 'shelf';
+// who is signed in, as the page's bar knows it (nav.js)
+const account = () => (window.Nav && Nav.account ? Nav.account() : {}) || {};
+// Log it and Watchlist need an account with a username: until there is one, the dialog says so instead of searching
+function paintNeed(){
+  const a = account(), m = what(), need = m !== 'shelf' && !(a.sb && a.user && a.profile);
+  $('#addNeed').hidden = !need; $('#addFind').hidden = need;
+  if (need){
+    $('#addNeedText').textContent = a.user ? 'Pick a username first.' : m === 'log' ? 'Sign in to log films and books.' : 'Sign in to keep a watchlist.';
+    $('#addNeedGo').textContent = a.user ? 'Pick one' : 'Sign in';
+  }
+  return need;
+}
+$('#addNeedGo').addEventListener('click', () => { close(); if (window.Nav && Nav.signIn) Nav.signIn(); });
+// another choice: the title already picked goes to that choice's step 2
+function paintWhat(switched){
+  $('#addTitle').textContent = TITLES[what()];
+  if (paintNeed() || !switched) return;
+  if (!picked){ $('#addQ').focus(); return; }
+  if (what() === 'shelf'){ $('#addPost').hidden = true; findSpines(picked); } else showPost(picked);
+}
+dlg.querySelectorAll('input[name=addWhat]').forEach(r => r.addEventListener('change', () => paintWhat(true)));
+// the cover as the feed will show it, worn (wear.js, loaded the first time it's needed)
+let wearing = null, covRun = 0;
+function withWear(fn){
+  if (window.Wear){ fn(); return; }
+  wearing = wearing || new Promise(res => { const sc = document.createElement('script'); sc.src = ROOT + 'wear.js?v=20261002a'; sc.onload = sc.onerror = res; document.head.appendChild(sc); });
+  wearing.then(() => { if (window.Wear) fn(); });
+}
+const verb = m => m.kind === 'movie' ? 'watched' : 'read';
+function showPost(m){
+  current = null; $('#addSpines').hidden = true; $('#addMatches').hidden = true; paintActive(); sstatus('');
+  const log = what() === 'log', a = account(), cov = $('#addCov'), src = m.cover ? viaWorker(m.cover) : '', run = ++covRun;
+  $('#addPostTitle').textContent = m.title + (m.year ? ' (' + m.year + ')' : ''); $('#addPostBy').textContent = m.creator ? '· ' + m.creator : '';
+  $('#addSayWrap').hidden = !log;
+  $('#addPostGo').textContent = log ? 'Post' : 'Add to watchlist'; $('#addPostGo').disabled = false;
+  $('#addFeedLine').textContent = log ? `On the feed: ${a.profile ? '@' + a.profile.username : 'you'} ${verb(m)} ${m.title} · today` : 'It shows on your profile, under Watchlist, which holds 6.';
+  if (log){ cov.replaceChildren(); withWear(() => { if (run === covRun) cov.replaceChildren(Wear.cover({src, seed: keyOf(m), at: new Date().toISOString(), label: `The cover of ${m.title}, as the feed shows it`, width: 120})); }); }
+  else cov.innerHTML = src ? `<img src="${esc(src)}" alt="The cover of ${esc(m.title)}" crossorigin="anonymous">` : '<span class="blank"></span>';
+  $('#addPost').hidden = false;
+}
+$('#addPostChange').addEventListener('click', () => { picked = null; $('#addPost').hidden = true; $('#addMatches').hidden = !matches.length; sstatus(''); paintActive(); $('#addQ').focus(); });
+// a log or a watchlist row, as the database keeps a title (the same rules as a shelf's spine; the cover only from TMDB
+// or Open Library)
+const COVER_OK = /^https:\/\/(image\.tmdb\.org|covers\.openlibrary\.org)\/\S+$/;
+const rowOf = m => ({kind: m.kind === 'movie' ? 'movie' : 'book', title: String(m.title || '').trim().slice(0, 200), author: String(m.creator || '').slice(0, 200),
+  year: /^\d{4}$/.test(String(m.year || '')) ? +m.year : null, cover_src: m.cover && COVER_OK.test(m.cover) && m.cover.length <= 396 ? 'url:' + m.cover : null});
+function saveError(e, status, log){
+  const c = (e && e.code) || '';
+  if (c === '23505') return 'It’s already on your watchlist.';
+  if (c === 'P0001' && e.message) return e.message;
+  if (status === 404 || /^(PGRST20[25]|42P01|42883)$/.test(c)) return log ? 'Logging isn’t open yet. Try again soon.' : 'The watchlist isn’t open yet. Try again soon.';
+  if (/fetch|network/i.test((e && e.message) || '')) return 'Couldn’t reach shelfstackd. Check your connection and try again.';
+  return 'That didn’t save. Try again in a moment.';
+}
+// the page's own toast line, when the dialog has shut
+function pageToast(msg){
+  if (say){ say(msg); return; }
+  const t = document.getElementById('toast'); if (!t) return;
+  t.textContent = msg; t.hidden = false; clearTimeout(pageToast.t); pageToast.t = setTimeout(() => { t.hidden = true; }, 4200);
+}
+$('#addPostGo').addEventListener('click', async () => {
+  const m = picked, a = account(), log = what() === 'log', btn = $('#addPostGo');
+  if (!m || paintNeed()) return;
+  btn.disabled = true; sstatus(log ? 'Posting…' : 'Adding…');
+  let r;
+  try { r = log ? await a.sb.from('logs').insert({...rowOf(m), caption: $('#addSay').value.trim().slice(0, 280)}) : await a.sb.from('watchlist').insert(rowOf(m)); }
+  catch (err){ r = {error: err}; }
+  if (r.error){ btn.disabled = false; sstatus(esc(saveError(r.error, r.status, log)), true); return; }
+  close();
+  pageToast(log ? `Logged ${m.title}. It’s on the feed.` : `${m.title} is on your watchlist.`);
+  document.dispatchEvent(new CustomEvent('shelfstackd:added', {detail: {what: log ? 'log' : 'watch', item: m}}));
+});
+
 /* ---------- opening and closing ---------- */
 function reset(){
   clearTimeout(typing); run++; if (asking){ asking.abort(); asking = null; }
-  current = null; matches = []; active = -1; shownFor = null;
-  $('#addQ').value = ''; $('#addMatches').hidden = true; $('#addSpines').hidden = true; $('#addRows').innerHTML = ''; $('#addFound').innerHTML = ''; sstatus(''); paintActive();
+  current = null; matches = []; active = -1; shownFor = null; picked = null; covRun++;
+  $('#addQ').value = ''; $('#addMatches').hidden = true; $('#addSpines').hidden = true; $('#addPost').hidden = true; $('#addRows').innerHTML = ''; $('#addFound').innerHTML = ''; $('#addSay').value = ''; sstatus(''); paintActive();
   $('#addMode').hidden = server || !!WORKER;
   if (!server && !WORKER && direct) $('#addMode').textContent = TMDB ? 'Search works here. Real DVD and book spines need the shelfstackd server.' : 'Book search works here. Films need a TMDB key, and real spines need the shelfstackd server.';
 }
-// open({query}): with a query it searches at once
+// open({query, mode, item}): with a query it searches at once; mode is 'shelf' (the default), 'log' or 'watch'; an
+// item ({kind, title, year, creator, cover}) goes straight to its step 2
 function open(opt){
+  opt = opt || {};
   if (!dlg.open){ reset(); if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', ''); }
-  const q = opt && opt.query ? String(opt.query).trim() : '';
+  const mode = TITLES[opt.mode] ? opt.mode : 'shelf';
+  for (const r of dlg.querySelectorAll('input[name=addWhat]')) r.checked = r.value === mode;
+  paintWhat(false);
+  if (!$('#addFind').hidden && opt.item && opt.item.title){
+    picked = opt.item;
+    if (mode === 'shelf') findSpines(picked); else { showPost(picked); ($('#addSayWrap').hidden ? $('#addPostGo') : $('#addSay')).focus(); return; }
+  }
+  const q = opt.query ? String(opt.query).trim() : '';
   if (q){ $('#addQ').value = q; search(false); }
-  $('#addQ').focus();
+  if (!$('#addFind').hidden) $('#addQ').focus(); else $('#addNeedGo').focus();
 }
 function close(){ if (dlg.open){ if (typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open'); } }
 dlg.addEventListener('close', () => { current = null; clearTimeout(typing); run++; if (asking){ asking.abort(); asking = null; } });   // whatever was being looked for stops

@@ -30,10 +30,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261002e">
+<link rel="stylesheet" href="../site.css?v=20261002f">
 <style>
-/* the feed: the tabs, then a line for each shelf saved and its card under it (site.css has the tabs, the lines, the
-   card and the rest) */
+/* the feed: the tabs, then a line for each shelf saved (its card under it) and each film or book logged (its worn
+   cover and caption under it); site.css has the tabs, the lines, the card, the cover and the rest */
 .items{margin-top:var(--s5)}
 .fnone{display:grid;justify-items:start;gap:var(--s3);margin:var(--s5) 0 0}
 .fnone p{margin:0}
@@ -76,7 +76,7 @@
     <button class="x" data-close type="button" aria-label="Close">×</button>
     <div>
       <h2>Sign in</h2>
-      <p>Save your shelves to your account and open them again on any device.</p>
+      <p>Keep your shelf and everything you log on any device.</p>
       <button class="btn primary full" id="googleBtn" type="button">Continue with Google</button>
       <p class="note">Accounts are for people 18 or older. <a href="../privacy.html">Privacy</a></p>
     </div>
@@ -111,13 +111,15 @@
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../cards.js?v=20261002a"></script>
-<script src="../nav.js?v=20261002b"></script>
+<script src="../wear.js?v=20261002a"></script>
+<script src="../nav.js?v=20261002c"></script>
 <script>
 (() => {
-/* The feed: /feed/ (?following, ?you or ?everyone picks the tab). A line for each shelf saved, newest first, 20 at a
-   time. The database decides what shows (feed() in 0006): EVERYONE is public shelves of public profiles, FOLLOWING is
-   public shelves of the people you follow. YOU is your own shelves, private ones too, read from the shelves table.
-   Only saving a shelf in the builder moves it up; renaming it or making it main doesn't. */
+/* The feed: /feed/ (?following, ?you or ?everyone picks the tab). A line for each shelf saved and each film or book
+   logged, newest first, 20 at a time. The database decides what shows (activity(), docs/proposed-0007-logs-watchlist.sql):
+   EVERYONE is public profiles, FOLLOWING the people you follow, YOU your own (a private shelf too). Until that's in the
+   database the feed is shelves only, as feed() in 0006 has them (YOU read from the shelves table), and asks no more.
+   Only saving a shelf in the builder moves it up; renaming it doesn't. */
 const $ = s => document.querySelector(s);
 const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
 const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
@@ -142,6 +144,12 @@ function ago(t){
   if (s < 60) return 'now';
   const [n, unit] = s < 3600 ? [s / 60, 'minute'] : s < D ? [s / 3600, 'hour'] : s < 7*D ? [s / D, 'day'] : s < 30*D ? [s / (7*D), 'week'] : s < 365*D ? [s / (30*D), 'month'] : [s / (365*D), 'year'];
   return RTF.format(-Math.floor(n), unit).replace(/\s*ago$/, '').replace(/\s+/g, '');
+}
+// a log is by the day: today, yesterday, then as ago() says it (3d, 2w). The same as in u/
+function day(t){
+  const d = new Date(t), now = new Date(), start = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const n = Math.round((start(now) - start(d)) / 864e5);
+  return n <= 0 ? 'today' : n === 1 ? 'yesterday' : ago(t);
 }
 
 /* ---------- signing in (the same Supabase client and settings as u/) ---------- */
@@ -211,31 +219,55 @@ document.querySelectorAll('.sheet').forEach(s => s.addEventListener('click', e =
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.querySelector('.sheet:not([hidden])')) closeSheets(); });
 
 /* ---------- the feed ---------- */
-const feed = {scope:'', last:null, run:0};
-// one line: "@abc shelved my films · 2h" (in YOU: "You shelved…", and a private shelf says so), its card under it
+const feed = {scope:'', last:null, run:0, logs:true};   // logs: false once the database says activity() isn't there
+const avatar = x => `<a class="fa" href="${esc(profileUrl(x.username))}" tabindex="-1" aria-hidden="true">${x.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(x.avatar_key)}`)}" alt="" loading="lazy">` : esc(((x.display_name || '').trim() || x.username).trim()[0] || '·')}</a>`;
+const when = (t, text) => `<span class="ago">· <time datetime="${esc(t)}" title="${esc(new Date(t).toLocaleString())}">${text}</time></span>`;
+// one line: "@abc shelved my films · 2h" (in YOU: "You shelved…", and a private shelf says so), its card under it;
+// or "@abc watched Gummo · today", its cover, worn by how long ago that was, and the caption beside it
 function item(x){
-  const li = document.createElement('li'), name = (x.display_name || '').trim(), who = esc(profileUrl(x.username)), to = esc(profileUrl(x.username, x.shelf_id));
-  const shelf = Shelf.shelfName({name: x.name, caption: x.caption});
-  const pic = x.preview_key ? `<img src="${esc(`${WORKER}/u/preview?k=${encodeURIComponent(x.preview_key)}&v=${encodeURIComponent(x.updated_at)}`)}" alt="" crossorigin="anonymous" loading="lazy" width="360" height="640">` : '';   // with CORS, so cards.js can read it and cut the card round the books
+  const li = document.createElement('li'), who = esc(profileUrl(x.username)), by = `<a href="${who}">${x.mine ? 'You' : '@' + esc(x.username)}</a>`;
   li.className = 'item';
-  li.innerHTML = `<a class="fa" href="${who}" tabindex="-1" aria-hidden="true">${x.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(x.avatar_key)}`)}" alt="" loading="lazy">` : esc((name || x.username).trim()[0] || '·')}</a>
-    <p class="line"><a href="${who}">${x.mine ? 'You' : '@' + esc(x.username)}</a> ${x.updated ? 'updated' : 'shelved'} <a href="${to}">${esc(shelf)}</a>${x.is_public === false ? ' <span class="tag">private</span>' : ''} <span class="ago">· <time datetime="${esc(x.saved_at)}" title="${esc(new Date(x.saved_at).toLocaleString())}">${ago(x.saved_at)}</time></span></p>
-    <a class="pic" data-shelf="${esc(x.shelf_id)}" href="${to}" tabindex="-1" aria-label="Open ${esc(shelf)} by @${esc(x.username)}">${pic}</a>`;
+  if (x.what === 'log'){
+    const verb = x.kind === 'movie' ? 'watched' : 'read', label = `${x.title}${x.year ? ` (${x.year})` : ''}`;
+    li.classList.add('log');
+    li.innerHTML = `${avatar(x)}<p class="line">${by} ${verb} <b>${esc(x.title)}</b> ${when(x.at, day(x.at))}</p>
+      <div class="logbody"><span class="cover"></span>${x.caption ? `<p class="say">${esc(x.caption)}</p>` : ''}</div>`;
+    li.querySelector('.cover').append(Wear.cover({src: x.cover_src ? `${WORKER}/img?url=${encodeURIComponent(x.cover_src.replace(/^url:/, ''))}` : '', seed: x.id, at: x.at,
+      label: `${label}, ${verb} by @${x.username}`}));
+    return li;
+  }
+  const to = esc(profileUrl(x.username, x.id)), shelf = Shelf.shelfName({name: x.name, caption: x.caption});
+  const pic = x.preview_key ? `<img src="${esc(`${WORKER}/u/preview?k=${encodeURIComponent(x.preview_key)}&v=${encodeURIComponent(x.updated_at)}`)}" alt="" crossorigin="anonymous" loading="lazy" width="360" height="640">` : '';   // with CORS, so cards.js can read it and cut the card round the books
+  li.innerHTML = `${avatar(x)}<p class="line">${by} ${x.updated ? 'updated' : 'shelved'} <a href="${to}">${esc(shelf)}</a>${x.is_public === false ? ' <span class="tag">private</span>' : ''} ${when(x.at, ago(x.at))}</p>
+    <a class="pic" data-shelf="${esc(x.id)}" href="${to}" tabindex="-1" aria-label="Open ${esc(shelf)} by @${esc(x.username)}">${pic}</a>`;
   return li;
 }
-// YOU: your own shelves, private ones too, as the feed's rows. The feed function has no scope for them, so they're
-// read from the shelves table (Row Level Security lets you read your own).
+// a shelf as feed() (0006) gives it, in activity()'s shape
+const fromFeed = r => ({what: 'shelf', id: r.shelf_id, at: r.saved_at, owner: r.owner, username: r.username, display_name: r.display_name, avatar_key: r.avatar_key,
+  caption: r.caption, name: r.name, preview_key: r.preview_key, created_at: r.created_at, updated_at: r.updated_at, updated: r.updated, is_public: r.is_public});
+// YOU before activity() is there: your own shelves, private ones too, read from the shelves table (Row Level Security
+// lets you read your own)
 async function mine(from){
   const p = me.profile;
   const rows = await api(`shelves?select=id,caption,name,preview_key,is_public,saved_at,created_at,updated_at&owner=eq.${me.user.id}&hidden=is.false&order=saved_at.desc,id.desc&limit=${PAGE}&offset=${from}`);
-  return rows.map(s => ({shelf_id: s.id, caption: s.caption, name: s.name, preview_key: s.preview_key, is_public: s.is_public, saved_at: s.saved_at, created_at: s.created_at,
-    updated_at: s.updated_at, owner: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key, updated: new Date(s.saved_at) - new Date(s.created_at) > 60000, mine: true}));
+  return rows.map(s => ({what: 'shelf', id: s.id, at: s.saved_at, caption: s.caption, name: s.name, preview_key: s.preview_key, is_public: s.is_public, created_at: s.created_at,
+    updated_at: s.updated_at, owner: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key, updated: new Date(s.saved_at) - new Date(s.created_at) > 60000}));
+}
+// the next page of the tab: activity() while it's there, otherwise what 0006 has
+const missing = e => /PGRST20[25]|42883|Could not find the function|does not exist/i.test(String(e && e.message));
+async function page(){
+  const last = feed.last, from = $('#items').children.length;
+  if (feed.logs){
+    try { return await rpc('activity', {scope: feed.scope, before: last ? last.at : null, before_id: last ? last.id : null, n: PAGE}); }
+    catch (e){ if (!missing(e)) throw e; feed.logs = false; }
+  }
+  return feed.scope === 'you' ? mine(from) : (await rpc('feed', {scope: feed.scope, before: last ? last.at : null, before_id: last ? last.id : null, n: PAGE})).map(fromFeed);
 }
 function none(kind){
   const box = $('#none');
-  if (kind === 'signin') box.innerHTML = `<p><button class="linkish" type="button" data-signin>Sign in</button> to see ${feed.scope === 'you' ? 'your own shelves here' : 'shelves from people you follow'}.</p>`;
-  else if (kind === 'you') box.innerHTML = '<p>You haven’t saved a shelf yet.</p><a class="dash sm" href="../build/?new">Start a new shelf</a>';
-  else if (kind === 'following') box.innerHTML = '<p>Follow people to see their shelves here.</p><button class="dash sm" type="button" data-scope="everyone">Everyone</button>';
+  if (kind === 'signin') box.innerHTML = `<p><button class="linkish" type="button" data-signin>Sign in</button> to see ${feed.scope === 'you' ? 'your own shelf and logs here' : 'what people you follow shelve and log'}.</p>`;
+  else if (kind === 'you') box.innerHTML = '<p>Nothing from you yet. Save your shelf, or log a film or a book with + Add.</p><a class="dash sm" href="../build/">Your shelf</a>';
+  else if (kind === 'following') box.innerHTML = '<p>Follow people to see what they shelve and log here.</p><button class="dash sm" type="button" data-scope="everyone">Everyone</button>';
   else box.innerHTML = '<p>Nothing shelved yet. The first shelf here could be yours.</p>';
   box.hidden = false;
 }
@@ -250,15 +282,15 @@ async function show(scope){
   history.replaceState(null, '', location.pathname + '?' + scope + location.hash);   // back from a shelf lands on the same tab
   $('#items').replaceChildren(); $('#none').hidden = true; $('#more').hidden = true;
   if (scope !== 'everyone' && !me.user){ $('#state').hidden = true; none('signin'); return; }
-  if (scope === 'you' && !me.profile){ $('#state').hidden = true; none('you'); return; }   // no username yet, so no shelves saved
+  if (scope === 'you' && !me.profile){ $('#state').hidden = true; none('you'); return; }   // no username yet, so nothing saved
   $('#state').textContent = 'Loading…'; $('#state').hidden = false;
   await more(run);
 }
 async function more(run = feed.run){
-  const btn = $('#more'), last = feed.last;
+  const btn = $('#more');
   btn.disabled = true;
   let rows;
-  try { rows = feed.scope === 'you' ? await mine($('#items').children.length) : await rpc('feed', {scope: feed.scope, before: last ? last.at : null, before_id: last ? last.id : null, n: PAGE}); }
+  try { rows = await page(); }
   catch (e){
     if (run !== feed.run) return;
     btn.disabled = false;
@@ -267,12 +299,14 @@ async function more(run = feed.run){
   }
   if (run !== feed.run) return;   // another tab was picked meanwhile
   btn.disabled = false; $('#state').hidden = true;
-  for (const x of rows) $('#items').append(item(x));
+  for (const x of rows) $('#items').append(item({...x, mine: feed.scope === 'you'}));
   const end = rows[rows.length - 1];
-  if (end) feed.last = {at: end.saved_at, id: end.shelf_id};
+  if (end) feed.last = {at: end.at, id: end.id};
   btn.hidden = rows.length < PAGE;
   if (!$('#items').children.length) none(feed.scope);
 }
+// a log posted with + ADD on this page: the tab starts again, with it at the top
+document.addEventListener('shelfstackd:added', e => { if (e.detail && e.detail.what === 'log' && feed.scope) show(feed.scope); });
 $('#more').addEventListener('click', () => more());
 const tabs = [...document.querySelectorAll('.tabs button')];
 tabs.forEach(b => b.addEventListener('click', () => { if (b.dataset.scope !== feed.scope) show(b.dataset.scope); }));

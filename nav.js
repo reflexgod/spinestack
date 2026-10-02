@@ -1,8 +1,9 @@
 /* The top bar's behaviour, the same on every page. Each page keeps its own copy of the bar's markup and CSS; this file
    fills in who is signed in, builds the two menus (the account menu, and the ▾ next to + ADD) and opens and closes
-   them. A page calls Nav.paint({user, profile}) whenever that changes (profile: id, username, display_name,
-   avatar_key), and says what its own Sign in, Finish sign-up and Sign out do: Nav.onSignIn(fn), Nav.onFinish(fn),
-   Nav.onSignOut(fn). + ADD opens the Add to your shelf… dialog (add.js, loaded the first time it's pressed).
+   them. A page calls Nav.paint({sb, user, profile}) whenever that changes (sb: its Supabase client, once it has one;
+   profile: id, username, display_name, avatar_key), and says what its own Sign in, Finish sign-up and Sign out do:
+   Nav.onSignIn(fn), Nav.onFinish(fn), Nav.onSignOut(fn). + ADD opens the Add dialog (add.js, loaded the first time
+   it's pressed), which reads who is signed in with Nav.account() and asks to sign in with Nav.signIn().
    Load it after shelf.js and worker-address.js, before the page's own script. */
 (() => {
   const ROOT = new URL('.', document.currentScript.src).href;   // the site's root: this file sits there
@@ -10,7 +11,7 @@
   const q = s => bar.querySelector(s);
   const acctBtn = q('#acctBtn'), signBtn = q('#signInBtn'), moreBtn = q('#addMore'), addWrap = q('.addwrap'), links = q('.links'), zap = q('.zap'), find = q('.find');
   const on = {signIn: null, finish: null, signOut: null, upload: null};
-  let state = {user: null, profile: null};
+  let state = {sb: null, user: null, profile: null};
 
   /* Floating UI keeps a menu on screen (it flips and shifts it). Only someone signed in has menus, so only they load
      it; until it arrives, or if it can't, a menu sits under its button, held inside the window. */
@@ -109,7 +110,7 @@
   }
   const item = (text, href) => { const a = document.createElement('a'); a.setAttribute('role', 'menuitem'); a.href = href; a.textContent = text; return a; };
 
-  // the account menu: Home, Profile, Shelves, Activity, Network, then Settings and Sign out (always last)
+  // the account menu: Home, Profile, Shelf, Activity, Network, then Settings and Sign out (always last)
   let acctMenu = null, addMenu = null;
   function buildMenus(){
     if (acctMenu) return;
@@ -127,14 +128,14 @@
   }
   function fillAccount(p){
     const mine = ROOT + 'u/?' + p.username;
-    acctMenu.menu.replaceChildren(item('Home', ROOT), item('Profile', mine), item('Shelves', mine + '#shelves'), item('Activity', mine + '#activity'), item('Network', mine + '#network'),
+    acctMenu.menu.replaceChildren(item('Home', ROOT), item('Profile', mine), item('Shelf', mine + '&shelf'), item('Activity', mine + '#activity'), item('Network', mine + '#network'),
       document.createElement('hr'), item('Settings', ROOT + 'settings/'), acctMenu.out);
   }
 
   /* ---------- who is signed in ---------- */
   let shownKey;   // the photo in the bar now, so a repaint doesn't load it again
   function paint(s){
-    state = {user: (s && s.user) || null, profile: (s && s.profile) || null};
+    state = {sb: (s && s.sb) || null, user: (s && s.user) || null, profile: (s && s.profile) || null};
     const p = state.profile;
     acctBtn.hidden = !p; signBtn.hidden = !!p; moreBtn.hidden = !p; find.hidden = !p;
     addWrap.classList.toggle('split', !!p);
@@ -174,7 +175,7 @@
     if (window.Add){ window.Add.open(opt); return Promise.resolve(true); }
     if (!window.Shelf) return Promise.resolve(false);
     adding = adding || new Promise(res => {
-      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261002a';
+      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261002b';
       s.onload = () => res(!!window.Add); s.onerror = () => { adding = null; s.remove(); res(false); };
       document.head.appendChild(s);
     });
@@ -186,5 +187,12 @@
     openAdd().then(ok => { if (!ok) location.href = addLink.href; });
   });
 
-  window.Nav = {paint, add: openAdd, onSignIn: fn => { on.signIn = fn; }, onFinish: fn => { on.finish = fn; }, onSignOut: fn => { on.signOut = fn; }, onUpload: fn => { on.upload = fn; }};
+  // for the Add dialog: who is signed in, and the page's own way to sign in (or, with no username yet, to pick one)
+  const account = () => ({...state});
+  function signIn(){
+    if (!state.user){ if (on.signIn) on.signIn(); else location.href = ROOT + 'build/'; }
+    else if (on.finish) on.finish(); else location.href = ROOT + 'build/';
+  }
+
+  window.Nav = {paint, add: openAdd, account, signIn, onSignIn: fn => { on.signIn = fn; }, onFinish: fn => { on.finish = fn; }, onSignOut: fn => { on.signOut = fn; }, onUpload: fn => { on.upload = fn; }};
 })();

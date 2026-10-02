@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700&display=swap">
-<link rel="stylesheet" href="site.css?v=20261002e">
+<link rel="stylesheet" href="site.css?v=20261002f">
 <style>
 /* a page to read: the shared column, with the text kept to a comfortable width in it */
 body{line-height:1.65}
@@ -45,7 +45,7 @@ ul{padding-left:1.2em;margin:0 0 var(--s3)}
   <p class="grey">Last changed 2 October 2026.</p>
 
   <h2>Short version</h2>
-  <p>You don't need an account to look around or to try the builder: you can find spines, arrange a shelf and try the filters. Saving a shelf needs an account, and so does sharing it as a story, which is done from the saved shelf's page. An account keeps your shelves so you can open them again, shows them on your profile, and lets you follow people. Shelves are public unless you mark them private, and you can make your whole profile private. We keep as little as we can, we don't show ads, we don't use trackers, and we never sell anything about you.</p>
+  <p>You don't need an account to look around or to try the builder: you can find spines, arrange a shelf and try the filters. Saving a shelf needs an account, and so does sharing it as a story, which is done from the saved shelf's page. An account keeps your shelf (there's one each) and shows it on your profile. With one you can also log the films and books you watch and read, and follow people. Your shelf is public unless you mark it private, and you can make your whole profile private. We keep as little as we can, we don't show ads, we don't use trackers, and we never sell anything about you.</p>
 
   <h2>Who can have an account</h2>
   <p>Accounts are for people who are 18 or older. When you make one, you confirm that you are. If you're younger, you can still look at shelves and try the builder without an account.</p>
@@ -54,8 +54,10 @@ ul{padding-left:1.2em;margin:0 0 var(--s3)}
   <ul>
     <li><strong>From Google sign-in:</strong> your email address and a user id. Google also shows us your name; we only use it to suggest a username and don't store it. We never see your Google password.</li>
     <li><strong>Your account:</strong> your username, when you made the account, and that you confirmed you're 18 or older.</li>
-    <li><strong>Your profile:</strong> the display name, bio and photo you add in Settings, which shelf is your main shelf, and whether your profile is private.</li>
-    <li><strong>Your shelves:</strong> each shelf's name, caption, filter, background and layout, whether it's public or private, when you made it and when you last saved it. For each spine: its title, author or director, year, and where its picture comes from.</li>
+    <li><strong>Your profile:</strong> the display name, bio and photo you add in Settings, and whether your profile is private.</li>
+    <li><strong>Your shelf:</strong> its name, caption, filter, background and layout, whether it's public or private, when you made it and when you last saved it. For each spine: its title, author or director, year, and where its picture comes from. If you made more than one shelf before there was one each, we keep those too until you delete them.</li>
+    <li><strong>Your logs:</strong> each film or book you log, with its title, director or author, year and cover address, the caption you write, and when you logged it.</li>
+    <li><strong>Your watchlist:</strong> up to six titles with the same details, when you added each, and, for one you kept from From friends, whose log it came from. Also the titles you removed from From friends, kept 180 days so they don't come back.</li>
     <li><strong>Pictures:</strong> a small picture of each saved shelf, and any spine or cover you cut or uploaded yourself, so the shelf looks the same when you open it again. With Pro, also the wall and the PNGs you put on a shelf.</li>
     <li><strong>Follows:</strong> who you follow and who follows you, follow requests you send or get, and when. To stop misuse, each follow, unfollow and request is also noted for an hour.</li>
     <li><strong>Reports:</strong> if you report a profile or a shelf, who sent it, what it was about, the reason you give, and when.</li>
@@ -63,9 +65,11 @@ ul{padding-left:1.2em;margin:0 0 var(--s3)}
   <p>If you choose to add a spine to the public archive, that spine picture (not your account) is kept there for everyone to use.</p>
 
   <h2>Who can see it</h2>
-  <p>Your profile and your shelves are public unless you make them private. Anyone with the link can see your display name, username, bio and photo, and your public shelves with their spines, walls and PNGs. Here is where they show.</p>
+  <p>Your profile is public unless you make it private. Anyone with the link can see your display name, username, bio and photo, your shelf with its spines, walls and PNGs (unless you mark it private), your logs and your watchlist. Here is where they show.</p>
   <ul>
     <li><strong>The feed.</strong> When you save a public shelf, the site says so in a line like “@you shelved my films · 2h”, with the shelf's picture. That line shows on the home page, on Shelves, under Activity (to everyone, and to the people who follow you) and on your profile's Activity tab. Saving the shelf again moves it back to the top, as “updated”.</li>
+    <li><strong>Logs.</strong> When you log a film or a book, the site says so in a line like “@you watched Gummo · today”, with its cover and your caption. That line shows under Activity (to everyone, and to the people who follow you) and on your profile's Activity tab, where you can delete it.</li>
+    <li><strong>Your watchlist</strong> shows on your profile. <strong>From friends</strong>, under it, is only ever shown to you: it's made from the logs of the people you follow.</li>
     <li><strong>Recently active.</strong> People who saved a public shelf lately are listed on Members and on the home page, by photo and username.</li>
     <li><strong>Being found.</strong> Anyone can look you up on Members by the start of your username or display name. They see your photo, display name and username.</li>
     <li><strong>Follows.</strong> Who you follow and who follows you are listed on your profile's Network tab. Each person is shown by photo, display name and username.</li>
@@ -74,14 +78,14 @@ ul{padding-left:1.2em;margin:0 0 var(--s3)}
 
   <h2>Private shelves and private profiles</h2>
   <ul>
-    <li><strong>A private shelf.</strong> Mark a shelf Private (under Who can view when you make it, or under it on your profile) and only you can see it. It is in none of the places above. You still see it on your own profile and under Activity, in You, marked private.</li>
-    <li><strong>A private profile.</strong> Switch on Private profile in <a href="settings/#account">Settings</a>, under Account. Then only your followers see your profile, your shelves and your follow lists. Your shelves leave the home page, Shelves and everyone's Activity, and you're no longer listed as recently active. Your followers still see your shelves under Following.</li>
-    <li><strong>What others still see of a private profile.</strong> Your photo, display name and username: on your profile, in the Members search, and in the follow lists of public profiles you follow or that follow you. They never see your bio or your shelves.</li>
+    <li><strong>A private shelf.</strong> Mark your shelf Private (under Who can view in the builder, or on its own page) and only you can see it. It is in none of the places above. You still see it on your own profile and under Activity, in You, marked private.</li>
+    <li><strong>A private profile.</strong> Switch on Private profile in <a href="settings/#account">Settings</a>, under Account. Then only your followers see your profile, your shelf, your logs, your watchlist and your follow lists. Your shelf and your logs leave the home page, Shelves and everyone's Activity, and you're no longer listed as recently active. Your followers still see them under Following.</li>
+    <li><strong>What others still see of a private profile.</strong> Your photo, display name and username: on your profile, in the Members search, and in the follow lists of public profiles you follow or that follow you. They never see your bio, your shelf or your logs.</li>
     <li><strong>Follow requests.</strong> Someone who wants to follow a private profile asks first. You accept or decline each request, and only the two of you can see it. People who already followed you before you went private stay followers.</li>
   </ul>
 
   <h2>Settings</h2>
-  <p><a href="settings/">Settings</a> is where you change your display name, bio, main shelf and photo, and switch Private profile on or off. Your name, bio and main shelf are saved when you press Save. The Private profile switch saves as soon as you flip it. Your username can't be changed.</p>
+  <p><a href="settings/">Settings</a> is where you change your display name, bio and photo, and switch Private profile on or off. Your name and bio are saved when you press Save. The Private profile switch saves as soon as you flip it. Your username can't be changed.</p>
 
   <h2>Your photo</h2>
   <p>When you choose a photo, you cut it to a square on your own device. Your browser then makes it small (400 by 400) and draws it again, which removes its location and camera data. Only that small picture is sent to us. The photo you picked it from never leaves your device.</p>
@@ -89,7 +93,7 @@ ul{padding-left:1.2em;margin:0 0 var(--s3)}
 
   <h2>Where it's kept</h2>
   <ul>
-    <li>Account, shelf and follow text: Supabase, in Mumbai, India.</li>
+    <li>Account, shelf, log and follow text: Supabase, in Mumbai, India.</li>
     <li>Pictures: Cloudflare, on our Worker and in its storage (R2).</li>
   </ul>
 
@@ -104,15 +108,15 @@ ul{padding-left:1.2em;margin:0 0 var(--s3)}
   <p>The site runs on a few services. Each one sees what any website sees when your browser asks it for something: your IP address and what browser you use.</p>
   <ul>
     <li>Google: sign-in, and the fonts.</li>
-    <li>Supabase: accounts, shelves and follows.</li>
+    <li>Supabase: accounts, shelves, logs and follows.</li>
     <li>Cloudflare: our Worker, which runs searches and serves pictures.</li>
     <li>jsDelivr: a few pieces of code the pages load.</li>
   </ul>
   <p>When you search for a title, the name you typed goes to our Worker, which asks TMDB, Open Library and Brave Search. A search isn't tied to your account. To stop misuse, searches and uploads are counted per IP address for a short time.</p>
 
   <h2>Removing it</h2>
-  <p>You can delete any shelf on your profile at any time. Unfollowing someone removes the follow at once, and you can cancel a follow request you sent. When you remove your photo, a wall or a PNG, the picture is deleted from storage too, as soon as no shelf of yours uses it any more.</p>
-  <p>There's no button to delete a whole account yet. Email us from the address you signed in with and we'll delete your account, your shelves, your follows and their pictures within 7 days.</p>
+  <p>You can delete your shelf, or any of your logs, at any time, and take a title off your watchlist. Unfollowing someone removes the follow at once, and you can cancel a follow request you sent. When you remove your photo, a wall or a PNG, the picture is deleted from storage too, as soon as no shelf of yours uses it any more.</p>
+  <p>There's no button to delete a whole account yet. Email us from the address you signed in with and we'll delete your account, your shelf, your logs, your watchlist, your follows and their pictures within 7 days.</p>
 
   <h2>Contact</h2>
   <p>Questions or requests: <a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a>.</p>

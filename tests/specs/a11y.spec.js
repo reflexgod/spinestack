@@ -104,11 +104,31 @@ for (const [name, at] of [['someone\'s', '/u/?mira&shelf=aaaaaaaa-aaaa-4aaa-8aaa
   });
 }
 
-test('axe: your profile with a card\'s ··· menu open', async ({ page }) => {
+test('axe: your profile, with your shelf, your watchlist and From friends', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
-  await open(page, '/u/?tester#shelves');
-  await page.locator('#all li.own').first().getByRole('button', { name: /^More for / }).click();
-  await expect(page.getByRole('menu', { name: /^More for / })).toBeVisible();
+  await open(page, '/u/?tester');
+  await expect(page.locator('#friends li')).toHaveCount(2);
+  await clean(page);
+});
+
+test('axe: + ADD on Log it, with a title picked', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/feed/?everyone');
+  await page.locator('header.top .add').click();
+  const d = page.getByRole('dialog');
+  await d.getByRole('radio', { name: 'Log it' }).check();
+  await d.getByRole('combobox', { name: 'Film or book name' }).fill('gummo');
+  await d.getByRole('option', { name: /Gummo/ }).click();
+  await expect(d.getByRole('button', { name: 'Post' })).toBeVisible();
+  await clean(page);
+});
+
+test('axe: + ADD on Watchlist, signed out', async ({ page }) => {
+  await mockNetwork(page);
+  await open(page, '/feed/?everyone');
+  await page.locator('header.top .add').click();
+  await page.getByRole('dialog').getByRole('radio', { name: 'Watchlist' }).check();
+  await expect(page.getByRole('dialog').getByRole('button', { name: 'Sign in' })).toBeVisible();
   await clean(page);
 });
 

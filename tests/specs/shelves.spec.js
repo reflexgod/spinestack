@@ -1,13 +1,13 @@
-// Shelves (/shelves/): Start a new shelf, then every public shelf as a card, 24 at a time, Load more.
+// Shelves (/shelves/): Your shelf, then every public shelf as a card, 24 at a time, Load more.
 const { test, expect } = require('@playwright/test');
 const { SHELVES, SB_URL, CORS, feedRow, mockNetwork, watchErrors, open } = require('../site');
 
-test('Shelves: the title, Start a new shelf, and every public shelf as a card cut round its books', async ({ page }) => {
+test('Shelves: the title, Your shelf, and every public shelf as a card cut round its books', async ({ page }) => {
   const errors = watchErrors(page), net = await mockNetwork(page);
   await open(page, '/shelves/');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Shelves');
-  const start = page.locator('main').getByRole('link', { name: 'Start a new shelf' });
-  await expect(start).toHaveAttribute('href', '../build/?new');
+  const start = page.locator('main').getByRole('link', { name: 'Your shelf' });
+  await expect(start).toHaveAttribute('href', '../build/');
   await expect(page.locator('header.top .links').getByRole('link', { name: 'Shelves', exact: true })).toHaveAttribute('aria-current', 'page');
   const cards = page.locator('#grid li');
   await expect(cards).toHaveCount(18);
@@ -20,7 +20,7 @@ test('Shelves: the title, Start a new shelf, and every public shelf as a card cu
   const box = await first.locator('.pic').boundingBox();
   expect(box.height / box.width).toBeCloseTo(1.5, 1);
   await start.click();
-  await expect(page).toHaveURL(/\/build\/(\?new)?$/);   // the builder, on a new shelf (it tidies ?new out of the address)
+  await expect(page).toHaveURL(/\/build\/$/);   // the builder: your shelf
   expect(errors).toEqual([]);
   expect(net.unknown).toEqual([]);
 });

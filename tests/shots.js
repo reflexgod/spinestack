@@ -1,5 +1,6 @@
 /* Screenshots of the pages at 1280px and 390px, with the made-up account and data the tests use and the real fonts:
-   node shots.js [folder] (tests/shots unless given). Shelf cards get real story pictures, drawn by shelf.js. */
+   node shots.js [folder] (tests/shots unless given). Shelf cards get real story pictures, drawn by shelf.js. The clock
+   is held at two hours after the newest made-up shelf, so the logs' covers are as worn as their dates say. */
 const { chromium } = require('@playwright/test');
 const { spawn } = require('child_process');
 const path = require('path'), fs = require('fs');
@@ -16,10 +17,28 @@ const SHOTS = [
   { name: 'profile-activity', path: '/u/?mira#activity', signedIn: true },
   { name: 'profile-network', path: '/u/?mira#network', signedIn: true },
   { name: 'own-profile', path: '/u/?tester', signedIn: true },
+  { name: 'own-profile-no-shelf', path: '/u/?tester', signedIn: true, ownShelf: false },
   { name: 'shelf-page', path: '/u/?mira&shelf=aaaaaaaa-aaaa-4aaa-8aaa-000000000001', signedIn: true },
   { name: 'own-shelf-page', path: '/u/?tester&shelf=aaaaaaaa-aaaa-4aaa-8aaa-000000000003', signedIn: true },
   { name: 'feed', path: '/feed/?everyone', signedIn: true },
   { name: 'feed-you', path: '/feed/?you', signedIn: true },
+  { name: 'feed-before-logs', path: '/feed/?everyone', signedIn: true, logs: false },
+  { name: 'add-choices', path: '/feed/?everyone', signedIn: true, act: async page => { await page.locator('header.top .add').click(); } },
+  { name: 'add-log', path: '/feed/?everyone', signedIn: true, act: async page => {
+    await page.locator('header.top .add').click();
+    const d = page.locator('#addDialog');
+    await d.getByRole('radio', { name: 'Log it' }).check();
+    await d.getByRole('combobox', { name: 'Film or book name' }).fill('gummo');
+    await d.getByRole('option', { name: /Gummo/ }).click();
+    await d.getByRole('textbox', { name: /Caption/ }).fill('The bathtub scene.');
+  } },
+  { name: 'add-watchlist', path: '/feed/?everyone', signedIn: true, act: async page => {
+    await page.locator('header.top .add').click();
+    const d = page.locator('#addDialog');
+    await d.getByRole('radio', { name: 'Watchlist' }).check();
+    await d.getByRole('combobox', { name: 'Film or book name' }).fill('waves');
+    await d.getByRole('option', { name: /The Waves/ }).click();
+  } },
   { name: 'shelves', path: '/shelves/', signedIn: true },
   { name: 'members', path: '/members/?q=m', signedIn: true },
   { name: 'settings', path: '/settings/', signedIn: true },
@@ -69,10 +88,12 @@ async function drawPreviews(page) {
     for (const [w, h] of [[1280, 900], [390, 844]]) {
       for (const shot of SHOTS) {
         const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: w < 500 ? 2 : 1 });
-        await mockNetwork(page, { signedIn: shot.signedIn, realFonts: true, empty: !!shot.empty });
+        await page.clock.setFixedTime(new Date('2026-09-30T14:00:00Z'));
+        await mockNetwork(page, { signedIn: shot.signedIn, realFonts: true, empty: !!shot.empty, logs: shot.logs !== false, ownShelf: shot.ownShelf !== false });
         await page.goto(BASE + shot.path); await page.waitForLoadState('networkidle');
         await page.evaluate(() => document.fonts.ready);
         await drawPreviews(page);
+        if (shot.act) { await shot.act(page); await page.waitForTimeout(300); }
         if (shot.photo) {   // a photo chosen, so the frame it's cut with shows
           await page.locator('#photoFile').setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: PICTURE });
           await page.locator('#cropBox .cropper-container').waitFor();

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Shelves · shelfstackd</title>
-<meta name="description" content="Every public shelf on shelfstackd, newest first. Start one of your own.">
+<meta name="description" content="Every public shelf on shelfstackd, newest first. Make your own.">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
@@ -12,7 +12,7 @@
 <meta property="og:site_name" content="shelfstackd">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Shelves · shelfstackd">
-<meta property="og:description" content="Every public shelf on shelfstackd, newest first. Start one of your own.">
+<meta property="og:description" content="Every public shelf on shelfstackd, newest first. Make your own.">
 <meta property="og:url" content="https://shelfstackd.com/shelves/">
 <meta property="og:image" content="https://shelfstackd.com/og.jpg">
 <meta property="og:image:width" content="1200">
@@ -30,7 +30,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261002e">
+<link rel="stylesheet" href="../site.css?v=20261002f">
 <style>
 /* shelves: a line and a button, then every public shelf as a card (site.css has the cards and the rest) */
 .shelves h1{margin-bottom:var(--s2)}
@@ -58,7 +58,7 @@
   <h1>Shelves</h1>
   <div class="lead">
     <p class="grey">Every public shelf, newest first.</p>
-    <a class="btn" href="../build/?new">Start a new shelf</a>
+    <a class="btn" href="../build/">Your shelf</a>
   </div>
   <p class="grey" id="state" role="status">Loading…</p>
   <ul class="thumbs" id="grid" aria-label="Shelves"></ul>
@@ -71,7 +71,7 @@
     <button class="x" data-close type="button" aria-label="Close">×</button>
     <div>
       <h2>Sign in</h2>
-      <p>Save your shelves to your account and open them again on any device.</p>
+      <p>Keep your shelf and everything you log on any device.</p>
       <button class="btn primary full" id="googleBtn" type="button">Continue with Google</button>
       <p class="note">Accounts are for people 18 or older. <a href="../privacy.html">Privacy</a></p>
     </div>
@@ -106,7 +106,7 @@
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../cards.js?v=20261002a"></script>
-<script src="../nav.js?v=20261002b"></script>
+<script src="../nav.js?v=20261002c"></script>
 <script>
 (() => {
 /* Shelves: /shelves/. Every public shelf of a public profile, newest saved first, as cards: 24 at a time, then Load

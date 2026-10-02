@@ -34,7 +34,7 @@
     (window.top === window ? location : window.top.location).replace(location.pathname + (rest ? '?' + rest : '') + location.hash);
   })();
 </script>
-<title>Make a shelf · shelfstackd</title>
+<title>Your shelf · shelfstackd</title>
 <meta name="description" content="Build a shelf of real film and book spines and save it to your profile, where you can share it.">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32">
@@ -42,7 +42,7 @@
 <meta name="theme-color" content="#FFFFFF">
 <meta property="og:site_name" content="shelfstackd">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Make a shelf · shelfstackd">
+<meta property="og:title" content="Your shelf · shelfstackd">
 <meta property="og:description" content="Build a shelf of real film and book spines and save it to your profile, where you can share it.">
 <meta property="og:url" content="https://shelfstackd.com/build/">
 <meta property="og:image" content="https://shelfstackd.com/og.jpg">
@@ -54,7 +54,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261002e">
+<link rel="stylesheet" href="../site.css?v=20261002f">
 <style>
 /* the builder, laid out like a new-list page: Add, the spines as a list, Style, and the live preview beside them.
    The bottom area stays in view: the shelf's name and who can view it, with Cancel and Save (beside them
@@ -181,7 +181,7 @@ em.pro{margin:0 var(--s1)}
 .barname{flex:0 1 300px;min-width:150px}
 .barname input[type=text]{height:32px;padding-block:0}
 .barleft{flex:1 1 0;display:flex;flex-wrap:wrap;gap:var(--s1) var(--s4);align-items:baseline;justify-content:flex-end;min-width:0;padding-bottom:var(--s1)}   /* a note takes the room that's left, and wraps in it */
-.barleft:has(#saveNew[hidden]):has(#saveNote:empty){display:none}
+.barleft:has(#saveNote:empty){display:none}
 .mkbar .note{margin:0}
 footer{margin-top:0}
 .uname{display:flex;align-items:center;gap:var(--s1);border:1px solid var(--ink);border-radius:var(--radius);padding:0 0 0 var(--s3)}
@@ -222,7 +222,7 @@ footer{margin-top:0}
 </header>
 
 <main class="mk">
-  <h1 id="pageTitle">New shelf</h1>
+  <h1 id="pageTitle">Your shelf</h1>
   <div class="mkgrid">
     <div class="mkform">
       <div class="addrow" id="search">
@@ -296,7 +296,7 @@ footer{margin-top:0}
     <fieldset class="field who"><legend class="lbl">Who can view</legend>
       <div class="seg2"><label><input type="radio" name="vis" value="public" checked>Public</label><label><input type="radio" name="vis" value="private">Private</label></div>
     </fieldset>
-    <span class="barleft"><button class="dash sm" id="saveNew" type="button" hidden>Save as a new shelf</button><span class="note" id="saveNote" role="status"></span></span>
+    <span class="barleft"><span class="note" id="saveNote" role="status"></span></span>
     <button class="dash sm" id="cancelBtn" type="button">Cancel</button>
     <button class="btn primary" id="saveShelf" type="button" hidden>Save</button>
   </div>
@@ -307,7 +307,7 @@ footer{margin-top:0}
     <button class="x" id="sheetClose" type="button" aria-label="Close">×</button>
     <div id="signinPane">
       <h2>Sign in</h2>
-      <p>Save your shelves to your account and open them again on any device.</p>
+      <p>Keep your shelf and everything you log on any device.</p>
       <button class="btn primary full" id="googleBtn" type="button">Continue with Google</button>
       <form id="emailForm" hidden>
         <input type="email" id="email" placeholder="you@example.com" autocomplete="email" aria-label="Email">
@@ -356,8 +356,8 @@ footer{margin-top:0}
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../spinetip.js?v=20261002a"></script>
-<script src="../nav.js?v=20261002b"></script>
-<script src="../add.js?v=20261002a"></script>
+<script src="../nav.js?v=20261002c"></script>
+<script src="../add.js?v=20261002b"></script>
 <script>
 (() => {
 const $ = s => document.querySelector(s);
@@ -367,7 +367,8 @@ const W = 1080, H = 1920;
 const {FONTS, STYLES, crop, loadImg, isReal, TEX, texture, isDark, posterTitle, DEFAULT_CAPTION} = Shelf;
 // the colour picking and the spine finder live in add.js (the + ADD dialog uses them on every page)
 const {extractPalette, findSpine, findSoloSpine} = Add;
-// ?new (+ new shelf on your profile): an empty shelf to begin with, not the sample
+// ?new: an old link from when there were many shelves (+ new shelf). There's one shelf each now, so it's your shelf
+// like any other visit; the address is only tidied
 const FRESH = new URLSearchParams(location.search).has('new');
 // ?sample: the page opens with the sample shelf on it. Nobody is sent here: it's for the tests, and for tests/art.js,
 // which makes the picture of a shelf that home shows when the site is empty.
@@ -1015,7 +1016,7 @@ const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$
 const EMAIL_LOGIN = window.SPINESTACK_EMAIL_LOGIN === true;
 const SB_LIB = {src:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
 const accounts = !!(SB_URL && SB_KEY && WORKER);
-const acct = {sb:null, user:null, profile:null, shelfId:null, shelves:[], pendingSave:false, watching:false};
+const acct = {sb:null, user:null, profile:null, shelfId:null, shelves:[], pendingSave:false, watching:false, openAsked:null};
 let sbLoading = null;
 function supa(){
   if (!accounts) return Promise.reject(new Error('Accounts aren’t set up on this copy of the site.'));
@@ -1043,12 +1044,12 @@ function friendly(e){
 async function startAccounts(){
   if (!accounts) return;
   $('#saveShelf').hidden = false; paintAcct();
-  // The shelf being made waits as a draft. It gives way to what was asked for: another saved shelf to open
-  // (?open=<id>), or a new shelf (?new) when the draft is a saved shelf being changed. Coming back from signing in,
-  // the draft is what's wanted.
+  // Your shelf, as it's being changed, waits as a draft. It gives way to another saved shelf asked for by an old link
+  // (?open=<id>). Coming back from signing in, the draft is what's wanted.
   const openId = new URLSearchParams(location.search).get('open');
   let draft = takeDraft();
-  if (draft && !returning() && ((openId && draft.shelfId !== openId) || (FRESH && draft.shelfId))){ dropDraft(); draft = null; }
+  if (draft && !returning() && openId && draft.shelfId !== openId){ dropDraft(); draft = null; }
+  acct.openAsked = openId && !draft ? openId : null;   // then that one opens, not yours
   if (draft) await restoreDraft(draft);
   if (FRESH) history.replaceState(null, '', here() + location.hash);
   if (!hasSession() && !returning()) return;          // signed out: nothing more loads
@@ -1061,7 +1062,8 @@ async function startAccounts(){
     watchAuth();
     if (openId && !draft){
       history.replaceState(null, '', here() + location.hash);
-      if (acct.shelves.some(s => s.id === openId)) await openShelf(openId); else toast('Couldn’t open that shelf.');
+      if (acct.shelves.some(s => s.id === openId)) await openShelf(openId);
+      else { toast('Couldn’t open that shelf.'); acct.openAsked = null; await openYours(); }
     }
   } catch (e){ toast(friendly(e)); }
 }
@@ -1075,22 +1077,21 @@ async function setUser(user){
   if (same && (acct.profile || !user)) return;
   acct.user = user || null; acct.profile = null;
   if (!user){ acct.shelfId = null; acct.shelves = []; acct.pendingSave = false; proAccount = false; paintAcct(); return; }
-  const {data, error} = await acct.sb.from('profiles').select('id,username,is_private,display_name,avatar_key').eq('id', user.id).maybeSingle();
+  const {data, error} = await acct.sb.from('profiles').select('id,username,is_private,display_name,avatar_key,pinned_shelf_id').eq('id', user.id).maybeSingle();
   if (error){ toast('Couldn’t load your account. Try again in a moment.'); paintAcct(); return; }
   acct.profile = data;
   if (SHELFSTACKD_PRO_REQUIRED && data){ const r = await acct.sb.rpc('am_i_pro'); proAccount = r.data === true; }
   paintAcct();
   if (!data){ if (!same) openSheet('name'); return; }
   await loadMine();
-  if (acct.pendingSave){ acct.pendingSave = false; saveShelf(false); }
+  await openYours();
+  if (acct.pendingSave){ acct.pendingSave = false; saveShelf(); }
 }
 function paintAcct(){
   if (!accounts) return;
   const p = acct.profile;
-  Nav.paint({user: acct.user, profile: p});   // the bar (nav.js): Sign in, Finish sign-up, or you and the account menu
-  $('#pageTitle').textContent = acct.shelfId ? 'Edit shelf' : 'New shelf';
+  Nav.paint({sb: acct.sb, user: acct.user, profile: p});   // the bar (nav.js): Sign in, Finish sign-up, or you and the account menu
   paintLimit();   // Pro holds more
-  $('#saveNew').hidden = !acct.shelfId;
   $('#saveNote').textContent = acct.user ? '' : 'Sign in to keep this shelf and open it again later.';
 }
 Nav.onSignIn(() => openSheet('signin'));
@@ -1157,7 +1158,7 @@ $('#nameBtn').addEventListener('click', async () => {
   const v = $('#uname').value, btn = $('#nameBtn');
   if (!nameFree || !$('#adult').checked || !acct.user) return;
   btn.disabled = true;
-  const {data, error} = await acct.sb.from('profiles').insert({id: acct.user.id, username: v}).select('id,username,is_private,display_name,avatar_key').single();
+  const {data, error} = await acct.sb.from('profiles').insert({id: acct.user.id, username: v}).select('id,username,is_private,display_name,avatar_key,pinned_shelf_id').single();
   if (error){ nameFree = false; paintName(friendly(error), false); return; }
   acct.profile = data; closeSheet(); paintAcct(); toast('Welcome, @' + data.username + '.');
   // FOLLOW was pressed on a profile before there was a username: back to that profile, which finishes it
@@ -1166,7 +1167,7 @@ $('#nameBtn').addEventListener('click', async () => {
     if (pf && Date.now() - pf.at < 30*60e3 && /^[a-z0-9_]{3,20}$/.test(pf.username)){ location.href = '../u/?' +pf.username; return; }
   } catch {}
   await loadMine();
-  if (acct.pendingSave){ acct.pendingSave = false; saveShelf(false); }
+  if (acct.pendingSave){ acct.pendingSave = false; saveShelf(); }
 });
 async function signOut(){
   try { await (await supa()).auth.signOut({scope: 'local'}); } catch {}
@@ -1228,14 +1229,15 @@ async function previewBlob(){
   throw new Error('Couldn’t make the shelf’s picture. Try again.');
 }
 let saving = false;
-async function saveShelf(asNew){
+// Save: your one shelf, saved over (or made, the first time)
+async function saveShelf(){
   if (saving) return;
   if (!books.length || isSample){ toast('Add your own titles first.'); return; }
   if (!acct.user){ acct.pendingSave = true; openSheet('signin'); return; }
   if (!acct.profile){ acct.pendingSave = true; openSheet('name'); return; }
   if (books.length > spineMax()){ proToast('Free shelves hold 6 spines. Pro holds 20.'); return; }
   if (usesPro() && !isPro()){ proToast('Your own wall, PNGs and the floating shelf come with Pro.'); return; }
-  const updating = !asNew && !!acct.shelfId;
+  const updating = !!acct.shelfId;
   saving = true; $('#saveShelf').disabled = true; $('#saveNote').textContent = 'Saving…';
   const id = updating ? acct.shelfId : crypto.randomUUID(), was = acct.shelves.find(s => s.id === id);
   try {
@@ -1273,8 +1275,7 @@ async function uploadArt(){
 }
 // pictures no shelf needs any more: the Worker deletes each one unless another of your shelves still uses it
 const forgetArt = keys => { for (const k of keys) workerPost('/m/delete?k=' + encodeURIComponent(k)).catch(() => {}); };
-$('#saveShelf').addEventListener('click', () => saveShelf(false));
-$('#saveNew').addEventListener('click', () => saveShelf(true));
+$('#saveShelf').addEventListener('click', () => saveShelf());
 // Cancel: this shelf is dropped (a saved shelf stays as it was saved), and you go back to your profile, or home
 $('#cancelBtn').addEventListener('click', e => {
   const b = e.currentTarget;
@@ -1287,14 +1288,28 @@ $('#cancelBtn').addEventListener('click', e => {
   location.href = acct.profile ? '../u/?' + acct.profile.username : '../';
 });
 
-/* your saved shelves: read so one can be opened (?open=<id>) and saved over; they're listed on your profile */
-const SHELF_COLS = 'id,caption,name,filter,intensity,background,wood,layout,varied,is_public,preview_key,pro,created_at,updated_at,shelf_items(count)';
+/* your saved shelf: one each. Accounts from before keep any others they made; yours is the main one (pinned) if it's
+   set, otherwise the one saved last, as on your profile. An old link (?open=<id>) can still open one of the others. */
+const SHELF_COLS = 'id,caption,name,filter,intensity,background,wood,layout,varied,is_public,preview_key,pro,created_at,updated_at,saved_at,shelf_items(count)';
 async function loadMine(){
   if (!acct.profile) return;
   // own shelves only: since phase 2, other people's public shelves are readable too
   const {data, error} = await acct.sb.from('shelves').select(SHELF_COLS).eq('owner', acct.user.id).order('updated_at', {ascending:false}).limit(60);
   if (error){ toast('Couldn’t load your shelves. Try again in a moment.'); return; }
   acct.shelves = data || [];
+}
+const yourShelf = () => acct.shelves.find(s => s.id === (acct.profile || {}).pinned_shelf_id) || acct.shelves.slice().sort((a, b) => new Date(b.saved_at || b.updated_at) - new Date(a.saved_at || a.updated_at))[0] || null;
+const sameTitle = (a, b) => a.kind === b.kind && String(a.title || '').trim().toLowerCase() === String(b.title || '').trim().toLowerCase() && String(a.year || '') === String(b.year || '');
+// signed in, and not already on a saved shelf: yours opens. Spines put on a shelf before signing in (or before it had
+// loaded) go on yours too, after what's there, unless it has them already; Save keeps them.
+async function openYours(){
+  if (!acct.profile || acct.shelfId || acct.openAsked) return;
+  const s = yourShelf(); if (!s) return;
+  const extra = isSample ? [] : books.slice();
+  await openShelf(s.id);
+  if (acct.shelfId !== s.id) return;   // it didn't open: what's here stays, and Save makes it a shelf of its own
+  const added = extra.filter(b => !books.some(x => sameTitle(x, b)) && shelve(b));
+  if (added.length) toast(added.length === 1 ? `${added[0].title || 'That spine'} is on your shelf now. Save to keep it.` : `${added.length} spines are on your shelf now. Save to keep them.`);
 }
 // a saved item back into a book on the shelf
 const srcOf = ref => ref.startsWith('a:') ? `${WORKER}/archive/img?id=${ref.slice(2)}` : ref.startsWith('u:') ? `${WORKER}/u/blob?k=${encodeURIComponent(ref.slice(2))}`

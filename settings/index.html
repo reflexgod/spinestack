@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>Settings · shelfstackd</title>
-<meta name="description" content="Change your shelfstackd profile, your photo and who can see your shelves.">
+<meta name="description" content="Change your shelfstackd profile, your photo and who can see your shelf.">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
@@ -13,7 +13,7 @@
 <meta property="og:site_name" content="shelfstackd">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Settings · shelfstackd">
-<meta property="og:description" content="Change your shelfstackd profile, your photo and who can see your shelves.">
+<meta property="og:description" content="Change your shelfstackd profile, your photo and who can see your shelf.">
 <meta property="og:url" content="https://shelfstackd.com/settings/">
 <meta property="og:image" content="https://shelfstackd.com/og.jpg">
 <meta property="og:image:width" content="1200">
@@ -31,7 +31,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261002e">
+<link rel="stylesheet" href="../site.css?v=20261002f">
 <style>
 /* settings: three tabs, each a short form in a narrow column (site.css has the tabs, the fields, the buttons and the
    rest) */
@@ -97,7 +97,6 @@
       <form id="profForm">
         <label class="field"><span class="lbl">Display name</span><input type="text" id="nameIn" maxlength="40" autocomplete="name"></label>
         <label class="field"><span class="lbl">Bio</span><textarea id="bioIn" maxlength="160" rows="3"></textarea><span class="note" id="bioCount"></span></label>
-        <label class="field"><span class="lbl">Main shelf</span><select id="pinIn"></select><span class="note">The shelf at the top of your profile.</span></label>
         <p class="note">Your username, <b id="unameRO"></b>, stays as it is.</p>
         <div class="row"><button class="btn" id="saveBtn" type="submit">Save</button><a class="dash sm" id="viewLink" href="../u/">View profile</a></div>
         <p class="note" id="editNote" role="status"></p>
@@ -137,7 +136,7 @@
     <button class="x" data-close type="button" aria-label="Close">×</button>
     <div>
       <h2>Sign in</h2>
-      <p>Save your shelves to your account and open them again on any device.</p>
+      <p>Keep your shelf and everything you log on any device.</p>
       <button class="btn primary full" id="googleBtn" type="button">Continue with Google</button>
       <p class="note">Accounts are for people 18 or older. <a href="../privacy.html">Privacy</a></p>
     </div>
@@ -171,11 +170,11 @@
 
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
-<script src="../nav.js?v=20261002b"></script>
+<script src="../nav.js?v=20261002c"></script>
 <script>
 (() => {
 /* Settings: /settings/ (#photo and #account pick the tab). Yours only: signed out, it asks you to sign in.
-   PROFILE: display name, bio, main shelf. PHOTO: a new photo, cut square (Cropper.js) and made small
+   PROFILE: display name, bio (there's one shelf each, so no main shelf to pick). PHOTO: a new photo, cut square (Cropper.js) and made small
    (browser-image-compression) before it goes to the Worker, which takes 2 MB at most. ACCOUNT: private profile.
    Each saves with the database calls the profile page's Edit profile sheet made, one tab's fields at a time. */
 const $ = s => document.querySelector(s);
@@ -191,7 +190,6 @@ const PHOTO_LIBS = [
 const PROFILE_COLS = 'id,username,display_name,bio,avatar_key,pinned_shelf_id,is_private,created_at';
 
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const fmtDate = s => new Date(s).toLocaleDateString(undefined, {day:'numeric', month:'short', year:'numeric'});
 let toastT = 0; function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 4200); }
 function friendly(e){
   const m = (e && e.message) || '';
@@ -294,12 +292,10 @@ async function patchProfile(patch){
   me.profile = rows[0]; Nav.paint(me);
 }
 
-/* ---------- Profile: display name, bio, main shelf ---------- */
-let shelves = [];   // your public shelves: one of them can be the main shelf
+/* ---------- Profile: display name, bio ---------- */
 function fillProfile(){
   const p = me.profile;
   $('#nameIn').value = p.display_name; $('#bioIn').value = p.bio; $('#unameRO').textContent = '@' + p.username; $('#viewLink').href = '../u/?' + p.username;
-  $('#pinIn').innerHTML = '<option value="">Your most recent shelf</option>' + shelves.map(s => `<option value="${s.id}"${s.id === p.pinned_shelf_id ? ' selected' : ''}>${esc(Shelf.shelfName(s))} · ${esc(fmtDate(s.updated_at))}</option>`).join('');
   bioCount();
 }
 function bioCount(){ $('#bioCount').textContent = `${$('#bioIn').value.length} / 160`; }
@@ -309,7 +305,7 @@ $('#profForm').addEventListener('submit', async e => {
   const btn = $('#saveBtn'), note = $('#editNote');
   btn.disabled = true; note.textContent = 'Saving…';
   try {
-    await patchProfile({display_name: $('#nameIn').value.trim().slice(0, 40), bio: $('#bioIn').value.trim().slice(0, 160), pinned_shelf_id: $('#pinIn').value || null});
+    await patchProfile({display_name: $('#nameIn').value.trim().slice(0, 40), bio: $('#bioIn').value.trim().slice(0, 160)});
     fillProfile(); note.textContent = ''; toast('Profile saved.');
   } catch (err){ note.textContent = friendly(err); }
   finally { btn.disabled = false; }
@@ -425,7 +421,6 @@ $('#privIn').addEventListener('change', async () => {
   if (!me.profile){   // signed in, no username yet: the builder asks for one
     $('#gateText').textContent = 'Pick a username first, then your settings are here.'; $('#gateBtn').hidden = true; $('#gateLink').hidden = false; $('#gate').hidden = false; return;
   }
-  shelves = await api(`shelves?select=id,caption,name,updated_at&owner=eq.${me.profile.id}&is_public=is.true&hidden=is.false&order=updated_at.desc&limit=200`).catch(() => []);
   fillProfile(); paintPhoto(); $('#privIn').checked = me.profile.is_private;
   $('#page').hidden = false; paintTabs();
 })();

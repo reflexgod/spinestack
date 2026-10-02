@@ -64,7 +64,7 @@ test('a profile\'s title is the person\'s name, and a shelf\'s is its name and t
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?mira');
   await expect(page).toHaveTitle('Mira (@mira) · shelfstackd');
-  expect(await page.locator('meta[name="description"]').getAttribute('content')).toBe('Shelves by Mira (@mira) on shelfstackd.');
+  expect(await page.locator('meta[name="description"]').getAttribute('content')).toBe('Mira (@mira) on shelfstackd: their shelf, and the films and books they log.');
   await open(page, `/u/?mira&shelf=${SHELVES[1].id}`);
   await expect(page).toHaveTitle('shelf number 1 by Mira (@mira) · shelfstackd');
   await open(page, '/u/?longusername_twenty1');   // no display name: the username alone

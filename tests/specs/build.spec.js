@@ -1,4 +1,4 @@
-// + ADD (the Add to your shelf… dialog) and the builder: New shelf / Edit shelf, the spines as a list, Style, the
+// + ADD (the Add dialog, on Put on shelf) and the builder: your shelf (one each), the spines as a list, Style, the
 // preview, and Cancel · Save.
 const { test, expect } = require('@playwright/test');
 const { PAGES, SHELVES, ME, mockNetwork, watchErrors, open } = require('../site');
@@ -63,17 +63,28 @@ test('on the builder: search, pick, Add to shelf puts the spine on the shelf wit
   expect(errors).toEqual([]);
 });
 
-test('from another page: Add to shelf goes to the builder with the spine on the shelf', async ({ page }) => {
+test('from another page: Add to shelf goes to the builder, which opens your shelf with the spine after what was there', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/feed/?everyone');
   await page.locator('header.top .add').click();
   await addGummo(page);
   await expect(page).toHaveURL(/\/build\/$/);
+  await expect(rows(page)).toHaveCount(3);
+  expect(await titles(page)).toEqual(['The Waves', 'Journey by Moonlight', 'Gummo']);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your shelf');
+  expect(errors).toEqual([]);
+});
+
+test('before you have a shelf, Add to shelf from another page starts it', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, ownShelf: false });
+  await open(page, '/feed/?everyone');
+  await page.locator('header.top .add').click();
+  await addGummo(page);
+  await expect(page).toHaveURL(/\/build\/$/);
   await expect(rows(page)).toHaveCount(1);
   expect(await titles(page)).toEqual(['Gummo']);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('New shelf');
-  expect(errors).toEqual([]);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your shelf');
 });
 
 test('the Add field on the builder opens the same dialog, searching for what was typed', async ({ page }) => {
@@ -88,10 +99,10 @@ test('the Add field on the builder opens the same dialog, searching for what was
 });
 
 /* ---------- the builder ---------- */
-test('the builder is a new-shelf page: name, who can view, Add, the list, Style shut, the bar', async ({ page }) => {
+test('the builder is your shelf\'s page: name, who can view, Add, the list, Style shut, the bar', async ({ page }) => {
   const net = await mockNetwork(page, { signedIn: true }), errors = watchErrors(page);
   await open(page, '/build/');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('New shelf');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your shelf');
   await expect(page.getByRole('textbox', { name: 'Name' })).toBeVisible();
   await expect(page.getByRole('group', { name: 'Who can view' }).getByRole('radio')).toHaveCount(2);
   await expect(page.getByRole('radio', { name: 'Public' })).toBeChecked();
@@ -171,9 +182,9 @@ test('Save, signed out, asks you to sign in', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeVisible();
 });
 
-test('Save, signed in: the name and Private are saved, then the shelf’s own page opens', async ({ page }) => {
+test('Save, signed in, before you have a shelf: the name and Private are saved, then the shelf’s own page opens', async ({ page }) => {
   const errors = watchErrors(page);
-  await mockNetwork(page, { signedIn: true });
+  await mockNetwork(page, { signedIn: true, ownShelf: false });
   await open(page, '/build/');
   await page.locator('header.top .add').click();
   await addGummo(page);
@@ -195,6 +206,44 @@ test('Save, signed in: the name and Private are saved, then the shelf’s own pa
   expect(errors).toEqual([]);
 });
 
+test('signed in with a shelf: the builder opens it, and Save saves over it (never a second shelf)', async ({ page }) => {
+  const errors = watchErrors(page);
+  await mockNetwork(page, { signedIn: true });
+  const mine = SHELVES.find(s => s.owner === ME.id);   // the one saved last: no main shelf is set
+  await open(page, '/build/');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your shelf');
+  expect(await titles(page)).toEqual(['The Waves', 'Journey by Moonlight']);
+  await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue(mine.name);
+  await expect(page.getByRole('button', { name: /new shelf/i })).toHaveCount(0);
+  await page.locator('header.top .add').click();
+  await addGummo(page);
+  const saved = page.waitForRequest(r => r.url().includes('/rpc/save_shelf'));
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  const { shelf, items } = (await saved).postDataJSON();
+  expect(shelf.id).toBe(mine.id);
+  expect(items.map(i => i.title)).toEqual(['The Waves', 'Journey by Moonlight', 'Gummo']);
+  await expect(page).toHaveURL(new RegExp(`/u/\\?tester&shelf=${mine.id}$`));
+  expect(errors).toEqual([]);
+});
+
+test('spines put on a shelf before signing in go on your shelf once you are, after what was there', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/privacy.html');
+  // signed out on this device for now: the session is put aside, and the builder loads without it
+  const session = await page.evaluate(() => { const k = Object.keys(localStorage).find(x => /^sb-.+-auth-token$/.test(x)); const v = [k, localStorage.getItem(k)]; localStorage.removeItem(k); return v; });
+  await open(page, '/build/');
+  await expect(page.locator('#books .empty')).toBeVisible();
+  await page.locator('header.top .add').click();
+  await addGummo(page);
+  await page.waitForFunction(() => !!sessionStorage.getItem('spinestack-draft'));
+  await page.waitForTimeout(700);
+  // signed in again (as coming back from Google): your shelf opens, with Gummo after its spines, not saved yet
+  await page.evaluate(([k, v]) => localStorage.setItem(k, v), session);
+  await open(page, '/build/');
+  await expect.poll(() => titles(page)).toEqual(['The Waves', 'Journey by Moonlight', 'Gummo']);
+  await expect(page.locator('#toast')).toHaveText('Gummo is on your shelf now. Save to keep it.');
+});
+
 test('a name that isn’t the caption is kept as the shelf’s own name', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/build/');
@@ -208,72 +257,71 @@ test('a name that isn’t the caption is kept as the shelf’s own name', async 
   expect((await named).postDataJSON()).toEqual({ name: 'my films' });
 });
 
-test('?open=<id> is Edit shelf, with the shelf’s name, who can view it, and its spines', async ({ page }) => {
+test('?open=<id>, an old link, opens that shelf of yours, with its name, who can view it, and its spines', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
-  const mine = SHELVES.find(s => s.owner === ME.id);
-  await open(page, '/build/?open=' + mine.id);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Edit shelf');
-  await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue(mine.name);
+  const older = SHELVES.filter(s => s.owner === ME.id)[1];   // from before there was one shelf each
+  await open(page, '/build/?open=' + older.id);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your shelf');
+  await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue(older.caption);
   await expect(page.getByRole('radio', { name: 'Public' })).toBeChecked();
   expect(await titles(page)).toEqual(['The Waves', 'Journey by Moonlight']);
-  await expect(page.getByRole('button', { name: 'Save as a new shelf' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /new shelf/i })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
-test('your own profile: + new shelf goes to the builder with an empty shelf, and a card’s ··· menu has Edit', async ({ page }) => {
+test('your own profile: Edit under your shelf opens it in the builder', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   const mine = SHELVES.find(s => s.owner === ME.id);
   await open(page, '/u/?tester');
   await expect(page.locator('#builder, iframe')).toHaveCount(0);   // no builder laid over the profile any more
-  await page.getByRole('link', { name: '+ new shelf' }).first().click();
+  await expect(page.getByRole('link', { name: /new shelf/i })).toHaveCount(0);
+  await page.locator('#hero').getByRole('link', { name: 'Edit' }).click();
   await expect(page).toHaveURL(/\/build\/$/);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('New shelf');
-  await expect(page.locator('#books .empty')).toContainText('Your shelf is empty.');
-  await expect(page.locator('header.top')).toBeVisible();
-  await open(page, '/u/?tester');
-  await page.locator('#recent li.own').first().getByRole('button', { name: /^More for / }).click();
-  await page.getByRole('menu', { name: /^More for / }).getByRole('menuitem', { name: 'Edit' }).click();
-  await expect(page).toHaveURL(/\/build\/$/);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Edit shelf');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your shelf');
   await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue(mine.name);
   expect(await titles(page)).toEqual(['The Waves', 'Journey by Moonlight']);
   expect(errors).toEqual([]);
+});
+
+test('your own profile with no shelf yet: "Your shelf is empty." and Make your shelf, which goes to the builder', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, ownShelf: false });
+  await open(page, '/u/?tester');
+  await expect(page.locator('#hero')).toContainText('Your shelf is empty.');
+  await expect(page.locator('#nSpines')).toHaveText('0');
+  await page.locator('#hero').getByRole('link', { name: 'Make your shelf' }).click();
+  await expect(page).toHaveURL(/\/build\/$/);
+  await expect(page.locator('#books .empty')).toContainText('Your shelf is empty.');
 });
 
 test('old ?embed links come to the builder itself, at the root and at /build/', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   const mine = SHELVES.find(s => s.owner === ME.id);
   await page.goto('/build/?embed&open=' + mine.id);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Edit shelf');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your shelf');
   await expect(page).toHaveURL(/\/build\/$/);
   await expect(page.locator('header.top')).toBeVisible();
   await page.goto('/?embed&new');
   await expect(page).toHaveURL(/\/build\/$/);
-  await expect(page.locator('#books .empty')).toBeVisible();
+  await expect.poll(() => titles(page)).toEqual(['The Waves', 'Journey by Moonlight']);   // a new shelf, then; your shelf now
 });
 
-test('opening a saved shelf replaces a draft of another shelf; + new shelf keeps a new shelf that was being made', async ({ page }) => {
+test('your shelf, being changed, is still being changed after another page; an old ?open link to another opens that one', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
-  const mine = SHELVES.find(s => s.owner === ME.id);
+  const older = SHELVES.filter(s => s.owner === ME.id)[1];
   await open(page, '/build/');
   await page.locator('header.top .add').click();
   await addGummo(page);
   await page.waitForFunction(() => !!sessionStorage.getItem('spinestack-draft'));
   await page.waitForTimeout(700);
-  await open(page, '/build/?new');            // + new shelf: the new shelf being made is still it
-  expect(await titles(page)).toEqual(['Gummo']);
+  await open(page, '/build/?new');            // an old + new shelf link: it's your shelf, still being changed
+  expect(await titles(page)).toEqual(['The Waves', 'Journey by Moonlight', 'Gummo']);
   await page.waitForFunction(() => !!sessionStorage.getItem('spinestack-draft'));
   await page.waitForTimeout(700);
-  await open(page, '/build/?open=' + mine.id);   // a saved shelf was asked for: it opens, not the draft
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Edit shelf');
+  await open(page, '/build/?open=' + older.id);   // another saved shelf was asked for: it opens, not the draft
+  await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue(older.caption);
   expect(await titles(page)).toEqual(['The Waves', 'Journey by Moonlight']);
-  await page.waitForFunction(() => !!sessionStorage.getItem('spinestack-draft'));
-  await page.waitForTimeout(700);
-  await open(page, '/build/?new');            // + new shelf while a saved shelf was being changed: a new, empty one
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('New shelf');
-  await expect(page.locator('#books .empty')).toBeVisible();
 });
 
 test('the shelf being made is still there after leaving the page and coming back', async ({ page }) => {
@@ -312,7 +360,7 @@ test('Cancel asks first, then drops the shelf being made', async ({ page }) => {
 
 test('upload a scan: the link and the ▾ menu both open the file picker, and the picture goes on the shelf', async ({ page }) => {
   const errors = watchErrors(page);
-  await mockNetwork(page, { signedIn: true });
+  await mockNetwork(page, { signedIn: true, ownShelf: false });
   await open(page, '/build/');
   // "Upload a scan…" in the ▾ next to + ADD
   await page.locator('#addMore').click();
@@ -434,7 +482,7 @@ const captionBand = (page, src) => page.evaluate(async src => {
 
 test('the caption on the preview follows the Name; with no name it is a faint "your shelf" that is not in the picture saved with the shelf', async ({ page }) => {
   const errors = watchErrors(page);
-  await mockNetwork(page, { signedIn: true });
+  await mockNetwork(page, { signedIn: true, ownShelf: false });
   await open(page, '/build/');
   await page.locator('header.top .add').click();
   await addGummo(page);
@@ -470,7 +518,7 @@ test('the caption on the preview follows the Name; with no name it is a faint "y
 });
 
 test('a shelf saved with no name has no caption', async ({ page }) => {
-  await mockNetwork(page, { signedIn: true });
+  await mockNetwork(page, { signedIn: true, ownShelf: false });
   await open(page, '/build/');
   await page.locator('header.top .add').click();
   await addGummo(page);

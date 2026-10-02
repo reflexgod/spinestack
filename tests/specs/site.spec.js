@@ -5,7 +5,7 @@ const { PAGES, mockNetwork, watchErrors, open } = require('../site');
 
 const pathOf = link => link.evaluate(a => new URL(a.href).pathname);
 const isPhone = () => test.info().project.name.startsWith('phone');
-const MENU = ['Home', 'Profile', 'Shelves', 'Activity', 'Network', 'Settings', 'Sign out'];
+const MENU = ['Home', 'Profile', 'Shelf', 'Activity', 'Network', 'Settings', 'Sign out'];
 
 for (const signedIn of [false, true]) {
   test.describe(signedIn ? 'signed in' : 'signed out', () => {
@@ -72,6 +72,7 @@ test.describe('account menu', () => {
       // the divider sits between Network and Settings
       expect(await menu.evaluate(m => [...m.children].map(c => c.tagName === 'HR' ? '--' : c.textContent))).toEqual([...MENU.slice(0, 5), '--', ...MENU.slice(5)]);
       expect(await pathOf(items.nth(1))).toBe('/u/');
+      expect(await items.nth(2).getAttribute('href')).toMatch(/\/u\/\?tester&shelf$/);   // your shelf, on its own page
       expect(await pathOf(items.nth(5))).toBe('/settings/');
       // all of it inside the window
       const box = await menu.boundingBox(), size = page.viewportSize();

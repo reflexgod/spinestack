@@ -52,9 +52,54 @@ const feedRow = s => { const p = PEOPLE.find(x => x.id === s.owner);
     owner: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key, updated: new Date(s.saved_at) - new Date(s.created_at) > 60000 }; };
 const card = (p, me) => ({ id: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key, is_private: p.is_private, i_follow: !!me && p.username === 'mira', i_requested: false });
 
+/* logs, the watchlist and From friends: the tables docs/proposed-0007-logs-watchlist.sql makes. Mira's logs are what
+   the people the made-up account follows logged lately; the made-up account has one of its own. Times are from the
+   newest shelf's (day(0), 30 September at noon UTC). */
+const at = (days, hours = 0) => new Date(Date.UTC(2026, 8, 30, 12) - days * 864e5 + hours * 36e5).toISOString();
+const logId = i => `bbbbbbbb-bbbb-4bbb-8bbb-${String(i).padStart(12, '0')}`, watchId = i => `cccccccc-cccc-4ccc-8ccc-${String(i).padStart(12, '0')}`;
+const LOGS = [
+  { id: logId(0), owner: PEOPLE[1].id, kind: 'movie', title: 'Gummo', author: 'Harmony Korine', year: 1997, cover_src: 'url:https://image.tmdb.org/t/p/w500/gummo.jpg', caption: 'The bathtub scene. Still thinking about it.', created_at: at(0, 1) },
+  { id: logId(1), owner: ME.id, kind: 'book', title: 'Just Kids', author: 'Patti Smith', year: 2010, cover_src: 'url:https://covers.openlibrary.org/b/id/2-L.jpg', caption: 'For the train.', created_at: at(3, 1) },
+  { id: logId(2), owner: PEOPLE[1].id, kind: 'book', title: 'The Waves', author: 'Virginia Woolf', year: 1931, cover_src: 'url:https://covers.openlibrary.org/b/id/1-L.jpg', caption: '', created_at: at(7, 1) },
+  { id: logId(3), owner: PEOPLE[2].id, kind: 'movie', title: 'Kids', author: 'Larry Clark', year: 1995, cover_src: null, caption: '', created_at: at(30, 1) },
+];
+const WATCHLIST = [
+  { id: watchId(0), owner: ME.id, kind: 'movie', title: 'Paris, Texas', author: 'Wim Wenders', year: 1984, cover_src: 'url:https://image.tmdb.org/t/p/w500/paris.jpg', from_user: null, created_at: at(2) },
+  { id: watchId(1), owner: ME.id, kind: 'book', title: 'Orlando', author: 'Virginia Woolf', year: 1928, cover_src: null, from_user: PEOPLE[1].id, created_at: at(5) },
+  { id: watchId(2), owner: PEOPLE[1].id, kind: 'movie', title: 'Stalker', author: 'Andrei Tarkovsky', year: 1979, cover_src: 'url:https://image.tmdb.org/t/p/w500/stalker.jpg', from_user: null, created_at: at(4) },
+];
+const keyOf = l => `${l.kind}:${l.title.toLowerCase()}:${l.year || ''}`;
+const FROM_FRIENDS = LOGS.filter(l => l.owner === PEOPLE[1].id).map(l => ({ item_key: keyOf(l), kind: l.kind, title: l.title, author: l.author, year: l.year, cover_src: l.cover_src,
+  log_id: l.id, logged_at: l.created_at, from_id: PEOPLE[1].id, from_username: 'mira', from_display_name: 'Mira' }));
+// the feed's rows as activity() gives them: shelves saved and logs, newest first
+const shelfRow = s => { const f = feedRow(s); return { what: 'shelf', id: s.id, at: s.saved_at, owner: f.owner, username: f.username, display_name: f.display_name, avatar_key: f.avatar_key,
+  caption: s.caption, name: s.name, preview_key: s.preview_key, created_at: s.created_at, updated_at: s.updated_at, updated: f.updated, is_public: s.is_public }; };
+const logRow = l => { const p = PEOPLE.find(x => x.id === l.owner);
+  return { what: 'log', id: l.id, at: l.created_at, owner: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key, caption: l.caption,
+    name: null, preview_key: null, created_at: l.created_at, updated_at: l.created_at, updated: false, is_public: true, kind: l.kind, title: l.title, author: l.author, year: l.year, cover_src: l.cover_src }; };
+// what PostgREST says for a table or a function that isn't in the database (before the proposed 0007 is run)
+const NOT_THERE = { __status: 404, body: { code: 'PGRST202', message: 'Could not find the function in the schema cache', details: null, hint: null } };
+
 /* ---------- Supabase's REST API, answered from the data above ---------- */
-function rest(url, method, body, signedIn, named, empty){
+function rest(url, method, body, signedIn, named, empty, logs, ownShelf){
   const what = url.pathname.replace(/^\/rest\/v1\//, ''), q = url.searchParams, eq = k => (q.get(k) || '').replace(/^eq\./, '');
+  if (/^(rpc\/(activity|from_friends)|logs|watchlist|friend_hides)$/.test(what)){
+    if (!logs) return NOT_THERE;
+    if (what === 'rpc/activity'){
+      if (empty) return [];
+      const mine = r => r.owner === ME.id && (ownShelf || !r.preview_key), mira = r => r.owner === PEOPLE[1].id;
+      const keep = body.scope === 'you' ? mine : body.scope === 'following' ? (signedIn ? mira : () => false) : () => true;
+      const rows = [...SHELVES.filter(keep).map(shelfRow), ...LOGS.filter(keep).map(logRow)].sort((a, b) => b.at.localeCompare(a.at) || b.id.localeCompare(a.id));
+      const from = body.before_id ? rows.findIndex(r => r.id === body.before_id) + 1 : 0;
+      return rows.slice(from, from + (body.n || 20));
+    }
+    if (what === 'rpc/from_friends') return signedIn ? FROM_FRIENDS : [];
+    if (method === 'DELETE') return [{ id: eq('id') }];
+    if (method !== 'GET') return null;   // a log posted, a title kept, one removed: nothing is kept here
+    if (what === 'logs'){ const from = +(q.get('offset') || 0), n = +(q.get('limit') || 20); return LOGS.filter(l => l.owner === eq('owner')).slice(from, from + n); }
+    if (what === 'watchlist') return WATCHLIST.filter(w => w.owner === eq('owner'));
+    return [];
+  }
   if (what === 'rpc/feed'){
     if (empty) return [];
     const rows = SHELVES.filter(s => body.scope !== 'following' || (signedIn && PEOPLE.find(p => p.id === s.owner).username === 'mira')).map(feedRow);
@@ -80,7 +125,7 @@ function rest(url, method, body, signedIn, named, empty){
   if (what === 'profiles') return PEOPLE.filter(p => (named || p.id !== ME.id) && (!q.has('id') || p.id === eq('id')) && (!q.has('username') || p.username === eq('username')));
   if (what === 'shelves'){
     const ids = (q.get('id') || '').startsWith('in.(') ? q.get('id').slice(4, -1).split(',') : q.has('id') ? [eq('id')] : null;   // id=eq.x or id=in.(x,y)
-    return SHELVES.filter(s => (!q.has('owner') || s.owner === eq('owner')) && (!ids || ids.includes(s.id)));
+    return SHELVES.filter(s => (!q.has('owner') || s.owner === eq('owner')) && (!ids || ids.includes(s.id)) && (ownShelf || s.owner !== ME.id));
   }
   // follows, read from the table: @mira follows the made-up account, and that's the only one it's asked about
   if (what === 'follows') return signedIn && eq('follower') === PEOPLE[1].id && eq('followee') === ME.id ? [{ follower: PEOPLE[1].id }] : [];
@@ -133,9 +178,11 @@ const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers
 /* signedIn: a session for the made-up account; named: false leaves that account without a username yet;
    slow: how long /identify takes to answer, in ms; capped: the Worker's Brave searches for today are used up;
    realFonts: the fonts come from Google Fonts as they do on the site (for screenshots; the tests go without);
-   empty: no one has shelved anything yet, so the feed has nothing in it.
+   empty: no one has shelved anything yet, so the feed has nothing in it; logs: false answers as the database does
+   before the proposed 0007 is run (no logs, watchlist or From friends, and no activity()); ownShelf: false is the
+   made-up account before it has saved its shelf.
    Returns {unknown, asked}: requests nothing here could answer, and every search /identify was asked for. */
-async function mockNetwork(page, { signedIn = false, named = true, slow = 0, capped = false, realFonts = false, empty = false } = {}){
+async function mockNetwork(page, { signedIn = false, named = true, slow = 0, capped = false, realFonts = false, empty = false, logs = true, ownShelf = true } = {}){
   const unknown = [], asked = [];
   if (signedIn){
     const exp = Math.floor(Date.now() / 1000) + 3600, b64 = o => Buffer.from(JSON.stringify(o)).toString('base64url');
@@ -151,7 +198,8 @@ async function mockNetwork(page, { signedIn = false, named = true, slow = 0, cap
     if (method === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
     if (url.origin === SB_URL && url.pathname.startsWith('/rest/v1/')){
       let body = {}; try { body = JSON.parse(req.postData() || '{}'); } catch {}
-      let data = rest(url, method, body, signedIn, named, empty);
+      let data = rest(url, method, body, signedIn, named, empty, logs, ownShelf);
+      if (data && data.__status) return route.fulfill({ status: data.__status, headers: CORS, contentType: 'application/json', body: JSON.stringify(data.body) });
       if (/vnd\.pgrst\.object/.test(req.headers().accept || '')) data = Array.isArray(data) ? data[0] || null : data;   // .single()
       return route.fulfill({ status: data === null ? 204 : 200, headers: CORS, contentType: 'application/json', body: data === null ? '' : JSON.stringify(data) });
     }
@@ -204,4 +252,4 @@ async function open(page, pathname){
   await page.waitForLoadState('networkidle');
 }
 
-module.exports = { ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, PICTURE, STORY, CAPTION, MADE_WITH, CORS, WORKER, SB_URL, feedRow, storyPicture, mockNetwork, watchErrors, open };
+module.exports = { ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, LOGS, WATCHLIST, FROM_FRIENDS, PICTURE, STORY, CAPTION, MADE_WITH, CORS, WORKER, SB_URL, feedRow, storyPicture, mockNetwork, watchErrors, open };

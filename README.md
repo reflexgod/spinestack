@@ -2,18 +2,19 @@
 
 Live at https://shelfstackd.com (this repository and its folders keep the old working name, spinestack).
 
-Type a film or a book, get its real spine, put it on a shelf, save the shelf to your profile. From its page the shelf can be shared as an Instagram story.
+Type a film or a book, get its real spine, put it on your shelf (one each), save it to your profile. From its page the shelf can be shared as an Instagram story. You can also log a film or a book you watched or read, which goes on the feed with its cover, and keep a watchlist.
 
 ```
 index.html            the home page (GitHub Pages serves this). Signed out: one line about the site, Make a shelf, and the newest public shelves; signed in: a welcome, new shelves from people you follow (⚡ All activity), then Just shelved. Links to the old builder here (/?open=, /#shelf) go on to build/
-build/index.html      the shelf builder (New shelf / Edit shelf): Add, the spines as a list (drag one there or on the preview to move it), Style, the preview; at the bottom its name, who can view it, Cancel · Save
-add.js                + ADD on every page: the Add to your shelf… dialog (suggestions as you type, then the spine choices and Add to shelf); the spine finder lives here
+build/index.html      the shelf builder (Your shelf: there's one shelf each, and signed in it opens yours): Add, the spines as a list (drag one there or on the preview to move it), Style, the preview; at the bottom its name, who can view it, Cancel · Save
+add.js                + ADD on every page: the Add dialog. Three choices at the top: Put on shelf (suggestions as you type, then the spine choices and Add to shelf; the spine finder lives here), Log it (the cover as the feed will show it, a caption if you want one, Post) and Watchlist (Add to watchlist)
+wear.js               a log's cover, worn: one corner dog-eared, fine scratches, rubbed edges and a little fade, drawn on a canvas from how long ago it was logged (nearly new that day, faded after a week, worn after a month). No stamp and nothing written on it
 shelf.js              draws the spines and the story (and says where it drew each book); build/ and u/ both use it, so a shelf looks the same everywhere
-u/index.html          profiles: /u/?username with its tabs Profile (the main shelf first) · Shelves · Activity · Network (Following, Followers), and one shelf's own page: /u/?username&shelf=<id> (its name with Share beside it: Share to story, Download image, Copy link; who made it, the story, On this shelf with + Add to my shelf; for its owner Edit, Make main, Make private or public, Delete)
-shelves/index.html    every public shelf as a card, newest first, 24 at a time (Load more); Start a new shelf
+u/index.html          profiles: /u/?username with its tabs Profile (their shelf, big, then Watchlist and, on your own, From friends) · Activity · Network (Following, Followers), and the shelf's own page: /u/?username&shelf (or &shelf=<id>, the older links): its name with Share beside it (Share to story, Download image, Copy link), who made it, the story, and On this shelf with + Add to my shelf (to the right of the story on a wide window); for its owner Edit, Make private or public, Delete
+shelves/index.html    every public shelf as a card, newest first, 24 at a time (Load more); Your shelf
 members/index.html    Find @username (people by the start of a username or name, each with FOLLOW), and Recently active: the people behind the newest shelves
-settings/index.html   your settings (signed in only): PROFILE (display name, bio, main shelf), PHOTO (cut square, made small, sent to the Worker), ACCOUNT (private profile). A profile's Edit profile comes here
-feed/index.html       the feed: /feed/, FOLLOWING · YOU · EVERYONE, a line for each shelf saved ("@abc shelved my films · 2h") with its card, newest first
+settings/index.html   your settings (signed in only): PROFILE (display name, bio), PHOTO (cut square, made small, sent to the Worker), ACCOUNT (private profile). A profile's Edit profile comes here
+feed/index.html       the feed: /feed/, FOLLOWING · YOU · EVERYONE, a line for each shelf saved ("@abc shelved my films · 2h") with its card, and for each film or book logged ("@abc watched Gummo · today") with its worn cover and caption, newest first
 worker-address.js     sends Worker requests to its workers.dev address on networks that block api.shelfstackd.com
 favicon.svg           the mark: three spines on a shelf. favicon-32.png, favicon.ico and apple-touch-icon.png are made from it (tests/art.js); every page links them
 favicon.ico           the same mark for a browser that asks for /favicon.ico whatever the page says (without it, that request is a 404 on every page)
@@ -23,7 +24,7 @@ sample-shelf.jpg      the builder's sample shelf (it's only at build/?sample now
 spinetip.js           a shelf's picture: hovering a spine shows "Title (year) · creator", pressing it goes to its row in the list (a shelf's page, and the builder's preview). It uses the places shelf.js says it drew each book
 cards.js              shelf cards: finds the books in a shelf's preview picture and cuts the 2:3 card round them (home, the feed, profiles), keeping what it found per preview key
 site.css              the look every page shares: one :root block of variables (the 950px column, the type scale, the 4/8/12/16/24/40 spacing, the 3px radius) and what uses them everywhere (the top bar, headings, buttons, fields, shelf cards, tabs, sheets, the footer). A page's own <style> holds only what that page alone needs
-nav.js                the top bar on every page: who is signed in, the account menu (Sign out is its last item), + ADD and the ▾ next to it
+nav.js                the top bar on every page: who is signed in, the account menu (Home, Profile, Shelf, Activity, Network, Settings, Sign out), + ADD and the ▾ next to it
 404.html              what GitHub Pages sends for an address that isn't there: a line and the way home. Its links start at the root (/), since it's served at any depth
 admin.html            approve or delete archive uploads (needs the admin token); read reports (Google sign-in, admins only)
 tests/                checks for the pages: Playwright, axe, html-validate (see Tests). The site never loads anything from here
@@ -185,22 +186,59 @@ before the change aren't reused. `/scans` keeps what the providers said as it ca
 
 ## Profiles
 
-`/u/?username` (a real file, so GitHub Pages answers 200 and link previews work): photo, name, @username, the numbers,
-the featured shelf drawn on its own, recent shelves, bio, most shelved. `/u/?username&shelf=<id>` shows one shelf. The
-owner gets Edit profile (photo, name, bio, featured shelf, Private profile). The header's @username and the Profile link
-lead there. On your own profile "+ new shelf" goes to the builder (`build/?new`: an empty shelf) and "open" on a shelf to
-`build/?open=<id>`; saving there comes back to the shelf's page. (The builder used to open in a frame over the profile,
-`?embed`; old links of that kind are sent on to the builder itself.)
-Private shelves (Who can view: Private in the builder, or "private" on the shelf's card) show only to their owner. A private profile shows others only its photo,
-display name and @username; its public shelves show to its owner and the followers it accepted.
+`/u/?username` (a real file, so GitHub Pages answers 200 and link previews work): photo, name, @username, the numbers
+(Spines on their shelf, Following, Followers), then the tabs. Profile has their shelf, big, across the column, with its
+name under it; then Watchlist (up to 6, shown to anyone who can see the profile) and, on your own, From friends (what
+the people you follow logged lately and you haven't, up to 6); the bio beside them. `/u/?username&shelf` is the
+shelf's own page, and `/u/?username&shelf=<id>` still opens a shelf by its id. The owner gets Edit profile (photo,
+name, bio, Private profile). The header's @username and the Profile link lead there.
+
+**One shelf each.** A person's shelf is the main one (`pinned_shelf_id`) if one was picked before, otherwise the one
+saved last; the builder opens and saves that same one (`yourShelf()` in `build/`, `theShelf()` in `u/`). There's no
+Shelves tab, no "+ new shelf", no Make main and no main shelf in Settings any more. Accounts that made more than one
+before keep the others in the database: nothing lists them, and their old links still open them (`?open=<id>` in the
+builder too). The database doesn't enforce one shelf; `docs/proposed-0007-logs-watchlist.sql` ends with the query and
+the index that would, for the owner to decide. On your own profile, Edit under your shelf goes to the builder; with no
+shelf yet it says "Your shelf is empty." with Make your shelf. Spines put on a shelf before signing in (or before
+your shelf had loaded) go on yours, after what's there, once you're signed in. (The builder used to open in a frame
+over the profile, `?embed`; old links of that kind are sent on to the builder itself.)
+
+**Watchlist and From friends.** On your own profile each watchlist title has Remove and Watched (Read for a book),
+and each From friends title Keep (onto your watchlist, saying whose log it came from), Remove (kept out for good) and
+Watched / Read. Watched / Read opens + ADD's Log it on that title, and logging a title takes it off your watchlist.
+Private shelves (Who can view: Private in the builder) show only to their owner. A private profile shows others only its photo,
+display name and @username; its public shelf, its logs and its watchlist show to its owner and the followers it accepted.
+
+## Logs, the watchlist, and what the database needs for them
+
++ ADD has three choices: **Put on shelf** (as before), **Log it** and **Watchlist**. Log it is a film watched or a book
+read, with a caption if you want one (280 characters); it goes on the feed as "@you watched Gummo · today" (or "read"),
+with its cover drawn by `wear.js`: one corner dog-eared, a few fine scratches, rubbed edges and a little fade, worked out
+from when it was logged, so it's nearly new that day, more faded after a week and more worn after a month. No stamp,
+nothing written on it. The time on a log's line is by the day: today, yesterday, then 3d, 2w. Your own logs have Delete
+on your profile's Activity. Log it and Watchlist never search for spines, and need an account with a username (signed
+out, the dialog says so with Sign in).
+
+These need new tables, which aren't in the database yet. **`docs/proposed-0007-logs-watchlist.sql` is the SQL, for the
+owner to review; it is not in `supabase/migrations/` and hasn't been run on the live database.** It adds `logs`,
+`watchlist` (6 at most, each title once), `friend_hides` (what you removed from From friends), `title_key()`, and two
+functions: `activity()` (the feed: shelves and logs together) and `from_friends()`. `docs/proposed-rls_phase4.sql` is
+its test, written like `rls_phase3.sql`. Both were run on a local Postgres 16 with migrations `0001` to `0006` and a
+stand-in for Supabase's `auth` schema: all phase 3 and phase 4 checks passed. `docs/proposed-0007.md` says what each page
+asks the database for.
+
+Until it's run, the pages do without: the feed asks for `activity()` once, and on "not found" uses `feed()` from `0006`
+(shelves only, as before); a profile shows no Watchlist and no From friends, and Activity is shelves only; Log it and
+Watchlist say "Logging isn’t open yet" and "The watchlist isn’t open yet". Nothing in the pages changes when it's run.
 
 ## Follows and the feed
 
 FOLLOW on a profile follows a public profile at once and sends a request to a private one (its owner answers under
 REQUESTS on their profile). FOLLOWING and FOLLOWERS open the lists, 30 at a time. 100 follows and unfollows an hour
-per account, counted in the database. `/feed/` shows public shelves, 20 at a time: EVERYONE from public profiles,
-FOLLOWING from the people you follow. A shelf moves up only when it's saved in the builder (`shelves.saved_at`);
-renaming it or making it main doesn't. All of it is decided in the database (`0006`), not in the page.
+per account, counted in the database. `/feed/` shows public shelves and logs, 20 at a time: EVERYONE from public
+profiles, FOLLOWING from the people you follow, YOU your own. A shelf moves up only when it's saved in the builder
+(`shelves.saved_at`); renaming it doesn't. All of it is decided in the database (`0006`, and `activity()` once the
+proposed `0007` is in), not in the page. A log posted with + ADD on the feed puts the tab back at the top, with it there.
 
 Photos, walls and PNGs live in the R2 bucket `shelfstackd-media` (binding `MEDIA`). Create it once, in `worker/`:
 `npx wrangler r2 bucket create shelfstackd-media`, then `npx wrangler deploy`. Keep `USER_R2` commented out: binding it
@@ -231,7 +269,7 @@ signed-out visitors never load the Supabase library.
   `https://fiukspnovrlzlcdekcnb.supabase.co/auth/v1/callback`.
 - **Email sign-in** is built but off (`SPINESTACK_EMAIL_LOGIN = false` in `build/index.html`, and the Email provider is
   off in Supabase) until email can be sent from shelfstackd.com.
-- **Limits:** 6 spines a shelf (20 with Pro; over 10 they stand in two rows), 200 shelves an account; the Worker saves at most 150 images a day per account and
+- **Limits:** one shelf each on the site (the database still allows 200 an account: see Profiles), 6 spines a shelf (20 with Pro; over 10 they stand in two rows), 50 logs a day and 6 on a watchlist (once the proposed 0007 is in); the Worker saves at most 150 images a day per account and
   600 a day in all (KV's free plan allows 1,000 writes a day). To move images to R2 later, create a bucket and
   uncomment the `USER_R2` binding in `wrangler.toml`; the same keys are used there.
 - **Staying awake:** Supabase pauses free projects after a week without activity; the Worker's daily cron
@@ -278,10 +316,12 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   old builder links at the root go on to `/build/`. The account menu: its seven items with Sign out last, open by tap,
   by mouse and by keyboard, closed by Esc and by a click outside, always inside the window; Sign out signs out.
 - **The builder and + ADD** (`specs/build.spec.js`): + ADD opens the dialog on every page and Esc closes it;
-  search, pick, Add to shelf on the builder (no reload) and from another page (which goes to the builder); the
-  builder's fields, Style shut with its one line, a row's controls opening one at a time, ↑ ↓ and dragging; Save
-  signed out and signed in, `?open=<id>`, `?new`, old `?embed` links, a profile's links to the builder, the shelf being
-  made surviving a trip to another page (and giving way to a saved shelf that's opened), Cancel; the order of the
+  search, pick, Add to shelf on the builder (no reload) and from another page (which goes to the builder, where your
+  shelf opens with the spine after what was there, or starts it); the builder's fields, Style shut with its one line,
+  a row's controls opening one at a time, ↑ ↓ and dragging; Save signed out, signed in before you have a shelf, and
+  signed in with one (saved over, never a second shelf); spines put on before signing in going on your shelf after,
+  `?open=<id>`, `?new`, old `?embed` links, Edit under your shelf and Make your shelf on your profile, your shelf being
+  changed surviving a trip to another page (and giving way to an older shelf that's opened by its link), Cancel; the order of the
   page, dragging a spine on the preview (mouse, and hold-then-drag with a finger), and the caption: it follows the
   Name, and with no name the preview's faint "your shelf" is not in the picture saved with the shelf. The bar has
   only Cancel and Save.
@@ -291,22 +331,25 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   footer; the builder's count and limit, its empty shelf, and the note under the preview clear of the Save bar.
 - **The look** (`specs/look.spec.js`): the content and the bar's contents in one 950px column on every page, the type
   scale, one black button a screen, shelf cards six across at 150px (three on a phone) cut 2:3, the profile's name,
-  numbers and tabs.
+  numbers and tabs, and its shelf across the column on the wash.
 - **Who you both know** (in `specs/profile.spec.js`): "Follows you" by the name of someone who follows you, and
   "Followed by @a, @b and N others" under the bio, read from the follows and the followers list that are already there.
-- **A profile's tabs** (`specs/profile.spec.js`): the four tabs, their addresses and ← →; the main shelf first on
-  Profile; Activity's lines; Network's Following and Followers and the numbers that open them; the account menu's
-  links changing the tab on your own profile without loading it again.
-- **A shelf's page, and your cards** (`specs/shelf.spec.js`): on your profile a card opens the shelf's page and its ···
-  menu has Edit, Make main, Make private or public and Delete (inside the window, ↓ and Esc, shut by a press outside).
-  On the shelf's page: its heading, Share (the story to a share sheet or saved, the picture, the link), the "Saved."
-  line once after Save, and the list of what's on it; + Add to my shelf
-  putting that same spine on the shelf being built with nothing searched for; for its owner Edit, Make main, Make
-  private, renaming it in the heading, and Delete only after the confirm; a shelf that isn't there.
+- **A profile's tabs** (`specs/profile.spec.js`): Profile · Activity · Network, their addresses and ← → (and an old
+  `#shelves` link landing on Profile); their shelf first, big, across the column, then the watchlist, and no Most
+  shelved; Activity's lines for shelves and logs, a log's worn cover and caption; Network's Following and Followers and
+  the numbers that open them; the account menu's links changing the tab on your own profile without loading it again,
+  and its Shelf going to your shelf's page. Your watchlist (Remove, Watched or Read) and From friends (Keep, Remove,
+  Watched or Read), what each sends, and Watched opening Log it on that title; and both left out, with Activity
+  shelves only, before the database has them.
+- **A shelf's page** (`specs/shelf.spec.js`): its heading, Share (the story to a share sheet or saved, the picture,
+  the link), the "Saved." line once after Save, and the list of what's on it, to the right of the story on a wide
+  window and under it on a phone; + Add to my shelf putting that same spine on your shelf with nothing searched for;
+  for its owner Edit, Make private, renaming it in the heading, and Delete only after the confirm (then back to the
+  profile); `/u/?name&shelf` as their shelf, and with none yet; a shelf that isn't there.
 - **Spines on a picture** (`specs/tips.spec.js`): on a shelf's page and on the builder's preview, the tooltip over a
   spine, a press going to its row and marking it, and a drag on the preview not counting as a press.
 - **Settings** (`specs/settings.spec.js`): signed out and with no username yet; the three tabs and their addresses;
-  Profile's Save sending the name, bio and main shelf; a photo cut square, made small (WebP, under the Worker's 2 MB),
+  Profile's Save sending the name and bio (no main shelf to pick); a photo cut square, made small (WebP, under the Worker's 2 MB),
   sent to the Worker and saved, then removed; Cancel; the private profile switch; a profile's links here.
 - **Shelf cards** (`specs/cards.spec.js`): on home, the feed and a profile, a pile, covers and a row are each in the
   middle of their card with room round them, the caption and the "made with" line clipped off, on the story's colour;
@@ -329,12 +372,22 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   are there.
 - **An empty site** (`specs/empty.spec.js`): with no public shelves, home shows the sample shelf under the hero, and
   shelves, members and the feed each say so in a line.
-- **The feed** (`specs/feed.spec.js`): the three tabs and which one opens, what a line says (with the clock held still,
-  so "2h" and "1w" are known), You, signed out, and ← → between the tabs.
+- **The feed** (`specs/feed.spec.js`): the three tabs and which one opens, what a line says for a shelf and for a log
+  (with the clock held still, so "today", "2h" and "1w" are known), Load more, a log's cover (a card's size, in line
+  with the text, the caption beside it) more worn the older it is, You, signed out, a log posted with + ADD showing at
+  the top, the feed before the database has logs (shelves only, from `feed()`), and ← → between the tabs.
+- **+ ADD's three choices** (`specs/log.spec.js`): Put on shelf · Log it · Watchlist, Put on shelf first, the
+  dialog's title for each; Log it's cover, caption and Post (what it sends, "watched" or "read", and no spine searched
+  for); Watchlist's Add to watchlist, and the database's answers when it's full or the title is already there; a title
+  keeping its place when the choice changes; signed out and with no username yet; before the database has logs.
+- **A log's worn cover** (`specs/wear.spec.js`): 2:3, the top right corner folded away, nothing ever written on it,
+  nearly new on the day, more faded after a week and more worn after a month, and the same log worn the same way every
+  time.
 
-`npm run shots` (in `tests/`) saves screenshots of home (and home with no shelves yet), the builder, a profile's tabs, the feed, shelves, members, settings,
-privacy and the not-found page at 1280px and 390px into
-`tests/shots/`, with the tests' made-up data and the real fonts.
+`npm run shots` (in `tests/`) saves screenshots of home (and home with no shelves yet), the builder, a profile's tabs,
+your own profile (and with no shelf yet), a shelf's page, the feed (and before the database has logs), + ADD (its
+choices, Log it, Watchlist), shelves, members, settings, privacy and the not-found page at 1280px and 390px into
+`tests/shots/`, with the tests' made-up data, the real fonts, and the clock held at 30 September 2026, 14:00 UTC.
 - **axe** (`specs/a11y.spec.js`) runs on every page, `privacy.html` and `admin.html` too: nothing serious or critical.
 - **html-validate** reads every HTML file with its recommended rules, except that inline `style` is allowed and the
   doctype is lowercase (`tests/.htmlvalidate.json`).
