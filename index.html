@@ -52,32 +52,30 @@
 /* home: a welcome, then rows and grids of shelf cards (site.css has the cards, the bar and everything shared) */
 .home section{margin-top:var(--s6)}
 .home section:first-child{margin-top:0}
-/* signed out: a real shelf, large, then one line and the one black button, from the left like the rest of the site */
+/* signed out: the spine wall, then one line and the one black button, from the left like the rest of the site */
 .hero{display:grid;justify-items:start;gap:var(--s4)}
 .hero h1{margin:var(--s2) 0 0}
-/* the shelf: the newest public one, its picture cut to the band its books stand in, on the story's own background
-   colour, with the hairline shelf cards have. The panel keeps its height, so nothing moves when the picture comes.
-   While there are no public shelves it holds the builder's sample shelf, so the page still shows what one is */
-.lead{margin:0;justify-self:stretch;display:grid;gap:var(--s2);min-width:0}
-.stand{position:relative;display:grid;place-items:center;height:460px;padding:var(--s5) var(--s4);background:var(--wash);border-radius:var(--radius);overflow:hidden;container-type:inline-size;--hmax:412px}
-.stand::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12);pointer-events:none}
-.stand.plain{background:var(--paper)}
-.stand a{display:block;line-height:0}
-.cut{display:block;position:relative;overflow:hidden;aspect-ratio:var(--r, .5625);width:min(100cqw, calc(var(--hmax) * var(--r, .5625)), 540px)}   /* 540px: one and a half times the picture, which is 360px wide */
-.cut img{position:absolute;left:0;top:0;width:100%;height:auto;display:block}
-.stand #sample{display:block;width:auto;height:auto;max-width:100%;max-height:var(--hmax)}
-.lead figcaption{display:flex;gap:var(--s2);align-items:baseline;font-size:var(--fs-card);min-height:1.55em;min-width:0}
-.lead figcaption a{text-decoration:none}
-.lead figcaption a:hover,.lead figcaption a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
-.lead figcaption > a{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}   /* a long name is cut short; who made it always shows */
-.lead figcaption span{flex:none;color:var(--grey);font-size:var(--fs-small)}
+/* the spine wall: one strip of the newest spines from different public shelves, a few from each person, standing on a
+   thin shelf line across the column. Each shelf's spines are one link to it (on a touch screen at least 44px wide).
+   Never stretched: in the middle while they don't fill the strip, and on a phone the rest scroll sideways inside it.
+   280px tall at most (200px on a phone), kept while the spines load. While there are no public shelves it holds the
+   builder's sample shelf, so the page still shows what one is */
+.wall{margin:0;justify-self:stretch;min-width:0;display:grid;gap:var(--s2)}
+.spines{--wall:280px;height:var(--wall);display:flex;align-items:flex-end;gap:var(--s2);padding:var(--s2) 0 0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;border-bottom:1px solid var(--ink)}
+.spines::-webkit-scrollbar{display:none}
+.spines > :first-child{margin-left:auto}
+.spines > :last-child{margin-right:auto}   /* in the middle when they fit; when they don't, the first ones aren't cut off */
+.spines a{display:flex;align-items:flex-end;justify-content:center;gap:2px;flex:none;line-height:0}
+.spines a:focus-visible{outline-offset:-2px}   /* the strip scrolls, so an outline outside would be cut off */
+.spines canvas{display:block;flex:none}
+#sample{display:block;flex:none;width:auto;height:100%;max-width:100%}
+.wall figcaption{font-size:var(--fs-small);color:var(--grey)}
+@media (max-width:640px){ .spines{--wall:200px} }
+@media (pointer:coarse){ .spines a{min-width:44px} }
 .signedout .top .add.primary{background:var(--paper);color:var(--ink)}
 .signedout .top .add.primary:hover{background:var(--wash)}
 /* how it works, short: only here */
 .how ol{margin:0;padding-left:1.6em;display:grid;gap:var(--s1);max-width:72ch}
-@media (max-width:640px){ .stand{height:340px;padding:var(--s4) var(--s3);--hmax:308px} }
-/* a touch screen: the shelf's name under the panel takes a press 44px tall (it's cut with an ellipsis, so it's padded out) */
-@media (pointer:coarse){ .lead figcaption > a{position:relative;padding:13px 0;margin:-13px 0} }
 .welcome h1{margin:0}
 /* ⚡ All activity, at the right of the row's heading */
 h2 .more.zapped{display:inline-flex;align-items:center;gap:var(--s1)}
@@ -135,13 +133,13 @@ h2 .more.zapped svg{width:12px;height:12px;flex:none}
   <!-- signed out -->
   <div id="out" hidden>
     <section class="hero">
-      <!-- a real shelf, large: the newest public one (the script puts it in). The builder's sample shelf (tests/art.js
-           makes the picture) is shown only while there are no public shelves -->
-      <figure class="lead" id="lead">
-        <div class="stand" id="stand">
+      <!-- the spine wall: the newest spines from different public shelves (the script puts them in). The builder's
+           sample shelf (tests/art.js makes the picture) stands there only while there are no public shelves -->
+      <figure class="wall" id="wall">
+        <div class="spines" id="spines">
           <img id="sample" src="sample-shelf.jpg" alt="Four book spines standing side by side: The Waves, Delta of Venus, Journey by Moonlight and Kuasa Rahim." width="440" height="733" loading="lazy" hidden>
         </div>
-        <figcaption id="leadCap"></figcaption>
+        <figcaption id="wallCap" hidden>a shelf, for example</figcaption>
       </figure>
       <h1>Shelve the films and books you love, with their real spines.</h1>
       <a class="btn primary" id="start" href="build/">Make a shelf</a>
@@ -209,14 +207,15 @@ h2 .more.zapped svg{width:12px;height:12px;flex:none}
 <script src="nav.js?v=20261004a"></script>
 <script>
 (() => {
-/* Home. Signed out: the newest public shelf, large, one line about the site and Make a shelf, how it works, then the
-   next newest shelves and the people who made them. Signed in: a welcome, a card for each person you follow with the
+/* Home. Signed out: a wall of the newest spines, one line about the site and Make a shelf, how it works, then the
+   newest shelves and the people who made them. Signed in: a welcome, a card for each person you follow with the
    newest thing they shelved or logged (activity(), 0007), then everyone's newest shelves (feed(), 0006). */
 const $ = s => document.querySelector(s);
 const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
 const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
 const SB_LIB = {src:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
 const ROW = 6, GRID = 12, ASK = 50;   // ROW: people you follow, a card each, from the newest ASK things they did
+const WALL = 24, EACH = 3;           // the spine wall: this many spines at most, at first no more than EACH from a person
 
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const profileUrl = (name, shelf) => 'u/?' + name + (shelf ? '&shelf=' + shelf : '');
@@ -355,31 +354,60 @@ async function following(n){
   catch (e){ if (!missing(e)) throw e; return (await rpc('feed', ask)).map(fromFeed); }
 }
 
-/* The lead: a real shelf, large. Its picture is the whole 9:16 story (360 x 640), so it's cut to the band the books
-   stand in (cards.js finds them, as it does for a card) and stands on the story's own background colour, as large as
-   the panel allows and no more than one and a half times its size. A picture that can't be read is shown whole. */
-function lead(x){
-  const shelf = Shelf.shelfName({name: x.name, caption: x.caption}), to = profileUrl(x.username, x.shelf_id), stand = $('#stand');
-  const a = document.createElement('a'); a.id = 'leadLink'; a.href = to; a.hidden = true; a.setAttribute('aria-label', `${shelf} by @${x.username}`);
-  a.innerHTML = `<span class="cut" data-shelf="${esc(x.shelf_id)}"><img alt="" crossorigin="anonymous" width="360" height="640"></span>`;
-  const cut = a.firstChild, im = cut.firstChild;
-  im.addEventListener('load', () => {
-    let m = null; try { m = window.Cards ? Cards.measure(im) : null; } catch {}   // without CORS it can't be looked at
-    const top = m ? m.ct : 0, bottom = m ? m.cb : 1, r = 9 / (16 * (bottom - top));   // the band's width over its height
-    cut.style.setProperty('--r', r.toFixed(4)); im.style.top = (-100 * top * 16 / 9 * r).toFixed(2) + '%';
-    stand.style.backgroundColor = m ? `rgb(${m.bg.join(',')})` : '';
-    a.hidden = false;
-  });
-  // the picture didn't come: the sample shelf. (worker-address.js may first try the Worker's other address: then the
-  // picture's address has changed, and this waits for that one.)
-  let tried = '';
-  im.addEventListener('error', () => { if (im.src !== tried){ tried = im.src; return; } a.remove(); sample(); });
-  im.src = tried = `${WORKER}/u/preview?k=${encodeURIComponent(x.preview_key)}&v=${encodeURIComponent(x.updated_at)}`;
-  stand.prepend(a);
-  $('#leadCap').innerHTML = `<a href="${esc(to)}">${esc(shelf)}</a> <span>by <a href="${esc(profileUrl(x.username))}">@${esc(x.username)}</a></span>`;
+/* The spine wall: the newest spines from the newest public shelves. First a few from each person (the spines put on
+   their shelf last), newest shelf first; then, while there's room, more from the same shelves in turn, so a site with
+   only a few people still shows what it has. Each shelf's spines stand together in their order on it, as one link to
+   the shelf. All at one scale, the tallest as tall as the strip allows; on a wide window, smaller until they fit
+   across it (never under 200px); on a phone they stay 200px and the rest scroll sideways. */
+const wall = {groups: [], w: 0};
+async function spineWall(rows){
+  if (!rows.length) return sample();
+  const shelves = rows.filter(x => x.shelf_id);
+  let items;
+  try { items = await api(`shelf_items?select=shelf_id,position,item_id,kind,title,author,year,spine_src,cover_src,look&shelf_id=in.(${shelves.map(x => x.shelf_id).join(',')})&order=position`); }
+  catch { return sample(); }
+  const left = new Map(shelves.map(x => [x.shelf_id, items.filter(r => r.shelf_id === x.shelf_id).reverse()])), per = new Map(), queue = [];
+  for (const x of shelves){
+    const had = per.get(x.owner) || 0, take = left.get(x.shelf_id).splice(0, Math.max(0, EACH - had));
+    per.set(x.owner, had + take.length); queue.push(...take.map(r => [x, r]));
+  }
+  for (const x of shelves) queue.push(...left.get(x.shelf_id).map(r => [x, r]));
+  // read in that order until there are enough (a spine whose picture doesn't come is left out, and the next one read)
+  const got = [];
+  for (let i = 0; got.length < WALL && i < queue.length;){
+    const next = queue.slice(i, i += WALL - got.length);
+    got.push(...(await Promise.all(next.map(async ([x, r]) => { const b = await Bare.book(r); return b && {x, r, b}; }))).filter(Boolean));
+  }
+  if (!got.length) return sample();
+  wall.groups = shelves.map(x => ({x, spines: got.filter(g => g.x === x).sort((a, b) => a.r.position - b.r.position)})).filter(g => g.spines.length);
+  await Bare.ready;
+  paintWall();
+  addEventListener('resize', () => { clearTimeout(wall.t); wall.t = setTimeout(() => { if (innerWidth !== wall.w) paintWall(); }, 150); });
+}
+function paintWall(){
+  const strip = $('#spines'), all = wall.groups.flatMap(g => g.spines.map(s => s.b)), phone = matchMedia('(max-width:640px)').matches;
+  const room = strip.clientHeight - parseFloat(getComputedStyle(strip).paddingTop);   // the strip's height, less the room above the tallest
+  const draw = h => {
+    const canvases = Bare.spines(all, h); let i = 0;
+    strip.replaceChildren(...wall.groups.map(({x, spines}) => {
+      const a = document.createElement('a'), shelf = Shelf.shelfName({name: x.name, caption: x.caption});
+      a.href = profileUrl(x.username, x.shelf_id);
+      a.setAttribute('aria-label', `${spines.map(s => s.b.title).filter(Boolean).join(', ')}: ${shelf} by @${x.username}`);
+      for (const s of spines){ const c = canvases[i++]; c.title = `${s.b.title}${s.b.year ? ` (${s.b.year})` : ''} · @${x.username}`; a.append(c); }
+      return a;
+    }));
+  };
+  draw(room);
+  // a wide window: as tall as fits across it (the gaps don't grow or shrink with the spines)
+  const over = strip.scrollWidth - strip.clientWidth;
+  if (!phone && over > 0){
+    const gaps = [...strip.querySelectorAll('canvas')].reduce((w, c) => w - c.getBoundingClientRect().width, strip.scrollWidth);
+    draw(Math.max(200, Math.floor(room * (strip.clientWidth - gaps) / (strip.scrollWidth - gaps))));
+  }
+  wall.w = innerWidth;
 }
 // no public shelf to show: the builder's sample shelf, so the page still shows what one is
-function sample(){ $('#sample').hidden = false; $('#stand').classList.add('plain'); $('#leadCap').textContent = 'a shelf, for example'; }
+function sample(){ $('#sample').hidden = false; $('#wallCap').hidden = false; }
 
 let outShown = false;
 async function showOut(){
@@ -387,12 +415,11 @@ async function showOut(){
   document.documentElement.classList.add('signedout');   // the bar's + is outlined: Make a shelf is the black button here
   $('#state').hidden = true; $('#in').hidden = true; $('#out').hidden = false;
   let rows;
-  try { rows = await everyone(1 + GRID); }
+  try { rows = await everyone(GRID); }
   catch (e){ $('#outState').textContent = friendly(e); sample(); return; }
-  if (rows[0] && rows[0].preview_key) lead(rows[0]); else sample();   // an empty site: a shelf, for example
-  const rest = rows.slice(1);
-  $('#outGrid').replaceChildren(...rest.map(x => tile(x, true)));
-  $('#outState').hidden = true; $('#outJust').hidden = !rest.length;   // one shelf so far: it's the one above
+  spineWall(rows);   // an empty site: a shelf, for example
+  $('#outGrid').replaceChildren(...rows.map(x => tile(x, true)));
+  $('#outState').hidden = true; $('#outJust').hidden = !rows.length;
   // the people behind the newest shelves, each once
   const seen = new Set(), who = rows.filter(x => !seen.has(x.owner) && seen.add(x.owner));
   $('#stackers').replaceChildren(...who.map(person)); $('#stackersSec').hidden = !who.length;

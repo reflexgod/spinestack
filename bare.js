@@ -1,10 +1,12 @@
-/* Saved shelves drawn small, from their rows in shelf_items: home's cards. Each row back into a book (its pictures
-   through the Worker), then the shelf cut out of a bare story (the books and their shelf on nothing, as the profile's
-   hero draws it, for the grey panel). shelf.js does all the drawing and nothing here changes it. The same as bookOf()
-   and bareShelf() in u/: keep them in step.
-   Bare.books(rows): the books, in order (a row whose picture didn't come is left out). Bare.shelf(books, shelf): a
-   canvas of the shelf cut down to its books, or null. Bare.ready: the spines' fonts. Load it after shelf.js and
-   worker-address.js. */
+/* Saved shelves drawn small, from their rows in shelf_items: home's cards and its wall of spines. Each row back into a
+   book (its pictures through the Worker); the shelf cut out of a bare story (the books and their shelf on nothing, as
+   the profile's hero draws it, for the grey panel); and spines one by one, as the builder's strip draws them. shelf.js
+   does all the drawing and nothing here changes it. The same as bookOf(), bareShelf() and smallSpines() in u/: keep
+   them in step.
+   Bare.book(row): the book, or null if its picture didn't come. Bare.books(rows): the books, in order, without those.
+   Bare.shelf(books, shelf): a canvas of the shelf cut down to its books, or null. Bare.spines(books, height): a canvas
+   for each spine, all at one scale, the tallest that many CSS pixels high. Bare.ready: the spines' fonts. Load it
+   after shelf.js and worker-address.js. */
 (() => {
   if (window.Bare) return;
   const W = 1080, H = 1920;
@@ -58,8 +60,19 @@
     return out;
   }
 
+  // spines side by side, the tallest `height` CSS pixels high; a book that stands face out on its shelf is a spine here
+  function spines(list, height){
+    const dpr = Math.min(2, window.devicePixelRatio || 1), flat = list.map(Shelf.asSpine), s = Shelf.sizes(1160, 165, flat, {varied: true});
+    const k = height / Math.max(...s.map(z => z.h));
+    return flat.map((b, i) => {
+      const c = Shelf.makeSpine(b, s[i].w*k*dpr, s[i].h*k*dpr);
+      c.style.width = c.width/dpr + 'px'; c.style.height = c.height/dpr + 'px';
+      return c;
+    });
+  }
+
   const FACES = ['600 40px Oswald','400 40px Oswald','600 40px "Cormorant Garamond"','italic 500 40px "Cormorant Garamond"','40px "Archivo Black"','40px "Gochi Hand"','500 40px "IBM Plex Mono"','400 40px "IBM Plex Mono"','600 40px "IBM Plex Sans"'];
   const ready = document.fonts ? Promise.all(FACES.map(f => document.fonts.load(f).catch(() => {}))) : Promise.resolve();
 
-  window.Bare = {books, shelf, ready};
+  window.Bare = {book, books, shelf, spines, ready};
 })();

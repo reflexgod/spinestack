@@ -5,10 +5,10 @@ Live at https://shelfstackd.com (this repository and its folders keep the old wo
 Type a film or a book, get its real spine, put it on your shelf (one each), save it to your profile. From its page the shelf can be shared as an Instagram story. You can also log a film or a book you watched or read, which goes on the feed with its cover, and keep a watchlist.
 
 ```
-index.html            the home page (GitHub Pages serves this). Signed out: the newest public shelf, large, then one line about the site and Make a shelf (the black button on that screen), How it works in three steps, and the next newest shelves; signed in: a welcome, New from people you follow (⚡ All activity: a row of cards, one for each person you follow with the newest thing they shelved or logged, a log's worn cover or a shelf's spines on the grey panel, their photo and @username in a thin bar under it, and under the card watched, read or shelved and the date; six across, three on a phone and the rest sideways), then Just shelved. Links to the old builder here (/?open=, /#shelf) go on to build/
+index.html            the home page (GitHub Pages serves this). Signed out: the spine wall (one strip of the newest spines from different public shelves, a few from each person, up to 24, standing on a thin shelf line, each shelf's spines a link to it; 280px tall at most, 200px on a phone, where the rest scroll sideways; the sample shelf while there are none), then one line about the site and Make a shelf (the black button on that screen), How it works in three steps, and the newest shelves; signed in: a welcome, New from people you follow (⚡ All activity: a row of cards, one for each person you follow with the newest thing they shelved or logged, a log's worn cover or a shelf's spines on the grey panel, their photo and @username in a thin bar under it, and under the card watched, read or shelved and the date; six across, three on a phone and the rest sideways), then Just shelved. Links to the old builder here (/?open=, /#shelf) go on to build/
 build/index.html      the shelf builder (Your shelf: there's one shelf each, and signed in it opens yours): Add, the spines as a list (drag one there or on the preview to move it), Style, the preview; at the bottom its name (one name: it's the caption on the story too), who can view it, Cancel · Save. Clear asks first
 add.js                + ADD on every page: the Add dialog. Three choices at the top: Put on shelf (suggestions as you type, then the spine choices and Add to shelf; the spine finder lives here), Log it (the cover as the feed will show it, a caption if you want one, Post) and Watchlist (Add to watchlist)
-bare.js               saved shelves drawn small from their rows in shelf_items: each row back into a book (its pictures through the Worker), then the shelf cut out of a bare story, as the profile's hero draws it (home's cards). The same as u/'s own: keep them in step
+bare.js               saved shelves drawn small from their rows in shelf_items: each row back into a book (its pictures through the Worker), then the shelf cut out of a bare story, as the profile's hero draws it (home's cards), or its spines one by one, all at one scale (home's spine wall). The same as u/'s own: keep them in step
 wear.js               a log's cover, worn: one corner dog-eared (a hairline round the fold and a soft shadow under it, so it reads on a white poster), fine scratches, rubbed edges and a little fade, drawn on a canvas from how long ago it was logged (lightly worn that day, with two or three scratches to see; faded after a week, worn after a month). No stamp and nothing written on it
 shelf.js              draws the spines and the story (and says where it drew each book); build/ and u/ both use it, so a shelf looks the same everywhere
 u/index.html          profiles: /u/?username with its tabs Profile (their shelf, big, then Watchlist and, on your own, From friends) · Activity · Network (Following, Followers), and the shelf's own page: /u/?username&shelf (or &shelf=<id>, the older links): its name with Share beside it (Share to story, Download image, Copy link), who made it, the shelf itself (its books on the grey panel, as the profile has them; the 9:16 story is only made for Share), and On this shelf with + Add to my shelf (to the right of the shelf on a wide window; a title that's already on your own shelf says "On your shelf" instead, and on your own shelf nothing is offered); for its owner Edit, Make private or public, Delete
@@ -373,7 +373,10 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   middle of their card with room round them, the caption and the "made with" line clipped off, on the story's colour;
   a picture is looked at once (kept per preview key); a picture with no plain background, or one that comes without
   CORS, still shows with the stylesheet's cut.
-- **Home's copy** (in `specs/site.spec.js`): signed out, the newest shelf large (cut to its books, a link to it), the
+- **Home's copy** (in `specs/site.spec.js`): signed out, the spine wall (the newest spines, three from each person
+  first and then more from the same shelves up to 24, each shelf's spines one link to it in their order on it, on a
+  1px line, 280px at most and fitting across the column, 200px on a phone and sideways, never stretched, in the middle
+  when there are only a few), the
   one line under it from the left, Make a shelf as the one black button (the bar's + outlined there), How it works
   in three steps, with no "lets you" tiles; signed in, the welcome and ⚡ All activity, and New from people you follow
   as a row of cards (from `activity()`, one for each person, the newest thing from them: a log's worn cover, a shelf's
@@ -395,7 +398,7 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **Nothing missing** (`specs/requests.spec.js`): every page, signed out and signed in, gets an answer for everything
   it asks this site for; and the two things a browser asks for by itself (`/favicon.ico`, and Chrome's DevTools file)
   are there.
-- **An empty site** (`specs/empty.spec.js`): with no public shelves, home shows the sample shelf where the newest one would be, and
+- **An empty site** (`specs/empty.spec.js`): with no public shelves, home shows the sample shelf on the spine wall's line, and
   shelves, members and the feed each say so in a line.
 - **The feed** (`specs/feed.spec.js`): the three tabs and which one opens, what a line says for a shelf and for a log
   (with the clock held still, so "today", "2h" and "1w" are known), Load more, a log's cover (72 x 108px, in line
