@@ -1,0 +1,198 @@
+-- shelfstackd, proposed phase 4: checks logs, the watchlist, From friends and activity() after the proposed 0007.
+-- NOT RUN ON THE LIVE DATABASE. It goes with docs/proposed-0007-logs-watchlist.sql: once that is agreed and run, this
+-- moves to supabase/tests/rls_phase4.sql and is run in the Supabase dashboard (SQL Editor -> New query -> paste -> Run).
+-- It makes throwaway users inside a transaction and rolls everything back at the end: nothing is kept.
+-- The last result says "ALL PHASE 4 CHECKS PASSED". Any failed check stops with an error that starts "FAIL:".
+-- Real accounts can be in the database, so every check looks only at the test's own rows.
+--
+-- The people:  A public (follows B, and private D, who accepted)   B public (logs two titles)   C public (an outsider)
+--              D private (logs one title)   E public (hits the daily limit)   H hidden by moderation (logs one title)
+
+begin;
+
+insert into auth.users (id, email, aud, role) values
+  ('00000000-0000-4000-8000-0000000004a0', 'rls4-a@example.invalid', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-0000000004b0', 'rls4-b@example.invalid', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-0000000004c0', 'rls4-c@example.invalid', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-0000000004d0', 'rls4-d@example.invalid', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-0000000004e0', 'rls4-e@example.invalid', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-0000000004f0', 'rls4-h@example.invalid', 'authenticated', 'authenticated');
+update public.app_config set pro_required = false;
+
+-- each person makes their profile, signed in as themselves; B, D and H log something
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000004a0","role":"authenticated"}', true);
+insert into public.profiles (id, username) values ('00000000-0000-4000-8000-0000000004a0', 'rls4_a');
+select public.save_shelf('{"id":"00000000-0000-4000-8000-0000000004a1","caption":"a private","is_public":false}', '[{"item_id":"b0","kind":"book","title":"Mine"}]');
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000004b0","role":"authenticated"}', true);
+insert into public.profiles (id, username) values ('00000000-0000-4000-8000-0000000004b0', 'rls4_b');
+select public.save_shelf('{"id":"00000000-0000-4000-8000-0000000004b1","caption":"b public"}', '[{"item_id":"b0","kind":"movie","title":"Kids"}]');
+insert into public.logs (kind, title, author, year, cover_src, caption) values
+  ('movie', 'Gummo', 'Harmony Korine', 1997, 'url:https://image.tmdb.org/t/p/w500/gummo.jpg', 'the bathtub scene'),
+  ('book', 'The  Waves ', 'Virginia Woolf', 1931, null, '');
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000004c0","role":"authenticated"}', true);
+insert into public.profiles (id, username) values ('00000000-0000-4000-8000-0000000004c0', 'rls4_c');
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000004d0","role":"authenticated"}', true);
+insert into public.profiles (id, username) values ('00000000-0000-4000-8000-0000000004d0', 'rls4_d');
+update public.profiles set is_private = true where id = '00000000-0000-4000-8000-0000000004d0';
+insert into public.logs (kind, title, year, caption) values ('movie', 'Stalker', 1979, 'd only');
+insert into public.watchlist (kind, title, year) values ('movie', 'Paris, Texas', 1984);
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000004e0","role":"authenticated"}', true);
+insert into public.profiles (id, username) values ('00000000-0000-4000-8000-0000000004e0', 'rls4_e');
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000004f0","role":"authenticated"}', true);
+insert into public.profiles (id, username) values ('00000000-0000-4000-8000-0000000004f0', 'rls4_h');
+insert into public.logs (kind, title, year) values ('movie', 'Hidden One', 2001);
+
+-- A follows B, and asks D, who accepts
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000004a0","role":"authenticated"}', true);
+select public.follow('00000000-0000-4000-8000-0000000004b0'), public.follow('00000000-0000-4000-8000-0000000004d0'), public.follow('00000000-0000-4000-8000-0000000004f0');
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000004d0","role":"authenticated"}', true);
+select public.answer_request('00000000-0000-4000-8000-0000000004a0', true);
+
+-- moderation hides H; B's shelf and the logs get their own times, oldest first: B's shelf, B's Waves, B's Gummo, D's Stalker
+reset role;
+update public.profiles set hidden = true where id = '00000000-0000-4000-8000-0000000004f0';
+update public.shelves set saved_at = now() - interval '4 hours' where id = '00000000-0000-4000-8000-0000000004b1';
+update public.logs set created_at = now() - interval '3 hours' where owner = '00000000-0000-4000-8000-0000000004b0' and title = 'The  Waves ';
+update public.logs set created_at = now() - interval '2 hours' where owner = '00000000-0000-4000-8000-0000000004b0' and title = 'Gummo';
+update public.logs set created_at = now() - interval '1 hour' where owner = '00000000-0000-4000-8000-0000000004d0';
+
+-- ---------- what a log may be ----------
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000004a0","role":"authenticated"}', true);
+do $$ begin
+  begin
+    insert into public.logs (owner, kind, title) values ('00000000-0000-4000-8000-0000000004b0', 'movie', 'For B');
+    raise exception 'FAIL: A posted a log as B';
+  exception when insufficient_privilege then null; end;
+  begin
+    insert into public.logs (kind, title, hidden) values ('movie', 'Sneaky', false);
+    raise exception 'FAIL: A set hidden on a log';
+  exception when insufficient_privilege then null; end;
+  begin
+    insert into public.logs (kind, title, caption) values ('movie', 'Long', repeat('x', 281));
+    raise exception 'FAIL: a caption over 280 characters went in';
+  exception when check_violation then null; end;
+  begin
+    insert into public.logs (kind, title, cover_src) values ('movie', 'Elsewhere', 'url:https://example.com/cover.jpg');
+    raise exception 'FAIL: a cover from another site went in';
+  exception when check_violation then null; end;
+  begin
+    insert into public.logs (kind, title) values ('movie', '   ');
+    raise exception 'FAIL: a log with no title went in';
+  exception when check_violation then null; end;
+end $$;
+
+-- ---------- who sees a log ----------
+reset role;
+set local role anon;
+select set_config('request.jwt.claims', '', true);
+do $$ begin
+  if (select count(*) from public.logs where owner = '00000000-0000-4000-8000-0000000004b0') <> 2 then raise exception 'FAIL: a visitor doesn''t see public B''s logs'; end if;
+  if exists (select 1 from public.logs where owner in ('00000000-0000-4000-8000-0000000004d0', '00000000-0000-4000-8000-0000000004f0')) then raise exception 'FAIL: a visitor sees private D''s or hidden H''s logs'; end if;
+  if exists (select 1 from public.watchlist where owner = '00000000-0000-4000-8000-0000000004d0') then raise exception 'FAIL: a visitor sees private D''s watchlist'; end if;
+  if exists (select 1 from public.activity('following')) then raise exception 'FAIL: FOLLOWING has something signed out'; end if;
+  if exists (select 1 from public.activity('you')) then raise exception 'FAIL: YOU has something signed out'; end if;
+  if (select count(*) from public.activity('everyone', null, null, 50) where owner = '00000000-0000-4000-8000-0000000004b0') <> 3 then raise exception 'FAIL: EVERYONE doesn''t have B''s shelf and two logs'; end if;
+  if exists (select 1 from public.activity('everyone', null, null, 50) where owner in ('00000000-0000-4000-8000-0000000004d0', '00000000-0000-4000-8000-0000000004f0')) then raise exception 'FAIL: EVERYONE has private D or hidden H'; end if;
+  if (select string_agg(title, ',' order by at desc, id desc) from public.activity('everyone', null, null, 50) where owner = '00000000-0000-4000-8000-0000000004b0' and what = 'log') <> 'Gummo,The  Waves ' then
+    raise exception 'FAIL: B''s logs aren''t newest first'; end if;
+  if (select caption from public.activity('everyone', null, null, 50) where what = 'log' and title = 'Gummo' and owner = '00000000-0000-4000-8000-0000000004b0') <> 'the bathtub scene' then raise exception 'FAIL: a log''s caption isn''t in the feed'; end if;
+  begin
+    perform public.from_friends();
+    raise exception 'FAIL: a visitor could ask for From friends';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000004c0","role":"authenticated"}', true);
+do $$ begin
+  if exists (select 1 from public.logs where owner = '00000000-0000-4000-8000-0000000004d0') then raise exception 'FAIL: outsider C sees private D''s logs'; end if;
+  if exists (select 1 from public.from_friends()) then raise exception 'FAIL: C follows nobody and has From friends'; end if;
+end $$;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000004a0","role":"authenticated"}', true);
+do $$ declare first record; n int; begin
+  if (select count(*) from public.logs where owner = '00000000-0000-4000-8000-0000000004d0') <> 1 then raise exception 'FAIL: follower A doesn''t see private D''s log'; end if;
+  if (select count(*) from public.watchlist where owner = '00000000-0000-4000-8000-0000000004d0') <> 1 then raise exception 'FAIL: follower A doesn''t see private D''s watchlist'; end if;
+  if (select string_agg(title, ',' order by at desc, id desc) from public.activity('following', null, null, 50) where what = 'log') <> 'Stalker,Gummo,The  Waves ' then
+    raise exception 'FAIL: FOLLOWING isn''t D''s and B''s logs, newest first'; end if;
+  if exists (select 1 from public.activity('following', null, null, 50) where owner = '00000000-0000-4000-8000-0000000004f0') then raise exception 'FAIL: hidden H is in FOLLOWING'; end if;
+  if (select count(*) from public.activity('you', null, null, 50) where what = 'shelf' and not is_public) <> 1 then raise exception 'FAIL: YOU leaves out A''s private shelf'; end if;
+  -- paging: after the newest one comes the next, and nothing twice
+  select * into first from public.activity('following', null, null, 1);
+  select count(*) into n from public.activity('following', first.at, first.id, 50) where id = first.id;
+  if n <> 0 then raise exception 'FAIL: the next page has the last one again'; end if;
+  if (select title from public.activity('following', first.at, first.id, 1)) <> 'Gummo' then raise exception 'FAIL: the next page doesn''t start after the last one'; end if;
+end $$;
+
+-- ---------- From friends, Keep and Remove, and logging a title ----------
+do $$ declare k text; begin
+  if (select string_agg(title, ',' order by logged_at desc) from public.from_friends()) <> 'Stalker,Gummo,The  Waves ' then raise exception 'FAIL: From friends isn''t what A''s people logged, newest first'; end if;
+  if exists (select 1 from public.from_friends() where from_username = 'rls4_h') then raise exception 'FAIL: hidden H is in From friends'; end if;
+  -- Keep: on the watchlist, from B, and so out of From friends
+  insert into public.watchlist (kind, title, author, year, cover_src, from_user)
+    select kind, title, author, year, cover_src, from_id from public.from_friends() where title = 'Gummo';
+  if (select from_user from public.watchlist where owner = '00000000-0000-4000-8000-0000000004a0' and title = 'Gummo') <> '00000000-0000-4000-8000-0000000004b0' then raise exception 'FAIL: Keep didn''t say it came from B'; end if;
+  if exists (select 1 from public.from_friends() where title = 'Gummo') then raise exception 'FAIL: a title on the watchlist is still in From friends'; end if;
+  -- from someone A doesn't follow: kept, without the name
+  insert into public.watchlist (kind, title, from_user) values ('book', 'Orlando', '00000000-0000-4000-8000-0000000004c0');
+  if (select from_user from public.watchlist where owner = '00000000-0000-4000-8000-0000000004a0' and title = 'Orlando') is not null then raise exception 'FAIL: from_user kept someone A doesn''t follow'; end if;
+  -- Remove: gone for good
+  select item_key into k from public.from_friends() where title = 'Stalker';
+  insert into public.friend_hides (item_key) values (k);
+  if exists (select 1 from public.from_friends() where title = 'Stalker') then raise exception 'FAIL: Remove didn''t take it out of From friends'; end if;
+  -- logged it yourself: out of From friends, and off your watchlist (the same title, its spaces and case aside)
+  insert into public.logs (kind, title, year) values ('book', 'the waves', 1931);
+  if exists (select 1 from public.from_friends()) then raise exception 'FAIL: a title A logged is still in From friends'; end if;
+  insert into public.logs (kind, title, author, year) values ('movie', 'GUMMO', 'Harmony Korine', 1997);
+  if exists (select 1 from public.watchlist where owner = '00000000-0000-4000-8000-0000000004a0' and title = 'Gummo') then raise exception 'FAIL: logging Gummo left it on the watchlist'; end if;
+end $$;
+
+-- ---------- the watchlist: 6 at most, each title once, only your own ----------
+do $$ declare i int; begin
+  begin
+    insert into public.watchlist (kind, title) values ('book', 'orlando ');
+    raise exception 'FAIL: the same title went on the watchlist twice';
+  exception when unique_violation then null; end;
+  for i in 1..5 loop insert into public.watchlist (kind, title) values ('book', 'Book ' || i); end loop;
+  begin
+    insert into public.watchlist (kind, title) values ('book', 'Book 6');
+    raise exception 'FAIL: a seventh title went on the watchlist';
+  exception when raise_exception then if sqlerrm like 'FAIL:%' then raise; end if; end;
+  begin
+    insert into public.watchlist (owner, kind, title) values ('00000000-0000-4000-8000-0000000004c0', 'book', 'For C');
+    raise exception 'FAIL: A put a title on C''s watchlist';
+  exception when insufficient_privilege then null; end;
+end $$;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000004b0","role":"authenticated"}', true);
+do $$ declare n int; begin
+  delete from public.watchlist where owner = '00000000-0000-4000-8000-0000000004a0';
+  get diagnostics n = row_count; if n <> 0 then raise exception 'FAIL: B emptied A''s watchlist'; end if;
+  delete from public.logs where owner = '00000000-0000-4000-8000-0000000004a0';
+  get diagnostics n = row_count; if n <> 0 then raise exception 'FAIL: B deleted A''s logs'; end if;
+  if exists (select 1 from public.friend_hides where owner = '00000000-0000-4000-8000-0000000004a0') then raise exception 'FAIL: B sees what A removed'; end if;
+  delete from public.logs where owner = '00000000-0000-4000-8000-0000000004b0' and title = 'Gummo';
+  get diagnostics n = row_count; if n <> 1 then raise exception 'FAIL: B couldn''t delete B''s own log'; end if;
+end $$;
+
+-- ---------- 50 logs a day ----------
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000004e0","role":"authenticated"}', true);
+do $$ declare i int; begin
+  for i in 1..50 loop insert into public.logs (kind, title) values ('book', 'Day ' || i); end loop;
+  begin
+    insert into public.logs (kind, title) values ('book', 'One too many');
+    raise exception 'FAIL: a 51st log went in on one day';
+  exception when raise_exception then if sqlerrm like 'FAIL:%' then raise; end if; end;
+end $$;
+
+-- ---------- deleting an account takes its logs, watchlist and removals along ----------
+reset role;
+delete from auth.users where id = '00000000-0000-4000-8000-0000000004a0';
+do $$ begin
+  if exists (select 1 from public.logs where owner = '00000000-0000-4000-8000-0000000004a0') then raise exception 'FAIL: A''s logs outlived A'; end if;
+  if exists (select 1 from public.watchlist where owner = '00000000-0000-4000-8000-0000000004a0') then raise exception 'FAIL: A''s watchlist outlived A'; end if;
+  if exists (select 1 from public.friend_hides where owner = '00000000-0000-4000-8000-0000000004a0') then raise exception 'FAIL: A''s removals outlived A'; end if;
+end $$;
+
+select 'ALL PHASE 4 CHECKS PASSED' as result;
+rollback;
