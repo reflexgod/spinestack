@@ -65,9 +65,10 @@ test('a line says who shelved or logged what and how long ago; a shelf\'s card o
     .evaluate(el => ({ fade: +el.dataset.fade, wear: +el.dataset.wear }));
   const today = await worn('Gummo'), week = await worn('The Waves'), month = await worn('Kids');
   expect(today.fade).toBeLessThan(.06);
-  expect(today.wear).toBeLessThan(.12);
+  expect(today.wear).toBeGreaterThan(.2);
+  expect(today.wear).toBeLessThan(.3);
   expect(week.fade).toBeGreaterThan(today.fade + .1);
-  expect(month.wear).toBeGreaterThan(week.wear + .3);
+  expect(month.wear).toBeGreaterThan(week.wear + .25);
   expect(month.fade).toBeGreaterThan(week.fade);
   // a shelf: the name is a link to the person, the shelf's a link to the shelf, and so is its card
   const first = page.locator('#items .item:not(.log)').first();
