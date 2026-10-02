@@ -9,7 +9,9 @@ workers_dev = true
 
 # Secrets (set with `npx wrangler secret put <NAME>`, never written here):
 #   TMDB_TOKEN     TMDB v4 "API Read Access Token" (or v3 key)
-#   BRAVE_API_KEY  Brave Search API subscription token
+#   SERPER_KEY     serper.dev API key (Google Images; the first place /scans looks)
+#   SERPAPI_KEY    serpapi.com API key (Google Images; the second)
+#   BRAVE_API_KEY  Brave Search API subscription token (the third)
 #   ADMIN_TOKEN    for admin.html (approve or delete archive uploads)
 # No Supabase secret key: the Worker checks sign-ins with the public (publishable) key below.
 
@@ -17,10 +19,19 @@ workers_dev = true
 [vars]
 SUPABASE_URL = "https://fiukspnovrlzlcdekcnb.supabase.co"
 SUPABASE_KEY = "sb_publishable_cZeUDJXk-nCbSJ4VZWn_GQ_6xNFyBo2"
-# The most Brave searches the Worker makes in a day, across everyone (Brave bills after about 1,000 a month:
-# 30 a day is at most 930). Once it's reached, /scans answers only from the archive and from what was kept
-# before, and the page makes a spine from the cover. Change it here and deploy.
+# /scans looks for a title's scans with Serper, then SerpApi, then Brave, then archive.org, stopping at the first that
+# gives a usable one. These are the most searches each makes in a day, across everyone. Once a provider reaches its
+# number it's passed over until tomorrow (UTC). Change a number here and deploy; 0 turns that provider off.
+# Serper: 2,500 free credits, once. A search here costs 2, so SERPER_TOTAL_CAP (credits in all, ever) stops just short
+# of them; raise it if you buy more.
+SERPER_DAILY_CAP = "100"
+SERPER_TOTAL_CAP = "2400"
+# SerpApi: 250 free searches a month. 8 a day is at most 248.
+SERPAPI_DAILY_CAP = "8"
+# Brave bills after about 1,000 a month: 30 a day is at most 930.
 BRAVE_DAILY_CAP = "30"
+# archive.org needs no key and asks nothing for it; this is only manners.
+ARCHIVE_ORG_DAILY_CAP = "100"
 
 # One tiny Supabase read a day, so the free project isn't paused for inactivity.
 [triggers]

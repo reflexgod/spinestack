@@ -50,19 +50,21 @@ At this point uploads, spine cutting from scans and the shelf all work (saving a
 ## Worker (what the live site uses)
 
 A free Cloudflare Worker in `worker/` does the parts a static page can't: it looks titles up on TMDB and
-Open Library, finds DVD and book scans with the Brave Image Search API, and passes scan images through with
-CORS so the page can cut the spine out of them in the browser (`findSpine()` in `add.js`).
-The TMDB and Brave keys live only in the Worker, as secrets.
+Open Library, finds DVD and book scans with image searches (Serper, SerpApi, Brave, then archive.org: see Where scans
+come from), and passes scan images through with CORS so the page can cut the spine out of them in the browser
+(`findSpine()` in `add.js`). The keys live only in the Worker, as secrets; it never logs them or sends them back.
 
 | Endpoint | What it returns |
 |---|---|
 | `/identify?q=&want=all\|movie\|book[&suggest=1]` | `{results:[{kind,title,year,creator,cover}]}`: up to 5 films (TMDB) and 5 books (Open Library: only those whose title or author has what was typed, each title once, most-read first, without the government reports it files as books). `suggest=1` is a half-typed title: answered the same, but not kept in KV |
-| `/scans?title=&year=&kind=movie\|book&creator=&round=0-3` | one Brave search per round: up to 10 wrap-shaped (or single-spine) scans whose page names the title, plus approved archive spines first in round 0: `{results:[...], round, more}`, with `capped: true` once the day's Brave searches are used up (see The Brave cap) |
+| `/scans?title=&year=&kind=movie\|book&creator=&round=0-3` | one query per round: up to 10 wrap-shaped (or single-spine) scans whose page names the title, plus approved archive spines first in round 0: `{results:[...], round, more}`, with `capped: true` when nothing usable was found and a provider was at its cap (see Where scans come from) |
 | `/img?url=` | the image, with CORS. http(s) and `image/*` only, 8 MB max, private addresses blocked, 3 redirects max |
 | `POST /archive?kind=&title=&year=&author=` | a PNG of one spine (300 KB max, at least 3 times taller than wide), re-encoded and kept as *pending* |
 | `/archive/img?id=` | an approved archive spine |
 | `POST /report?id=` | one report per visitor; the third sends an approved spine back to pending |
 | `/admin/list`, `POST /admin/approve`, `POST /admin/delete` | for `admin.html`, with `Authorization: Bearer <ADMIN_TOKEN>` |
+| `/admin/usage` | with the admin token: today's searches by each provider, its cap, whether it's out for the day, whether it has a key (never the key), and Serper's credits used |
+| `/admin/raw?provider=serper\|serpapi\|brave\|archiveorg&q=` | with the admin token: what that one provider says, before any filtering. Costs one search. For checking a key, or tuning the filters |
 | `POST /m/upload?kind=avatar|wall|png` | signed in: a profile photo, a wall or a wall PNG (PNG, JPEG or WebP by its first bytes, 2 MB max) into R2 under a random key; walls and PNGs only for Pro. 20 a minute and 200 a day per account, 20,000 a day in all: `{key}` |
 | `/m/img?k=` | one of those pictures |
 | `POST /m/delete?k=` | signed in: deletes one of your own pictures, once no shelf of yours and not your profile uses it |
@@ -73,18 +75,55 @@ same Worker at its workers.dev address, and the tab keeps using it for the sessi
 `workers_dev = true`.
 CORS is open only to `https://shelfstackd.com`, `https://www.shelfstackd.com`, `https://reflexgod.github.io` and
 `http://localhost:8080`. `/identify` and `/scans`
-are cached in Workers KV for 30 days (so each title costs one Brave search), images are cached 30 days,
+are cached in Workers KV (so a title is searched for once: `/identify` answers for 30 days, what the scan searches said for a year, or a week when they found nothing), images are cached 30 days,
 and each visitor is limited to about 30 searches and 150 images a minute.
 
-### The Brave cap
+### Where scans come from
 
-Brave bills after about 1,000 searches a month, so the Worker makes at most `BRAVE_DAILY_CAP` Brave searches a day,
-across everyone: 30 (at most 930 a month), set under `[vars]` in `worker/wrangler.toml`; change the number there and
-deploy. Each search is counted in the `Archive` Durable Object before it's made, so the cap can't be passed, and if
-the count can't be read the search isn't made. Once the day's searches are used up, `/scans` answers only with archive
-spines and scans kept from earlier searches, with `capped: true`; the dialog then says "Spine search is resting for
-today. Here’s one made from the cover." and offers the spine made from the poster or cover. The count starts again at
-midnight UTC. `/health` shows the cap in force (`braveDailyCap`). Every page's footer says "Search by Brave".
+For each round of a title, `/scans` looks in this order and stops at the first place that gives a usable scan (one the
+wrap and spine filters keep):
+
+| | Provider | Key (a Worker secret) | Cap, in `[vars]` | Why that number |
+|---|---|---|---|---|
+| 1 | what's already kept in KV, and approved archive spines | | | costs nothing |
+| 2 | Serper, Google Images (`google.serper.dev/images`) | `SERPER_KEY` | `SERPER_DAILY_CAP = "100"` a day, `SERPER_TOTAL_CAP = "2400"` credits in all | 2,500 free credits, once; a 100-result search costs 2 |
+| 3 | SerpApi, `google_images` | `SERPAPI_KEY` | `SERPAPI_DAILY_CAP = "8"` | 250 free a month: 8 a day is at most 248 |
+| 4 | Brave Image Search | `BRAVE_API_KEY` | `BRAVE_DAILY_CAP = "30"` | bills after about 1,000 a month: 30 a day is at most 930 |
+| 5 | archive.org's search (round 0 only) | none | `ARCHIVE_ORG_DAILY_CAP = "100"` | free; the cap is only manners |
+
+- **Counting.** Each search is counted in the `Archive` Durable Object before it's made, in one step, so a cap can't be
+  passed; if the count can't be read the search isn't made. Counts start again at midnight UTC. Serper's credits are
+  counted in all, not by the day (its answer says what a search cost, and the count follows that): when
+  `SERPER_TOTAL_CAP` is reached Serper is passed over for good, until you raise the number.
+- **Out for the day.** A provider that answers 401, 402, 403 or 429 (a bad key, no credit left, too many) is left alone
+  until tomorrow. Any other failure only passes that one search on to the next provider.
+- **No key, no provider.** One whose secret isn't set is passed over. `0` as its cap turns one off.
+- **Same answer whoever gives it.** Every provider's answer is turned into the same list, the same filters and edition
+  rules run on it, and the result has the shape it always had. What was found is kept under `raw1:` as before.
+- **Nothing usable.** When every provider was asked, that's kept like any answer. When one was at its cap, out for the
+  day or not answering, `/scans` says `capped: true` (the dialog then says "Spine search is resting for today. Here’s
+  one made from the cover.") and what there is is kept for a day only, so the title gets its turn tomorrow.
+- **archive.org** finds items, not pictures, and doesn't say how large a picture is: the Worker takes up to 4 image
+  items with the title in theirs, their largest original JPEGs and PNGs (6 at most), and reads each one's size from
+  its first bytes. It finds less than the others; it's the last, free place to look.
+
+To add or change a key: `cd worker && npx wrangler secret put SERPER_KEY` (or `SERPAPI_KEY`, `BRAVE_API_KEY`) and paste
+it. A secret takes effect at once, with no deploy. To change a cap, edit the number in `worker/wrangler.toml` and
+deploy. To see today's counts:
+
+```
+curl -H "Authorization: Bearer <ADMIN_TOKEN>" https://api.shelfstackd.com/admin/usage
+curl -H "Authorization: Bearer <ADMIN_TOKEN>" "https://api.shelfstackd.com/admin/raw?provider=serper&q=%22gummo%22+1997+dvd+cover"
+```
+
+The second asks one provider alone and shows what it said (it costs one search): the way to check that a key works.
+`/health` says which providers have a key (`scans`), without the admin token. Every page's footer says "Search by
+Brave".
+
+`cd worker && npm test` runs the whole chain in the runtime `wrangler dev` uses, against made-up providers
+(`test/providers.mjs`): the order, the caps, out-for-the-day, Serper's credits, `/admin/usage`, and that no key comes
+back in any answer. It needs no keys and spends nothing. To try the real providers on this machine, put their keys in
+`worker/.dev.vars` (one `NAME=value` a line; the file is never committed) and run `npx wrangler dev`.
 
 ### Set up once
 
@@ -95,6 +134,7 @@ In `worker/`:
 3. `npx wrangler kv namespace create SPINE_CACHE`, then put the id it prints into `wrangler.toml`.
 4. `npx wrangler secret put TMDB_TOKEN` and paste the TMDB "API Read Access Token" (themoviedb.org → Settings → API).
 5. `npx wrangler secret put BRAVE_API_KEY` and paste the Brave Search API key (api-dashboard.search.brave.com).
+   `npx wrangler secret put SERPER_KEY` (serper.dev) and `npx wrangler secret put SERPAPI_KEY` (serpapi.com), the same way. Any of the three can be left out: `/scans` uses the ones that are there.
    `npx wrangler secret put ADMIN_TOKEN` and paste a long random string of your own. It's the password for `admin.html`; keep it only in a password manager.
 6. `npx wrangler deploy`. It prints the Worker address, e.g. `https://spinestack.NAME.workers.dev`.
 7. In `index.html`, `build/index.html`, `u/index.html`, `feed/index.html`, `shelves/index.html`, `members/index.html`, `settings/index.html` and `admin.html`, `window.SPINESTACK_WORKER` is the Worker's address
@@ -120,7 +160,7 @@ minute stale. Both fit the Workers Free plan and need no card.
 `cd worker && npx wrangler dev` runs the Worker on this machine (`http://127.0.0.1:8787`, with its own empty KV and
 Durable Object; films need `TMDB_TOKEN` in `worker/.dev.vars`).
 If you change what `/identify` answers, bump its cache key prefix in `src/index.js` (`id4:` now) so answers kept
-before the change aren't reused. `/scans` keeps what Brave said as it came (`raw1:`), and its filters run again on that.
+before the change aren't reused. `/scans` keeps what the providers said as it came (`raw1:`), and its filters run again on that.
 
 ### How a real spine is found
 
@@ -128,14 +168,14 @@ before the change aren't reused. `/scans` keeps what Brave said as it came (`raw
    looked up as it's typed: a search starts 300 ms after the last key and replaces the one before it, Enter searches at
    once. Up to six results show, films and books together, the closest titles first (the same as what was typed, then
    starting with it, then containing it); ↑ ↓ move through them and Enter picks one.
-1. The page asks the Worker for one round at a time, at most 4 per title, and stops once two good spines turn up, to save Brave searches.
+1. The page asks the Worker for one round at a time, at most 4 per title, and stops once two good spines turn up, to save searches.
    Films: `"<title>" <year> dvd cover`, `"<title>" <year> dvd cover english`, `"<title>" dvd cover scan`, `"<title>" criterion dvd`.
    Books: `"<title>" <author> book cover spine`, `"<title>" <author> book spine`, `"<title>" spine`, `<title> <author> full cover wrap`.
 2. It keeps images shaped like a wrap (1.3–1.9 wide for films, 1.2–2.4 for books) or like a single spine (4 times taller than wide), whose title or address contains the whole title; one-word titles also need the year or director.
 3. The page loads each scan through `/img`, and `findSpine()` looks for the strip between back and front: two clear edges near the middle, about 5 % wide for a DVD, lettering on it, an even colour down it. Photos of open cases and books on a table are turned down.
 4. Each cut gets a score from 0 to 100. A film's best cut is picked for you only at 75 or more (in tests right spines scored 76–97 and wrong ones up to 69) **and** when it looks like the English edition; books always let you pick, unless the spine comes from the archive. Cuts under 45 aren't shown, and each page gives one option at most.
    Editions: the Worker marks a scan as another edition when its page title, address or file name has another language or region (Polish, Deutsch, español, français, 日本, region 2, `.pl`/`.de`/… pages, `nl`/`ger`/… in file names) and marks VHS tapes. With **Edition: English** (the default) English DVDs and Blu-rays come first; VHS comes last either way. **Any** drops the language rule.
-5. With no good scan, or when the day's Brave searches are used up, the pick is a spine made from the poster or cover.
+5. With no good scan, or when the day's searches are used up, the pick is a spine made from the poster or cover.
    Add to shelf puts the picked one on the shelf.
 
 ## Profiles
