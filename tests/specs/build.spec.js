@@ -580,3 +580,57 @@ test('the sample shelf is only at ?sample, for the tests and the picture of a sh
   await expect(page.locator('#sampleNote')).toBeVisible();
 });
 
+/* ---------- Clear asks first ---------- */
+test('Clear asks first, as Delete does: Cancel and Esc leave the spines, Clear takes them off; it is grey, as the things that lose something are', async ({ page }) => {
+  const errors = watchErrors(page);
+  await mockNetwork(page);
+  await open(page, '/build/');
+  await page.locator('header.top .add').click();
+  await addGummo(page);
+  expect(await titles(page)).toEqual(['Gummo']);
+  const clear = page.locator('#clear'), ask = page.getByRole('dialog', { name: 'Clear your shelf?' });
+  expect(await clear.evaluate(el => { const s = getComputedStyle(el); return [s.color, s.backgroundImage.includes('repeating-linear-gradient')]; })).toEqual(['rgb(107, 107, 107)', true]);
+  // at the right of the Spines heading, on its line
+  const h2 = await page.locator('#shelf h2').boundingBox(), at = await clear.boundingBox();
+  expect(Math.abs(at.x + at.width - (h2.x + h2.width))).toBeLessThanOrEqual(1);
+  await clear.click();
+  await expect(ask).toBeVisible();
+  await expect(ask).toContainText('The spine comes off the list. This can’t be undone.');
+  await expect(ask.getByRole('button', { name: 'Clear' })).toBeFocused();
+  expect(await titles(page)).toEqual(['Gummo']);   // nothing has gone yet
+  await ask.getByRole('button', { name: 'Cancel' }).click();
+  await expect(ask).toBeHidden();
+  await clear.click();
+  await page.keyboard.press('Escape');
+  await expect(ask).toBeHidden();
+  await expect(clear).toBeFocused();
+  expect(await titles(page)).toEqual(['Gummo']);
+  // yes: the list is empty again
+  await clear.click();
+  await ask.getByRole('button', { name: 'Clear' }).click();
+  await expect(ask).toBeHidden();
+  await expect(page.locator('#books .empty')).toContainText('Your shelf is empty.');
+  await expect(clear).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test('Clear on your saved shelf says it stays as it was until Save', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/build/');
+  await expect(rows(page)).toHaveCount(2);   // your shelf, opened
+  await page.locator('#clear').click();
+  const ask = page.getByRole('dialog', { name: 'Clear your shelf?' });
+  await expect(ask).toContainText('All 2 spines come off the list. Your saved shelf stays as it was until you press Save.');
+  await ask.getByRole('button', { name: 'Clear' }).click();
+  await expect(rows(page)).toHaveCount(0);
+});
+
+test('the sample shelf clears without asking: it is not yours to lose', async ({ page }) => {
+  await mockNetwork(page);
+  await open(page, '/build/?sample');
+  await expect(rows(page)).toHaveCount(4);
+  await page.locator('#clear').click();
+  await expect(rows(page)).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'Clear your shelf?' })).toBeHidden();
+});
+

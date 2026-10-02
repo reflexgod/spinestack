@@ -165,7 +165,11 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 .none p{margin:0}
 .outlines{display:flex;gap:var(--s1);align-items:flex-end;height:180px;margin-bottom:var(--s3)}
 .outlines i{display:block;width:32px;border:1px dashed var(--ink)}
-.back{margin-bottom:var(--s5);display:inline-block}
+/* the way back is plain grey text, in its own case: it goes somewhere, it doesn't do anything. (A dashed underline
+   is for a small action; a grey one for an action that loses something: Delete, Remove.) */
+.back{display:inline-block;margin-bottom:var(--s5);color:var(--grey);text-decoration:none}
+.back:hover,.back:focus-visible{color:var(--ink)}
+@media (pointer:coarse){ .back{position:relative} .back::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))} }
 
 @media (max-width:820px){
   .pgrid{grid-template-columns:minmax(0,1fr)}
@@ -300,7 +304,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
     </div>
 
     <section id="viewShelf" hidden>
-      <a class="dash sm back" id="backLink" href="#">← Profile</a>
+      <a class="back" id="backLink" href="#">← Profile</a>
       <div class="shead">
         <div class="stitle">
           <!-- [html-validate-disable-next empty-heading -- the shelf's name is filled in once it loads; the page is hidden until then] -->
@@ -312,8 +316,8 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
         <div class="sacts" id="oneActs">
           <a class="btn" id="openBuilder" href="../build/" hidden>Edit</a>
           <button class="dash sm" id="onePrivacy" type="button" data-act="privacy" hidden>Make private</button>
-          <button class="dash sm" id="oneDelete" type="button" data-act="delete" hidden>Delete</button>
-          <button class="dash sm grey" id="reportShelf" type="button" hidden>Report</button>
+          <button class="dash sm grey" id="oneDelete" type="button" data-act="delete" hidden>Delete</button>
+          <button class="dash sm" id="reportShelf" type="button" hidden>Report</button>
         </div>
       </div>
       <div class="sgrid">

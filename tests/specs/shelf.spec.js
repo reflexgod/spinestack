@@ -251,3 +251,21 @@ test('a shelf that isn\'t there has no Share', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Share', exact: true })).toBeHidden();
 });
 
+/* ---------- what a dashed link is for ---------- */
+// going somewhere, doing something small and losing something used to look the same (bold capitals, a dashed underline)
+test('the way back is plain grey text, a small action is dashed, and one that loses something is grey', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  const look = loc => loc.evaluate(el => { const s = getComputedStyle(el); return { dashed: s.backgroundImage.includes('repeating-linear-gradient'), grey: s.color === 'rgb(107, 107, 107)', capitals: s.textTransform === 'uppercase' }; });
+  await open(page, `/u/?mira&shelf=${theirs.id}`);
+  const back = page.locator('#backLink');
+  await expect(back).toHaveText('← @mira');
+  expect(await look(back)).toEqual({ dashed: false, grey: true, capitals: false });   // going back: it does nothing
+  expect(await back.evaluate(el => getComputedStyle(el).fontWeight)).toBe('400');
+  expect(await look(page.getByRole('button', { name: 'Report' }))).toEqual({ dashed: true, grey: false, capitals: true });   // a small action
+  await open(page, `/u/?tester&shelf=${mine.id}`);
+  expect(await look(page.getByRole('button', { name: 'Make private' }))).toEqual({ dashed: true, grey: false, capitals: true });
+  expect(await look(page.getByRole('button', { name: 'Delete' }))).toEqual({ dashed: true, grey: true, capitals: true });    // it loses the shelf
+  await back.click();
+  await expect(page).toHaveURL(/\/u\/\?tester$/);
+});
+
