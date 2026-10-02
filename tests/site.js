@@ -47,7 +47,20 @@ const ITEMS = [
   { position: 1, item_id: 'b1', kind: 'book', title: 'Journey by Moonlight', author: 'Antal Szerb', year: 1937, spine_src: null, cover_src: null,
     look: { style: 'solid', font: 'serif', bg: '#1C1B21', fg: '#E8D23C', accent: '#E8D23C', wf: 1, hf: 1, jit: 0 } },
 ];
-const feedRow = s => { const p = PEOPLE.find(x => x.id === s.owner);
+/* what's on each shelf, for a page that reads several shelves' spines at once (home's cards: shelf_items with
+   shelf_id=in.(…)). Drawn spines, no pictures, from 1 to 8 a shelf, so a shelf draws with nothing to load. A shelf's
+   own page (shelf_id=eq.…) gets ITEMS, as before */
+const TITLES = [['movie', 'Gummo', 'Harmony Korine', 1997], ['book', 'The Waves', 'Virginia Woolf', 1931], ['movie', 'Paris, Texas', 'Wim Wenders', 1984], ['book', 'Just Kids', 'Patti Smith', 2010],
+  ['movie', 'Stalker', 'Andrei Tarkovsky', 1979], ['book', 'Orlando', 'Virginia Woolf', 1928], ['movie', 'Kids', 'Larry Clark', 1995], ['book', 'Delta of Venus', 'Anaïs Nin', 1977],
+  ['movie', 'Chungking Express', 'Wong Kar-wai', 1994], ['book', 'Journey by Moonlight', 'Antal Szerb', 1937], ['movie', 'Beau Travail', 'Claire Denis', 1999], ['book', 'Bluets', 'Maggie Nelson', 2009],
+  ['movie', 'Mulholland Drive', 'David Lynch', 2001], ['book', 'Giovanni’s Room', 'James Baldwin', 1956]];
+const LOOKS = [['solid', 'oswald', '#161616', '#F1EEE6'], ['classic', 'serif', '#EFE7D6', '#3B2E25'], ['dvd', 'oswald', '#1C1B21', '#E8D23C'], ['solid', 'black', '#24456B', '#F3E9D2'],
+  ['classic', 'oswald', '#7A1F1F', '#F5E6C8'], ['solid', 'serif', '#F2B6C5', '#1F2E26'], ['dvd', 'mono', '#E8E4DA', '#202020'], ['classic', 'mono', '#2F4A3A', '#EDE3C8']];
+const COUNTS = [5, 3, 8, 2, 6, 4, 1, 7, 3, 5, 6, 2];
+const itemsOf = (id, n, at) => Array.from({ length: n }, (_, i) => { const [kind, title, author, year] = TITLES[(at * 5 + i) % TITLES.length], [style, font, bg, fg] = LOOKS[(at * 3 + i) % LOOKS.length];
+  return { shelf_id: id, position: i, item_id: `i${at}x${i}`, kind, title, author, year, spine_src: null, cover_src: null,
+    look: { style, font, bg, fg, accent: fg, studio: kind === 'movie' ? 'Criterion' : '', wf: .86 + ((i * 37 + at * 11) % 32) / 100, hf: .9 + ((i * 53 + at * 7) % 12) / 100, jit: 0 } }; });
+const feedRow = s => { const p = [...PEOPLE, ...FRIENDS].find(x => x.id === s.owner);
   return { shelf_id: s.id, caption: s.caption, name: s.name, preview_key: s.preview_key, saved_at: s.saved_at, created_at: s.created_at, updated_at: s.updated_at,
     owner: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key, updated: new Date(s.saved_at) - new Date(s.created_at) > 60000 }; };
 const card = (p, me) => ({ id: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key, is_private: p.is_private, i_follow: !!me && p.username === 'mira', i_requested: false });
@@ -68,20 +81,33 @@ const WATCHLIST = [
   { id: watchId(1), owner: ME.id, kind: 'book', title: 'Orlando', author: 'Virginia Woolf', year: 1928, cover_src: null, from_user: PEOPLE[1].id, created_at: at(5) },
   { id: watchId(2), owner: PEOPLE[1].id, kind: 'movie', title: 'Stalker', author: 'Andrei Tarkovsky', year: 1979, cover_src: 'url:https://image.tmdb.org/t/p/w500/stalker.jpg', from_user: null, created_at: at(4) },
 ];
+/* five more people the made-up account follows (mockNetwork's friends: true), for home's row of cards: each has done
+   something lately, a shelf saved or a film or book logged, and Kit an older log too. Only activity() and feed() for
+   the people you follow, and the shelves and their spines read by id, know them */
+const friendId = i => `44444444-4444-4444-8444-${String(i).padStart(12, '0')}`;
+const FRIENDS = [['ola', 'Ola'], ['june_reads', 'June'], ['tomasz', 'Tomasz'], ['bea', ''], ['kit', 'Kit']].map(([username, display_name], i) =>
+  ({ id: friendId(i), username, display_name, bio: '', avatar_key: i % 2 ? `avatars/${username}` : null, pinned_shelf_id: null, is_private: false, created_at: day(90) }));
+const FRIEND_SHELVES = [[1, 'stack', 2], [3, 'covers', 6], [4, 'row', 9]].map(([who, layout, days], i) => { const id = `dddddddd-dddd-4ddd-8ddd-${String(i).padStart(12, '0')}`, o = FRIENDS[who];
+  return { id, owner: o.id, caption: ['june’s pile', 'faces out', 'a row of films'][i], name: null, filter: 'clean', intensity: 70, background: 'paper', wood: false, layout, varied: true, is_public: true, hidden: false,
+    preview_key: `${o.id}/p/${id}`, pro: {}, created_at: at(days, -2), updated_at: at(days, -2), saved_at: at(days, -2), shelf_items: [{ count: 4 }] }; });
+const FRIEND_LOGS = [[0, 'book', 'Orlando', 'Virginia Woolf', 1928, 'url:https://covers.openlibrary.org/b/id/4-L.jpg', 1], [2, 'movie', 'Stalker', 'Andrei Tarkovsky', 1979, 'url:https://image.tmdb.org/t/p/w500/stalker.jpg', 5],
+  [4, 'movie', 'Paris, Texas', 'Wim Wenders', 1984, null, 20]].map(([who, kind, title, author, year, cover_src, days], i) =>
+  ({ id: `eeeeeeee-eeee-4eee-8eee-${String(i).padStart(12, '0')}`, owner: FRIENDS[who].id, kind, title, author, year, cover_src, caption: 'A caption that home doesn’t show.', created_at: at(days, -1) }));
+const ITEMS_BY_SHELF = new Map([...SHELVES.map((s, i) => [s.id, itemsOf(s.id, COUNTS[i % COUNTS.length], i)]), ...FRIEND_SHELVES.map((s, i) => [s.id, itemsOf(s.id, [4, 6, 5][i], 20 + i)])]);
 const keyOf = l => `${l.kind}:${l.title.toLowerCase()}:${l.year || ''}`;
 const FROM_FRIENDS = LOGS.filter(l => l.owner === PEOPLE[1].id).map(l => ({ item_key: keyOf(l), kind: l.kind, title: l.title, author: l.author, year: l.year, cover_src: l.cover_src,
   log_id: l.id, logged_at: l.created_at, from_id: PEOPLE[1].id, from_username: 'mira', from_display_name: 'Mira' }));
 // the feed's rows as activity() gives them: shelves saved and logs, newest first
 const shelfRow = s => { const f = feedRow(s); return { what: 'shelf', id: s.id, at: s.saved_at, owner: f.owner, username: f.username, display_name: f.display_name, avatar_key: f.avatar_key,
   caption: s.caption, name: s.name, preview_key: s.preview_key, created_at: s.created_at, updated_at: s.updated_at, updated: f.updated, is_public: s.is_public }; };
-const logRow = l => { const p = PEOPLE.find(x => x.id === l.owner);
+const logRow = l => { const p = [...PEOPLE, ...FRIENDS].find(x => x.id === l.owner);
   return { what: 'log', id: l.id, at: l.created_at, owner: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key, caption: l.caption,
     name: null, preview_key: null, created_at: l.created_at, updated_at: l.created_at, updated: false, is_public: true, kind: l.kind, title: l.title, author: l.author, year: l.year, cover_src: l.cover_src }; };
 // what PostgREST says for a table or a function that isn't in the database (one without 0007)
 const NOT_THERE = { __status: 404, body: { code: 'PGRST202', message: 'Could not find the function in the schema cache', details: null, hint: null } };
 
 /* ---------- Supabase's REST API, answered from the data above ---------- */
-function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh){
+function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, friends){
   if (fresh) ownShelf = false;
   const me = signedIn && !fresh;   // the made-up account as it is (follows @mira); fresh: nothing yet
   const what = url.pathname.replace(/^\/rest\/v1\//, ''), q = url.searchParams, eq = k => (q.get(k) || '').replace(/^eq\./, '');
@@ -91,7 +117,9 @@ function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh){
       if (empty) return [];
       const mine = r => r.owner === ME.id && (ownShelf || !r.preview_key), mira = r => r.owner === PEOPLE[1].id;
       const keep = body.scope === 'you' ? (fresh ? () => false : mine) : body.scope === 'following' ? (me ? mira : () => false) : () => true;
-      const rows = [...SHELVES.filter(keep).map(shelfRow), ...LOGS.filter(keep).map(logRow)].sort((a, b) => b.at.localeCompare(a.at) || b.id.localeCompare(a.id));
+      const more = me && friends && body.scope === 'following';   // and the five more people, for home's cards
+      const rows = [...SHELVES.filter(keep).map(shelfRow), ...LOGS.filter(keep).map(logRow), ...(more ? [...FRIEND_SHELVES.map(shelfRow), ...FRIEND_LOGS.map(logRow)] : [])]
+        .sort((a, b) => b.at.localeCompare(a.at) || b.id.localeCompare(a.id));
       const from = body.before_id ? rows.findIndex(r => r.id === body.before_id) + 1 : 0;
       return rows.slice(from, from + (body.n || 20));
     }
@@ -104,7 +132,8 @@ function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh){
   }
   if (what === 'rpc/feed'){
     if (empty) return [];
-    const rows = SHELVES.filter(s => body.scope !== 'following' || (me && PEOPLE.find(p => p.id === s.owner).username === 'mira')).map(feedRow);
+    const rows = [...SHELVES.filter(s => body.scope !== 'following' || (me && PEOPLE.find(p => p.id === s.owner).username === 'mira')), ...(me && friends && body.scope === 'following' ? FRIEND_SHELVES : [])]
+      .sort((a, b) => b.saved_at.localeCompare(a.saved_at)).map(feedRow);
     const from = body.before_id ? rows.findIndex(r => r.shelf_id === body.before_id) + 1 : 0;
     return rows.slice(from, from + (body.n || 20));
   }
@@ -128,11 +157,14 @@ function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh){
     .map(p => fresh && p.id === ME.id ? { ...p, display_name: '', bio: '', created_at: new Date().toISOString() } : p);   // a new account: no name or bio yet
   if (what === 'shelves'){
     const ids = (q.get('id') || '').startsWith('in.(') ? q.get('id').slice(4, -1).split(',') : q.has('id') ? [eq('id')] : null;   // id=eq.x or id=in.(x,y)
-    return SHELVES.filter(s => (!q.has('owner') || s.owner === eq('owner')) && (!ids || ids.includes(s.id)) && (ownShelf || s.owner !== ME.id));
+    return [...SHELVES, ...(ids ? FRIEND_SHELVES : [])].filter(s => (!q.has('owner') || s.owner === eq('owner')) && (!ids || ids.includes(s.id)) && (ownShelf || s.owner !== ME.id));
   }
   // follows, read from the table: @mira follows the made-up account, and that's the only one it's asked about
   if (what === 'follows') return me && eq('follower') === PEOPLE[1].id && eq('followee') === ME.id ? [{ follower: PEOPLE[1].id }] : [];
-  if (what === 'shelf_items') return ITEMS;
+  if (what === 'shelf_items'){   // shelf_id=in.(x,y): each shelf's own spines; shelf_id=eq.x: ITEMS
+    const ids = (q.get('shelf_id') || '').startsWith('in.(') ? q.get('shelf_id').slice(4, -1).split(',') : null;
+    return ids ? ids.flatMap(id => ITEMS_BY_SHELF.get(id) || []) : ITEMS;
+  }
   return method === 'GET' ? [] : null;
 }
 
@@ -184,9 +216,9 @@ const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers
    empty: no one has shelved anything yet, so the feed has nothing in it; logs: false answers as a database does
    without migration 0007 (no logs, watchlist or From friends, and no activity()); ownShelf: false is the
    made-up account before it has saved its shelf; fresh: it has just picked its username, with nothing yet (no name,
-   bio, shelf, log, watchlist or follow).
+   bio, shelf, log, watchlist or follow); friends: it follows five more people (FRIENDS), for home's row of cards.
    Returns {unknown, asked}: requests nothing here could answer, and every search /identify was asked for. */
-async function mockNetwork(page, { signedIn = false, named = true, slow = 0, capped = false, realFonts = false, empty = false, logs = true, ownShelf = true, fresh = false } = {}){
+async function mockNetwork(page, { signedIn = false, named = true, slow = 0, capped = false, realFonts = false, empty = false, logs = true, ownShelf = true, fresh = false, friends = false } = {}){
   const unknown = [], asked = [];
   if (signedIn){
     const exp = Math.floor(Date.now() / 1000) + 3600, b64 = o => Buffer.from(JSON.stringify(o)).toString('base64url');
@@ -202,7 +234,7 @@ async function mockNetwork(page, { signedIn = false, named = true, slow = 0, cap
     if (method === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
     if (url.origin === SB_URL && url.pathname.startsWith('/rest/v1/')){
       let body = {}; try { body = JSON.parse(req.postData() || '{}'); } catch {}
-      let data = rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh);
+      let data = rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, friends);
       if (data && data.__status) return route.fulfill({ status: data.__status, headers: CORS, contentType: 'application/json', body: JSON.stringify(data.body) });
       if (/vnd\.pgrst\.object/.test(req.headers().accept || '')) data = Array.isArray(data) ? data[0] || null : data;   // .single()
       return route.fulfill({ status: data === null ? 204 : 200, headers: CORS, contentType: 'application/json', body: data === null ? '' : JSON.stringify(data) });
@@ -256,4 +288,4 @@ async function open(page, pathname){
   await page.waitForLoadState('networkidle');
 }
 
-module.exports = { ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, LOGS, WATCHLIST, FROM_FRIENDS, PICTURE, STORY, CAPTION, MADE_WITH, CORS, WORKER, SB_URL, feedRow, storyPicture, mockNetwork, watchErrors, open };
+module.exports = { ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, LOGS, FRIENDS, FRIEND_SHELVES, FRIEND_LOGS, ITEMS_BY_SHELF, WATCHLIST, FROM_FRIENDS, PICTURE, STORY, CAPTION, MADE_WITH, CORS, WORKER, SB_URL, feedRow, storyPicture, mockNetwork, watchErrors, open };

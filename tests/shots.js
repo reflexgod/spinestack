@@ -8,7 +8,7 @@ const { mockNetwork, PICTURE, SHELVES } = require('./site');
 
 const PORT = 8183, BASE = `http://127.0.0.1:${PORT}`, OUT = path.resolve(process.argv[2] || path.join(__dirname, 'shots'));
 const SHOTS = [
-  { name: 'home', path: '/', signedIn: true },
+  { name: 'home', path: '/', signedIn: true, friends: true },   // following five more people, so the row of cards is full
   { name: 'home-signed-out', path: '/', signedIn: false },
   { name: 'home-empty', path: '/', signedIn: false, empty: true },
   { name: 'build', path: '/build/', signedIn: true },
@@ -89,7 +89,7 @@ async function drawPreviews(page) {
       for (const shot of SHOTS) {
         const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: w < 500 ? 2 : 1 });
         await page.clock.setFixedTime(new Date('2026-09-30T14:00:00Z'));
-        await mockNetwork(page, { signedIn: shot.signedIn, realFonts: true, empty: !!shot.empty, logs: shot.logs !== false, ownShelf: shot.ownShelf !== false });
+        await mockNetwork(page, { signedIn: shot.signedIn, realFonts: true, empty: !!shot.empty, logs: shot.logs !== false, ownShelf: shot.ownShelf !== false, friends: !!shot.friends });
         await page.goto(BASE + shot.path); await page.waitForLoadState('networkidle');
         await page.evaluate(() => document.fonts.ready);
         await drawPreviews(page);

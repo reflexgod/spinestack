@@ -45,7 +45,8 @@
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&display=swap">
+<!-- Geist Mono, and the spines' faces (as build/ and u/ have them): home draws spines -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
 <link rel="stylesheet" href="site.css?v=20261005a">
 <style>
 /* home: a welcome, then rows and grids of shelf cards (site.css has the cards, the bar and everything shared) */
@@ -86,10 +87,32 @@ h2 .more.zapped svg{width:12px;height:12px;flex:none}
 .none{margin:0}
 .none a{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
 
-/* New from people you follow: the feed's lines (site.css draws them: a shelf's card, a log's small cover with its
-   caption beside it), the newest six, two across on a wide window */
-#folRow:empty{display:none}
-@media (min-width:821px){ #folRow{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--s6);align-items:start} }
+/* New from people you follow: a card for each person, the newest thing from them. A log is its cover, worn (wear.js),
+   the whole picture; a shelf is its spines cut out on the grey panel (bare.js). Under the picture a thin bar with
+   their photo and @username; under the card, small and grey, what it was on the left and the date on the right. Six
+   across on a wide window; on a narrower one as many as the shelf cards (four, three on a phone), and the rest scroll
+   sideways inside the row */
+.frow{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:var(--card-gap)}
+.frow:empty{display:none}
+.frow li{min-width:0}
+.fcard{display:block;border:1px solid var(--hair);border-radius:var(--radius);overflow:hidden;background:var(--paper);color:var(--ink);text-decoration:none}
+.fcard .art{display:block;position:relative;aspect-ratio:2/3;line-height:0}
+.fcard .art canvas.worn{display:block;width:100%;height:100%}
+.fcard .panel{background:var(--wash)}
+.fcard .panel canvas{position:absolute;inset:0;margin:auto;width:auto;height:auto;max-width:calc(100% - 2*var(--s2));max-height:calc(100% - 2*var(--s2))}
+.fby{display:flex;align-items:center;gap:var(--s1);min-width:0;padding:var(--s1) var(--s2);border-top:1px solid var(--hair);font-size:var(--fs-small);line-height:16px}
+.fby .fa{flex:none;width:16px;height:16px;border-radius:50%;border:1px solid var(--ink);background:var(--wash);overflow:hidden;display:grid;place-items:center;font-size:9px;line-height:1;text-transform:uppercase}
+.fby .fa img{width:100%;height:100%;object-fit:cover;display:block}
+.fby span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fmeta{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 var(--s1);margin:var(--s1) 0 0;color:var(--grey);font-size:var(--fs-small);line-height:1.5}
+.fmeta span{font-size:var(--fs-label);text-transform:uppercase;letter-spacing:var(--track)}
+.fmeta time{margin-left:auto;white-space:nowrap;font-variant-numeric:tabular-nums}   /* a date with its year, on a phone, goes under the word */
+@media (max-width:820px){
+  .frow{display:flex;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none}
+  .frow::-webkit-scrollbar{display:none}
+  .frow li{flex:0 0 calc((100% - (var(--cards) - 1)*var(--card-gap))/var(--cards));scroll-snap-align:start}
+  .fcard:focus-visible{outline-offset:-2px}   /* the row scrolls, so an outline outside the card would be cut off */
+}
 </style>
 </head>
 <body>
@@ -145,12 +168,12 @@ h2 .more.zapped svg{width:12px;height:12px;flex:none}
   <!-- signed in -->
   <div id="in" hidden>
     <section class="welcome">
-      <h1 id="hello">Welcome back. <span class="grey">Here’s what people you follow have been shelving…</span></h1>
+      <h1 id="hello">Welcome back. <span class="grey">Here’s what people you follow have been watching and reading…</span></h1>
     </section>
     <section>
       <h2>New from people you follow <a class="more zapped" href="feed/?following"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z"/></svg>All activity</a></h2>
       <p class="grey" id="folState" role="status">Loading…</p>
-      <ol class="items" id="folRow"></ol>
+      <ul class="frow" id="folRow"></ul>
       <p class="none" id="folNone" hidden>Follow people to see their shelves here. <a href="members/">Find members</a></p>
     </section>
     <section>
@@ -182,17 +205,18 @@ h2 .more.zapped svg{width:12px;height:12px;flex:none}
 <script src="worker-address.js?v=20261001a"></script>
 <script src="cards.js?v=20261002a"></script>
 <script src="wear.js?v=20261004a"></script>
+<script src="bare.js?v=20261006a"></script>
 <script src="nav.js?v=20261004a"></script>
 <script>
 (() => {
 /* Home. Signed out: the newest public shelf, large, one line about the site and Make a shelf, how it works, then the
-   next newest shelves and the people who made them. Signed in: a welcome, what the people you follow shelved and
-   logged lately (activity(), 0007, drawn as the feed draws it), then everyone's newest shelves (feed(), 0006). */
+   next newest shelves and the people who made them. Signed in: a welcome, a card for each person you follow with the
+   newest thing they shelved or logged (activity(), 0007), then everyone's newest shelves (feed(), 0006). */
 const $ = s => document.querySelector(s);
 const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
 const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
 const SB_LIB = {src:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
-const ROW = 6, GRID = 12;
+const ROW = 6, GRID = 12, ASK = 50;   // ROW: people you follow, a card each, from the newest ASK things they did
 
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const profileUrl = (name, shelf) => 'u/?' + name + (shelf ? '&shelf=' + shelf : '');
@@ -284,42 +308,41 @@ function person(x){
 }
 const everyone = n => rpc('feed', {scope: 'everyone', before: null, before_id: null, n});
 
-/* ---------- New from people you follow: the feed's lines. All of this is as feed/ has it: keep the two in step ---------- */
-// 2h, 3d: how long ago a shelf was saved; a log is by the day (today, yesterday, then 3d, 2w)
-const RTF = new Intl.RelativeTimeFormat('en', {style: 'narrow', numeric: 'always'});
-function ago(t){
-  const s = Math.max(0, (Date.now() - new Date(t)) / 1000), D = 86400;
-  if (s < 60) return 'now';
-  const [n, unit] = s < 3600 ? [s / 60, 'minute'] : s < D ? [s / 3600, 'hour'] : s < 7*D ? [s / D, 'day'] : s < 30*D ? [s / (7*D), 'week'] : s < 365*D ? [s / (30*D), 'month'] : [s / (365*D), 'year'];
-  return RTF.format(-Math.floor(n), unit).replace(/\s*ago$/, '').replace(/\s+/g, '');
-}
-function day(t){
-  const d = new Date(t), now = new Date(), start = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-  const n = Math.round((start(now) - start(d)) / 864e5);
-  return n <= 0 ? 'today' : n === 1 ? 'yesterday' : ago(t);
-}
-const COVER = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cover')) || 72;   // how wide a log's cover is (site.css)
-const avatar = x => `<a class="fa" href="${esc(profileUrl(x.username))}" tabindex="-1" aria-hidden="true">${x.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(x.avatar_key)}`)}" alt="" loading="lazy">` : esc(((x.display_name || '').trim() || x.username).trim()[0] || '·')}</a>`;
-const when = (t, text) => `<span class="ago">· <time datetime="${esc(t)}" title="${esc(new Date(t).toLocaleString())}">${text}</time></span>`;
-// one line: "@abc shelved my films · 2h" with its card under it, or "@abc watched Gummo · today" with its cover,
-// small and worn by how long ago that was, and the caption beside it
-function item(x){
-  const li = document.createElement('li'), by = `<a href="${esc(profileUrl(x.username))}">@${esc(x.username)}</a>`;
-  li.className = 'item';
-  if (x.what === 'log'){
-    const verb = x.kind === 'movie' ? 'watched' : 'read', label = `${x.title}${x.year ? ` (${x.year})` : ''}`;
-    li.classList.add('log');
-    li.innerHTML = `${avatar(x)}<p class="line">${by} ${verb} <b>${esc(x.title)}</b> ${when(x.at, day(x.at))}</p>
-      <div class="logbody"><span class="cover"></span>${x.caption ? `<p class="say">${esc(x.caption)}</p>` : ''}</div>`;
-    li.querySelector('.cover').append(Wear.cover({src: x.cover_src ? `${WORKER}/img?url=${encodeURIComponent(x.cover_src.replace(/^url:/, ''))}` : '', seed: x.id, at: x.at,
-      label: `${label}, ${verb} by @${x.username}`, width: COVER}));
-    return li;
-  }
-  const to = esc(profileUrl(x.username, x.id)), shelf = Shelf.shelfName({name: x.name, caption: x.caption});
-  const pic = x.preview_key ? `<img src="${esc(`${WORKER}/u/preview?k=${encodeURIComponent(x.preview_key)}&v=${encodeURIComponent(x.updated_at)}`)}" alt="" crossorigin="anonymous" width="360" height="640">` : '';   // with CORS, so cards.js can cut the card round the books
-  li.innerHTML = `${avatar(x)}<p class="line">${by} ${x.updated ? 'updated' : 'shelved'} <a href="${to}">${esc(shelf)}</a> ${when(x.at, ago(x.at))}</p>
-    <a class="pic" data-shelf="${esc(x.id)}" href="${to}" tabindex="-1" aria-label="Open ${esc(shelf)} by @${esc(x.username)}">${pic}</a>`;
+/* ---------- New from people you follow: a card each ---------- */
+const MONTH = new Intl.DateTimeFormat(undefined, {day: 'numeric', month: 'short'}), YEAR = new Intl.DateTimeFormat(undefined, {day: 'numeric', month: 'short', year: 'numeric'});
+const dated = t => (new Date(t).getFullYear() === new Date().getFullYear() ? MONTH : YEAR).format(new Date(t));
+const CARD = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card')) || 150;   // a card's width on a wide window (site.css)
+const face = x => `<span class="fa" aria-hidden="true">${x.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(x.avatar_key)}`)}" alt="" loading="lazy">` : esc(((x.display_name || '').trim() || x.username).trim()[0] || '·')}</span>`;
+// one card, the newest thing from one person. A log opens their Activity, where it's the first line, with its caption;
+// a shelf opens the shelf. The picture of a shelf is drawn once its books are read (shelfArt below)
+function fcard(x){
+  const li = document.createElement('li'), log = x.what === 'log', word = log ? (x.kind === 'movie' ? 'watched' : 'read') : 'shelved';
+  const name = log ? `${x.title}${x.year ? ` (${x.year})` : ''}` : Shelf.shelfName({name: x.name, caption: x.caption});
+  const to = log ? profileUrl(x.username) + '#activity' : profileUrl(x.username, x.id);
+  li.innerHTML = `<a class="fcard" href="${esc(to)}" aria-label="${esc(name)}, ${word} by @${esc(x.username)}"><span class="art${log ? '' : ' panel'}"${log ? '' : ` data-shelf="${esc(x.id)}"`}></span><span class="fby">${face(x)}<span>@${esc(x.username)}</span></span></a>
+    <p class="fmeta"><span>${word}</span><time datetime="${esc(x.at)}" title="${esc(new Date(x.at).toLocaleString())}">${dated(x.at)}</time></p>`;
+  if (log) li.querySelector('.art').append(Wear.cover({src: x.cover_src ? `${WORKER}/img?url=${encodeURIComponent(x.cover_src.replace(/^url:/, ''))}` : '', seed: x.id, at: x.at,
+    label: `${name}, ${word} by @${x.username}`, width: CARD}));
   return li;
+}
+// the shelves' pictures: all their books and settings read in two requests, then each shelf cut out of a bare story
+// once the spines' fonts are in, and drawn again when a texture it uses arrives. One that can't be read stays an empty panel
+const drawn = [];
+Shelf.onTextureLoaded(() => { for (const f of drawn) f(); });
+async function shelfArt(rows){
+  const ids = rows.filter(x => x.what !== 'log').map(x => x.id); if (!ids.length) return;
+  const these = `in.(${ids.join(',')})`;
+  let shelves, items;
+  try { [shelves, items] = await Promise.all([api(`shelves?select=id,layout,varied,wood,filter,intensity,pro&id=${these}`),
+    api(`shelf_items?select=shelf_id,position,item_id,kind,title,author,year,spine_src,cover_src,look&shelf_id=${these}&order=position`)]); }
+  catch { return; }
+  await Bare.ready;
+  await Promise.all(shelves.map(async s => {
+    const list = await Bare.books(items.filter(r => r.shelf_id === s.id)), art = $(`#folRow .art[data-shelf="${s.id}"]`);
+    if (!art) return;
+    const draw = () => { const c = Bare.shelf(list, s); if (c){ c.setAttribute('aria-hidden', 'true'); art.replaceChildren(c); } };
+    draw(); drawn.push(draw);
+  }));
 }
 // a shelf as feed() (0006) gives it, in activity()'s shape
 const fromFeed = r => ({what: 'shelf', id: r.shelf_id, at: r.saved_at, owner: r.owner, username: r.username, display_name: r.display_name, avatar_key: r.avatar_key,
@@ -377,11 +400,11 @@ async function showOut(){
 async function showIn(){
   document.documentElement.classList.remove('signedout');
   $('#state').hidden = true; $('#out').hidden = true; $('#in').hidden = false;
-  // welcome back, with what the people you follow have been shelving. With nothing from them to show: someone who
+  // welcome back, with what the people you follow have been watching and reading. With nothing from them: someone who
   // has a shelf is told to follow people (and it's still "Welcome back"); only someone with no shelf yet is told to
   // start one (a new account: "Welcome")
   const hello = (back, line) => { if (me.profile) $('#hello').innerHTML = `${back ? 'Welcome back' : 'Welcome'}, <a href="${esc(profileUrl(me.profile.username))}">@${esc(me.profile.username)}</a>. <span class="grey">${line}</span>`; };
-  hello(true, 'Here’s what people you follow have been shelving…');
+  hello(true, 'Here’s what people you follow have been watching and reading…');
   // have you a shelf? (Row Level Security lets you read your own.) If that can't be read, you're taken to have one:
   // better than telling someone with a shelf to start it
   const hasShelf = () => api(`shelves?select=id&owner=eq.${me.user.id}&hidden=is.false&limit=1`).then(rows => rows.length > 0, () => true);
@@ -397,8 +420,10 @@ async function showIn(){
       $(state).hidden = true; if (!rows.length) empty();
     } catch (e){ $(state).textContent = friendly(e); }
   };
+  // the newest thing from each person, newest first
+  const latest = async () => { const seen = new Set(), rows = (await following(ASK)).filter(x => !seen.has(x.owner) && seen.add(x.owner)).slice(0, ROW); shelfArt(rows); return rows; };
   await Promise.all([
-    fill(() => following(ROW), '#folState', '#folRow', item, nobody),
+    fill(latest, '#folState', '#folRow', fcard, nobody),
     fill(() => everyone(GRID), '#inState', '#inGrid', x => tile(x, true), () => { $('#inState').textContent = 'Nothing shelved yet. The first shelf here could be yours.'; $('#inState').hidden = false; }),
   ]);
 }

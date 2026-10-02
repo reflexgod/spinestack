@@ -1,7 +1,7 @@
 // Every page with the top bar, signed out and signed in: the bar is there, the page doesn't scroll sideways, nothing
 // is logged as an error, and nothing asks the network for something the tests don't know about.
 const { test, expect } = require('@playwright/test');
-const { PAGES, SHELVES, STORY, CAPTION, MADE_WITH, mockNetwork, watchErrors, open } = require('../site');
+const { PAGES, SHELVES, STORY, CAPTION, MADE_WITH, FRIENDS, FRIEND_SHELVES, FRIEND_LOGS, LOGS, mockNetwork, watchErrors, open } = require('../site');
 
 const pathOf = link => link.evaluate(a => new URL(a.href).pathname);
 const isPhone = () => test.info().project.name.startsWith('phone');
@@ -250,7 +250,7 @@ test('signed-out home: a real shelf, large, then one line and Make a shelf in bl
 test('signed-in home: a welcome by name, the row from people you follow with All activity, then Just shelved', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/');
-  await expect(page.locator('#hello')).toHaveText('Welcome back, @tester. Here’s what people you follow have been shelving…');
+  await expect(page.locator('#hello')).toHaveText('Welcome back, @tester. Here’s what people you follow have been watching and reading…');
   await expect(page.locator('#hello a')).toHaveAttribute('href', 'u/?tester');
   await expect(page.locator('main').getByRole('link', { name: /new shelf/i })).toHaveCount(0);   // + ADD in the bar is the way to a new shelf
   await expect(page.locator('#in h2')).toHaveText([/^New from people you follow/, /^Just shelved/]);
@@ -259,57 +259,127 @@ test('signed-in home: a welcome by name, the row from people you follow with All
   await expect(all.locator('svg')).toHaveCount(1);   // ⚡
   const h2 = await page.locator('#in h2').first().boundingBox(), link = await all.boundingBox();
   expect(Math.abs(h2.x + h2.width - (link.x + link.width))).toBeLessThanOrEqual(1);   // at the right of the heading
-  await expect(page.locator('#folRow li')).toHaveCount(6);
+  await expect(page.locator('#folRow li')).toHaveCount(1);   // the made-up account follows only @mira: one card, her newest
   await expect(page.locator('#inGrid li')).toHaveCount(12);
 });
 
-test('signed-in home: New from people you follow has their logs too, drawn as the feed draws them', async ({ page }) => {
+/* New from people you follow: a card for each person, the newest thing from them (Letterboxd's row). With friends:
+   true the made-up account follows five more people, so there are six */
+const cardsOf = page => page.locator('#folRow > li');
+test('signed-in home: New from people you follow is a row of cards, one for each person, the newest thing from them', async ({ page }) => {
   const errors = watchErrors(page);
-  await page.clock.setFixedTime(new Date('2026-09-30T14:00:00Z'));   // two hours after the newest made-up shelf, so the times are known
-  await mockNetwork(page, { signedIn: true });
+  await page.clock.setFixedTime(new Date('2026-09-30T14:00:00Z'));
+  await mockNetwork(page, { signedIn: true, friends: true });
   const asked = page.waitForRequest(r => r.url().includes('/rest/v1/rpc/activity'));
-  let feeds = []; page.on('request', r => { if (r.url().includes('/rest/v1/rpc/feed')) feeds.push(r.postDataJSON().scope); });
   await open(page, '/');
-  expect((await asked).postDataJSON()).toEqual({ scope: 'following', before: null, before_id: null, n: 6 });   // shelves and logs together
-  expect(feeds).toEqual(['everyone']);   // feed() is only asked for Just shelved
-  // the newest six from @mira, whom the made-up account follows: two of them logs
-  const lines = (await page.locator('#folRow .line').allTextContents()).map(t => t.replace(/\s+/g, ' ').trim());
-  expect(lines).toEqual(['@mira watched Gummo · today', '@mira shelved shelf number 1 · 1d', '@mira updated untitled shelf · 4d', '@mira read The Waves · 1w', '@mira shelved shelf number 7 · 1w',
-    '@mira updated a much longer shelf name that has to be cut short · 1w']);
-  // a log: its cover small and worn, the caption beside it, as on the feed
-  const log = page.locator('#folRow .item.log').first(), cover = log.locator('.cover canvas');
-  await expect(cover).toHaveAttribute('aria-label', 'Gummo (1997), watched by @mira');
-  const c = await cover.boundingBox(), say = await log.locator('.say').boundingBox(), line = await log.locator('.line').boundingBox();
-  expect([Math.round(c.width), Math.round(c.height)]).toEqual([72, 108]);
-  expect(Math.abs(c.x - line.x)).toBeLessThanOrEqual(1);
-  await expect(log.locator('.say')).toHaveText('The bathtub scene. Still thinking about it.');
-  expect(say.x).toBeGreaterThan(c.x + c.width);
+  expect((await asked).postDataJSON()).toEqual({ scope: 'following', before: null, before_id: null, n: 50 });   // enough to find each person's newest
+  const cards = cardsOf(page);
+  await expect(cards).toHaveCount(6);
+  // newest first, each person once: @mira's Gummo, not her shelves after it; @kit's shelf, not the log before it
+  await expect(cards.locator('.fby span:last-child')).toHaveText(['@mira', '@ola', '@june_reads', '@tomasz', '@bea', '@kit']);
+  await expect(cards.locator('.fmeta span')).toHaveText(['watched', 'read', 'shelved', 'watched', 'shelved', 'shelved']);
+  await expect(cards.locator('.fmeta time')).toHaveText(['Sep 30', 'Sep 29', 'Sep 28', 'Sep 25', 'Sep 24', 'Sep 21']);
+  await expect(cards.locator('.fmeta time').first()).toHaveAttribute('datetime', LOGS[0].created_at);
+  // the card opens the shelf, or for a log the person's Activity, where it's the first line
+  const links = cards.locator('a.fcard');
+  await expect(links.nth(0)).toHaveAttribute('href', 'u/?mira#activity');
+  await expect(links.nth(0)).toHaveAccessibleName('Gummo (1997), watched by @mira');
+  await expect(links.nth(2)).toHaveAttribute('href', `u/?june_reads&shelf=${FRIEND_SHELVES[0].id}`);
+  await expect(links.nth(2)).toHaveAccessibleName('june’s pile, shelved by @june_reads');
+  await expect(links.nth(3)).toHaveAccessibleName('Stalker (1979), watched by @tomasz');
+  await expect(links.nth(5)).toHaveAttribute('href', `u/?kit&shelf=${FRIEND_SHELVES[2].id}`);
+  // no captions here: not the log's, and no shelf name under the card
+  await expect(page.locator('#folRow')).not.toContainText('Still thinking about it');
+  await expect(page.locator('#folRow')).not.toContainText(FRIEND_LOGS[0].caption);
+  await expect(page.locator('#folRow')).not.toContainText('june’s pile');
+  await expect(page.locator('#folRow .say, #folRow .cap, #folRow .line')).toHaveCount(0);
+  // a log: its cover, worn, is the whole picture
+  const cover = cards.nth(0).locator('.art canvas.worn');
+  await expect(cover).toHaveCount(1);
   expect(+(await cover.getAttribute('data-wear'))).toBeGreaterThan(0);
-  await expect(log.locator('.line a')).toHaveAttribute('href', 'u/?mira');
-  await expect(log.locator('.fa')).toHaveAttribute('href', 'u/?mira');
-  // a shelf: the feed's line, with its card under it, a link to the shelf
-  const shelf = page.locator('#folRow .item:not(.log)').first(), card = await shelf.locator('.pic').boundingBox();
-  await expect(shelf.locator('.line a').nth(1)).toHaveAttribute('href', `u/?mira&shelf=${SHELVES[1].id}`);
-  await expect(shelf.locator('.pic')).toHaveAttribute('href', `u/?mira&shelf=${SHELVES[1].id}`);
-  expect([Math.round(card.width), Math.round(card.height)]).toEqual([150, 225]);
-  // two across on a wide window, one on a phone; never wider than the page
-  const first = await page.locator('#folRow li').nth(0).boundingBox(), second = await page.locator('#folRow li').nth(1).boundingBox();
-  if (isPhone()) expect(second.y).toBeGreaterThan(first.y + first.height - 1); else { expect(Math.abs(second.y - first.y)).toBeLessThanOrEqual(1); expect(second.x).toBeGreaterThan(first.x + first.width); }
-  const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  expect(sideways).toBeLessThanOrEqual(0);
+  const art0 = await cards.nth(0).locator('.art').boundingBox(), c0 = await cover.boundingBox();
+  expect([Math.round(c0.x), Math.round(c0.y), Math.round(c0.width), Math.round(c0.height)]).toEqual([Math.round(art0.x), Math.round(art0.y), Math.round(art0.width), Math.round(art0.height)]);
+  // a shelf: its spines cut out on the grey panel, in the middle of it with room round them, not its story
+  const panel = cards.nth(2).locator('.art');
+  expect(await panel.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(243, 243, 243)');
+  await expect(panel.locator('canvas')).toHaveCount(1);
+  await expect(panel.locator('img')).toHaveCount(0);
+  const p = await panel.boundingBox(), shelf = await panel.locator('canvas').boundingBox();
+  expect(shelf.x).toBeGreaterThanOrEqual(p.x + 7); expect(shelf.x + shelf.width).toBeLessThanOrEqual(p.x + p.width - 7);
+  expect(shelf.y).toBeGreaterThanOrEqual(p.y + 7); expect(shelf.y + shelf.height).toBeLessThanOrEqual(p.y + p.height - 7);
+  expect(Math.abs(shelf.x + shelf.width / 2 - (p.x + p.width / 2))).toBeLessThanOrEqual(1);
+  expect(Math.abs(shelf.y + shelf.height / 2 - (p.y + p.height / 2))).toBeLessThanOrEqual(1);
+  await expect(cards.locator('.panel canvas')).toHaveCount(3);   // every shelf is drawn
   expect(errors).toEqual([]);
 });
 
-test('signed-in home on a database without logs (0007 not run on it): the shelves of people you follow, from feed()', async ({ page }) => {
-  await mockNetwork(page, { signedIn: true, logs: false });
+test('signed-in home: each card is 2:3 with a thin bar under the picture, a 1px border and no shadow; six across, or three on a phone and the rest sideways', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, friends: true });
+  await open(page, '/');
+  const cards = cardsOf(page), main = await page.locator('main').boundingBox();
+  await expect(cards).toHaveCount(6);
+  const box = await cards.evaluateAll(els => els.map(li => {
+    const r = el => { const b = (el ? li.querySelector(el) : li).getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height }; }, a = getComputedStyle(li.querySelector('.fcard'));
+    return { li: r(), card: r('.fcard'), art: r('.art'), bar: r('.fby'), face: r('.fby .fa'), meta: r('.fmeta'), word: r('.fmeta span'), date: r('.fmeta time'),
+      border: [a.borderTopWidth, a.borderTopStyle, a.borderBottomWidth, a.borderLeftWidth, a.borderRightWidth].join(' '), shadow: a.boxShadow, radius: a.borderTopLeftRadius,
+      metaColour: getComputedStyle(li.querySelector('.fmeta')).color, metaSize: getComputedStyle(li.querySelector('.fmeta time')).fontSize, wordSize: getComputedStyle(li.querySelector('.fmeta span')).fontSize };
+  }));
+  for (const b of box) {
+    expect(b.art.h / b.art.w).toBeCloseTo(1.5, 1);                                  // the picture is 2:3
+    expect(b.border).toBe('1px solid 1px 1px 1px');
+    expect(b.shadow).toBe('none');
+    expect(b.radius).toBe('3px');                                                    // what shelf cards already have
+    expect(b.bar.y).toBeGreaterThanOrEqual(b.art.y + b.art.h - 1);                   // the bar is under the picture, inside the card
+    expect(b.bar.y + b.bar.h).toBeLessThanOrEqual(b.card.y + b.card.h);
+    expect(b.bar.h).toBeLessThanOrEqual(26);                                         // thin
+    expect(b.face.x).toBeLessThan(b.bar.x + 12);                                     // the photo first
+    expect(b.meta.y).toBeGreaterThanOrEqual(b.card.y + b.card.h);                    // under the card: the word on the left, the date on the right
+    expect(Math.abs(b.word.x - b.card.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(b.date.x + b.date.w - (b.card.x + b.card.w))).toBeLessThanOrEqual(1);
+    expect(b.metaColour).toBe('rgb(107, 107, 107)');
+    expect(parseFloat(b.metaSize)).toBeLessThanOrEqual(11); expect(parseFloat(b.wordSize)).toBeLessThanOrEqual(10);
+  }
+  const widths = new Set(box.map(b => Math.round(b.card.w))), rows = new Set(box.map(b => Math.round(b.card.y)));
+  expect(widths.size).toBe(1);                                                       // equal
+  expect(rows.size).toBe(1);                                                         // one row
+  const inView = box.filter(b => b.li.x >= main.x - 1 && b.li.x + b.li.w <= main.x + main.width + 1).length;
+  if (isPhone()) {
+    expect(inView).toBe(3);                                                          // three across, the rest sideways
+    const row = page.locator('#folRow');
+    expect(await row.evaluate(el => el.scrollWidth > el.clientWidth + 100)).toBe(true);
+    await row.evaluate(el => el.scrollBy(1000, 0));
+    await expect.poll(() => cardsOf(page).last().evaluate(li => { const r = li.getBoundingClientRect(), m = document.querySelector('main').getBoundingClientRect(); return r.right <= m.right + 1; })).toBe(true);
+  } else {
+    expect(inView).toBe(6);
+    expect(Math.round(box[0].card.w)).toBe(150);                                     // the column's six: 150px, 10px apart
+    expect(Math.round(box[1].li.x - box[0].li.x - box[0].li.w)).toBe(10);
+  }
+  const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(sideways).toBeLessThanOrEqual(0);                                           // the page itself never scrolls sideways
+});
+
+test('signed-in home on a database without logs (0007 not run on it): the newest shelf of each person you follow, from feed()', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, logs: false, friends: true });
   const asked = [];
   page.on('request', r => { if (r.url().includes('/rest/v1/rpc/')) asked.push(new URL(r.url()).pathname.split('/').pop() + ' ' + r.postDataJSON().scope); });
   await open(page, '/');
-  await expect(page.locator('#folRow li')).toHaveCount(6);
-  await expect(page.locator('#folRow .item.log')).toHaveCount(0);
-  for (const t of await page.locator('#folRow .line').allTextContents()) expect(t).toMatch(/^@mira (shelved|updated) /);
-  await expect(page.locator('#folRow .pic')).toHaveCount(6);
+  await expect(cardsOf(page).locator('.fby span:last-child')).toHaveText(['@mira', '@june_reads', '@bea', '@kit']);   // the people with a shelf
+  await expect(cardsOf(page).locator('.fmeta span')).toHaveText(['shelved', 'shelved', 'shelved', 'shelved']);
+  await expect(cardsOf(page).locator('.panel canvas')).toHaveCount(4);
+  await expect(cardsOf(page).locator('a.fcard').first()).toHaveAttribute('href', `u/?mira&shelf=${SHELVES[1].id}`);
   expect(asked.filter(a => / following$/.test(a))).toEqual(['activity following', 'feed following']);   // asked once, then the feed of 0006
+});
+
+test('signed-in home: a shelf whose spines can\'t be read stays an empty grey panel, and the card still opens it', async ({ page }) => {
+  const errors = watchErrors(page);
+  await mockNetwork(page, { signedIn: true, friends: true });
+  await page.route(u => u.pathname === '/rest/v1/shelf_items', route => route.request().method() === 'OPTIONS' ? route.fallback() : route.fulfill({ status: 500, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: '{"message":"no"}' }));
+  await open(page, '/');
+  await expect(cardsOf(page)).toHaveCount(6);
+  await expect(cardsOf(page).locator('.panel')).toHaveCount(3);
+  await expect(cardsOf(page).locator('.panel canvas')).toHaveCount(0);
+  await expect(cardsOf(page).locator('a.fcard').nth(2)).toHaveAttribute('href', `u/?june_reads&shelf=${FRIEND_SHELVES[0].id}`);
+  expect(errors.filter(e => !/500/.test(e))).toEqual([]);   // the browser logs the 500 itself
 });
 
 // the copy: no em dashes, and no line that lists three things
@@ -347,5 +417,5 @@ test('no placeholder or menu item ends in an ellipsis; home\'s welcome line keep
   await page.locator('header.top .add').click();   // the Add dialog
   await expect(page.locator('#addQ')).toHaveAttribute('placeholder', 'Gummo, The Waves, Kids');   // it had three full stops
   await open(page, '/');
-  await expect(page.locator('#hello')).toHaveText(/have been shelving…$/);
+  await expect(page.locator('#hello')).toHaveText(/have been watching and reading…$/);
 });

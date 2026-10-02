@@ -5,9 +5,10 @@ Live at https://shelfstackd.com (this repository and its folders keep the old wo
 Type a film or a book, get its real spine, put it on your shelf (one each), save it to your profile. From its page the shelf can be shared as an Instagram story. You can also log a film or a book you watched or read, which goes on the feed with its cover, and keep a watchlist.
 
 ```
-index.html            the home page (GitHub Pages serves this). Signed out: the newest public shelf, large, then one line about the site and Make a shelf (the black button on that screen), How it works in three steps, and the next newest shelves; signed in: a welcome, New from people you follow (the newest six shelves and logs from them, drawn as the feed draws them, with ⚡ All activity), then Just shelved. Links to the old builder here (/?open=, /#shelf) go on to build/
+index.html            the home page (GitHub Pages serves this). Signed out: the newest public shelf, large, then one line about the site and Make a shelf (the black button on that screen), How it works in three steps, and the next newest shelves; signed in: a welcome, New from people you follow (⚡ All activity: a row of cards, one for each person you follow with the newest thing they shelved or logged, a log's worn cover or a shelf's spines on the grey panel, their photo and @username in a thin bar under it, and under the card watched, read or shelved and the date; six across, three on a phone and the rest sideways), then Just shelved. Links to the old builder here (/?open=, /#shelf) go on to build/
 build/index.html      the shelf builder (Your shelf: there's one shelf each, and signed in it opens yours): Add, the spines as a list (drag one there or on the preview to move it), Style, the preview; at the bottom its name (one name: it's the caption on the story too), who can view it, Cancel · Save. Clear asks first
 add.js                + ADD on every page: the Add dialog. Three choices at the top: Put on shelf (suggestions as you type, then the spine choices and Add to shelf; the spine finder lives here), Log it (the cover as the feed will show it, a caption if you want one, Post) and Watchlist (Add to watchlist)
+bare.js               saved shelves drawn small from their rows in shelf_items: each row back into a book (its pictures through the Worker), then the shelf cut out of a bare story, as the profile's hero draws it (home's cards). The same as u/'s own: keep them in step
 wear.js               a log's cover, worn: one corner dog-eared (a hairline round the fold and a soft shadow under it, so it reads on a white poster), fine scratches, rubbed edges and a little fade, drawn on a canvas from how long ago it was logged (lightly worn that day, with two or three scratches to see; faded after a week, worn after a month). No stamp and nothing written on it
 shelf.js              draws the spines and the story (and says where it drew each book); build/ and u/ both use it, so a shelf looks the same everywhere
 u/index.html          profiles: /u/?username with its tabs Profile (their shelf, big, then Watchlist and, on your own, From friends) · Activity · Network (Following, Followers), and the shelf's own page: /u/?username&shelf (or &shelf=<id>, the older links): its name with Share beside it (Share to story, Download image, Copy link), who made it, the shelf itself (its books on the grey panel, as the profile has them; the 9:16 story is only made for Share), and On this shelf with + Add to my shelf (to the right of the shelf on a wide window; a title that's already on your own shelf says "On your shelf" instead, and on your own shelf nothing is offered); for its owner Edit, Make private or public, Delete
@@ -368,15 +369,17 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **Settings** (`specs/settings.spec.js`): signed out and with no username yet; the three tabs and their addresses;
   Profile's Save sending the name and bio (no main shelf to pick); a photo cut square, made small (WebP, under the Worker's 2 MB),
   sent to the Worker and saved, then removed; Cancel; the private profile switch; a profile's links here.
-- **Shelf cards** (`specs/cards.spec.js`): on home, the feed and a profile, a pile, covers and a row are each in the
+- **Shelf cards** (`specs/cards.spec.js`): on home's Just shelved, the feed and a profile, a pile, covers and a row are each in the
   middle of their card with room round them, the caption and the "made with" line clipped off, on the story's colour;
   a picture is looked at once (kept per preview key); a picture with no plain background, or one that comes without
   CORS, still shows with the stylesheet's cut.
 - **Home's copy** (in `specs/site.spec.js`): signed out, the newest shelf large (cut to its books, a link to it), the
   one line under it from the left, Make a shelf as the one black button (the bar's + outlined there), How it works
   in three steps, with no "lets you" tiles; signed in, the welcome and ⚡ All activity, and New from people you follow
-  with their logs too (from `activity()`: a log's small cover with its caption beside it; shelves only, from `feed()`,
-  on a database without logs); no em dash and no
+  as a row of cards (from `activity()`, one for each person, the newest thing from them: a log's worn cover, a shelf's
+  spines on the grey panel, the thin bar with their photo and @username, watched, read or shelved and the date under
+  it, no captions; 2:3, a 1px border, no shadow, six across or three on a phone and the rest sideways; shelves only,
+  from `feed()`, on a database without logs; an empty panel when a shelf's spines can't be read); no em dash and no
   rule-of-three line; no ellipsis on a placeholder or a menu item (home's welcome line keeps its one).
 - **Shelves and Members** (`specs/shelves.spec.js`, `specs/members.spec.js`): every shelf as a card, 24 at a time and
   what Load more asks for; one people search 300 ms after the last key, Enter at once, the search kept in the address,
@@ -421,7 +424,8 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   lightly worn on the day (a few fine scratches show, and the fold's hairline and shadow show on a white poster), more
   faded after a week and more worn after a month, and the same log worn the same way every time.
 
-`npm run shots` (in `tests/`) saves screenshots of home (and home with no shelves yet), the builder, a profile's tabs,
+`npm run shots` (in `tests/`) saves screenshots of home (signed in, following five more made-up people so its row of
+cards is full; signed out; and with no shelves yet), the builder, a profile's tabs,
 your own profile (and with no shelf yet), a shelf's page, the feed (and before the database has logs), + ADD (its
 choices, Log it, Watchlist), shelves, members, settings, privacy and the not-found page at 1280px and 390px into
 `tests/shots/`, with the tests' made-up data, the real fonts, and the clock held at 30 September 2026, 14:00 UTC.

@@ -15,7 +15,7 @@ test('home: "Welcome", not "Welcome back", and what to do first; the empty row s
 test('home for someone who follows people with shelves still says "Welcome back"', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/');
-  await expect(page.locator('#hello')).toHaveText('Welcome back, @tester. Here’s what people you follow have been shelving…');
+  await expect(page.locator('#hello')).toHaveText('Welcome back, @tester. Here’s what people you follow have been watching and reading…');
 });
 
 // nothing from the people you follow (or you follow no one), whichever way home asks for it
