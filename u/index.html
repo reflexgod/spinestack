@@ -39,6 +39,11 @@
 .addphoto{width:100%;height:100%;border-radius:50%;display:grid;place-items:center;font:400 var(--fs-small) var(--mono);color:var(--ink);text-decoration:none}
 .who{grid-area:who;min-width:0}
 .who h1{margin:0}
+.namerow{display:flex;gap:var(--s1) var(--s3);align-items:center;flex-wrap:wrap}
+/* under the bio: people you follow who follow them */
+.mutual{margin:0;font-size:var(--fs-small);color:var(--grey);overflow-wrap:anywhere}
+.mutual a{color:var(--ink);font-weight:500;text-decoration:none}
+.mutual a:hover,.mutual a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
 .handle{color:var(--grey);margin:var(--s1) 0 0;font-size:var(--fs-card)}
 .pbtns{display:flex;gap:var(--s2);align-items:center;position:relative;margin-top:var(--s3)}
 .menu{position:absolute;top:calc(100% + var(--s1));left:0;z-index:6;background:var(--paper);border:1px solid var(--ink);border-radius:var(--radius);padding:var(--s1) 0;min-width:160px;display:grid}
@@ -46,7 +51,11 @@
 .menu button:hover,.menu a:hover,.menu button:focus-visible,.menu a:focus-visible{background:var(--wash);outline:0}
 /* the ··· menu of one of your shelf cards: one menu for them all, put by the button that was pressed */
 .menu.cardmenu{position:fixed;top:0;left:0;z-index:20}
-.bio-m{grid-area:bio;display:none;white-space:pre-line;overflow-wrap:anywhere;margin:0}
+.bio-m{grid-area:bio;display:none}
+.bio-m p{margin:0}
+.bio-m #bioM{white-space:pre-line;overflow-wrap:anywhere}
+.bio-m #bioM:empty{display:none}
+.bio-m .mutual{margin-top:var(--s2)}
 /* the numbers: bold, their labels tiny under them, a thin line between each */
 .statcol{grid-area:stats;display:grid;justify-items:end;gap:var(--s2)}
 .stats{display:flex;margin:0}
@@ -141,8 +150,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
   .phead{grid-template-columns:72px minmax(0,1fr);grid-template-areas:"ava who" "bio bio" "stats stats";gap:var(--s4)}
   .ava{width:72px;height:72px;font-size:28px}
   .bio-m{display:block}
-  .bio-m:empty{display:none}
-  .side .biosec{display:none}
+  .side .biosec,.side .mutual{display:none}
   .statcol{justify-items:stretch}
   .stats{border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);padding:var(--s3) 0}
   .stats div{flex:1;padding:0 var(--s1)}
@@ -171,8 +179,11 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
     <div class="phead">
       <div class="ava" id="ava"></div>
       <div class="who">
-        <!-- [html-validate-disable-next empty-heading -- the name is filled in once the profile loads; the page is hidden until then] -->
-        <h1 id="name"></h1>
+        <div class="namerow">
+          <!-- [html-validate-disable-next empty-heading -- the name is filled in once the profile loads; the page is hidden until then] -->
+          <h1 id="name"></h1>
+          <span class="tag" id="followsYou" hidden>Follows you</span>
+        </div>
         <p class="handle" id="handle"></p>
         <div class="pbtns">
           <a class="btn ghost sm" id="editBtn" href="../settings/" hidden>Edit profile</a>
@@ -181,7 +192,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
           <div class="menu" id="menu" role="menu" hidden><button type="button" role="menuitem" id="copyLink">Copy link</button><button type="button" role="menuitem" id="reportProfile" hidden>Report</button></div>
         </div>
       </div>
-      <p class="bio-m" id="bioM"></p>
+      <div class="bio-m" id="bioWrap" hidden><p id="bioM"></p><p class="mutual" id="mutualM" hidden></p></div>
       <div class="statcol" id="statCol">
         <dl class="stats">
           <div><dt>Shelves</dt><dd id="nShelves">0</dd></div>
@@ -219,6 +230,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
         </div>
         <aside class="side">
           <section class="biosec" id="bioSec" hidden><h2>Bio</h2><p class="bio" id="bio"></p><a class="addbio" id="addBio" href="../settings/" hidden>add a bio</a></section>
+          <p class="mutual" id="mutual" hidden></p>
           <section id="mostSec" hidden><h2>Most shelved</h2><div class="most" id="most" role="img"></div></section>
           <p class="grey" id="since"></p>
         </aside>
@@ -494,13 +506,28 @@ const pngsOf = s => Promise.all(((s.pro || {}).wall_items || []).map(it => timeo
 const ITEM_COLS = 'position,item_id,kind,title,author,year,spine_src,cover_src,look';
 
 /* ---------- drawing: a shelf on its own, on the white page ---------- */
+// Covers stand face out, so each book needs a picture. One whose cover didn't load, or that never had one, gets a plain
+// one in its own colours with its title, so the shelf still draws.
+const PLAIN = new WeakMap();
+function plainCover(b){
+  let c = PLAIN.get(b); if (c) return c;
+  c = document.createElement('canvas'); c.width = 400; c.height = 600;
+  const x = c.getContext('2d'); x.fillStyle = b.bg || '#161616'; x.fillRect(0, 0, 400, 600);
+  x.fillStyle = b.fg || '#F1EEE6'; x.font = '500 30px "Geist Mono", ui-monospace, monospace'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  const lines = []; let line = '';
+  for (const w of String(b.title || '').split(/\s+/).filter(Boolean)){ const t = line ? line + ' ' + w : w; if (line && x.measureText(t).width > 340){ lines.push(line); line = w; } else line = t; }
+  if (line) lines.push(line);
+  const shown = lines.slice(0, 6); shown.forEach((l, i) => x.fillText(l, 200, 300 + (i - (shown.length - 1)/2)*42));
+  PLAIN.set(b, c); return c;
+}
+const facing = (list, layout) => layout === 'covers' ? list.map(b => b.img ? b : {...b, img: plainCover(b)}) : list;
 // the story drawn "bare" (no background, caption or watermark), then cut down to the books and their shelf
 function bareShelf(list, s, wall){
   const st = {caption:'', theme:'paper', layout: s.layout || 'row', varied: s.varied !== false, wood: !!s.wood, filter: s.filter || 'clean', intensity: s.intensity == null ? 70 : s.intensity,
     plank: !!(s.pro || {}).plank, shelfColour: (s.pro || {}).shelf_colour};
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const x = c.getContext('2d');   // as the builder's canvas, so the books come out the same
-  Shelf.renderStory(x, st.filter, false, list, st, true);
+  Shelf.renderStory(x, st.filter, false, facing(list, st.layout), st, true);
   const d = x.getImageData(0, 0, W, H).data;
   let x0 = W, y0 = H, x1 = -1, y1 = -1;
   for (let y = 0; y < H; y += 2) for (let X = 0; X < W; X += 2) if (d[(y*W + X)*4 + 3] > 10){ if (X < x0) x0 = X; if (X > x1) x1 = X; if (y < y0) y0 = y; if (y > y1) y1 = y; }
@@ -530,7 +557,7 @@ function storyCanvas(list, s, wall, pngs){
   const pro = s.pro || {}, st = {caption: s.caption || '', theme: wall ? 'wall' : s.background || 'paper', layout: s.layout || 'row', varied: s.varied !== false, wood: !!s.wood,
     filter: s.filter || 'clean', intensity: s.intensity == null ? 70 : s.intensity, plank: !!pro.plank, shelfColour: pro.shelf_colour || '#FFFFFF'};
   const c = document.createElement('canvas'); c.width = W; c.height = H;
-  c.spots = Shelf.renderStory(c.getContext('2d'), st.filter, false, list, st, false, {wall, wallDark: !!wall && isDark(wall), pngs}).spots;   // where each book is, for its tooltip
+  c.spots = Shelf.renderStory(c.getContext('2d'), st.filter, false, facing(list, st.layout), st, false, {wall, wallDark: !!wall && isDark(wall), pngs}).spots;   // where each book is, for its tooltip
   c.setAttribute('role', 'img');
   c.setAttribute('aria-label', shelfName(s) + ': ' + list.map(b => b.title).filter(Boolean).join(', '));
   return c;
@@ -593,6 +620,7 @@ async function load(){
   paintStats(stats);
   paintHead();
   paintFollow().then(async () => { if (await finishFollow()) paintFollow(); });
+  paintKnown();
   $('#state').hidden = true; $('#page').hidden = false;
   if (SHELF) return showShelf(SHELF);
   $('#viewProfile').hidden = false; $('#viewShelf').hidden = true;
@@ -625,12 +653,14 @@ function paintHead(){
   $('#editBtn').hidden = !mine;
   $('#reportProfile').hidden = mine;
   $('#privNote').hidden = !(mine && p.is_private);
-  $('#bioM').textContent = p.bio;
+  $('#bioM').textContent = p.bio; bioWrap();
   $('#bio').textContent = p.bio; $('#bio').hidden = !p.bio;
   $('#addBio').hidden = !(mine && !p.bio);
   $('#bioSec').hidden = !p.bio && !mine;
   $('#since').textContent = 'on shelfstackd since ' + new Date(p.created_at).toLocaleDateString('en-US', {month:'short', year:'numeric'});
 }
+// on a phone the bio sits under the name, with the "Followed by" line under it; the box they share shows when either does
+function bioWrap(){ $('#bioWrap').hidden = !(view.profile && view.profile.bio) && $('#mutualM').hidden; }
 function paintLists(){
   // the main shelf first, then the rest newest first
   const main = featured(), list = main ? [main, ...view.shelves.filter(s => s !== main)] : view.shelves, none = !list.length, mine = view.mine;
@@ -892,6 +922,31 @@ async function paintFollow(){
   paintFollowStats();
   if (view.mine) paintRequests();
 }
+/* Who you both know. "Follows you" by their name, when they do: a follow you're in is always yours to read. Under the
+   bio, the people you follow who follow them ("Followed by @a, @b and 3 others"): the followers list already says of
+   each person whether you follow them, so it's read from that (the newest 200 followers at most). Nothing new in the
+   database. */
+async function paintKnown(){
+  const p = view.profile, tag = $('#followsYou'), lines = [$('#mutual'), $('#mutualM')];
+  tag.hidden = true; for (const el of lines) el.hidden = true; bioWrap();
+  if (!me.user || !p || p.id === me.user.id) return;
+  api(`follows?select=follower&follower=eq.${p.id}&followee=eq.${me.user.id}`).then(rows => { tag.hidden = !(rows && rows.length); }).catch(() => {});
+  const known = []; let last = null, more = true;
+  try {
+    for (let page = 0; page < 4 && more; page++){
+      const rows = await rpc('follow_list', {uid: p.id, kind: 'followers', before: last ? last.at : null, before_id: last ? last.id : null, n: 50});
+      for (const x of rows) if (x.i_follow && x.id !== me.user.id) known.push(x);
+      const end = rows[rows.length - 1]; if (end) last = {at: end.followed_at, id: end.id};
+      more = rows.length === 50;
+    }
+  } catch { return; }
+  if (!known.length) return;
+  const at = x => `<a href="${esc(pageUrl(x.username))}">@${esc(x.username)}</a>`, rest = known.length - 2;
+  const html = 'Followed by ' + (known.length === 1 ? at(known[0]) : known.length === 2 ? `${at(known[0])} and ${at(known[1])}`
+    : `${at(known[0])}, ${at(known[1])} and <a href="${esc(pageUrl(p.username))}#followers">${rest} ${rest === 1 ? 'other' : 'others'}</a>`);   // the others: their Followers list
+  for (const el of lines){ el.innerHTML = html; el.hidden = false; }
+  bioWrap();
+}
 async function paintFollowStats(){
   const st = (await rpc('follow_stats', {uid: view.profile.id}).catch(() => []))[0] || {};
   $('#nFollowing').textContent = st.following || 0; $('#nFollowers').textContent = st.followers || 0;
@@ -909,7 +964,8 @@ async function showPrivate(card){
   ava.className = 'ava';
   if (card.avatar_key) ava.innerHTML = `<img src="${esc(avatarSrc(card.avatar_key))}" alt="${esc(name || card.username)}">`;
   else { ava.textContent = (name || card.username).trim()[0] || '·'; ava.setAttribute('aria-hidden', 'true'); }
-  $('#editBtn').hidden = true; $('#reportProfile').hidden = false; $('#statCol').hidden = true; $('#bioM').hidden = true;
+  $('#editBtn').hidden = true; $('#reportProfile').hidden = false; $('#statCol').hidden = true; $('#bioWrap').hidden = true;
+  paintKnown();   // "Follows you" shows on a private profile's card too
   $('#viewProfile').hidden = true; $('#viewShelf').hidden = true; $('#privateMsg').hidden = false; $('#followBtn').hidden = false;
   $('#state').hidden = true; $('#page').hidden = false;
   if (await finishFollow()) card = (await rpc('profile_card', {p_username: card.username}).catch(() => []))[0] || card;

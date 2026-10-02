@@ -1,12 +1,12 @@
 // A profile's tabs (/u/?name): Profile · Shelves · Activity · Network, the main shelf at the top of Profile, a line
 // for each shelf saved in Activity, Following · Followers in Network.
 const { test, expect } = require('@playwright/test');
-const { SHELVES, PEOPLE, mockNetwork, watchErrors, open } = require('../site');
+const { SHELVES, PEOPLE, ME, SB_URL, CORS, mockNetwork, watchErrors, open } = require('../site');
 
 const NOW = new Date('2026-09-30T14:00:00Z');   // two hours after the newest made-up shelf was saved
 const tabs = page => page.getByRole('tablist', { name: 'Profile' }).getByRole('tab');
 const selected = (page, name) => expect(page.getByRole('tablist', { name: 'Profile' }).getByRole('tab', { name, exact: true })).toHaveAttribute('aria-selected', 'true');
-const followList = page => page.waitForRequest(r => r.url().includes('/rpc/follow_list'));
+const followList = (page, kind) => page.waitForRequest(r => r.url().includes('/rpc/follow_list') && r.postDataJSON().kind === kind);   // the Network tab's list (the page asks for the followers once by itself, for "Followed by")
 
 test('the tabs are Profile · Shelves · Activity · Network, each with its own address, kept on reload', async ({ page }) => {
   const errors = watchErrors(page);
@@ -67,7 +67,7 @@ test('Activity: a line for each shelf saved, newest first, its card under the li
 test('Network: Following first, then Followers; the numbers at the top open them', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
-  let asked = followList(page);
+  let asked = followList(page, 'following');
   await open(page, '/u/?mira#network');
   expect((await asked).postDataJSON()).toMatchObject({ uid: PEOPLE[1].id, kind: 'following' });
   const sub = page.getByRole('tablist', { name: 'Network' }).getByRole('tab');
@@ -79,7 +79,7 @@ test('Network: Following first, then Followers; the numbers at the top open them
   await expect(people.first().getByRole('button')).toHaveCount(0);               // that's you: no FOLLOW
   await expect(people.nth(1).getByRole('button', { name: 'Follow' })).toBeVisible();
   // Followers
-  asked = followList(page);
+  asked = followList(page, 'followers');
   await sub.nth(1).click();
   expect((await asked).postDataJSON()).toMatchObject({ kind: 'followers' });
   await expect(sub.nth(1)).toHaveAttribute('aria-selected', 'true');
@@ -87,7 +87,7 @@ test('Network: Following first, then Followers; the numbers at the top open them
   await expect(people).toHaveCount(2);
   // from the Profile tab, the number FOLLOWING opens Network on Following, FOLLOWERS on Followers; no sheet
   await tabs(page).first().click();
-  asked = followList(page);
+  asked = followList(page, 'following');
   await page.locator('.statlink[data-list="following"] button').click();
   expect((await asked).postDataJSON()).toMatchObject({ kind: 'following' });
   await selected(page, 'Network');
@@ -117,3 +117,78 @@ test('on your own profile the account menu\'s Shelves, Activity and Network chan
   await expect(page.locator('#acts .line')).toHaveCount(6);
   await expect(page.locator('#acts .line').first()).toHaveText(/^@tester (shelved|updated) /);
 });
+
+/* ---------- who you both know ---------- */
+const mutual = page => page.locator('.mutual:visible');
+// the followers list answered with these people, each one someone you follow
+const followedBy = (page, names) => page.route(u => u.origin === SB_URL && u.pathname === '/rest/v1/rpc/follow_list', route => {
+  if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
+  const rows = names.map((n, i) => ({ id: `dddddddd-dddd-4ddd-8ddd-${String(i).padStart(12, '0')}`, username: n, display_name: '', avatar_key: null, is_private: false, followed_at: new Date(Date.UTC(2026, 8, 30 - i)).toISOString(), i_follow: n !== 'stranger', i_requested: false }));
+  return route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify(route.request().postDataJSON().kind === 'followers' ? rows : []) });
+});
+
+test('"Follows you" is by the name of someone who follows you', async ({ page }) => {
+  const errors = watchErrors(page);
+  await mockNetwork(page, { signedIn: true });
+  const asked = page.waitForRequest(r => r.url().includes('/rest/v1/follows?'));
+  await open(page, '/u/?mira');
+  const q = new URL((await asked).url()).searchParams;
+  expect([q.get('follower'), q.get('followee')]).toEqual(['eq.' + PEOPLE[1].id, 'eq.' + ME.id]);
+  const tag = page.locator('#followsYou');
+  await expect(tag).toBeVisible();
+  await expect(tag).toHaveText('Follows you');
+  const name = await page.locator('#name').boundingBox(), box = await tag.boundingBox();
+  expect(box.x).toBeGreaterThanOrEqual(name.x + name.width);                                       // after the name
+  expect(Math.abs(box.y + box.height / 2 - (name.y + name.height / 2))).toBeLessThanOrEqual(8);   // on its line
+  // someone who doesn't follow you, and your own profile: no tag
+  await open(page, '/u/?longusername_twenty1');
+  await expect(page.locator('#name')).toHaveText('@longusername_twenty1');
+  await expect(tag).toBeHidden();
+  await open(page, '/u/?tester');
+  await expect(page.locator('#name')).toHaveText('Test Person');
+  await expect(tag).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test('"Followed by": the people you follow who follow them, under the bio', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/u/?longusername_twenty1');   // @mira, whom you follow, follows them
+  await expect(mutual(page)).toHaveCount(1);
+  await expect(mutual(page)).toHaveText('Followed by @mira');
+  await expect(mutual(page).getByRole('link', { name: '@mira' })).toHaveAttribute('href', '/u/?mira');
+  // @mira's own followers are you and someone you don't follow: nothing to say
+  await open(page, '/u/?mira');
+  await expect(page.locator('#followsYou')).toBeVisible();
+  await expect(mutual(page)).toHaveCount(0);
+  // under the bio
+  await followedBy(page, ['ana', 'ben']);
+  await open(page, '/u/?mira');
+  await expect(mutual(page)).toHaveText('Followed by @ana and @ben');
+  const bio = await page.getByText('Films, mostly.').locator('visible=true').boundingBox(), line = await mutual(page).boundingBox();
+  expect(line.y).toBeGreaterThanOrEqual(bio.y + bio.height);
+  expect(line.y - (bio.y + bio.height)).toBeLessThan(60);
+});
+
+test('"Followed by" names two and counts the others, who are a press away', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await followedBy(page, ['ana', 'stranger', 'ben', 'cat']);
+  await open(page, '/u/?mira');
+  await expect(mutual(page)).toHaveText('Followed by @ana, @ben and 1 other');   // the stranger isn't someone you follow
+  await followedBy(page, ['ana', 'ben', 'cat', 'dev', 'eli']);   // the newer answer is the one that's used
+  await open(page, '/u/?mira');
+  await expect(mutual(page)).toHaveText('Followed by @ana, @ben and 3 others');
+  await mutual(page).getByRole('link', { name: '3 others' }).click();
+  await selected(page, 'Network');
+  await expect(page.getByRole('tablist', { name: 'Network' }).getByRole('tab', { name: 'Followers' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#netPeople .person')).toHaveCount(5);
+});
+
+test('signed out, a profile has neither "Follows you" nor "Followed by"', async ({ page }) => {
+  await mockNetwork(page);
+  let asked = 0; page.on('request', r => { if (r.url().includes('/rest/v1/follows?')) asked++; });
+  await open(page, '/u/?longusername_twenty1');
+  await expect(page.locator('#followsYou')).toBeHidden();
+  await expect(mutual(page)).toHaveCount(0);
+  expect(asked).toBe(0);
+});
+

@@ -246,6 +246,8 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **The look** (`specs/look.spec.js`): the content and the bar's contents in one 950px column on every page, the type
   scale, one black button a screen, shelf cards six across at 150px (three on a phone) cut 2:3, the profile's name,
   numbers and tabs.
+- **Who you both know** (in `specs/profile.spec.js`): "Follows you" by the name of someone who follows you, and
+  "Followed by @a, @b and N others" under the bio, read from the follows and the followers list that are already there.
 - **A profile's tabs** (`specs/profile.spec.js`): the four tabs, their addresses and ← →; the main shelf first on
   Profile; Activity's lines; Network's Following and Followers and the numbers that open them; the account menu's
   links changing the tab on your own profile without loading it again.

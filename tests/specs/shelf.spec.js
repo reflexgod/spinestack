@@ -209,3 +209,14 @@ test('someone else\'s cards have no ··· menu', async ({ page }) => {
   await expect(page.locator('#all').getByRole('button')).toHaveCount(0);
 });
 
+test('a covers shelf whose books have no picture still draws, each with a plain cover', async ({ page }) => {
+  const errors = watchErrors(page);
+  await mockNetwork(page, { signedIn: true });
+  await open(page, `/u/?mira&shelf=${SHELVES[4].id}`);   // laid out as covers; the made-up spines have no cover pictures
+  await expect(page.locator('#oneShelf canvas')).toBeVisible();
+  expect(await page.locator('#oneShelf canvas').evaluate(c => c.spots.length)).toBe(2);
+  await open(page, '/u/?longusername_twenty1');            // and a profile whose main shelf is one
+  await expect(page.locator('#featLink canvas')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+

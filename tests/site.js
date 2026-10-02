@@ -82,6 +82,8 @@ function rest(url, method, body, signedIn, named, empty){
     const ids = (q.get('id') || '').startsWith('in.(') ? q.get('id').slice(4, -1).split(',') : q.has('id') ? [eq('id')] : null;   // id=eq.x or id=in.(x,y)
     return SHELVES.filter(s => (!q.has('owner') || s.owner === eq('owner')) && (!ids || ids.includes(s.id)));
   }
+  // follows, read from the table: @mira follows the made-up account, and that's the only one it's asked about
+  if (what === 'follows') return signedIn && eq('follower') === PEOPLE[1].id && eq('followee') === ME.id ? [{ follower: PEOPLE[1].id }] : [];
   if (what === 'shelf_items') return ITEMS;
   return method === 'GET' ? [] : null;
 }
