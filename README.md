@@ -20,6 +20,7 @@ favicon.ico           the same mark for a browser that asks for /favicon.ico wha
 .well-known/appspecific/com.chrome.devtools.json   an empty answer for Chrome, which asks every localhost site for this file while its DevTools are open (the other 404 in the network panel). Nothing reads it
 og.jpg                the picture a shared link shows (1200 x 630: the logo and a shelf); every page names it in its og: and twitter: tags
 sample-shelf.jpg      the builder's sample shelf (it's only at build/?sample now: a new shelf starts empty) as a picture; home shows it ("a shelf, for example") while there are no public shelves. Made by tests/art.js
+spinetip.js           a shelf's picture: hovering a spine shows "Title (year) · creator", pressing it goes to its row in the list (a shelf's page, and the builder's preview). It uses the places shelf.js says it drew each book
 cards.js              shelf cards: finds the books in a shelf's preview picture and cuts the 2:3 card round them (home, the feed, profiles), keeping what it found per preview key
 site.css              the look every page shares: one :root block of variables (the 950px column, the type scale, the 4/8/12/16/24/40 spacing, the 3px radius) and what uses them everywhere (the top bar, headings, buttons, fields, shelf cards, tabs, sheets, the footer). A page's own <style> holds only what that page alone needs
 nav.js                the top bar on every page: who is signed in, the account menu (Sign out is its last item), + ADD and the ▾ next to it
@@ -251,6 +252,8 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 - **A shelf's page** (`specs/shelf.spec.js`): its heading, Copy link and the list of what's on it; + Add to my shelf
   putting that same spine on the shelf being built with nothing searched for; for its owner Edit, Make main, Make
   private, renaming it in the heading, and Delete only after the confirm; a shelf that isn't there.
+- **Spines on a picture** (`specs/tips.spec.js`): on a shelf's page and on the builder's preview, the tooltip over a
+  spine, a press going to its row and marking it, and a drag on the preview not counting as a press.
 - **Settings** (`specs/settings.spec.js`): signed out and with no username yet; the three tabs and their addresses;
   Profile's Save sending the name, bio and main shelf; a photo cut square, made small (WebP, under the Worker's 2 MB),
   sent to the Worker and saved, then removed; Cancel; the private profile switch; a profile's links here.

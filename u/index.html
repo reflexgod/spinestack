@@ -340,6 +340,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../cards.js?v=20261002a"></script>
+<script src="../spinetip.js?v=20261002a"></script>
 <script src="../nav.js?v=20261002b"></script>
 <script>
 (() => {
@@ -523,7 +524,7 @@ function storyCanvas(list, s, wall, pngs){
   const pro = s.pro || {}, st = {caption: s.caption || '', theme: wall ? 'wall' : s.background || 'paper', layout: s.layout || 'row', varied: s.varied !== false, wood: !!s.wood,
     filter: s.filter || 'clean', intensity: s.intensity == null ? 70 : s.intensity, plank: !!pro.plank, shelfColour: pro.shelf_colour || '#FFFFFF'};
   const c = document.createElement('canvas'); c.width = W; c.height = H;
-  Shelf.renderStory(c.getContext('2d'), st.filter, false, list, st, false, {wall, wallDark: !!wall && isDark(wall), pngs});
+  c.spots = Shelf.renderStory(c.getContext('2d'), st.filter, false, list, st, false, {wall, wallDark: !!wall && isDark(wall), pngs}).spots;   // where each book is, for its tooltip
   c.setAttribute('role', 'img');
   c.setAttribute('aria-label', shelfName(s) + ': ' + list.map(b => b.title).filter(Boolean).join(', '));
   return c;
@@ -717,6 +718,10 @@ $('#oneItems').addEventListener('click', e => {
   catch { toast('Couldn’t take it to the builder. Try again.'); return; }
   location.href = '../build/';
 });
+// a spine on the picture: hovering it says what it is ("Title (year) · creator"), pressing it goes to its row
+const spineLabel = r => r ? (r.title || 'Untitled') + (r.year ? ` (${r.year})` : '') + (r.author ? ' · ' + r.author : '') : '';
+if (window.SpineTip) SpineTip.attach($('#oneShelf'), {pointer: true, canvas: () => $('#oneShelf canvas'), spots: () => ($('#oneShelf canvas') || {}).spots,
+  label: i => spineLabel(shown.rows[i]), pick: i => SpineTip.flash($('#oneItems').children[i])});
 $('#copyShelf').addEventListener('click', async () => {
   const url = location.origin + pageUrl(view.profile.username, SHELF);
   try { await navigator.clipboard.writeText(url); toast('Link copied.'); } catch { toast(url); }

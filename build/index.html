@@ -368,6 +368,7 @@ footer{margin-top:0}
 
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
+<script src="../spinetip.js?v=20261002a"></script>
 <script src="../nav.js?v=20261002b"></script>
 <script src="../add.js?v=20261002a"></script>
 <script>
@@ -923,8 +924,10 @@ function paintPull(){
   box.hidden = false; Object.assign(box.style, {left: s.x*k - 2 + 'px', top: s.y*k - 2 + 'px', width: s.w*k + 4 + 'px', height: s.h*k + 4 + 'px'});
 }
 function startPull(){ if (!pull) return; pull.active = true; if (navigator.vibrate) try { navigator.vibrate(8); } catch {} paintPull(); }
+let pulledAt = 0;   // when a drag last ended: the click that follows it isn't a press on the spine
 function endPull(){
   if (!pull) return;
+  if (pull.active) pulledAt = Date.now();
   clearTimeout(pull.timer); try { stage.releasePointerCapture(pull.pid); } catch {}
   pull = null; paintPull();
 }
@@ -972,6 +975,12 @@ stage.addEventListener('touchmove', e => { if (pull && pull.active) e.preventDef
 stage.addEventListener('pointerup', e => { if (pull && e.pointerId === pull.pid) endPull(); });
 stage.addEventListener('pointercancel', e => { if (pull && e.pointerId === pull.pid) endPull(); });
 addEventListener('resize', paintPull);
+// a spine on the preview: hovering it says what it is ("Title (year) · creator"), and a press (not a drag) goes to its
+// row in the list
+const spineLabel = b => b ? (b.title || 'Untitled') + (b.year ? ` (${b.year})` : '') + (b.author ? ' · ' + b.author : '') : '';
+if (window.SpineTip) SpineTip.attach(stage, {canvas: () => story, spots: () => layout.spots, label: i => spineLabel(books[i]),
+  quiet: () => !!(pull && pull.active) || !!grab || Date.now() - pulledAt < 400, skip: e => !!e.target.closest('#pngBox'),
+  pick: i => { const b = books[i]; if (b) SpineTip.flash(document.querySelector(`#books .book[data-id="${b.id}"]`)); }});
 
 /* ---------- export: Claude download, phone share sheet, or plain download ---------- */
 let downloads = null;
