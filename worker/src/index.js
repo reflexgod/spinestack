@@ -154,8 +154,22 @@ async function tmdbFilms(q, token) {
    comes more than once by the same author (other printings, other languages) is kept once. */
 const ORG_AUTHOR = /\b(congress|committee|department|office|list|directory)\b/i;
 const notABook = d => !d.cover_i && (ORG_AUTHOR.test((d.author_name || []).join(' ')) || ((d.edition_count || 0) <= 1 && !d.readinglog_count));
+/* An author's name in Latin letters. Open Library sometimes gives the name as written in its own script (村上春樹 for
+   Norwegian Wood): then the first Latin-script name in author_alternative_name is used, or, when there's none there,
+   the first in the author record's alternate_names. With neither, the name stays as it came. */
+const LATIN = /^[\p{Script=Latin}\p{M}\p{N}\s.,'’()&-]+$/u, latin = n => !!n && LATIN.test(n) && /\p{Script=Latin}/u.test(n);
+async function authorName(d) {
+  const name = (d.author_name || [''])[0];
+  if (!name || latin(name)) return name;
+  const alt = (d.author_alternative_name || []).find(latin);
+  if (alt) return alt;
+  const key = (d.author_key || [])[0];
+  if (!key) return name;
+  try { const a = await getJSON(`https://openlibrary.org/authors/${encodeURIComponent(key)}.json`, {headers: {'User-Agent': UA}}); return (a.alternate_names || []).find(latin) || name; }
+  catch { return name; }
+}
 async function olBooks(q) {
-  const r = await getJSON('https://openlibrary.org/search.json?limit=50&fields=title,author_name,first_publish_year,publish_year,cover_i,edition_count,readinglog_count&q=' + encodeURIComponent(q), {headers: {'User-Agent': UA}});
+  const r = await getJSON('https://openlibrary.org/search.json?limit=50&fields=title,author_name,author_alternative_name,author_key,first_publish_year,publish_year,cover_i,edition_count,readinglog_count&q=' + encodeURIComponent(q), {headers: {'User-Agent': UA}});
   const want = words(q.replace(/[\s,(]+(?:19|20)\d\d\)?$/, ''));
   const says = d => { const hay = words([d.title, ...(d.author_name || [])].join(' ')).join(' '); return want.length > 0 && want.every(w => hay.includes(w)); };
   const seen = new Set(), once = d => { const k = words(d.title).join(' ').replace(/^(the|a|an) /, '') + '|' + words((d.author_name || [''])[0]).join(' '); return !seen.has(k) && !!seen.add(k); };
@@ -163,8 +177,8 @@ async function olBooks(q) {
     .sort((a, b) => (b.readinglog_count || 0) - (a.readinglog_count || 0) || (b.edition_count || 0) - (a.edition_count || 0)).filter(once).slice(0, 5);
   // Open Library's first year is sometimes a stray record (It Ends With Us: 2012, The Bell Jar: 1948).
   // Wikidata's publication date is right for known books; without it, a lone early year with a gap after it is dropped.
-  const years = await Promise.all(docs.map(d => wikidataYear(d.title, (d.author_name || [''])[0]).then(y => y ? String(y) : olYear(d))));
-  return docs.map((d, i) => ({kind: 'book', title: d.title || '', year: years[i], creator: (d.author_name || [''])[0], cover: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-L.jpg` : ''}));
+  const [years, authors] = await Promise.all([Promise.all(docs.map(d => wikidataYear(d.title, (d.author_name || [''])[0]).then(y => y ? String(y) : olYear(d)))), Promise.all(docs.map(authorName))]);
+  return docs.map((d, i) => ({kind: 'book', title: d.title || '', year: years[i], creator: authors[i], cover: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-L.jpg` : ''}));
 }
 function olYear(d) {
   const ys = (d.publish_year || []).filter(y => y > 1000).sort((a, b) => a - b), first = d.first_publish_year || ys[0];
@@ -188,8 +202,9 @@ async function wikidataYear(title, author) {
 async function identify(p, env, cors, ctx) {
   const q = clean(p.get('q'), 120), want = ['movie', 'book'].includes(p.get('want')) ? p.get('want') : 'all';
   if (!q) return json({error: 'Type a title to search.'}, 400, cors);
-  // id4: books only when the title or author has what was typed, each once (id3 answers had the rest; id2 the reports)
-  const key = `id4:${want}:${q.toLowerCase()}`, make = async () => {
+  // id5: a book's author in Latin letters when Open Library has them (id4 answers could have 村上春樹); id4: books only
+  // when the title or author has what was typed, each once (id3 answers had the rest; id2 the reports)
+  const key = `id5:${want}:${q.toLowerCase()}`, make = async () => {
     const [f, b] = await Promise.allSettled([want !== 'book' ? tmdbFilms(q, env.TMDB_TOKEN) : [], want !== 'movie' ? olBooks(q) : []]);
     if (f.status === 'rejected' && b.status === 'rejected') throw new Error('TMDB and Open Library did not answer');
     return {results: [...(f.value || []), ...(b.value || [])]};

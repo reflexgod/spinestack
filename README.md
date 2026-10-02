@@ -168,7 +168,7 @@ minute stale. Both fit the Workers Free plan and need no card.
 `cd worker && npx wrangler deploy`. Secrets and the KV cache stay as they are. To try a change first without deploying:
 `cd worker && npx wrangler dev` runs the Worker on this machine (`http://127.0.0.1:8787`, with its own empty KV and
 Durable Object; films need `TMDB_TOKEN` in `worker/.dev.vars`).
-If you change what `/identify` answers, bump its cache key prefix in `src/index.js` (`id4:` now) so answers kept
+If you change what `/identify` answers, bump its cache key prefix in `src/index.js` (`id5:` now: a book's author comes in Latin letters when Open Library has them, 村上春樹 as Haruki Murakami) so answers kept
 before the change aren't reused. `/scans` keeps what the providers said as it came (`raw1:`), and its filters run again on that.
 
 ### How a real spine is found

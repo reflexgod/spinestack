@@ -337,8 +337,19 @@ async function tmdbFilms(q){
   }));
 }
 async function olBooks(q){
-  const r = await getJSON('https://openlibrary.org/search.json?limit=5&fields=title,author_name,first_publish_year,cover_i&q=' + encodeURIComponent(q));
-  return (r.docs || []).map(d => ({kind:'book', title:d.title || '', year:String(d.first_publish_year || ''), creator:(d.author_name || [''])[0], cover:d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-L.jpg` : ''}));
+  const r = await getJSON('https://openlibrary.org/search.json?limit=5&fields=title,author_name,author_alternative_name,author_key,first_publish_year,cover_i&q=' + encodeURIComponent(q));
+  const docs = r.docs || [], authors = await Promise.all(docs.map(latinAuthor));
+  return docs.map((d, i) => ({kind:'book', title:d.title || '', year:String(d.first_publish_year || ''), creator:authors[i], cover:d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-L.jpg` : ''}));
+}
+// the author in Latin letters, as the Worker's /identify gives it: a name in another script (村上春樹) gives way to the
+// first Latin-script name in author_alternative_name, then in the author record's alternate_names; else it stays
+const LATIN = /^[\p{Script=Latin}\p{M}\p{N}\s.,'’()&-]+$/u, isLatin = n => !!n && LATIN.test(n) && /\p{Script=Latin}/u.test(n);
+async function latinAuthor(d){
+  const name = (d.author_name || [''])[0];
+  if (!name || isLatin(name)) return name;
+  const alt = (d.author_alternative_name || []).find(isLatin); if (alt) return alt;
+  const key = (d.author_key || [])[0]; if (!key) return name;
+  try { return ((await getJSON(`https://openlibrary.org/authors/${encodeURIComponent(key)}.json`)).alternate_names || []).find(isLatin) || name; } catch { return name; }
 }
 async function identifyDirect(q, want){
   const films = want !== 'book' && TMDB, books = want !== 'movie';
