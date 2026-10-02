@@ -1,6 +1,6 @@
-// A shelf's own page (/u/?name&shelf, or by its id, /u/?name&shelf=id): its heading, Share, what's on it with + Add to
-// my shelf (beside the picture on a wide window), and for its owner Edit, Make private or public, and Delete with a
-// confirm.
+// A shelf's own page (/u/?name&shelf, or by its id, /u/?name&shelf=id): its heading, Share, the shelf itself on the
+// wash (the story is only for Share), what's on it with + Add to my shelf (beside the picture on a wide window), and
+// for its owner Edit, Make private or public, and Delete with a confirm.
 const { test, expect } = require('@playwright/test');
 const { SHELVES, ME, mockNetwork, watchErrors, open } = require('../site');
 
@@ -9,7 +9,7 @@ const rows = page => page.locator('#oneItems li');
 const titles = page => page.locator('#books .book .bt').allTextContents();
 const sent = (page, method, part) => page.waitForRequest(r => r.method() === method && r.url().includes(part));
 
-test('someone\'s shelf: its name, who made it and when, the story, and what\'s on it', async ({ page }) => {
+test('someone\'s shelf: its name, who made it and when, the shelf itself, and what\'s on it', async ({ page }) => {
   const errors = watchErrors(page), net = await mockNetwork(page, { signedIn: true });
   await open(page, `/u/?mira&shelf=${theirs.id}`);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('shelf number 1');
@@ -18,6 +18,17 @@ test('someone\'s shelf: its name, who made it and when, the story, and what\'s o
   await expect(by).toHaveText(/^by @mira· .*2026 · 2 spines$/);
   await expect(by.getByRole('link', { name: '@mira' })).toHaveAttribute('href', '/u/?mira');
   await expect(page.locator('#oneShelf canvas')).toBeVisible();
+  // the shelf itself, as the profile's hero has it: the books cut out of the story, on the wash, with no caption (the
+  // name is said once, in the heading). Not the 9:16 story with the books at its foot
+  expect(await page.locator('#oneShelf').evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(243, 243, 243)');
+  const drawn = await page.locator('#oneShelf canvas').evaluate(c => { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    let clear = 0; for (let i = 3; i < d.length; i += 4) if (!d[i]) clear++;
+    return { w: c.width, h: c.height, clear: clear / (d.length / 4), bottom: c.getBoundingClientRect().bottom, label: c.getAttribute('aria-label') }; });
+  expect(drawn.h).toBeLessThan(600);          // a pile of two books and nothing else
+  expect(drawn.w).toBeGreaterThan(drawn.h);
+  expect(drawn.clear).toBeGreaterThan(.03);   // nothing behind the books: the panel shows through
+  expect(drawn.label).toBe('shelf number 1: The Waves, Journey by Moonlight');
+  expect(drawn.bottom).toBeLessThanOrEqual(page.viewportSize().height);   // on the first screen, on a phone too
   // not yours: Report, and nothing else under the heading
   await expect(page.locator('#oneActs').locator('button:visible, a:visible')).toHaveText(['Report']);
   // On this shelf: a row for each spine

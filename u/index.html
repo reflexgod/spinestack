@@ -110,12 +110,16 @@
 /* a link in an empty list's line (Find people): ink, our dashed underline */
 #friendsNone a,#netNone a{color:var(--ink);text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
 #actsMore,#netMore{margin-top:var(--s5)}
-/* one shelf on its own page: the story itself, bigger; on a wide window what's on it sits to its right */
+/* one shelf on its own page: the shelf itself, as the profile's hero has it (the spines cut out of the story, on the
+   wash, with no caption), so on a phone the spines are on the first screen; on a wide window what's on it sits to its
+   right. The 9:16 story is only made for Share */
 .sgrid{display:grid;gap:var(--s6);align-items:start}
-#viewShelf .pic1{display:block;position:relative;line-height:0;width:fit-content;max-width:100%}
-#viewShelf .pic1 canvas{display:block;height:auto;max-width:100%;width:min(100%, 460px, calc(74vh * 9 / 16));border:1px solid var(--hair);border-radius:var(--radius)}
-@media (min-width:821px){ .sgrid{grid-template-columns:min(460px, calc(74vh * 9 / 16)) minmax(0,1fr)} }
-/* a shelf's own page: its name, who made it and when, what can be done with it; under the story, what's on it */
+#viewShelf .pic1{display:grid;justify-items:center;position:relative;line-height:0;container-type:inline-size;padding:var(--s6) var(--s4);background:var(--wash);border-radius:var(--radius);--fk:.5;--hmax:420px}
+#viewShelf .pic1:empty{display:none}
+#viewShelf .pic1 canvas{display:block;height:auto;width:min(calc(var(--w, 600) * var(--fk) * 1px), 100cqw, calc(var(--hmax) * var(--w, 600) / var(--h, 600)))}
+@media (min-width:821px){ .sgrid{grid-template-columns:minmax(0,1fr) 380px} }
+@media (max-width:640px){ #viewShelf .pic1{--fk:.36;--hmax:340px;padding:var(--s5) var(--s3)} }
+/* a shelf's own page: its name, who made it and when, what can be done with it; under the shelf, what's on it */
 .shead{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--s2);margin-bottom:var(--s5)}
 .shead h1{margin:0;min-width:0;max-width:100%}
 .stitle{display:flex;gap:var(--s2) var(--s3);align-items:center;flex-wrap:wrap}
@@ -568,7 +572,7 @@ function bareShelf(list, s, wall){
     plank: !!(s.pro || {}).plank, shelfColour: (s.pro || {}).shelf_colour};
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const x = c.getContext('2d');   // as the builder's canvas, so the books come out the same
-  Shelf.renderStory(x, st.filter, false, facing(list, st.layout), st, true);
+  const spots = Shelf.renderStory(x, st.filter, false, facing(list, st.layout), st, true).spots;
   const d = x.getImageData(0, 0, W, H).data;
   let x0 = W, y0 = H, x1 = -1, y1 = -1;
   for (let y = 0; y < H; y += 2) for (let X = 0; X < W; X += 2) if (d[(y*W + X)*4 + 3] > 10){ if (X < x0) x0 = X; if (X > x1) x1 = X; if (y < y0) y0 = y; if (y > y1) y1 = y; }
@@ -589,16 +593,17 @@ function bareShelf(list, s, wall){
   }
   ox.drawImage(c, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
   out.style.setProperty('--w', out.width);   // drawn at one scale for every shelf (see .feat)
+  out.spots = spots.map(sp => ({...sp, x: sp.x - x0, y: sp.y - y0}));   // where each book is in this picture, for its tooltip
   out.setAttribute('role', 'img');
   out.setAttribute('aria-label', shelfName(s) + ': ' + list.map(b => b.title).filter(Boolean).join(', '));
   return out;
 }
-// the whole story, as Share to Instagram makes it in the builder: caption, background or wall, PNGs, the books
+// the whole story, for Share: caption, background or wall, PNGs, the books
 function storyCanvas(list, s, wall, pngs){
   const pro = s.pro || {}, st = {caption: s.caption || '', theme: wall ? 'wall' : s.background || 'paper', layout: s.layout || 'row', varied: s.varied !== false, wood: !!s.wood,
     filter: s.filter || 'clean', intensity: s.intensity == null ? 70 : s.intensity, plank: !!pro.plank, shelfColour: pro.shelf_colour || '#FFFFFF'};
   const c = document.createElement('canvas'); c.width = W; c.height = H;
-  c.spots = Shelf.renderStory(c.getContext('2d'), st.filter, false, facing(list, st.layout), st, false, {wall, wallDark: !!wall && isDark(wall), pngs}).spots;   // where each book is, for its tooltip
+  Shelf.renderStory(c.getContext('2d'), st.filter, false, facing(list, st.layout), st, false, {wall, wallDark: !!wall && isDark(wall), pngs});
   c.setAttribute('role', 'img');
   c.setAttribute('aria-label', shelfName(s) + ': ' + list.map(b => b.title).filter(Boolean).join(', '));
   return c;
@@ -789,8 +794,8 @@ document.addEventListener('shelfstackd:added', () => {
   paintLists();
   if (!$('#panelA').hidden) paintActivity();
 });
-/* ---------- one shelf on its own page: its name, who made it and when, what can be done with it, the story, and
-   under it what's on the shelf, a row for each spine with + Add to my shelf ---------- */
+/* ---------- one shelf on its own page: its name, who made it and when, what can be done with it, the shelf itself
+   (as the profile's hero draws it), and under it what's on the shelf, a row for each spine with + Add to my shelf ---------- */
 const shown = {shelf: null, rows: [], list: [], wall: null, pngs: []};   // the shelf on the page: its saved rows, the books made from them (the same order), its wall and PNGs
 const SAVED = 'shelfstackd-saved';   // the builder leaves the id of a shelf it has just saved here
 async function showShelf(id){
@@ -829,7 +834,7 @@ async function showShelf(id){
   } catch { pairs = []; }
   const list = pairs.map(x => x[1]);
   shown.rows = pairs.map(x => x[0]); shown.list = list; shown.wall = wall; shown.pngs = pngs;
-  const draw = () => { const c = list.length && storyCanvas(list, s, wall, pngs); $('#oneShelf').replaceChildren(...(c ? [c] : [])); };
+  const draw = () => { const c = list.length && bareShelf(list, s, wall); if (c) c.style.setProperty('--h', c.height); $('#oneShelf').replaceChildren(...(c ? [c] : [])); };
   draw(); view.drawn.push(draw);
   paintItems();
 }

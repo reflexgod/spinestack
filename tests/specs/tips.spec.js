@@ -23,10 +23,11 @@ test('a shelf\'s page: hovering a spine says what it is, and pressing it goes to
     await expect(tip).toBeVisible();
     await expect(tip).toHaveText('The Waves (1931) · Virginia Woolf');
     await expect(tip).toHaveAttribute('role', 'tooltip');
-    // the tooltip is over the spine, inside the picture
-    const t = await tip.boundingBox(), pic = await page.locator('#oneShelf canvas').boundingBox();
-    expect(t.x).toBeGreaterThanOrEqual(pic.x);
-    expect(t.x + t.width).toBeLessThanOrEqual(pic.x + pic.width + 1);
+    // the tooltip is over the spine, inside the panel the shelf stands in
+    const t = await tip.boundingBox(), panel = await page.locator('#oneShelf').boundingBox();
+    expect(t.x).toBeGreaterThanOrEqual(panel.x);
+    expect(t.x + t.width).toBeLessThanOrEqual(panel.x + panel.width + 1);
+    expect(t.y).toBeGreaterThanOrEqual(panel.y);
     expect(t.y + t.height).toBeLessThanOrEqual(first.y);
     await page.mouse.move(second.x, second.y);
     await expect(tip).toHaveText('Journey by Moonlight (1937) · Antal Szerb');

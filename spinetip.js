@@ -37,10 +37,11 @@
       if (shown !== s.i){ shown = s.i; tip.textContent = text; }
       tip.hidden = false;
       if (opt.pointer) c.style.cursor = 'pointer';
-      // over the top of the spine, in the middle of it, kept inside the picture; under the spine when there's no room above
+      // over the top of the spine, in the middle of it, kept inside the stage (the picture, or the panel it stands in);
+      // under the spine when there's no room above
       const r = c.getBoundingClientRect(), box = stage.getBoundingClientRect(), k = r.width / c.width, x0 = r.left - box.left, y0 = r.top - box.top, w = tip.offsetWidth, h = tip.offsetHeight;
-      let top = y0 + s.y * k - h - 6; if (top < y0 + 4) top = y0 + (s.y + s.h) * k + 6;
-      tip.style.left = Math.max(x0 + 4, Math.min(x0 + (s.x + s.w / 2) * k - w / 2, x0 + r.width - w - 4)) + 'px';
+      let top = y0 + s.y * k - h - 6; if (top < 4) top = y0 + (s.y + s.h) * k + 6;
+      tip.style.left = Math.max(4, Math.min(x0 + (s.x + s.w / 2) * k - w / 2, box.width - w - 4)) + 'px';
       tip.style.top = top + 'px';
     }
     const off = e => (opt.quiet && opt.quiet()) || (opt.skip && opt.skip(e));
