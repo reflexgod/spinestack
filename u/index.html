@@ -100,7 +100,7 @@
 .pgrid{display:grid;gap:var(--s6);margin-top:var(--s6)}
 .pmain{display:grid;gap:var(--s6);min-width:0}
 /* the watchlist on the Profile tab: up to four of its covers, and See all */
-.wstrip{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(var(--cards),minmax(0,1fr));gap:var(--card-gap)}
+.wstrip{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,var(--wcov));justify-content:start;gap:var(--s3);--wcov:100px}   /* up to four in one row: 100px covers, 80px on a phone */
 .wstrip:empty{display:none}
 .wstrip a{display:block;line-height:0}
 .wstrip canvas{display:block;width:100%;height:auto;aspect-ratio:2/3}
@@ -228,7 +228,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
   .statcol:has(> #reqBtn[hidden]){display:none}     /* with no requests waiting, nothing is left in it */
   #reqBtn{justify-self:start}
   #featWrap{--sh:180px}
-  .wstrip li:nth-child(n+4){display:none}   /* three across on a phone */
+  .wstrip{--wcov:80px}
   .titles li{grid-template-columns:40px minmax(0,1fr)}
   .tacts{grid-column:2;justify-content:flex-start}
 }
@@ -823,7 +823,7 @@ async function paintWatch(){
   $('#watchAll').hidden = !lists.watch.length;
   $('#watchStrip').replaceChildren(...lists.watch.slice(0, 4).map(r => {
     const li = document.createElement('li'), a = document.createElement('a');
-    a.href = '#watchlist'; a.setAttribute('aria-label', `${r.title}${r.year ? ` (${r.year})` : ''}, on the watchlist`); a.append(wornCover(r));
+    a.href = '#watchlist'; a.setAttribute('aria-label', `${r.title}${r.year ? ` (${r.year})` : ''}, on the watchlist`); a.append(wornCover(r, 100));
     li.append(a); return li;
   }));
   $('#watchNone').hidden = !!lists.watch.length;
