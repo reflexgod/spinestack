@@ -1,7 +1,7 @@
 // On a phone every control takes a press 21px from its middle, up, down, left and right (a 44 x 44px target), on
 // every page, in the Add dialog, the menus and the builder's Style. It asks the page what is under each point, as a
-// finger would land. Left out: a link inside a sentence, a label that only names the field beside it, and the logo,
-// whose row is 32px above the places' row (docs/DESIGN-REVIEW.md has it).
+// finger would land. Left out: a link inside a sentence, and a label that only names the field beside it. The logo is
+// in: the bar's two rows are 44px apart, middle to middle.
 const { test, expect } = require('@playwright/test');
 const { mockNetwork, open } = require('../site');
 
@@ -34,7 +34,6 @@ const misses = page => page.evaluate(async () => {
   const name = h => h ? h.tagName.toLowerCase() + (h.id ? '#' + h.id : '') + (typeof h.className === 'string' && h.className ? '.' + h.className.trim().split(/\s+/)[0] : '') : 'nothing';
   for (const root of menus.length ? menus : [scope]) for (const el of root.querySelectorAll(sel)) {
     if (seen.has(el)) continue; seen.add(el);
-    if (el.matches('header.top .mark')) continue;
     if (el.tagName === 'LABEL' && !el.querySelector('input,select,textarea')) continue;   // it names the field beside it: the field is the target
     if (el.closest('details:not([open])') && el.tagName !== 'SUMMARY') continue;   // in a shut panel
     if (el.tagName === 'INPUT' && el.closest('label')) continue;   // its label is the target

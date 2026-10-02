@@ -21,6 +21,9 @@
 .lost h1{margin-bottom:var(--s3)}
 .lost p{max-width:520px}
 .ways{display:flex;gap:var(--s3) var(--s5);align-items:center;flex-wrap:wrap;margin-top:var(--s5)}
+/* a touch screen: with no button beside it here, the logo's row is only as tall as the logo, so it's padded to the
+   height that row has on the other pages and a press just above the logo is still on the page */
+@media (pointer:coarse){ .top .mark{padding:var(--s2) 0} }
 </style>
 </head>
 <body>

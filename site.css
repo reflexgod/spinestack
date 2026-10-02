@@ -106,9 +106,10 @@ textarea{resize:vertical;line-height:1.5}
 .top .add svg,.top .addmore svg{width:12px;height:12px}
 .addwrap.split .add{border-radius:var(--radius) 0 0 var(--radius)}
 /* narrow windows and phones: the logo, you and + on the first row; the places on a second row that scrolls sideways
-   inside the bar */
+   inside the bar. The rows are 16px apart, so their middles are 44px apart and a press just under the logo is still
+   the logo's, not a place's */
 @media (max-width:820px){
-  .top{flex-wrap:wrap;padding-bottom:0}
+  .top{flex-wrap:wrap;padding-bottom:0;row-gap:var(--s4)}
   .links{order:9;flex:0 0 100%;overflow-x:auto;scrollbar-width:none;padding-bottom:var(--s2)}
   .links::-webkit-scrollbar{display:none}
 }
