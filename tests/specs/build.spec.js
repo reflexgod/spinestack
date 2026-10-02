@@ -556,12 +556,12 @@ test('a shelf saved with no name has no caption', async ({ page }) => {
 });
 
 /* ---------- a new shelf starts empty ---------- */
-test('the builder starts empty: "Your shelf is empty." and three titles to try, each a search in the Add dialog', async ({ page }) => {
+test('the builder starts empty: "Nothing on this shelf yet." and three titles to try, each a search in the Add dialog', async ({ page }) => {
   const errors = watchErrors(page), net = await mockNetwork(page);
   await open(page, '/build/');
   await expect(rows(page)).toHaveCount(0);
   const empty = page.locator('#books .empty');
-  await expect(empty.locator('p').first()).toHaveText('Your shelf is empty.');
+  await expect(empty.locator('p').first()).toHaveText('Nothing on this shelf yet.');   // signed out
   await expect(empty.locator('.try')).toHaveText(/^Try:/);
   const chips = empty.getByRole('button');
   await expect(chips).toHaveText(['Gummo', 'The Waves', 'Kids']);
@@ -603,7 +603,7 @@ test('Clear asks first, as Delete does: Cancel and Esc leave the spines, Clear t
   await page.locator('header.top .add').click();
   await addGummo(page);
   expect(await titles(page)).toEqual(['Gummo']);
-  const clear = page.locator('#clear'), ask = page.getByRole('dialog', { name: 'Clear your shelf?' });
+  const clear = page.locator('#clear'), ask = page.getByRole('dialog', { name: 'Clear this shelf?' });   // signed out: not "your shelf"
   expect(await clear.evaluate(el => { const s = getComputedStyle(el); return [s.color, s.backgroundImage.includes('repeating-linear-gradient')]; })).toEqual(['rgb(107, 107, 107)', true]);
   // at the right of the Spines heading, on its line
   const h2 = await page.locator('#shelf h2').boundingBox(), at = await clear.boundingBox();
@@ -624,7 +624,7 @@ test('Clear asks first, as Delete does: Cancel and Esc leave the spines, Clear t
   await clear.click();
   await ask.getByRole('button', { name: 'Clear' }).click();
   await expect(ask).toBeHidden();
-  await expect(page.locator('#books .empty')).toContainText('Your shelf is empty.');
+  await expect(page.locator('#books .empty')).toContainText('Nothing on this shelf yet.');
   await expect(clear).toBeHidden();
   expect(errors).toEqual([]);
 });
@@ -649,3 +649,27 @@ test('the sample shelf clears without asking: it is not yours to lose', async ({
   await expect(page.getByRole('dialog', { name: 'Clear your shelf?' })).toBeHidden();
 });
 
+
+// Signed out, the shelf being made isn't anyone's yet: the page is New shelf, and nothing on it says "your shelf" (the
+// title, the empty line, the toast when a spine goes on, Clear's question). Signed in it's Your shelf
+test('signed out, the builder is New shelf and says "the shelf", never "your shelf"; signed in, Your shelf', async ({ page }) => {
+  await mockNetwork(page);
+  await open(page, '/build/');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('New shelf');
+  await expect(page).toHaveTitle('New shelf · shelfstackd');
+  await expect(page.locator('#books .empty p').first()).toHaveText('Nothing on this shelf yet.');
+  await page.locator('header.top .add').click();
+  await addGummo(page);
+  await expect(page.locator('#toast')).toHaveText('Gummo added to the shelf.');
+  await page.locator('#clear').click();
+  await expect(page.getByRole('dialog', { name: 'Clear this shelf?' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('main')).not.toContainText(/your shelf/i);
+  await expect(page.locator('#saveNote')).toHaveText('Sign in to keep this shelf and open it again later.');
+});
+test('signed in with no shelf yet, the builder is Your shelf, and an empty one says so', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, ownShelf: false });
+  await open(page, '/build/');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your shelf');
+  await expect(page.locator('#books .empty p').first()).toHaveText('Your shelf is empty.');
+});

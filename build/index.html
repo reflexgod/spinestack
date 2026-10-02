@@ -497,6 +497,16 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
 const CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';   // Lucide chevron-down
 const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 const TRY = ['Gummo', 'The Waves', 'Kids'];
+/* Signed out, the shelf being made isn't anyone's yet: the page is New shelf and it's "the shelf", not "your shelf".
+   (Known before the account loads: a visitor has no session kept on this device.) */
+function visiting(){ if (acct.user) return false; try { return !Object.keys(localStorage).some(k => /^sb-.+-auth-token$/.test(k)); } catch { return true; } }
+const theShelfWord = () => visiting() ? 'the shelf' : 'your shelf';
+function paintWho(){
+  const v = visiting();
+  $('#pageTitle').textContent = v ? 'New shelf' : 'Your shelf';
+  document.title = (v ? 'New shelf' : 'Your shelf') + ' · shelfstackd';
+  $('#confirmTitle').textContent = v ? 'Clear this shelf?' : 'Clear your shelf?';
+}
 let openId = null;   // the spine whose controls show: press a row to open it, and the one that was open shuts
 const byLine = b => [b.author, b.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · ');
 function renderList(){
@@ -506,7 +516,7 @@ function renderList(){
   $('#clear').hidden = !books.length;
   const ol = $('#books');
   // an empty shelf says so, with three titles to try: each opens the Add dialog on that search
-  if (!books.length){ ol.innerHTML = `<li class="empty"><p>Your shelf is empty.</p><p class="try"><span>Try:</span>${TRY.map(t => `<button class="chip" type="button" data-try="${esc(t)}">${esc(t)}</button>`).join('')}</p></li>`; redraw(); return; }
+  if (!books.length){ ol.innerHTML = `<li class="empty"><p>${visiting() ? 'Nothing on this shelf yet.' : 'Your shelf is empty.'}</p><p class="try"><span>Try:</span>${TRY.map(t => `<button class="chip" type="button" data-try="${esc(t)}">${esc(t)}</button>`).join('')}</p></li>`; redraw(); return; }
   if (!books.some(b => b.id === openId)) openId = null;
   ol.innerHTML = books.map((b,i) => { const open = b.id === openId; return `
   <li class="book${open ? ' open' : ''}" data-id="${b.id}">
@@ -656,7 +666,7 @@ const viaWorker = u => WORKER ? WORKER + '/img?url=' + encodeURIComponent(u) : u
 const timeout = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('timeout')), ms))]);
 // what the dialog needs to know about this shelf, and where its Add to shelf puts a spine
 Add.setShelf({has: key => books.some(b => b.key === key), count: key => books.filter(b => (b.key || '').split('#')[0] === key).length,
-  add: f => { const ok = shelve(newBook(f)); if (ok) toast(f.title + ' added to your shelf.'); return ok; }});
+  add: f => { const ok = shelve(newBook(f)); if (ok) toast(`${f.title} added to ${theShelfWord()}.`); return ok; }});
 $('#findForm').addEventListener('submit', e => { e.preventDefault(); const q = $('#findQ').value.trim(); $('#findQ').value = ''; Add.open({query: q}); });
 Nav.onUpload(() => $('#file').click());   // "Upload a scan" in the ▾ next to + ADD
 
@@ -1063,6 +1073,7 @@ function friendly(e){
 
 /* the account, and what the page shows for it */
 async function startAccounts(){
+  paintWho();
   if (!accounts) return;
   $('#saveShelf').hidden = false; paintAcct();
   // Your shelf, as it's being changed, waits as a draft. It gives way to another saved shelf asked for by an old link
@@ -1114,6 +1125,7 @@ function paintAcct(){
   Nav.paint({sb: acct.sb, user: acct.user, profile: p, unreachable: acct.unreachable});   // the bar (nav.js): Sign in, Finish sign-up, or you and the account menu
   paintLimit();   // Pro holds more
   $('#saveNote').textContent = acct.user ? '' : 'Sign in to keep this shelf and open it again later.';
+  paintWho(); if (!books.length) renderList();   // signed in or out: the title, and an empty shelf's line
 }
 Nav.onSignIn(() => openSheet('signin'));
 Nav.onFinish(() => openSheet('name'));
@@ -1456,7 +1468,7 @@ function takeRow(){
     $('#saveNote').textContent = 'Adding ' + p.m.title + '…';
     let f = null; try { f = await Add.resolve(p); } catch {}
     $('#saveNote').textContent = ''; paintAcct();
-    if (f){ if (shelve(newBook(f))) toast(p.m.title + ' added to your shelf.'); }
+    if (f){ if (shelve(newBook(f))) toast(`${p.m.title} added to ${theShelfWord()}.`); }
     else { toast('Couldn’t add ' + p.m.title + '. Search for it again.'); Add.open({query: p.m.title}); }
   }
   const row = takeRow();
@@ -1466,7 +1478,7 @@ function takeRow(){
     let b = null; try { b = await rebuild({...row, item_id: undefined}); } catch {}   // a book of its own here, with a new id
     $('#saveNote').textContent = '';
     if (!b) toast('Couldn’t add ' + name + '. Its picture didn’t load.');
-    else { if (b.source === 'your saved shelf') b.source = 'a saved shelf'; if (shelve(b)) toast(name + ' added to your shelf.'); }
+    else { if (b.source === 'your saved shelf') b.source = 'a saved shelf'; if (shelve(b)) toast(`${name} added to ${theShelfWord()}.`); }
   }
   booted = true; scheduleDraft();
 })();
