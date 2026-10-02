@@ -117,14 +117,21 @@ test('Network: Following first, then Followers; the numbers at the top open them
   await expect(sub.nth(1)).toHaveAttribute('aria-selected', 'true');
   expect(new URL(page.url()).hash).toBe('#followers');
   await expect(people).toHaveCount(2);
-  // from the Profile tab, the number FOLLOWING opens Network on Following, FOLLOWERS on Followers; no sheet
+  // from the Profile tab, the number FOLLOWING opens Network on Following, FOLLOWERS on Followers; no sheet. On a
+  // phone the numbers are one line of links under the name ("2 spines · 1 following · 2 followers"), which do the same
+  const phone = test.info().project.name.startsWith('phone');
+  const number = kind => phone ? page.locator('#counts').getByRole('link', { name: new RegExp(kind === 'following' ? 'following' : 'followers?$') }) : page.locator(`.statlink[data-list="${kind}"] button`);
   await tabs(page).first().click();
+  if (phone) {
+    await expect(page.locator('#counts').getByRole('link')).toHaveText(['2 spines', '1 following', '2 followers']);
+    expect(await page.locator('#cSpines').evaluate(a => a.pathname + a.search)).toBe('/u/?mira&shelf');   // the spines: their shelf's page
+  }
   asked = followList(page, 'following');
-  await page.locator('.statlink[data-list="following"] button').click();
+  await number('following').click();
   expect((await asked).postDataJSON()).toMatchObject({ kind: 'following' });
   await selected(page, 'Network');
   await expect(sub.first()).toHaveAttribute('aria-selected', 'true');
-  await page.locator('.statlink[data-list="followers"] button').click();
+  await number('followers').click();
   await expect(sub.nth(1)).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('#listSheet')).toBeHidden();
   await open(page, '/u/?mira#followers');

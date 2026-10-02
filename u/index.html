@@ -68,6 +68,14 @@
 .statlink{cursor:pointer}
 .statlink button{font:inherit;color:inherit;text-transform:inherit;letter-spacing:inherit;background:none;border:0;padding:0;cursor:pointer;outline-offset:4px}
 .statlink:hover dd,.statlink:focus-within dd{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:4px}
+/* on a phone the numbers are one small line under the name instead ("2 spines · 1 following · 2 followers"), each a
+   link: the shelf's page, Following, Followers. A band of three big numbers there is a stats bar */
+.counts{display:none;margin:var(--s1) 0 0;font-size:var(--fs-card);color:var(--grey)}
+.counts a{display:inline-block;text-decoration:none}
+.counts a:hover,.counts a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
+.counts b{font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
+@media (pointer:coarse){ .counts a{position:relative} .counts a::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))} }   /* 44px to press (see site.css) */
+@media (pointer:coarse) and (max-width:640px){ .pbtns{margin-top:var(--s5)} }   /* and the buttons under the line a press away from it */
 #privNote{margin:var(--s4) 0 0}
 .privmsg{margin:var(--s6) 0 0}
 #people{padding-right:2px;max-height:min(60vh,520px);overflow:auto}   /* in the Requests sheet the list scrolls */
@@ -176,8 +184,9 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
   .bio-m{display:block}
   .side .biosec,.side .mutual{display:none}
   .statcol{justify-items:stretch}
-  .stats{border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);padding:var(--s3) 0}
-  .stats div{flex:1;padding:0 var(--s1)}
+  .stats{display:none}                              /* the numbers are the one small line under the name */
+  .counts{display:block}
+  .statcol:has(> #reqBtn[hidden]){display:none}     /* with no requests waiting, nothing is left in it */
   #reqBtn{justify-self:start}
   .hero{--fk:.36;--hmax:340px;padding:var(--s5) var(--s3)}
   .titles li{grid-template-columns:40px minmax(0,1fr)}
@@ -211,6 +220,8 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
           <span class="tag" id="followsYou" hidden>Follows you</span>
         </div>
         <p class="handle" id="handle"></p>
+        <!-- the numbers on a phone, in one small line (on a wide window they stand at the right: .stats) -->
+        <p class="counts" id="counts"><a id="cSpines" href="#"><b>0</b> spines</a> · <a id="cFollowing" href="#network"><b>0</b> following</a> · <a id="cFollowers" href="#followers"><b>0</b> followers</a></p>
         <div class="pbtns">
           <a class="btn ghost sm" id="editBtn" href="../settings/" hidden>Edit profile</a>
           <button class="btn ghost sm follow" id="followBtn" type="button" hidden>Follow</button>
@@ -658,8 +669,14 @@ async function refresh(){
   paintHero();
   if (!$('#panelA').hidden) paintActivity();
 }
-// SPINES: on their shelf (the one shown)
-function paintStats(){ $('#nSpines').textContent = countOf(theShelf() || {}); }
+// SPINES: on their shelf (the one shown). The numbers are said twice in the page: big, at the right, for a wide
+// window, and as one small line of links under the name for a phone ("2 spines · 1 following · 2 followers")
+const counted = (n, one, many) => `<b>${n}</b> ${n === 1 ? one : many}`;
+function paintStats(){
+  const n = countOf(theShelf() || {});
+  $('#nSpines').textContent = n;
+  $('#cSpines').innerHTML = counted(n, 'spine', 'spines'); $('#cSpines').href = pageUrl(view.profile.username) + '&shelf';
+}
 function paintHead(){
   const p = view.profile, name = p.display_name.trim(), mine = view.mine;
   $('#name').textContent = name || '@' + p.username;
@@ -1067,6 +1084,7 @@ async function paintKnown(){
 async function paintFollowStats(){
   const st = (await rpc('follow_stats', {uid: view.profile.id}).catch(() => []))[0] || {};
   $('#nFollowing').textContent = st.following || 0; $('#nFollowers').textContent = st.followers || 0;
+  $('#cFollowing').innerHTML = counted(st.following || 0, 'following', 'following'); $('#cFollowers').innerHTML = counted(st.followers || 0, 'follower', 'followers');
 }
 async function paintRequests(){
   const list = await rpc('request_list', {n: 31}).catch(() => []), b = $('#reqBtn');
@@ -1081,7 +1099,7 @@ async function showPrivate(card){
   ava.className = 'ava';
   if (card.avatar_key) ava.innerHTML = `<img src="${esc(avatarSrc(card.avatar_key))}" alt="${esc(name || card.username)}">`;
   else { ava.textContent = (name || card.username).trim()[0] || '·'; ava.setAttribute('aria-hidden', 'true'); }
-  $('#editBtn').hidden = true; $('#reportProfile').hidden = false; $('#statCol').hidden = true; $('#bioWrap').hidden = true;
+  $('#editBtn').hidden = true; $('#reportProfile').hidden = false; $('#statCol').hidden = true; $('#counts').hidden = true; $('#bioWrap').hidden = true;
   paintKnown();   // "Follows you" shows on a private profile's card too
   $('#viewProfile').hidden = true; $('#viewShelf').hidden = true; $('#privateMsg').hidden = false; $('#followBtn').hidden = false;
   $('#state').hidden = true; $('#page').hidden = false;
@@ -1147,6 +1165,7 @@ $('#reqBtn').addEventListener('click', () => { openSheet('#listSheet', '#listShe
 document.querySelectorAll('.statlink').forEach(d => {
   d.addEventListener('click', () => goTab(d.dataset.list === 'followers' ? '#followers' : '#network'));   // its button too: Enter and Space click it
 });
+for (const a of document.querySelectorAll('#cFollowing, #cFollowers')) a.addEventListener('click', e => { e.preventDefault(); goTab(a.getAttribute('href')); });   // the phone's line does the same
 
 /* ---------- the Activity tab: a line for each shelf saved and each film or book logged, newest first (the feed's
    lines, without the photo: they're all this person's). On your own profile a private shelf is there too, marked, and
