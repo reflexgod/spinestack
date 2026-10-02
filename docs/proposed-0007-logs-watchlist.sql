@@ -16,7 +16,8 @@
 --   * the titles you removed from From friends: only you.
 -- What changes:
 --   * logs: a film or a book you watched or read, with a caption if you want one (280 characters at most). The feed
---     shows it as "@you watched Gummo · today" with its cover. 50 a day per person at most. You can delete your own.
+--     shows it as "@you watched Gummo · today" with its cover. 50 a day per person at most, counted as they're posted
+--     (log_counts), so deleting one doesn't make room for another. You can delete your own.
 --   * watchlist: up to 6 titles, each title once. Logging a title takes it off your watchlist.
 --   * friend_hides: the titles you pressed Remove on in From friends, so they don't come back (kept 180 days, as long
 --     as From friends looks back).
@@ -56,16 +57,33 @@ create index logs_new on public.logs (created_at desc, id desc) where not hidden
 create index logs_owner_new on public.logs (owner, created_at desc, id desc) where not hidden;          -- a profile's Activity, From friends
 create index logs_owner_title on public.logs (owner, public.title_key(kind, title, year));             -- "have I logged this?"
 
+-- how many logs each person has posted each day (UTC), whether or not they're still there: the 50-a-day limit counts
+-- these, so deleting a log and posting it again can't fill the feed. Only the trigger below reads or writes it, and it
+-- lets a person's days before yesterday go as they post.
+create table public.log_counts (
+  owner uuid not null references public.profiles (id) on delete cascade,
+  day date not null,
+  n int not null check (n >= 0),
+  primary key (owner, day)
+);
+alter table public.log_counts enable row level security;   -- no policies, and nothing granted: only logs_before_insert()
+
 -- its date is the database's, and 50 a day per person is plenty. The lock is this person's alone: another add of
--- theirs waits here until this one is done, then counts it, so two at once can't both be the 50th.
+-- theirs waits here until this one is done, then counts it, so two at once can't both be the 50th. A post the limit
+-- refuses isn't counted (the refusal undoes its count), but it can't go in either.
 create function public.logs_before_insert() returns trigger
 language plpgsql security definer set search_path = '' as $$
+declare today date := (now() at time zone 'utc')::date; posted int;
 begin
   perform pg_advisory_xact_lock(hashtext('logs:' || new.owner));
   new.created_at := now();
-  if (select count(*) from public.logs l where l.owner = new.owner and l.created_at > now() - interval '1 day') >= 50 then
+  insert into public.log_counts as c (owner, day, n) values (new.owner, today, 1)
+    on conflict (owner, day) do update set n = c.n + 1
+    returning c.n into posted;
+  if posted > 50 then
     raise exception 'That''s 50 logs today, the most for one day. Log the rest tomorrow.' using errcode = 'P0001';
   end if;
+  delete from public.log_counts c where c.owner = new.owner and c.day < today - 1;
   return new;
 end $$;
 revoke execute on function public.logs_before_insert() from public, anon, authenticated;
@@ -158,7 +176,7 @@ create policy "friend hides: add own" on public.friend_hides for insert to authe
 create policy "friend hides: remove own" on public.friend_hides for delete to authenticated using (owner = (select auth.uid()));
 
 -- what the Data API may touch in the new tables (nothing else)
-revoke all on public.logs, public.watchlist, public.friend_hides from anon, authenticated;
+revoke all on public.logs, public.watchlist, public.friend_hides, public.log_counts from anon, authenticated;
 grant select on public.logs, public.watchlist to anon, authenticated;
 grant insert (kind, title, author, year, cover_src, caption) on public.logs to authenticated;          -- owner, hidden, dates: never from the page
 grant delete on public.logs to authenticated;

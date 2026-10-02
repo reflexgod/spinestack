@@ -5,8 +5,9 @@
 -- The last result says "ALL PHASE 4 CHECKS PASSED". Any failed check stops with an error that starts "FAIL:".
 -- Real accounts can be in the database, so every check looks only at the test's own rows.
 --
--- The people:  A public (follows B, and private D, who accepted)   B public (logs two titles)   C public (an outsider)
---              D private (logs one title)   E public (hits the daily limit)   H hidden by moderation (logs one title)
+-- The people:  A public (follows B, and private D, who accepted)   B public (logs two titles)   C public (an outsider,
+--              who also logs on a new day)   D private (logs one title)   E public (hits the daily limit, then deletes
+--              and tries again)   H hidden by moderation (logs one title)
 
 begin;
 
@@ -175,15 +176,48 @@ do $$ declare n int; begin
   get diagnostics n = row_count; if n <> 1 then raise exception 'FAIL: B couldn''t delete B''s own log'; end if;
 end $$;
 
--- ---------- 50 logs a day ----------
+-- ---------- 50 logs a day, counted as they're posted ----------
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000004e0","role":"authenticated"}', true);
-do $$ declare i int; begin
+do $$ declare i int; n int; begin
   for i in 1..50 loop insert into public.logs (kind, title) values ('book', 'Day ' || i); end loop;
   begin
     insert into public.logs (kind, title) values ('book', 'One too many');
     raise exception 'FAIL: a 51st log went in on one day';
   exception when raise_exception then if sqlerrm like 'FAIL:%' then raise; end if; end;
+  -- deleting them makes no room: the day's count is of what was posted
+  delete from public.logs where owner = '00000000-0000-4000-8000-0000000004e0';
+  get diagnostics n = row_count; if n <> 50 then raise exception 'FAIL: E couldn''t delete E''s logs'; end if;
+  begin
+    insert into public.logs (kind, title) values ('book', 'Posted again');
+    raise exception 'FAIL: deleting logs made room for more on the same day';
+  exception when raise_exception then if sqlerrm like 'FAIL:%' then raise; end if; end;
+  -- the counts are the database's own: nobody reads or changes them from the page
+  begin
+    perform 1 from public.log_counts;
+    raise exception 'FAIL: E can read the day''s counts';
+  exception when insufficient_privilege then null; end;
+  begin
+    delete from public.log_counts;
+    raise exception 'FAIL: E can clear the day''s counts';
+  exception when insufficient_privilege then null; end;
 end $$;
+-- a full day yesterday doesn't count today, and days before yesterday are let go
+reset role;
+insert into public.log_counts (owner, day, n) values
+  ('00000000-0000-4000-8000-0000000004c0', (now() at time zone 'utc')::date - 1, 50),
+  ('00000000-0000-4000-8000-0000000004c0', (now() at time zone 'utc')::date - 3, 9);
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000004c0","role":"authenticated"}', true);
+insert into public.logs (kind, title) values ('book', 'A new day');
+reset role;
+do $$ begin
+  if (select n from public.log_counts where owner = '00000000-0000-4000-8000-0000000004c0' and day = (now() at time zone 'utc')::date) <> 1 then
+    raise exception 'FAIL: today''s count for C isn''t 1'; end if;
+  if exists (select 1 from public.log_counts where owner = '00000000-0000-4000-8000-0000000004c0' and day < (now() at time zone 'utc')::date - 1) then
+    raise exception 'FAIL: C''s count from three days ago is still kept'; end if;
+end $$;
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000004e0","role":"authenticated"}', true);
 
 -- ---------- two adds at once can't beat a limit ----------
 -- Each add takes a lock for its person before it counts, and keeps it to the end of the transaction, so a second add by
@@ -205,6 +239,10 @@ do $$ begin
   if exists (select 1 from public.logs where owner = '00000000-0000-4000-8000-0000000004a0') then raise exception 'FAIL: A''s logs outlived A'; end if;
   if exists (select 1 from public.watchlist where owner = '00000000-0000-4000-8000-0000000004a0') then raise exception 'FAIL: A''s watchlist outlived A'; end if;
   if exists (select 1 from public.friend_hides where owner = '00000000-0000-4000-8000-0000000004a0') then raise exception 'FAIL: A''s removals outlived A'; end if;
+end $$;
+delete from auth.users where id = '00000000-0000-4000-8000-0000000004e0';
+do $$ begin
+  if exists (select 1 from public.log_counts where owner = '00000000-0000-4000-8000-0000000004e0') then raise exception 'FAIL: E''s counts outlived E'; end if;
 end $$;
 
 select 'ALL PHASE 4 CHECKS PASSED' as result;

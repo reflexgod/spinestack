@@ -27,6 +27,10 @@ through `profile_is_public()` and `approved_follower_of()`, as `feed()` does.
   sessions adding at the same moment, one holding its transaction open: without the lock the watchlist ended at 7 and
   the logs at 51; with it, 6 and 50, the second add getting the limit's message. The SQL Editor has one session, so
   `proposed-rls_phase4.sql` checks that an add takes the lock.
+- **50 logs a day counts what was posted, not what's left.** `log_counts (owner, day, n)` is added to in the logs
+  trigger (an upsert, under the same lock), so deleting a log and posting it again can't fill the feed. The day is UTC.
+  Nothing is granted on it and it has no policies: only the trigger, which runs as the table's owner, touches it, and it
+  lets a person's days before yesterday go as they post.
 
 ## What the pages ask for
 
@@ -53,7 +57,7 @@ browser reporting them; the pages carry on.
 
 1. **Run it as it is, or change it.** Questions worth a look: is 6 the right size for a watchlist (it's a hard limit
    in the database, like a free shelf's 6 spines), should a watchlist be visible to visitors (it is now, like a shelf),
-   50 logs a day, and 180 days for From friends.
+   50 logs a day (by the UTC day: it starts again at midnight UTC), and 180 days for From friends.
 2. **Once it's agreed:** move the SQL to `supabase/migrations/0007_logs_watchlist.sql` and the test to
    `supabase/tests/rls_phase4.sql`, run both in the SQL Editor, and say so in the README's Accounts section.
 3. **One shelf each, in the database too (optional).** The pages show and save one shelf per person; the database
