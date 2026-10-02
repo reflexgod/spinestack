@@ -54,7 +54,7 @@ test('someone\'s shelf: its name, who made it and when, the shelf itself, and wh
 });
 
 test('+ Add to my shelf puts that same spine on the shelf being built, with no new search', async ({ page }) => {
-  const errors = watchErrors(page), net = await mockNetwork(page);
+  const errors = watchErrors(page), net = await mockNetwork(page, { signedIn: true, ownShelf: false });   // signed in, with no shelf yet
   await open(page, `/u/?mira&shelf=${theirs.id}`);
   await rows(page).nth(1).getByRole('button', { name: '+ Add to my shelf' }).click();
   await expect(page).toHaveURL(/\/build\/$/);
@@ -318,11 +318,41 @@ test('an older shelf of yours: only the titles that aren\'t on your shelf are of
   expect(await offered(page)).toEqual(['+ Add to my shelf', '']);
 });
 
-test('with no shelf of your own yet, or signed out, every title is offered', async ({ page }) => {
+test('with no shelf of your own yet, every title is offered', async ({ page }) => {
   await mockNetwork(page, { signedIn: true, ownShelf: false });
   await open(page, `/u/?mira&shelf=${theirs.id}`);
   await expect(rows(page)).toHaveCount(2);
   expect(await offered(page)).toEqual(['+ Add to my shelf', '+ Add to my shelf']);
+});
+
+// Signed out there's no shelf to add to: no + Add to my shelf and no "On your shelf" beside the titles, and under the
+// list one Make a shelf, the page's black button (the bar's + is outlined, as on home)
+test('signed out, a shelf\'s page offers Make a shelf, not + Add to my shelf', async ({ page }) => {
+  const errors = watchErrors(page);
+  await mockNetwork(page);
+  await open(page, `/u/?mira&shelf=${theirs.id}`);
+  await expect(rows(page)).toHaveCount(2);
+  expect(await offered(page)).toEqual(['', '']);
+  await expect(page.locator('#oneItems').getByRole('button')).toHaveCount(0);
+  expect(await page.locator('main').innerText()).not.toMatch(/add to my shelf|on your shelf|your shelf/i);   // what shows
+  for (const t of ['Edit', 'Make private', 'Make public', 'Delete']) await expect(page.locator('main').getByRole('button', { name: t, exact: true })).toHaveCount(0);
+  await expect(page.locator('main').getByRole('link', { name: 'Edit', exact: true })).toHaveCount(0);
+  const make = page.locator('main').getByRole('link', { name: 'Make a shelf' });
+  await expect(make).toHaveAttribute('href', '../build/');
+  const list = await page.locator('#oneItems').boundingBox(), at = await make.boundingBox();
+  expect(at.y).toBeGreaterThan(list.y + list.height);                                           // under the list
+  const bg = el => getComputedStyle(el).backgroundColor;
+  expect(await make.evaluate(bg)).toBe('rgb(0, 0, 0)');
+  expect(await page.locator('header.top .add').evaluate(bg)).toBe('rgb(255, 255, 255)');      // one black button a screen
+  await make.click();
+  await expect(page).toHaveURL(/\/build\/$/);
+  expect(errors).toEqual([]);
+});
+test('signed in, a shelf\'s page has no Make a shelf under the list', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, `/u/?mira&shelf=${theirs.id}`);
+  await expect(rows(page)).toHaveCount(2);
+  await expect(page.locator('main').getByRole('link', { name: 'Make a shelf' })).toBeHidden();
 });
 
 test('if your own shelf can\'t be read, every title is offered, as before', async ({ page }) => {
