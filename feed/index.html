@@ -222,8 +222,9 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.q
 const feed = {scope:'', last:null, run:0, logs:true};   // logs: false once the database says activity() isn't there
 const avatar = x => `<a class="fa" href="${esc(profileUrl(x.username))}" tabindex="-1" aria-hidden="true">${x.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(x.avatar_key)}`)}" alt="" loading="lazy">` : esc(((x.display_name || '').trim() || x.username).trim()[0] || '·')}</a>`;
 const when = (t, text) => `<span class="ago">· <time datetime="${esc(t)}" title="${esc(new Date(t).toLocaleString())}">${text}</time></span>`;
+const COVER = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cover')) || 72;   // how wide a log's cover is (site.css)
 // one line: "@abc shelved my films · 2h" (in YOU: "You shelved…", and a private shelf says so), its card under it;
-// or "@abc watched Gummo · today", its cover, worn by how long ago that was, and the caption beside it
+// or "@abc watched Gummo · today", its cover, small, worn by how long ago that was, and the caption beside it
 function item(x){
   const li = document.createElement('li'), who = esc(profileUrl(x.username)), by = `<a href="${who}">${x.mine ? 'You' : '@' + esc(x.username)}</a>`;
   li.className = 'item';
@@ -233,7 +234,7 @@ function item(x){
     li.innerHTML = `${avatar(x)}<p class="line">${by} ${verb} <b>${esc(x.title)}</b> ${when(x.at, day(x.at))}</p>
       <div class="logbody"><span class="cover"></span>${x.caption ? `<p class="say">${esc(x.caption)}</p>` : ''}</div>`;
     li.querySelector('.cover').append(Wear.cover({src: x.cover_src ? `${WORKER}/img?url=${encodeURIComponent(x.cover_src.replace(/^url:/, ''))}` : '', seed: x.id, at: x.at,
-      label: `${label}, ${verb} by @${x.username}`}));
+      label: `${label}, ${verb} by @${x.username}`, width: COVER}));
     return li;
   }
   const to = esc(profileUrl(x.username, x.id)), shelf = Shelf.shelfName({name: x.name, caption: x.caption});

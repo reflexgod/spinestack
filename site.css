@@ -29,6 +29,7 @@
   --btn-pad:7px 12px;
   --cards:6; --card-gap:10px;   /* shelf cards: six across the column (150px each), 10px apart */
   --card:150px;                 /* a card on its own (in the feed) is that wide too */
+  --cover:72px;                 /* a logged film's or book's cover, with its caption beside it (2:3, so 108px tall) */
 }
 @media (max-width:820px){ :root{--cards:4} }
 @media (max-width:640px){ :root{--gutter:16px; --fs-logo:15px; --cards:3} }
@@ -147,13 +148,13 @@ textarea{resize:vertical;line-height:1.5}
 .items .line a:hover,.items .line a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
 .items .ago{color:var(--grey);font-size:var(--fs-small);font-variant-numeric:tabular-nums;white-space:nowrap}
 .items .pic{grid-column:2;width:var(--card)}
-/* a film or a book logged ("@abc watched Gummo · today"): its cover, worn (wear.js), the size of a card, and the
-   caption beside it, or under it when there's no room */
+/* a film or a book logged ("@abc watched Gummo · today"): its cover, worn (wear.js), small, with the caption beside
+   it on every width (a phone too). A shelf saved keeps its card */
 .items .line b{font-weight:500}
-.items .logbody{grid-column:2;display:flex;flex-wrap:wrap;gap:var(--s3) var(--s4);align-items:flex-start;min-width:0}
-.items .cover{display:block;flex:none;width:var(--card);line-height:0}
+.items .logbody{grid-column:2;display:flex;gap:var(--s3);align-items:flex-start;min-width:0}
+.items .cover{display:block;flex:none;width:var(--cover);line-height:0}
 .items .cover canvas{display:block;width:100%;height:auto}
-.items .say{margin:0;flex:1 1 220px;min-width:0;max-width:56ch;white-space:pre-line;overflow-wrap:anywhere}
+.items .say{margin:0;flex:1 1 0;min-width:0;max-width:56ch;white-space:pre-line;overflow-wrap:anywhere}
 /* one person's own lines, on their profile: no photo beside each */
 .items.solo .item{grid-template-columns:minmax(0,1fr)}
 .items.solo .pic,.items.solo .logbody{grid-column:1}

@@ -42,19 +42,24 @@ test('a line says who shelved or logged what and how long ago; a shelf\'s card o
   text = (await lines(page).allTextContents()).map(t => t.replace(/\s+/g, ' ').trim());
   expect(text[20]).toBe('@longusername_twenty1 shelved shelf number 17 · 2w');
   expect(text[21]).toBe('@longusername_twenty1 watched Kids · 1mo');
-  // a log: the title isn't a link (there's no page for a film), its cover is the size of a card, in line with the
-  // text, and the caption is beside it
+  // a log: the title isn't a link (there's no page for a film), its cover is small (72 x 108px, not a card's 150 x
+  // 225), in line with the text, and the caption is beside it, on a phone too
   const log = page.locator('#items .item.log').first(), cover = log.locator('.cover canvas');
   await expect(log.locator('.line a')).toHaveCount(1);
   await expect(log.locator('.line b')).toHaveText('Gummo');
   await expect(log.locator('time')).toHaveAttribute('datetime', LOGS[0].created_at);
   await expect(cover).toHaveAttribute('aria-label', 'Gummo (1997), watched by @mira');
   const c = await cover.boundingBox(), line = await log.locator('.line').boundingBox(), say = await log.locator('.say').boundingBox();
-  expect(Math.round(c.width)).toBe(150);
-  expect(Math.round(c.height)).toBe(225);
+  expect(Math.round(c.width)).toBe(72);
+  expect(Math.round(c.height)).toBe(108);
   expect(Math.abs(c.x - line.x)).toBeLessThanOrEqual(1);
   await expect(log.locator('.say')).toHaveText('The bathtub scene. Still thinking about it.');
-  if (!test.info().project.name.startsWith('phone')) expect(say.x).toBeGreaterThan(c.x + c.width);   // beside it; under it on a phone
+  expect(say.x).toBeGreaterThan(c.x + c.width);   // beside it
+  expect(Math.abs(say.y - c.y)).toBeLessThanOrEqual(1);
+  expect(say.width).toBeGreaterThan(200);          // with room to read it, on a phone too
+  expect((await log.boundingBox()).height).toBeLessThan(160);   // a log is a line and a small cover (it was about 300px on a phone)
+  // drawn for that size, so it's sharp: the canvas has a pixel for each of the screen's
+  expect(await cover.evaluate(el => el.width / (el.getBoundingClientRect().width * Math.min(2, devicePixelRatio)))).toBeCloseTo(1, 1);
   // older, more worn: today nearly new, a week faded, a month worn
   const worn = async title => page.locator('#items .item.log').filter({ has: page.locator('.line b', { hasText: new RegExp(`^${title}$`) }) }).locator('canvas')
     .evaluate(el => ({ fade: +el.dataset.fade, wear: +el.dataset.wear }));

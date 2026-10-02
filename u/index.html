@@ -1172,6 +1172,7 @@ document.querySelectorAll('.statlink').forEach(d => {
    each log has Delete. Logs come 20 at a time from the logs table (docs/proposed-0007-logs-watchlist.sql); until it's
    there, the shelves alone. ---------- */
 const ACTS = 20;
+const COVER = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cover')) || 72;   // how wide a log's cover is (site.css)
 const acts = {logs: [], done: false, shown: 0, run: 0};
 const when = (t, text) => `<span class="ago">· <time datetime="${esc(t)}" title="${esc(new Date(t).toLocaleString())}">${text}</time></span>`;
 function actLine(x){
@@ -1182,7 +1183,7 @@ function actLine(x){
     li.classList.add('log');
     li.innerHTML = `<p class="line">${who} ${verb} <b>${esc(l.title)}</b> ${when(l.created_at, day(l.created_at))}${view.mine ? ` <button class="dash sm grey" type="button" data-unlog="${esc(l.id)}">Delete</button>` : ''}</p>
       <div class="logbody"><span class="cover"></span>${l.caption ? `<p class="say">${esc(l.caption)}</p>` : ''}</div>`;
-    li.querySelector('.cover').append(Wear.cover({src: coverOf(l.cover_src), seed: l.id, at: l.created_at, label: `${l.title}${l.year ? ` (${l.year})` : ''}, ${verb} by @${p.username}`}));
+    li.querySelector('.cover').append(Wear.cover({src: coverOf(l.cover_src), seed: l.id, at: l.created_at, label: `${l.title}${l.year ? ` (${l.year})` : ''}, ${verb} by @${p.username}`, width: COVER}));
     return li;
   }
   const s = x.shelf, name = shelfName(s), src = previewSrc(s), to = esc(pageUrl(p.username, s.id)), at = savedAt(s);

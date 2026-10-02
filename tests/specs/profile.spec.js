@@ -83,6 +83,9 @@ test('Activity: a line for each shelf saved and each film or book logged, newest
   const log = page.locator('#acts .item.log').first();
   await expect(log.locator('.cover canvas')).toHaveAttribute('aria-label', 'Gummo (1997), watched by @mira');
   await expect(log.locator('.say')).toHaveText('The bathtub scene. Still thinking about it.');
+  const cov = await log.locator('.cover canvas').boundingBox(), said = await log.locator('.say').boundingBox();
+  expect([Math.round(cov.width), Math.round(cov.height)]).toEqual([72, 108]);   // small, as on the feed
+  expect(said.x).toBeGreaterThan(cov.x + cov.width);
   const first = page.locator('#acts .item:not(.log)').first(), mira = PEOPLE[1], shelf = SHELVES[1];
   await expect(first.locator('.line a').nth(1)).toHaveAttribute('href', `/u/?mira&shelf=${shelf.id}`);
   await expect(first.locator('.pic')).toHaveAttribute('href', `/u/?mira&shelf=${shelf.id}`);
