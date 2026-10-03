@@ -488,6 +488,24 @@ for (const signedIn of [false, true]) {
   });
 }
 
+// on every page, signed in and out, as it stands once it has loaded: no "!", no arrows in the text, "Welcome" once at
+// most, and an ellipsis only on something under way (none is, by then)
+for (const signedIn of [false, true]) {
+  test(`no "!", no arrows, no stray ellipsis and one "Welcome" at most on any page, signed ${signedIn ? 'in' : 'out'}`, async ({ page }) => {
+    await mockNetwork(page, { signedIn });
+    for (const pg of [...PAGES, { name: 'own profile', path: '/u/?tester' }, { name: 'own profile, watchlist', path: '/u/?tester#watchlist' }, { name: 'a shelf', path: '/u/?mira&shelf' }]){
+      await open(page, pg.path);
+      const text = await page.locator('body').innerText();
+      expect(text, pg.name).not.toMatch(/!|→|←|↗/);
+      expect(text, pg.name).not.toMatch(/…/);
+      expect((text.match(/Welcome/g) || []).length, pg.name).toBeLessThanOrEqual(1);
+      // buttons and text actions in their own case: only the bar, section headings and tiny labels are in capitals
+      const shouting = await page.locator('main .btn:visible, main .dash:visible, .mkbar .btn:visible').evaluateAll(els => els.filter(e => getComputedStyle(e).textTransform === 'uppercase').map(e => e.textContent.trim()));
+      expect(shouting, pg.name).toEqual([]);
+    }
+  });
+}
+
 test('old builder links at the root go on to /build/', async ({ page }) => {
   await mockNetwork(page);
   await page.goto('/?open=aaaaaaaa-aaaa-4aaa-8aaa-000000000000#shelf');

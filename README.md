@@ -48,6 +48,10 @@ Letterboxd's habits are the rule. Each point here has a check in the tests.
   so in six words at most, in words no other empty place uses ("Nothing saved for later.", "No public shelves yet."),
   with a link only where there's somewhere to go. The sign-in sheet is its heading and Continue with Google; it has a
   line only when it was opened on the way somewhere ("Sign in to start your shelf.").
+- **No "!", no arrows in the text, an ellipsis only on something under way** ("Loading…", "Saving…"), and "Welcome"
+  once at most. The way back from a shelf's page is "Back to @name". Buttons and text actions are in their own case
+  (sentence case); only the bar's places and + ADD, section headings and the tiny labels ("Follows you", "private",
+  "PRO", a field's name) are in capitals.
 
 ## 1. Put the website on GitHub Pages
 

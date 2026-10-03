@@ -16,7 +16,7 @@ for (const at of ['/nope', '/shelves/nothing/here/', '/u/mira/shelf.html']) {
     // the shared stylesheet reached it from this depth: our type, and the button
     expect(await page.locator('body').evaluate(el => getComputedStyle(el).fontSize)).toBe('13px');
     const home = page.locator('main').getByRole('link', { name: 'Back home' });
-    expect(await home.evaluate(el => getComputedStyle(el).textTransform)).toBe('uppercase');
+    expect(await home.evaluate(el => getComputedStyle(el).textTransform)).toBe('none');   // in its own case
     expect(bad, 'everything the page asks for is there').toEqual([]);
     const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(sideways).toBeLessThanOrEqual(0);

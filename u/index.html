@@ -29,7 +29,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Geist+Mono:wght@400;500&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261011a">
+<link rel="stylesheet" href="../site.css?v=20261011b">
 <style>
 /* the profile (site.css has the cards, the tabs, the sheets and everything shared) */
 .phead{display:grid;grid-template-columns:96px minmax(0,1fr) auto;grid-template-areas:"ava who stats";gap:0 var(--s5);align-items:center}
@@ -47,7 +47,7 @@
 .handle{color:var(--grey);margin:var(--s1) 0 0;font-size:var(--fs-card)}
 .pbtns{display:flex;gap:var(--s2);align-items:center;position:relative;margin-top:var(--s3)}
 .menu{position:absolute;top:calc(100% + var(--s1));left:0;z-index:6;background:var(--paper);border:1px solid var(--ink);border-radius:var(--radius);padding:var(--s1) 0;min-width:160px;display:grid}
-.menu button,.menu a{background:none;border:0;font:500 var(--fs-nav) var(--mono);text-transform:uppercase;letter-spacing:var(--track);text-align:left;text-decoration:none;padding:var(--s2) var(--s4);cursor:pointer;color:var(--ink)}
+.menu button,.menu a{background:none;border:0;font:500 var(--fs-nav) var(--mono);text-align:left;text-decoration:none;padding:var(--s2) var(--s4);cursor:pointer;color:var(--ink)}
 .menu button:hover,.menu a:hover,.menu button:focus-visible,.menu a:focus-visible{background:var(--wash);outline:0}
 /* the ··· menu of one of your shelf cards: one menu for them all, put by the button that was pressed */
 .menu.cardmenu{position:fixed;top:0;left:0;z-index:20}
@@ -316,7 +316,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
         <div class="pgrid" id="pgrid">
           <div class="pmain">
             <section id="watchSec" hidden>
-              <h2>Watchlist <small id="watchCount"></small> <a class="more" id="watchAll" href="#watchlist">See all →</a></h2>
+              <h2>Watchlist <small id="watchCount"></small> <a class="more" id="watchAll" href="#watchlist">See all</a></h2>
               <ol class="wstrip" id="watchStrip"></ol>
               <p class="grey" id="watchNone" hidden>Nothing saved for later.</p>
             </section>
@@ -359,7 +359,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
     </div>
 
     <section id="viewShelf" hidden>
-      <a class="back" id="backLink" href="#">← Profile</a>
+      <a class="back" id="backLink" href="#">Back to profile</a>
       <div class="shead">
         <div class="stitle">
           <!-- [html-validate-disable-next empty-heading -- the shelf's name is filled in once it loads; the page is hidden until then] -->
@@ -444,7 +444,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 <script src="../cards.js?v=20261002a"></script>
 <script src="../spinetip.js?v=20261004a"></script>
 <script src="../wear.js?v=20261004a"></script>
-<script src="../nav.js?v=20261011a"></script>
+<script src="../nav.js?v=20261011b"></script>
 <script>
 (() => {
 /* A profile: /u/?username, and its shelf on its own page: /u/?username&shelf (one shelf each), or a shelf by its id,
@@ -971,7 +971,7 @@ async function showShelf(id){
   document.querySelector('.phead').hidden = true; $('#privNote').hidden = true;   // the shelf has its own heading, and its maker is in it
   const p = view.profile, s = view.shelves.find(x => x.id === id), mine = view.mine;
   $('#backLink').href = pageUrl(p.username);
-  $('#backLink').textContent = '← @' + p.username;
+  $('#backLink').textContent = 'Back to @' + p.username;
   $('#oneBy').hidden = $('#shareBtn').hidden = !s; $('#oneOn').hidden = true;
   $('#oneActs').hidden = !s && !(mine && !id);
   shown.shelf = s || null; shown.rows = []; shown.list = []; shown.onMine = null;

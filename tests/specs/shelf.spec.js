@@ -260,13 +260,13 @@ test('the way back is plain grey text, a small action is dashed, and one that lo
   const look = loc => loc.evaluate(el => { const s = getComputedStyle(el); return { dashed: s.backgroundImage.includes('repeating-linear-gradient'), grey: s.color === 'rgb(107, 107, 107)', capitals: s.textTransform === 'uppercase' }; });
   await open(page, `/u/?mira&shelf=${theirs.id}`);
   const back = page.locator('#backLink');
-  await expect(back).toHaveText('← @mira');
+  await expect(back).toHaveText('Back to @mira');
   expect(await look(back)).toEqual({ dashed: false, grey: true, capitals: false });   // going back: it does nothing
   expect(await back.evaluate(el => getComputedStyle(el).fontWeight)).toBe('400');
-  expect(await look(page.getByRole('button', { name: 'Report' }))).toEqual({ dashed: true, grey: false, capitals: true });   // a small action
+  expect(await look(page.getByRole('button', { name: 'Report' }))).toEqual({ dashed: true, grey: false, capitals: false });   // a small action
   await open(page, `/u/?tester&shelf=${mine.id}`);
-  expect(await look(page.getByRole('button', { name: 'Make private' }))).toEqual({ dashed: true, grey: false, capitals: true });
-  expect(await look(page.getByRole('button', { name: 'Delete' }))).toEqual({ dashed: true, grey: true, capitals: true });    // it loses the shelf
+  expect(await look(page.getByRole('button', { name: 'Make private' }))).toEqual({ dashed: true, grey: false, capitals: false });
+  expect(await look(page.getByRole('button', { name: 'Delete' }))).toEqual({ dashed: true, grey: true, capitals: false });    // it loses the shelf
   await back.click();
   await expect(page).toHaveURL(/\/u\/\?tester$/);
 });

@@ -38,7 +38,7 @@
 .navmenu{position:fixed;z-index:50;inset:auto;left:0;top:0;margin:0;min-width:180px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow:auto;padding:var(--s1,4px) 0;
   border:1px solid var(--ink,#000);border-radius:var(--radius,3px);background:var(--paper,#fff);color:var(--ink,#000)}
 .navmenu a,.navmenu button{display:block;width:100%;box-sizing:border-box;text-align:left;background:none;border:0;border-radius:0;margin:0;padding:var(--s2,8px) var(--s4,16px);
-  font:500 var(--fs-nav,12px)/1.4 var(--mono,monospace);text-transform:uppercase;letter-spacing:var(--track,1px);color:inherit;text-decoration:none;white-space:nowrap;cursor:pointer}
+  font:500 var(--fs-nav,12px)/1.4 var(--mono,monospace);color:inherit;text-decoration:none;white-space:nowrap;cursor:pointer}
 .navmenu a:hover,.navmenu button:hover,.navmenu a:focus-visible,.navmenu button:focus-visible{background:var(--wash,#F3F3F3);outline:0}
 .navmenu a[aria-current]{font-weight:700}
 .navmenu hr{border:0;border-top:1px solid var(--hair,#D9D9D9);margin:var(--s1,4px) 0}
@@ -242,7 +242,7 @@
   .wmore{display:grid;place-items:center;min-width:44px;height:44px;padding:0;border:0;background:none;color:var(--ink,#000);font:700 var(--fs-btn,11px) var(--mono,monospace);letter-spacing:.1em;cursor:pointer}
   .wmenu.up{top:auto;bottom:100%}
   .wmenu{position:absolute;top:100%;right:0;z-index:8;background:var(--paper,#fff);border:1px solid var(--ink,#000);border-radius:var(--radius,3px);padding:var(--s1,4px) 0;white-space:nowrap}
-  .wmenu button{display:block;width:100%;min-height:44px;text-align:left;background:none;border:0;padding:0 var(--s4,16px);font:500 var(--fs-nav,12px) var(--mono,monospace);text-transform:uppercase;letter-spacing:var(--track,1px);color:inherit;cursor:pointer}
+  .wmenu button{display:block;width:100%;min-height:44px;text-align:left;background:none;border:0;padding:0 var(--s4,16px);font:500 var(--fs-nav,12px) var(--mono,monospace);color:inherit;cursor:pointer}
 }`;
   document.head.appendChild(wcss);
   async function addToWatchlist(item, from){

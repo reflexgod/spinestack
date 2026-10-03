@@ -38,9 +38,11 @@ for (const pg of [...PAGES, { name: 'own profile', path: '/u/?tester' }]) {
     // section headings: 12px uppercase grey, 1px apart, a hairline under them
     const h2 = page.locator('main h2:visible').first();
     if (await h2.count()) expect(await css(h2, 'fontSize', 'textTransform', 'letterSpacing', 'color', 'borderBottomWidth')).toEqual({ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', color: 'rgb(107, 107, 107)', borderBottomWidth: '1px' });
-    // buttons: 11px uppercase weight 600, 7px 12px, radius 3px
+    // buttons: 11px weight 600, radius 3px; in the bar in its capitals (+ ADD), in the page in their own case
     const btn = page.locator('.btn:visible').first();
     expect(await css(btn, 'fontSize', 'fontWeight', 'textTransform', 'borderTopLeftRadius')).toEqual({ fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', borderTopLeftRadius: '3px' });
+    const inPage = page.locator('main .btn:visible, .mkbar .btn:visible').first();
+    if (await inPage.count()) expect(await css(inPage, 'textTransform')).toEqual({ textTransform: 'none' });
     const any = page.locator('main .btn:visible, .mkbar .btn:visible').first();
     if (await any.count()) expect(await css(any, 'paddingTop', 'paddingLeft')).toEqual({ paddingTop: '7px', paddingLeft: '12px' });
     // one black button a screen: + ADD (its ▾ is part of it), or Save in the builder
