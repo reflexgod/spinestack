@@ -83,6 +83,7 @@ test('Watchlist: the cover and Add to watchlist; the database\'s answers when it
   const d = dialog(page);
   await expect(d.locator('#addCov img')).toHaveAttribute('alt', 'The cover of Gummo');
   await expect(d.getByRole('textbox', { name: /Caption/ })).toBeHidden();
+  await expect(d.locator('#addCov canvas.worn')).toHaveCount(0);   // clean: wear is only for a log
   await expect(d.locator('#addFeedLine')).toHaveText('It shows on your profile, under Watchlist, which holds 6.');
   const req = sent(page, 'watchlist');
   await d.getByRole('button', { name: 'Add to watchlist' }).click();
@@ -159,4 +160,16 @@ test('a database without logs (0007 not run on it): Post says logging isn\'t ope
   await dialog(page).getByRole('radio', { name: 'Watchlist' }).check();
   await dialog(page).getByRole('button', { name: 'Add to watchlist' }).click();
   await expect(dialog(page).locator('#addStatus')).toHaveText('The watchlist isn’t open yet. Try again soon.');
+});
+
+test('Watchlist after Log it: the picked title\'s cover turns clean, with no wear and no dog-ear', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/feed/?everyone');
+  await pick(page, 'Log it');
+  const d = dialog(page);
+  await expect(d.locator('#addCov canvas.worn')).toHaveCount(1);   // a log: as the feed shows it
+  await d.getByRole('radio', { name: 'Watchlist' }).check();
+  await expect(d.locator('#addCov img')).toHaveAttribute('alt', 'The cover of Gummo');
+  await page.waitForTimeout(300);   // a worn cover still on its way doesn't come back over it
+  await expect(d.locator('#addCov canvas')).toHaveCount(0);
 });
