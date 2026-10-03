@@ -74,8 +74,6 @@
 @media (pointer:coarse){ .spines a{min-width:44px} }
 .signedout .top .add.primary{background:var(--paper);color:var(--ink)}
 .signedout .top .add.primary:hover{background:var(--wash)}
-/* how it works, short: only here */
-.how ol{margin:0;padding-left:1.6em;display:grid;gap:var(--s1);max-width:72ch}
 .welcome h1{margin:0}
 /* ⚡ All activity, at the right of the row's heading */
 h2 .more.zapped{display:inline-flex;align-items:center;gap:var(--s1)}
@@ -144,14 +142,6 @@ h2 .more.zapped svg{width:12px;height:12px;flex:none}
       <h1>Shelve the films and books you love, with their real spines.</h1>
       <a class="btn primary" id="start" href="build/">Make a shelf</a>
     </section>
-    <section class="how">
-      <h2>How it works</h2>
-      <ol>
-        <li>Type a film or a book.</li>
-        <li>We find a scan of its DVD or book cover and cut out the spine.</li>
-        <li>No clean scan? You get a spine made from the poster or cover.</li>
-      </ol>
-    </section>
     <section id="outJust">
       <h2>Just shelved <a class="more" href="shelves/">More</a></h2>
       <p class="grey" id="outState" role="status">Loading…</p>
@@ -207,7 +197,7 @@ h2 .more.zapped svg{width:12px;height:12px;flex:none}
 <script src="nav.js?v=20261011b"></script>
 <script>
 (() => {
-/* Home. Signed out: a wall of the newest spines, one line about the site and Make a shelf, how it works, then the
+/* Home. Signed out: a wall of the newest spines, one line about the site and Make a shelf, and nothing else before the
    newest shelves and the people who made them. Signed in: a welcome, a card for each person you follow with the
    newest thing they shelved or logged (activity(), 0007), then everyone's newest shelves (feed(), 0006). */
 const $ = s => document.querySelector(s);

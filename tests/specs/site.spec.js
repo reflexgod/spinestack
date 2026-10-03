@@ -207,7 +207,7 @@ const strip = page => page.locator('#spines').evaluate(el => {
     links: [...el.querySelectorAll('a')].map(a => { const r = a.getBoundingClientRect(); return { x: r.left, w: r.width }; }) };
 });
 
-test('signed-out home: a wall of the newest spines from different shelves on a shelf line, then one line and Make a shelf in black; how it works; then the newest shelves', async ({ page }) => {
+test('signed-out home: a wall of the newest spines from different shelves on a shelf line, then one line and Make a shelf in black, and nothing else before the newest shelves', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page);
   const asked = page.waitForRequest(r => r.url().includes('/rest/v1/shelf_items?'));
@@ -263,9 +263,11 @@ test('signed-out home: a wall of the newest spines from different shelves on a s
   expect(Math.abs(at.x - main.x)).toBeLessThanOrEqual(1);
   expect(at.y + at.height).toBeLessThanOrEqual(page.viewportSize().height);
   await expect(page.getByText(/lets you/i)).toHaveCount(0);   // the six tiles are gone
-  // how it works, short, here (it was in every page's footer)
-  await expect(page.locator('#out h2:visible')).toHaveText([/^How it works/, /^Just shelved/, /^Recently active/]);
-  await expect(page.locator('main .how li')).toHaveText(['Type a film or a book.', 'We find a scan of its DVD or book cover and cut out the spine.', 'No clean scan? You get a spine made from the poster or cover.']);
+  // no How it works: under the wall, the one line and Make a shelf, then Just shelved
+  await expect(page.locator('#out h2:visible')).toHaveText([/^Just shelved/, /^Recently active/]);
+  await expect(page.locator('main ol')).toHaveCount(0);
+  expect(await page.locator('#out > section:visible').evaluateAll(s => s.map(x => x.id || x.className))).toEqual(['hero', 'outJust', 'stackersSec']);
+  expect(await page.locator('.hero > :visible').evaluateAll(els => els.map(e => e.tagName.toLowerCase()))).toEqual(['figure', 'h1', 'a']);
   await expect(page.locator('#outGrid li')).toHaveCount(12);
   await expect(page.locator('#outGrid li').first().locator('.cap')).toHaveText('a much longer shelf name that has to be cut short');   // the newest, now there's no one shelf above
   await expect(page.locator('#stackers li')).toHaveCount(3);

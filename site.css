@@ -198,8 +198,7 @@ textarea{resize:vertical;line-height:1.5}
 
 /* ---------- the footer: one line of small print, the same on every page: About · Privacy · hello@shelfstackd.com.
    About is the Credits on the privacy page (where the film and book data and the search come from; TMDB's logo is
-   there). It sits in the column, under a hairline the width of the window, as the top bar's contents do over one.
-   How it works is on home ---------- */
+   there). It sits in the column, under a hairline the width of the window, as the top bar's contents do over one. ---------- */
 footer{margin-top:var(--s6);border-top:1px solid var(--hair);padding:var(--s4) max(var(--gutter), calc((100% - var(--col))/2)) var(--s5);font-size:var(--fs-small);color:var(--grey)}
 footer p{margin:0}
 .fnav{display:flex;flex-wrap:wrap;gap:var(--s1) var(--s2)}
