@@ -29,7 +29,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Geist+Mono:wght@400;500&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261011b">
+<link rel="stylesheet" href="../site.css?v=20261011d">
 <style>
 /* the profile (site.css has the cards, the tabs, the sheets and everything shared) */
 .phead{display:grid;grid-template-columns:96px minmax(0,1fr) auto;grid-template-areas:"ava who stats";gap:0 var(--s5);align-items:center}
@@ -43,7 +43,7 @@
 /* under the bio: people you follow who follow them */
 .mutual{margin:0;font-size:var(--fs-small);color:var(--grey);overflow-wrap:anywhere}
 .mutual a{color:var(--ink);font-weight:500;text-decoration:none}
-.mutual a:hover,.mutual a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
+.mutual a:hover,.mutual a:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .handle{color:var(--grey);margin:var(--s1) 0 0;font-size:var(--fs-card)}
 .pbtns{display:flex;gap:var(--s2);align-items:center;position:relative;margin-top:var(--s3)}
 .menu{position:absolute;top:calc(100% + var(--s1));left:0;z-index:6;background:var(--paper);border:1px solid var(--ink);border-radius:var(--radius);padding:var(--s1) 0;min-width:160px;display:grid}
@@ -71,12 +71,12 @@
 /* FOLLOWING and FOLLOWERS open their lists: the whole number-and-label is the target, the label is the button */
 .statlink{cursor:pointer}
 .statlink button{font:inherit;color:inherit;text-transform:inherit;letter-spacing:inherit;background:none;border:0;padding:0;cursor:pointer;outline-offset:4px}
-.statlink:hover dd,.statlink:focus-within dd{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:4px}
+.statlink:hover dd,.statlink:focus-within dd{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px}
 /* on a phone the numbers are one small line under the name instead ("2 spines · 1 following · 2 followers"), each a
    link: the shelf's page, Following, Followers. A band of three big numbers there is a stats bar */
 .counts{display:none;margin:var(--s1) 0 0;font-size:var(--fs-card);color:var(--grey)}
 .counts a{display:inline-block;text-decoration:none}
-.counts a:hover,.counts a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
+.counts a:hover,.counts a:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .counts b{font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
 @media (pointer:coarse){ .counts a{position:relative} .counts a::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))} }   /* 44px to press (see site.css) */
 @media (pointer:coarse) and (max-width:640px){ .pbtns{margin-top:var(--s5)} }   /* and the buttons under the line a press away from it */
@@ -146,7 +146,7 @@
 .titles .tt b span{font-weight:400;color:var(--grey)}
 .titles .tt > span{color:var(--grey);font-size:var(--fs-small);overflow-wrap:anywhere}
 .titles .tt a{color:var(--ink);font-weight:500;text-decoration:none}
-.titles .tt a:hover,.titles .tt a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
+.titles .tt a:hover,.titles .tt a:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .tacts{display:flex;gap:var(--s2) var(--s3);align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .pmain .grey{margin:0}
 #panelA,#panelN,#viewShelf{margin-top:var(--s5)}
@@ -158,7 +158,8 @@
 #netPeople{max-width:520px;margin-top:var(--s4)}
 #netNone{margin:var(--s4) 0 0}
 /* a link in an empty list's line (Find people): ink, our dashed underline */
-#friendsNone a,#netNone a{color:var(--ink);text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
+#friendsNone a,#netNone a{color:var(--ink);text-decoration:none}
+#friendsNone a:hover,#netNone a:hover,#friendsNone a:focus-visible,#netNone a:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 #actsMore,#netMore{margin-top:var(--s5)}
 /* one shelf on its own page: the shelf itself, as the profile's hero has it (the spines cut out of the story, on the
    wash, with no caption), so on a phone the spines are on the first screen; on a wide window what's on it sits to its
@@ -179,7 +180,7 @@
 .iconbtn svg{width:14px;height:14px;display:block}
 .sby{margin:0;display:flex;gap:var(--s1) var(--s2);align-items:center;flex-wrap:wrap}
 .sby a{font-weight:500;text-decoration:none}
-.sby a:hover,.sby a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
+.sby a:hover,.sby a:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .sacts{display:flex;gap:var(--s3) var(--s4);align-items:center;flex-wrap:wrap;margin-top:var(--s2)}
 .onshelf{max-width:680px;min-width:0}
 .spines{list-style:none;margin:0;padding:0}
@@ -196,13 +197,13 @@
 .row{display:flex;gap:var(--s3) var(--s4);align-items:center;flex-wrap:wrap}
 /* a shelf's name that renames it when pressed (the hero's, and a shelf page's heading) */
 .name{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;cursor:text;text-align:left;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
-.name:hover,.name:focus-visible{text-decoration:underline dashed var(--grey);text-decoration-thickness:1px;text-underline-offset:3px}
+.name:hover,.name:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .featmeta .tag{flex:none}
 /* exactly the height of the name it replaces, so nothing below it moves (a link that moves mid-press misses its click) */
 input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1);min-width:0;width:100%;max-width:320px}
 .tag{vertical-align:1px}
 .addbio{color:var(--grey);text-decoration:none}
-.addbio:hover,.addbio:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
+.addbio:hover,.addbio:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .none{display:grid;justify-items:center;gap:var(--s3);padding:var(--s5) 0 var(--s2);text-align:center}
 .hero .none{padding:0}
 .none p{margin:0}
@@ -444,7 +445,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 <script src="../cards.js?v=20261002a"></script>
 <script src="../spinetip.js?v=20261004a"></script>
 <script src="../wear.js?v=20261004a"></script>
-<script src="../nav.js?v=20261011b"></script>
+<script src="../nav.js?v=20261011c"></script>
 <script>
 (() => {
 /* A profile: /u/?username, and its shelf on its own page: /u/?username&shelf (one shelf each), or a shelf by its id,

@@ -69,10 +69,10 @@ em.pro,.tag{font-style:normal;font-weight:700;font-size:9px;border:1px solid cur
 .btn.primary:hover{background:#222}
 .btn.full{width:100%}
 .btn:disabled{opacity:.5;cursor:default}
-/* a text button: our dashed underline */
-.dash{display:inline-block;background:none;border:0;padding:0 0 var(--s1);font:600 var(--fs-btn)/1.35 var(--mono);color:var(--ink);cursor:pointer;text-decoration:none;white-space:nowrap;
-  background-image:repeating-linear-gradient(90deg,var(--ink) 0 6px,transparent 6px 9px);background-size:100% 2px;background-repeat:no-repeat;background-position:left bottom}
-.dash.grey{color:var(--grey);background-image:repeating-linear-gradient(90deg,var(--grey) 0 6px,transparent 6px 9px)}
+/* a text button: plain, underlined on hover only. Delete, Remove and Clear are grey */
+.dash{display:inline-block;background:none;border:0;padding:0 0 var(--s1);font:600 var(--fs-btn)/1.35 var(--mono);color:var(--ink);cursor:pointer;text-decoration:none;white-space:nowrap}
+.dash:hover:not(:disabled),.dash:focus-visible{text-decoration:underline;text-underline-offset:3px}
+.dash.grey{color:var(--grey)}
 .dash:disabled{opacity:.5;cursor:default}
 
 /* ---------- fields ---------- */
@@ -147,7 +147,7 @@ textarea{resize:vertical;line-height:1.5}
 .items .fa img{width:100%;height:100%;object-fit:cover;display:block}
 .items .line{margin:0;min-width:0;overflow-wrap:anywhere}
 .items .line a{font-weight:500;text-decoration:none}
-.items .line a:hover,.items .line a:focus-visible{text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
+.items .line a:hover,.items .line a:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .items .ago{color:var(--grey);font-size:var(--fs-small);font-variant-numeric:tabular-nums;white-space:nowrap}
 .items .pic{grid-column:2;width:var(--card)}
 /* a film or a book logged ("@abc watched Gummo · today"): its cover, worn (wear.js), small, with the caption beside

@@ -141,6 +141,7 @@
   let shownKey;   // the photo in the bar now, so a repaint doesn't load it again
   function paint(s){
     state = {sb: (s && s.sb) || null, user: (s && s.user) || null, profile: (s && s.profile) || null};
+    if (state.sb && state.user) markKept();
     const p = state.profile;
     acctBtn.hidden = !p; signBtn.hidden = !!p || !!(s && s.unreachable); moreBtn.hidden = !p;   // the places (⚡ · Shelves · Members · search) stay as they are, in one order, whoever you are
     addWrap.classList.toggle('split', !!p);
@@ -226,15 +227,14 @@
      watchlist (add.js), then it says In watchlist. Signed out it's the sign-in sheet, and the title goes on once you're
      signed in. item: {kind, title, year, creator, cover}; from: whose log it came from (From friends). */
   const ICON_ADD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><line x1="12" x2="12" y1="7" y2="13"/><line x1="15" x2="9" y1="10" y2="10"/></svg>';   // Lucide bookmark-plus
-  const ICON_IN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><path d="m9 10 2 2 4-4"/></svg>';   // Lucide bookmark-check
   const wcss = document.createElement('style');
   wcss.textContent = `
 .wable{position:relative}
 .wbtn{position:absolute;top:var(--s1,4px);left:var(--s1,4px);z-index:2;display:grid;place-items:center;width:26px;height:26px;padding:0;border:1px solid var(--ink,#000);border-radius:var(--radius,3px);
   background:var(--paper,#fff);color:var(--ink,#000);cursor:pointer;opacity:0;transition:opacity .12s}
 .wbtn svg{width:14px;height:14px;display:block}
-.wable:hover .wbtn,.wbtn:focus-visible,.wbtn.in{opacity:1}
-.wbtn.in{background:var(--ink,#000);color:var(--paper,#fff);cursor:default}
+.wable:hover .wbtn,.wbtn:focus-visible{opacity:1}
+.win{display:inline-block;font-size:var(--fs-small,11px);color:var(--grey,#6B6B6B);white-space:nowrap}
 .wmorewrap{display:none}
 @media (pointer:coarse){
   .wbtn{display:none}
@@ -254,6 +254,17 @@
   }
   // the page's own toast, when add.js isn't the one saying it
   function say(msg){ const t = document.getElementById('toast'); if (!t) return; t.textContent = msg; t.hidden = false; clearTimeout(say.t); say.t = setTimeout(() => { t.hidden = true; }, 4200); }
+  // the titles already on your watchlist, read once a page is signed in, so their covers say In watchlist from the start
+  const keyOf = m => [m.kind === 'movie' ? 'movie' : 'book', String(m.title || '').trim().toLowerCase(), String(m.year || '')].join('|');
+  const onList = []; let keptKeys = null, asking = null;
+  function markKept(){
+    if (!keptKeys){
+      if (!asking && state.sb && state.user) asking = state.sb.from('watchlist').select('kind,title,year').eq('owner', state.user.id)
+        .then(({data}) => { keptKeys = new Set((data || []).map(keyOf)); markKept(); }, () => { asking = null; });
+      return;
+    }
+    for (const k of onList.splice(0)) if (keptKeys.has(k.key)) k.done(); else onList.push(k);
+  }
   function watchable(host, item, opt = {}){
     const name = item.title + (item.year ? ` (${item.year})` : '');
     host.classList.add('wable');
@@ -263,10 +274,9 @@
     more.type = 'button'; more.className = 'wmore'; more.textContent = '•••'; more.setAttribute('aria-label', `More for ${name}`); more.setAttribute('aria-haspopup', 'menu'); more.setAttribute('aria-expanded', 'false');
     const menu = document.createElement('div'); menu.className = 'wmenu'; menu.setAttribute('role', 'menu'); menu.hidden = true;
     const mi = document.createElement('button'); mi.type = 'button'; mi.setAttribute('role', 'menuitem'); mi.textContent = 'Add to watchlist'; menu.append(mi);
-    const done = () => {
-      b.classList.add('in'); b.innerHTML = ICON_IN; b.setAttribute('aria-label', `${name}: in watchlist`); b.title = 'In watchlist'; b.disabled = true;
-      mi.textContent = 'In watchlist'; mi.disabled = true;
-    };
+    // on your watchlist: a grey "In watchlist" where the ••• was, and no button
+    const state1 = document.createElement('span'); state1.className = 'win'; state1.textContent = 'In watchlist'; state1.hidden = true;
+    const done = () => { b.remove(); wrap.remove(); if (!state1.isConnected) (opt.moreIn ? opt.moreIn.append(state1) : host.after(state1)); state1.hidden = false; };
     const go = async e => { e.preventDefault(); e.stopPropagation(); menu.hidden = true; more.setAttribute('aria-expanded', 'false'); if (b.disabled) return; b.disabled = mi.disabled = true; const ok = await addToWatchlist(item, opt.from); if (ok) done(); else { b.disabled = mi.disabled = false; } };
     b.addEventListener('click', go); mi.addEventListener('click', go);
     more.addEventListener('click', e => {
@@ -283,6 +293,7 @@
     host.append(b);
     if (opt.moreIn) opt.moreIn.append(wrap); else host.after(wrap);
     if (opt.in) done();
+    onList.push({key: keyOf(item), done}); markKept();
     return {done};
   }
 
