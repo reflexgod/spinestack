@@ -52,6 +52,8 @@ Letterboxd's habits are the rule. Each point here has a check in the tests.
   once at most. The way back from a shelf's page is "Back to @name". Buttons and text actions are in their own case
   (sentence case); only the bar's places and + ADD, section headings and the tiny labels ("Follows you", "private",
   "PRO", a field's name) are in capitals.
+- **No dashed underlines.** Links and text actions are plain and underlined on hover only; Delete, Remove and Clear
+  are grey.
 
 ## 1. Put the website on GitHub Pages
 

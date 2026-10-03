@@ -598,7 +598,7 @@ test('Clear asks first, as Delete does: Cancel and Esc leave the spines, Clear t
   await addGummo(page);
   expect(await titles(page)).toEqual(['Gummo']);
   const clear = page.locator('#clear'), ask = page.getByRole('dialog', { name: 'Clear your shelf?' });
-  expect(await clear.evaluate(el => { const s = getComputedStyle(el); return [s.color, s.backgroundImage.includes('repeating-linear-gradient')]; })).toEqual(['rgb(107, 107, 107)', true]);
+  expect(await clear.evaluate(el => { const s = getComputedStyle(el); return [s.color, s.backgroundImage.includes('repeating-linear-gradient')]; })).toEqual(['rgb(107, 107, 107)', false]);
   // at the right of the Spines heading, on its line
   const h2 = await page.locator('#shelf h2').boundingBox(), at = await clear.boundingBox();
   expect(Math.abs(at.x + at.width - (h2.x + h2.width))).toBeLessThanOrEqual(1);

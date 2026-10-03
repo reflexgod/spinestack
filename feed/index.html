@@ -30,14 +30,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261011b">
+<link rel="stylesheet" href="../site.css?v=20261011d">
 <style>
 /* the feed: the tabs, then a line for each shelf saved (its card under it) and each film or book logged (its worn
    cover and caption under it); site.css has the tabs, the lines, the card, the cover and the rest */
 .items{margin-top:var(--s5)}
 .fnone{display:grid;justify-items:start;gap:var(--s3);margin:var(--s5) 0 0}
 .fnone p{margin:0}
-.linkish{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:3px}
+.linkish{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-decoration:none;text-decoration-thickness:1px;text-underline-offset:3px}
+.linkish:hover,.linkish:focus-visible{text-decoration:underline;text-underline-offset:3px}
 #state{margin:var(--s5) 0 0}
 #more{margin-top:var(--s6)}
 /* a log's ••• (a touch screen: Add to watchlist) at the top right of the log, so the caption keeps its width */
