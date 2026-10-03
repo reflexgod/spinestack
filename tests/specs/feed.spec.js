@@ -100,7 +100,7 @@ test('signed out: Everyone shows; Following and You ask you to sign in', async (
   await open(page, '/feed/');
   await expect(page.getByRole('tab', { name: 'Everyone' })).toHaveAttribute('aria-selected', 'true');
   await expect(lines(page)).toHaveCount(20);
-  for (const [tab, says] of [['You', /to see your own shelf and logs here/], ['Following', /to see what people you follow shelve and log/]]) {
+  for (const [tab, says] of [['You', /^Sign in to see your own\.$/], ['Following', /^Sign in to see who you follow\.$/]]) {
     await page.getByRole('tab', { name: tab }).click();
     await expect(lines(page)).toHaveCount(0);
     await expect(page.locator('#none')).toHaveText(says);

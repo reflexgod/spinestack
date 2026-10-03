@@ -98,12 +98,12 @@ test('full at 6: "Your watchlist is full (6). Remove one to add another." and no
   await expect(page.locator('#watchSec h2')).toContainText('6 of 6');
 });
 
-test('an empty watchlist: only the + and "Add a film or book you want to get to."', async ({ page }) => {
+test('an empty watchlist: only the + and "Your watchlist is empty."', async ({ page }) => {
   await mockNetwork(page, { signedIn: true, fresh: true });
   await open(page, '/u/?tester#watchlist');
   await expect(page.locator('#wGrid li')).toHaveCount(1);
   await expect(page.locator('#wGrid .wplus')).toBeVisible();
-  await expect(page.locator('#wNone')).toHaveText('Add a film or book you want to get to.');
+  await expect(page.locator('#wNone')).toHaveText('Your watchlist is empty.');
   await expect(page.locator('#wLine')).toBeHidden();
 });
 

@@ -15,7 +15,8 @@ test('signed out, settings asks you to sign in', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeFocused();
   await expect(page.locator('#page')).toBeHidden();
   await page.keyboard.press('Escape');
-  await expect(page.locator('#gate')).toHaveText(/Sign in to change your settings/);
+  await expect(page.locator('#gateText')).toBeHidden();   // the button alone: no line saying "sign in" over it
+  await expect(page.locator('#gate').getByRole('button')).toHaveText('Sign in');
   await page.locator('#gate').getByRole('button', { name: 'Sign in' }).click();
   await expect(page.locator('#signSheet')).toBeVisible();
   expect(errors).toEqual([]);

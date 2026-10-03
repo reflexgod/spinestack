@@ -59,7 +59,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Geist+Mono:wght@400;500&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261007a">
+<link rel="stylesheet" href="../site.css?v=20261011b">
 <style>
 /* the builder, laid out like a new-list page: Add, the spines as a list, Style, and the live preview beside them.
    The bottom area stays in view: the shelf's name and who can view it, with Cancel and Save (beside them
@@ -70,7 +70,7 @@
 /* who can view: two halves of one outlined button, the picked one underlined (the black button here is Save) */
 .who{margin-right:auto}
 .who .seg2{display:flex;border:1px solid var(--ink);border-radius:var(--radius);overflow:hidden}
-.who label{font:600 var(--fs-btn)/1.35 var(--mono);text-transform:uppercase;letter-spacing:.04em;padding:var(--s2) var(--s3);cursor:pointer;color:var(--grey)}
+.who label{font:600 var(--fs-btn)/1.35 var(--mono);padding:var(--s2) var(--s3);cursor:pointer;color:var(--grey)}
 .who label + label{border-left:1px solid var(--ink)}
 .who label:has(input:checked){color:var(--ink);background:var(--wash);box-shadow:inset 0 -2px 0 var(--ink)}
 .who label:has(input:focus-visible){outline:2px solid var(--ink);outline-offset:2px}
@@ -127,7 +127,6 @@ input[type=color]::-webkit-color-swatch{border:0;border-radius:2px}
 .try{display:flex;gap:var(--s2);align-items:center;flex-wrap:wrap}
 .chip{font:400 var(--fs-card) var(--mono);color:var(--ink);background:var(--paper);border:1px solid var(--ink);border-radius:var(--radius);padding:var(--s1) var(--s2);cursor:pointer}
 .chip:hover{background:var(--wash)}
-#dragNote{margin:var(--s2) 0 0}
 /* Clear, at the right of the Spines heading: grey and dashed, as the things that lose something are, and it asks first */
 #clear{margin-left:auto}
 .asks{display:flex;gap:var(--s3) var(--s4);align-items:center;flex-wrap:wrap}
@@ -272,9 +271,8 @@ footer{margin-top:0}
 
       <section id="shelf">
         <h2>Spines <small id="count"></small> <button class="dash sm grey" id="clear" type="button">Clear</button></h2>
-        <p class="grey" id="sampleNote">This is a sample shelf. It clears when you add your first title.</p>
+        <p class="grey" id="sampleNote">A sample shelf.</p>
         <ol class="books" id="books"></ol>
-        <p class="note" id="dragNote" hidden>To move a spine, drag it by its dots, or drag it on the preview (on a phone, hold it first).</p>
       </section>
 
       <details class="style" id="stylePanel">
@@ -291,12 +289,12 @@ footer{margin-top:0}
             <p class="note" id="themeNote"></p>
             <div class="wallbox" id="wallBox" hidden>
               <p class="wallrow"><span class="wallname" id="wallName"></span><button class="dash sm" id="wallPick" type="button">Choose picture</button><button class="dash sm grey" id="wallRemove" type="button">Remove</button></p>
-              <p class="note">Best size: 1080 × 1920 px (9:16, same as an Instagram story). Min 720 × 1280. PNG, JPG or WEBP, max 5 MB.</p>
+              <p class="note">1080 × 1920 px, at least 720 × 1280. PNG, JPG or WEBP, up to 5 MB.</p>
               <p class="note warn" id="wallWarn"></p>
             </div>
             <input type="file" id="wallFile" accept="image/png,image/jpeg,image/webp" hidden>
             <div class="pngadd"><button class="dash sm" id="pngAdd" type="button">+ Add PNG<em class="pro">PRO</em></button>
-              <p class="note">Posters, photos, anything. PNG, JPG or WEBP, max 5 MB each. Transparent PNGs work. Place it anywhere on the wall. It always stays behind the books.</p>
+              <p class="note">PNG, JPG or WEBP, up to 5 MB each.</p>
               <p class="note" id="pngNote"></p>
               <label class="range" id="pngOpWrap" hidden><span class="lbl">Opacity</span><input type="range" id="pngOp" min="10" max="100" value="100" aria-label="Opacity of the picked PNG"><span class="lbl" id="pngOpV">100%</span></label>
               <input type="file" id="pngFile" accept="image/png,image/jpeg,image/webp" multiple hidden></div></div>
@@ -311,8 +309,7 @@ footer{margin-top:0}
           <div class="ctl"><span class="lbl">Edition</span>
             <div class="opts" role="radiogroup" aria-label="Edition">
               <label><input type="radio" name="ed" value="english" checked>English</label>
-              <label><input type="radio" name="ed" value="any">Any</label></div>
-            <p class="note">Which DVD and book scans a search looks for first.</p></div>
+              <label><input type="radio" name="ed" value="any">Any</label></div></div>
         </div>
       </details>
     </div>
@@ -354,7 +351,7 @@ footer{margin-top:0}
     <button class="x" id="sheetClose" type="button" aria-label="Close">×</button>
     <div id="signinPane">
       <h2>Sign in</h2>
-      <p>Keep your shelf and everything you log on any device.</p>
+      <p></p>
       <button class="btn primary full" id="googleBtn" type="button">Continue with Google</button>
       <form id="emailForm" hidden>
         <input type="email" id="email" placeholder="you@example.com" autocomplete="email" aria-label="Email">
@@ -364,7 +361,7 @@ footer{margin-top:0}
     </div>
     <div id="namePane" hidden>
       <h2>Pick a username</h2>
-      <p>It’s how people find your shelf. You can change it once a month.</p>
+      <p>You can change it once a month.</p>
       <label class="uname"><span aria-hidden="true">@</span><input type="text" id="uname" maxlength="20" autocapitalize="off" autocomplete="off" spellcheck="false" aria-label="Username"></label>
       <p class="note" id="unameNote"></p>
       <label class="check"><input type="checkbox" id="adult"> I’m 18 or older</label>
@@ -383,8 +380,8 @@ footer{margin-top:0}
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../spinetip.js?v=20261004a"></script>
-<script src="../nav.js?v=20261010a"></script>
-<script src="../add.js?v=20261010a"></script>
+<script src="../nav.js?v=20261011b"></script>
+<script src="../add.js?v=20261011a"></script>
 <script>
 (() => {
 const $ = s => document.querySelector(s);
@@ -515,12 +512,12 @@ let openId = null;   // the spine whose controls show: press a row to open it, a
 const byLine = b => [b.author, b.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · ');
 function renderList(){
   paintLimit();
-  $('#dragNote').hidden = books.length < 2; stage.classList.toggle('canpull', books.length > 1);
+  stage.classList.toggle('canpull', books.length > 1);
   $('#sampleNote').hidden = !isSample || !books.length;
   $('#clear').hidden = !books.length;
   const ol = $('#books');
   // an empty shelf says so, with three titles to try: each opens the Add dialog on that search
-  if (!books.length){ ol.innerHTML = `<li class="empty"><p>Your shelf is empty.</p><p class="try"><span>Try:</span>${TRY.map(t => `<button class="chip" type="button" data-try="${esc(t)}">${esc(t)}</button>`).join('')}</p></li>`; redraw(); return; }
+  if (!books.length){ ol.innerHTML = `<li class="empty"><p>No spines yet.</p><p class="try"><span>Try:</span>${TRY.map(t => `<button class="chip" type="button" data-try="${esc(t)}">${esc(t)}</button>`).join('')}</p></li>`; redraw(); return; }
   if (!books.some(b => b.id === openId)) openId = null;
   ol.innerHTML = books.map((b,i) => { const open = b.id === openId; return `
   <li class="book${open ? ' open' : ''}" data-id="${b.id}">
@@ -592,7 +589,7 @@ const SORTABLE = {src:'https://cdn.jsdelivr.net/npm/sortablejs@1.15.7/Sortable.m
 function setNote(b){
   const el = document.getElementById(b.id + '-note'); if (!el) return; el.classList.remove('warn');
   if (b.status === 'reading'){ el.innerHTML = 'Reading the cover…'; return; }
-  if (!b.title.trim() && !isReal(b)){ el.textContent = 'Type the title to print it on the spine.'; el.classList.add('warn'); return; }
+  if (!b.title.trim() && !isReal(b)){ el.textContent = 'Needs a title.'; el.classList.add('warn'); return; }
   el.textContent = isReal(b) ? (b.source ? 'Real spine · from ' + b.source : 'Real spine, cut from your scan') : '';
   // a clean cut from the user's own scan can go to the archive, where it's checked before anyone sees it
   if (isReal(b) && b.file && WORKER && b.cutScore >= ARCHIVE_SCORE){

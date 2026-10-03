@@ -207,7 +207,7 @@ const strip = page => page.locator('#spines').evaluate(el => {
     links: [...el.querySelectorAll('a')].map(a => { const r = a.getBoundingClientRect(); return { x: r.left, w: r.width }; }) };
 });
 
-test('signed-out home: a wall of the newest spines from different shelves on a shelf line, then one line and Make a shelf in black; how it works; then the newest shelves', async ({ page }) => {
+test('signed-out home: a wall of the newest spines from different shelves on a shelf line, then one line and Make a shelf in black, and nothing else before the newest shelves', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page);
   const asked = page.waitForRequest(r => r.url().includes('/rest/v1/shelf_items?'));
@@ -263,9 +263,11 @@ test('signed-out home: a wall of the newest spines from different shelves on a s
   expect(Math.abs(at.x - main.x)).toBeLessThanOrEqual(1);
   expect(at.y + at.height).toBeLessThanOrEqual(page.viewportSize().height);
   await expect(page.getByText(/lets you/i)).toHaveCount(0);   // the six tiles are gone
-  // how it works, short, here (it was in every page's footer)
-  await expect(page.locator('#out h2:visible')).toHaveText([/^How it works/, /^Just shelved/, /^Recently active/]);
-  await expect(page.locator('main .how li')).toHaveText(['Type a film or a book.', 'We find a scan of its DVD or book cover and cut out the spine.', 'No clean scan? You get a spine made from the poster or cover.']);
+  // no How it works: under the wall, the one line and Make a shelf, then Just shelved
+  await expect(page.locator('#out h2:visible')).toHaveText([/^Just shelved/, /^Recently active/]);
+  await expect(page.locator('main ol')).toHaveCount(0);
+  expect(await page.locator('#out > section:visible').evaluateAll(s => s.map(x => x.id || x.className))).toEqual(['hero', 'outJust', 'stackersSec']);
+  expect(await page.locator('.hero > :visible').evaluateAll(els => els.map(e => e.tagName.toLowerCase()))).toEqual(['figure', 'h1', 'a']);
   await expect(page.locator('#outGrid li')).toHaveCount(12);
   await expect(page.locator('#outGrid li').first().locator('.cap')).toHaveText('a much longer shelf name that has to be cut short');   // the newest, now there's no one shelf above
   await expect(page.locator('#stackers li')).toHaveCount(3);
@@ -344,7 +346,7 @@ test('signed out, + ADD asks to sign in, and once signed in the Add dialog opens
 test('signed-in home: a welcome by name, the row from people you follow with All activity, then Just shelved', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/');
-  await expect(page.locator('#hello')).toHaveText('Welcome back, @tester. Here’s what people you follow have been watching and reading…');
+  await expect(page.locator('#hello')).toHaveText('Welcome back, @tester.');   // the row's heading says the rest
   await expect(page.locator('#hello a')).toHaveAttribute('href', 'u/?tester');
   await expect(page.locator('main').getByRole('link', { name: /new shelf/i })).toHaveCount(0);   // + ADD in the bar is the way to a new shelf
   await expect(page.locator('#in h2')).toHaveText([/^New from people you follow/, /^Just shelved/]);
@@ -488,6 +490,24 @@ for (const signedIn of [false, true]) {
   });
 }
 
+// on every page, signed in and out, as it stands once it has loaded: no "!", no arrows in the text, "Welcome" once at
+// most, and an ellipsis only on something under way (none is, by then)
+for (const signedIn of [false, true]) {
+  test(`no "!", no arrows, no stray ellipsis and one "Welcome" at most on any page, signed ${signedIn ? 'in' : 'out'}`, async ({ page }) => {
+    await mockNetwork(page, { signedIn });
+    for (const pg of [...PAGES, { name: 'own profile', path: '/u/?tester' }, { name: 'own profile, watchlist', path: '/u/?tester#watchlist' }, { name: 'a shelf', path: '/u/?mira&shelf' }]){
+      await open(page, pg.path);
+      const text = await page.locator('body').innerText();
+      expect(text, pg.name).not.toMatch(/!|→|←|↗/);
+      expect(text, pg.name).not.toMatch(/…/);
+      expect((text.match(/Welcome/g) || []).length, pg.name).toBeLessThanOrEqual(1);
+      // buttons and text actions in their own case: only the bar, section headings and tiny labels are in capitals
+      const shouting = await page.locator('main .btn:visible, main .dash:visible, .mkbar .btn:visible').evaluateAll(els => els.filter(e => getComputedStyle(e).textTransform === 'uppercase').map(e => e.textContent.trim()));
+      expect(shouting, pg.name).toEqual([]);
+    }
+  });
+}
+
 test('old builder links at the root go on to /build/', async ({ page }) => {
   await mockNetwork(page);
   await page.goto('/?open=aaaaaaaa-aaaa-4aaa-8aaa-000000000000#shelf');
@@ -498,7 +518,7 @@ test('old builder links at the root go on to /build/', async ({ page }) => {
 
 // An ellipsis stays on home's welcome line, and on lines that say something is under way ("Loading…"). On a
 // placeholder or a menu item it reads as text that didn't fit.
-test('no placeholder or menu item ends in an ellipsis; home\'s welcome line keeps its one', async ({ page }) => {
+test('no placeholder or menu item ends in an ellipsis, nor home\'s welcome line', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/build/');
   const cut = /…|\.\.\./, placeholders = () => page.locator('input[placeholder], textarea[placeholder]').evaluateAll(els => els.map(e => e.placeholder));
@@ -511,5 +531,5 @@ test('no placeholder or menu item ends in an ellipsis; home\'s welcome line keep
   await page.locator('header.top .add').click();   // the Add dialog
   await expect(page.locator('#addQ')).toHaveAttribute('placeholder', 'Gummo, The Waves, Kids');   // it had three full stops
   await open(page, '/');
-  await expect(page.locator('#hello')).toHaveText(/have been watching and reading…$/);
+  await expect(page.locator('#hello')).not.toHaveText(cut);
 });

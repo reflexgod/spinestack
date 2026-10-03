@@ -47,7 +47,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- Courier Prime for the page; Geist Mono (a plain cover's title) and the spines' faces for the shelves it draws, as build/ and u/ have them -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Geist+Mono:wght@400;500&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
-<link rel="stylesheet" href="site.css?v=20261007a">
+<link rel="stylesheet" href="site.css?v=20261011b">
 <style>
 /* home: a welcome, then rows and grids of shelf cards (site.css has the cards, the bar and everything shared) */
 .home section{margin-top:var(--s6)}
@@ -74,8 +74,6 @@
 @media (pointer:coarse){ .spines a{min-width:44px} }
 .signedout .top .add.primary{background:var(--paper);color:var(--ink)}
 .signedout .top .add.primary:hover{background:var(--wash)}
-/* how it works, short: only here */
-.how ol{margin:0;padding-left:1.6em;display:grid;gap:var(--s1);max-width:72ch}
 .welcome h1{margin:0}
 /* ⚡ All activity, at the right of the row's heading */
 h2 .more.zapped{display:inline-flex;align-items:center;gap:var(--s1)}
@@ -144,14 +142,6 @@ h2 .more.zapped svg{width:12px;height:12px;flex:none}
       <h1>Shelve the films and books you love, with their real spines.</h1>
       <a class="btn primary" id="start" href="build/">Make a shelf</a>
     </section>
-    <section class="how">
-      <h2>How it works</h2>
-      <ol>
-        <li>Type a film or a book.</li>
-        <li>We find a scan of its DVD or book cover and cut out the spine.</li>
-        <li>No clean scan? You get a spine made from the poster or cover.</li>
-      </ol>
-    </section>
     <section id="outJust">
       <h2>Just shelved <a class="more" href="shelves/">More</a></h2>
       <p class="grey" id="outState" role="status">Loading…</p>
@@ -166,13 +156,13 @@ h2 .more.zapped svg{width:12px;height:12px;flex:none}
   <!-- signed in -->
   <div id="in" hidden>
     <section class="welcome">
-      <h1 id="hello">Welcome back. <span class="grey">Here’s what people you follow have been watching and reading…</span></h1>
+      <h1 id="hello">Welcome back.</h1>
     </section>
     <section>
       <h2>New from people you follow <a class="more zapped" href="feed/?following"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z"/></svg>All activity</a></h2>
       <p class="grey" id="folState" role="status">Loading…</p>
       <ul class="frow" id="folRow"></ul>
-      <p class="none" id="folNone" hidden>Follow people to see their shelves here. <a href="members/">Find members</a></p>
+      <p class="none" id="folNone" hidden>No one followed yet. <a href="members/">Find members</a></p>
     </section>
     <section>
       <h2>Just shelved <a class="more" href="shelves/">More</a></h2>
@@ -187,7 +177,7 @@ h2 .more.zapped svg{width:12px;height:12px;flex:none}
     <button class="x" data-close type="button" aria-label="Close">×</button>
     <div>
       <h2>Sign in</h2>
-      <p>Keep your shelf and everything you log on any device.</p>
+      <p></p>
       <button class="btn primary full" id="googleBtn" type="button">Continue with Google</button>
       <p class="note">Accounts are for people 18 or older. <a href="privacy.html">Privacy</a></p>
     </div>
@@ -204,10 +194,10 @@ h2 .more.zapped svg{width:12px;height:12px;flex:none}
 <script src="cards.js?v=20261002a"></script>
 <script src="wear.js?v=20261004a"></script>
 <script src="bare.js?v=20261006a"></script>
-<script src="nav.js?v=20261010a"></script>
+<script src="nav.js?v=20261011b"></script>
 <script>
 (() => {
-/* Home. Signed out: a wall of the newest spines, one line about the site and Make a shelf, how it works, then the
+/* Home. Signed out: a wall of the newest spines, one line about the site and Make a shelf, and nothing else before the
    newest shelves and the people who made them. Signed in: a welcome, a card for each person you follow with the
    newest thing they shelved or logged (activity(), 0007), then everyone's newest shelves (feed(), 0006). */
 const $ = s => document.querySelector(s);
@@ -429,18 +419,16 @@ async function showOut(){
 async function showIn(){
   document.documentElement.classList.remove('signedout');
   $('#state').hidden = true; $('#out').hidden = true; $('#in').hidden = false;
-  // welcome back, with what the people you follow have been watching and reading. With nothing from them: someone who
-  // has a shelf is told to follow people (and it's still "Welcome back"); only someone with no shelf yet is told to
-  // start one (a new account: "Welcome")
-  const hello = (back, line) => { if (me.profile) $('#hello').innerHTML = `${back ? 'Welcome back' : 'Welcome'}, <a href="${esc(profileUrl(me.profile.username))}">@${esc(me.profile.username)}</a>. <span class="grey">${line}</span>`; };
-  hello(true, 'Here’s what people you follow have been watching and reading…');
+  // welcome back, by name, and nothing more: the row under it says what it is. Only someone with no shelf yet (a new
+  // account) gets "Welcome"
+  const hello = back => { if (me.profile) $('#hello').innerHTML = `${back ? 'Welcome back' : 'Welcome'}, <a href="${esc(profileUrl(me.profile.username))}">@${esc(me.profile.username)}</a>.`; };
+  hello(true);
   // have you a shelf? (Row Level Security lets you read your own.) If that can't be read, you're taken to have one:
   // better than telling someone with a shelf to start it
   const hasShelf = () => api(`shelves?select=id&owner=eq.${me.user.id}&hidden=is.false&limit=1`).then(rows => rows.length > 0, () => true);
   const nobody = async () => {
     $('#folNone').hidden = false;
-    if (await hasShelf()) hello(true, 'Follow a few people to see their shelves here.');
-    else hello(false, 'Start your shelf with + Add, then follow a few people to see theirs.');
+    if (!(await hasShelf())) hello(false);
   };
   const fill = async (get, state, list, make, empty) => {
     try {
@@ -453,7 +441,7 @@ async function showIn(){
   const latest = async () => { const seen = new Set(), rows = (await following(ASK)).filter(x => !seen.has(x.owner) && seen.add(x.owner)).slice(0, ROW); shelfArt(rows); return rows; };
   await Promise.all([
     fill(latest, '#folState', '#folRow', fcard, nobody),
-    fill(() => everyone(GRID), '#inState', '#inGrid', x => tile(x, true), () => { $('#inState').textContent = 'Nothing shelved yet. The first shelf here could be yours.'; $('#inState').hidden = false; }),
+    fill(() => everyone(GRID), '#inState', '#inGrid', x => tile(x, true), () => { $('#inState').textContent = 'No shelves yet.'; $('#inState').hidden = false; }),
   ]);
 }
 

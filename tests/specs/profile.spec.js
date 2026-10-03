@@ -72,7 +72,7 @@ test('Profile: their shelf first, standing on a shelf line at one spine height f
   await expect(page.locator('#watchStrip canvas.clean')).toHaveCount(1);   // clean and sealed, not worn (that's for a log)
   await expect(page.locator('#watchStrip canvas.worn')).toHaveCount(0);
   await expect(page.locator('#watchStrip a.sealed')).toHaveCount(1);
-  await expect(page.locator('#watchAll')).toHaveText('See all →');
+  await expect(page.locator('#watchAll')).toHaveText('See all');
   await expect(page.locator('#friendsSec')).toBeHidden();
   await page.locator('#watchAll').click();
   await selected(page, 'Watchlist');
@@ -177,7 +177,7 @@ test('on your own profile the account menu\'s Activity and Network change the ta
   await page.getByRole('menu', { name: 'Account' }).getByRole('menuitem', { name: 'Shelf', exact: true }).click();
   await expect(page).toHaveURL(/\/u\/\?tester&shelf$/);
   await expect(page.locator('#oneCap')).toHaveText(SHELVES[0].name);
-  await expect(page.locator('#backLink')).toHaveText('← @tester');
+  await expect(page.locator('#backLink')).toHaveText('Back to @tester');
 });
 
 /* ---------- the watchlist and From friends ---------- */
@@ -188,7 +188,7 @@ test('your watchlist: a strip on Profile; on its tab each cover has Remove and �
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?tester');
-  await expect(page.locator('#watchSec h2')).toHaveText('Watchlist 2 of 6 See all →');
+  await expect(page.locator('#watchSec h2')).toHaveText('Watchlist 2 of 6 See all');
   await expect(page.locator('#watchStrip li')).toHaveCount(2);
   await expect(page.locator('#watchStrip').getByRole('button')).toHaveCount(0);
   // small covers, up to four in one row: about 100px wide (80px on a phone), 2:3, left-aligned

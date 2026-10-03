@@ -135,7 +135,7 @@ test('signed out, + ADD opens the sign-in sheet ("Sign in to start your shelf.")
   }
   // the bar's own Sign in keeps the sheet's usual line
   await page.locator('#signInBtn').click();
-  await expect(page.locator('#signSheet .sheetbox p:not(.note)').first()).toHaveText('Keep your shelf and everything you log on any device.');
+  await expect(page.locator('#signSheet .sheetbox p:not(.note)').first()).toBeHidden();   // the plain Sign in says nothing more
   expect(net.asked).toEqual([]);
   expect(errors).toEqual([]);
 });

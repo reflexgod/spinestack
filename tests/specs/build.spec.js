@@ -211,7 +211,7 @@ test('Save, signed in, before you have a shelf: the name and Private are saved, 
   expect(items.map(i => i.title)).toEqual(['Gummo']);
   await expect(page).toHaveURL(new RegExp(`/u/\\?tester&shelf=${shelf.id}$`));
   // on the shelf's page: said once, with where sharing is
-  await expect(page.locator('#toast')).toHaveText('Saved. Share it from the ↗ icon.');
+  await expect(page.locator('#toast')).toHaveText('Saved.');
   await page.reload();
   await page.waitForLoadState('networkidle');
   await expect(page.locator('#toast')).toBeHidden();
@@ -302,7 +302,7 @@ test('your own profile with no shelf yet: "Your shelf is empty." and Make your s
   await expect(page.locator('#nSpines')).toHaveText('0');
   await page.locator('#hero').getByRole('link', { name: 'Make your shelf' }).click();
   await expect(page).toHaveURL(/\/build\/$/);
-  await expect(page.locator('#books .empty')).toContainText('Your shelf is empty.');
+  await expect(page.locator('#books .empty')).toContainText('No spines yet.');
 });
 
 test('old ?embed links come to the builder itself, at the root and at /build/', async ({ page }) => {
@@ -550,12 +550,12 @@ test('a shelf saved with no name has no caption', async ({ page }) => {
 });
 
 /* ---------- a new shelf starts empty ---------- */
-test('the builder starts empty: "Your shelf is empty." and three titles to try, each a search in the Add dialog', async ({ page }) => {
+test('the builder starts empty: "No spines yet." and three titles to try, each a search in the Add dialog', async ({ page }) => {
   const errors = watchErrors(page), net = await mockNetwork(page, NEW);
   await open(page, '/build/');
   await expect(rows(page)).toHaveCount(0);
   const empty = page.locator('#books .empty');
-  await expect(empty.locator('p').first()).toHaveText('Your shelf is empty.');
+  await expect(empty.locator('p').first()).toHaveText('No spines yet.');
   await expect(empty.locator('.try')).toHaveText(/^Try:/);
   const chips = empty.getByRole('button');
   await expect(chips).toHaveText(['Gummo', 'The Waves', 'Kids']);
@@ -618,7 +618,7 @@ test('Clear asks first, as Delete does: Cancel and Esc leave the spines, Clear t
   await clear.click();
   await ask.getByRole('button', { name: 'Clear' }).click();
   await expect(ask).toBeHidden();
-  await expect(page.locator('#books .empty')).toContainText('Your shelf is empty.');
+  await expect(page.locator('#books .empty')).toContainText('No spines yet.');
   await expect(clear).toBeHidden();
   expect(errors).toEqual([]);
 });
@@ -648,5 +648,5 @@ test('signed in with no shelf yet, the builder is Your shelf, and an empty one s
   await mockNetwork(page, { signedIn: true, ownShelf: false });
   await open(page, '/build/');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your shelf');
-  await expect(page.locator('#books .empty p').first()).toHaveText('Your shelf is empty.');
+  await expect(page.locator('#books .empty p').first()).toHaveText('No spines yet.');
 });

@@ -29,7 +29,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Geist+Mono:wght@400;500&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261007a">
+<link rel="stylesheet" href="../site.css?v=20261011b">
 <style>
 /* the profile (site.css has the cards, the tabs, the sheets and everything shared) */
 .phead{display:grid;grid-template-columns:96px minmax(0,1fr) auto;grid-template-areas:"ava who stats";gap:0 var(--s5);align-items:center}
@@ -47,7 +47,7 @@
 .handle{color:var(--grey);margin:var(--s1) 0 0;font-size:var(--fs-card)}
 .pbtns{display:flex;gap:var(--s2);align-items:center;position:relative;margin-top:var(--s3)}
 .menu{position:absolute;top:calc(100% + var(--s1));left:0;z-index:6;background:var(--paper);border:1px solid var(--ink);border-radius:var(--radius);padding:var(--s1) 0;min-width:160px;display:grid}
-.menu button,.menu a{background:none;border:0;font:500 var(--fs-nav) var(--mono);text-transform:uppercase;letter-spacing:var(--track);text-align:left;text-decoration:none;padding:var(--s2) var(--s4);cursor:pointer;color:var(--ink)}
+.menu button,.menu a{background:none;border:0;font:500 var(--fs-nav) var(--mono);text-align:left;text-decoration:none;padding:var(--s2) var(--s4);cursor:pointer;color:var(--ink)}
 .menu button:hover,.menu a:hover,.menu button:focus-visible,.menu a:focus-visible{background:var(--wash);outline:0}
 /* the ··· menu of one of your shelf cards: one menu for them all, put by the button that was pressed */
 .menu.cardmenu{position:fixed;top:0;left:0;z-index:20}
@@ -291,7 +291,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
         <button class="dash sm" id="reqBtn" type="button" hidden>Requests</button>
       </div>
     </div>
-    <p class="note" id="privNote" hidden>Your profile is private: only your followers see your shelf and your logs. Others see your photo and name, and can ask to follow you.</p>
+    <p class="note" id="privNote" hidden>Your profile is private.</p>
     <p class="privmsg" id="privateMsg" hidden>This profile is private.</p>
 
     <div id="viewProfile">
@@ -316,14 +316,14 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
         <div class="pgrid" id="pgrid">
           <div class="pmain">
             <section id="watchSec" hidden>
-              <h2>Watchlist <small id="watchCount"></small> <a class="more" id="watchAll" href="#watchlist">See all →</a></h2>
+              <h2>Watchlist <small id="watchCount"></small> <a class="more" id="watchAll" href="#watchlist">See all</a></h2>
               <ol class="wstrip" id="watchStrip"></ol>
-              <p class="grey" id="watchNone" hidden>Add a film or book you want to get to. <a class="dash sm" href="#watchlist">Watchlist</a></p>
+              <p class="grey" id="watchNone" hidden>Nothing saved for later.</p>
             </section>
             <section id="friendsSec" hidden>
               <h2>From friends</h2>
               <ol class="titles" id="friends"></ol>
-              <p class="grey" id="friendsNone" hidden>Nothing from friends yet. What people you follow log shows up here. <a href="../members/">Find people</a></p>
+              <p class="grey" id="friendsNone" hidden>Your friends haven’t logged anything. <a href="../members/">Find people</a></p>
             </section>
           </div>
         </div>
@@ -331,7 +331,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
       <div id="panelA" role="tabpanel" aria-labelledby="tabA" hidden>
         <ol class="items solo" id="acts"></ol>
         <p class="grey" id="actsNone" hidden>No activity yet.</p>
-        <p class="grey" id="actsNoneMine" hidden>Nothing here yet. Log a film or a book with + Add, or save your shelf.</p>
+        <p class="grey" id="actsNoneMine" hidden>Nothing logged or shelved yet.</p>
         <button class="dash sm" id="actsMore" type="button" hidden>Load more</button>
       </div>
       <div id="panelW" role="tabpanel" aria-labelledby="tabW" hidden>
@@ -343,7 +343,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
           <ul class="wsugg" id="wSugg" hidden></ul>
         </div>
         <ol class="wgrid" id="wGrid"></ol>
-        <p class="grey" id="wNone" hidden>Add a film or book you want to get to.</p>
+        <p class="grey" id="wNone" hidden>Your watchlist is empty.</p>
       </div>
       <div id="panelN" role="tabpanel" aria-labelledby="tabN" hidden>
         <nav class="tabs sub" role="tablist" aria-label="Network">
@@ -359,7 +359,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
     </div>
 
     <section id="viewShelf" hidden>
-      <a class="back" id="backLink" href="#">← Profile</a>
+      <a class="back" id="backLink" href="#">Back to profile</a>
       <div class="shead">
         <div class="stitle">
           <!-- [html-validate-disable-next empty-heading -- the shelf's name is filled in once it loads; the page is hidden until then] -->
@@ -391,7 +391,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
     <button class="x" data-close type="button" aria-label="Close">×</button>
     <div>
       <h2>Sign in</h2>
-      <p>Keep your shelf and everything you log on any device.</p>
+      <p></p>
       <button class="btn primary full" id="googleBtn" type="button">Continue with Google</button>
       <p class="note">Accounts are for people 18 or older. <a href="../privacy.html">Privacy</a></p>
     </div>
@@ -429,7 +429,6 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
       <p class="grey" id="reportWhat"></p>
       <label class="field"><span class="lbl">What's wrong? (optional)</span><textarea id="reportReason" maxlength="200" rows="3"></textarea></label>
       <button class="btn primary full" id="reportSend" type="button">Send report</button>
-      <p class="note">Only we read reports. We look at every one.</p>
       <p class="note" id="reportNote"></p>
     </div>
   </div>
@@ -445,7 +444,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 <script src="../cards.js?v=20261002a"></script>
 <script src="../spinetip.js?v=20261004a"></script>
 <script src="../wear.js?v=20261004a"></script>
-<script src="../nav.js?v=20261010a"></script>
+<script src="../nav.js?v=20261011b"></script>
 <script>
 (() => {
 /* A profile: /u/?username, and its shelf on its own page: /u/?username&shelf (one shelf each), or a shelf by its id,
@@ -700,7 +699,7 @@ async function load(){
     // a private profile you don't follow: only its card
     const card = (await rpc('profile_card', {p_username: NAME}).catch(() => []))[0];
     if (card && card.is_private) return showPrivate(card);
-    $('#state').innerHTML = `No one here. The name may have changed. <a href="../build/">Make your own shelf</a>.`; return;
+    $('#state').innerHTML = `No one by that name. <a href="../build/">Make your own shelf</a>.`; return;
   }
   view.profile = p; view.mine = !!(me.user && me.user.id === p.id);
   titled(person(p), `${person(p)} on shelfstackd: their shelf, and the films and books they log.`);
@@ -853,13 +852,13 @@ async function paintWatch(){
 }
 function paintWatchTab(){
   const mine = view.mine, rows = lists.watch;
-  $('#wLine').textContent = wantLine(rows, mine) || (mine ? '' : 'Nothing here yet.');
+  $('#wLine').textContent = wantLine(rows, mine) || (mine ? '' : 'Nothing on it yet.');
   $('#wLine').hidden = !$('#wLine').textContent;
   // yours, once 0008 is run: Make public / Make private
   const priv = $('#wPrivacy'), note = $('#wPrivNote');
   priv.hidden = note.hidden = !(mine && lists.privacy !== null);
   priv.textContent = lists.privacy ? 'Make private' : 'Make public';
-  note.textContent = lists.privacy ? 'Anyone who can see your profile sees it.' : 'Only you see it.';
+  note.textContent = lists.privacy ? 'Everyone sees it.' : 'Only you see it.';
   $('#wSearch').hidden = !mine;
   if (mine) watchSearch();
   const tiles = rows.map((r, i) => {
@@ -972,15 +971,15 @@ async function showShelf(id){
   document.querySelector('.phead').hidden = true; $('#privNote').hidden = true;   // the shelf has its own heading, and its maker is in it
   const p = view.profile, s = view.shelves.find(x => x.id === id), mine = view.mine;
   $('#backLink').href = pageUrl(p.username);
-  $('#backLink').textContent = '← @' + p.username;
+  $('#backLink').textContent = 'Back to @' + p.username;
   $('#oneBy').hidden = $('#shareBtn').hidden = !s; $('#oneOn').hidden = true;
   $('#oneActs').hidden = !s && !(mine && !id);
   shown.shelf = s || null; shown.rows = []; shown.list = []; shown.onMine = null;
   // straight from Save in the builder: said once, with where sharing is
-  try { if (mine && sessionStorage.getItem(SAVED) === id){ sessionStorage.removeItem(SAVED); toast('Saved. Share it from the ↗ icon.'); } } catch {}
+  try { if (mine && sessionStorage.getItem(SAVED) === id){ sessionStorage.removeItem(SAVED); toast('Saved.'); } } catch {}
   if (!s){
     // no shelf yet (&shelf), or one that's private or gone (&shelf=<id>); yours: the way to make it
-    $('#oneCap').textContent = !id ? (mine ? 'Your shelf is empty.' : 'No shelf here yet.') : 'This shelf is private, or it was deleted.';
+    $('#oneCap').textContent = !id ? (mine ? 'This shelf has no spines.' : 'Nothing shelved here yet.') : 'This shelf is private or gone.';
     $('#oneShelf').replaceChildren();
     for (const b of [$('#onePrivacy'), $('#oneDelete'), $('#reportShelf')]) b.hidden = true;
     $('#openBuilder').hidden = !(mine && !id); $('#openBuilder').textContent = 'Make your shelf'; $('#openBuilder').href = '../build/';
@@ -1289,7 +1288,7 @@ async function showPrivate(card){
    30 at a time ---------- */
 const LIST_NONE = {followers: 'No followers yet.', following: 'Not following anyone yet.', requests: 'No requests waiting.'};
 // your own lists say what to do next
-const LIST_NONE_MINE = {followers: 'No followers yet. Share your shelf from its page and they’ll find you.', following: 'You’re not following anyone yet. <a href="../members/">Find people</a>'};
+const LIST_NONE_MINE = {followers: 'Nobody follows you yet.', following: 'You follow nobody yet. <a href="../members/">Find people</a>'};
 // one person: photo, name, and FOLLOW (or, for a request, Accept and Decline). list: the list the row is in
 function personRow(x, kind, list){
   const li = document.createElement('li'), name = (x.display_name || '').trim(), href = pageUrl(x.username);
