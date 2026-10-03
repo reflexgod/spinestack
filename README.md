@@ -235,7 +235,7 @@ the first tile is a dotted + that goes to the box, an empty one says "Add a film
 title has Remove and ✓ Mark watched (✓ Mark read for a book). It holds 6 (`WATCH_CAP` in `add.js`, and 0007's trigger): full, it
 says "Your watchlist is full (6). Remove one to add another." The Profile tab has a strip of up to four of its covers, small (100px wide, 80px on a phone), in one row,
 and See all. Any cover or spine elsewhere (the feed, someone's shelf page or Activity, their watchlist, From friends)
-has a bookmark on hover, or ••• with Add to watchlist on a phone: one press and it's In watchlist (signed out, the
+has a bookmark on hover, or ••• with Add to watchlist on a phone: one press and it says In watchlist in grey text (no button), as a title already on your watchlist does from the start (signed out, the
 sign-in sheet, and it's added once you're signed in). A watchlist is private by default, with Make public / Make
 private on your tab (`profiles.watchlist_public`, from migration `0008`, live since 2 October 2026); someone else's
 Watchlist tab and strip show only when theirs is public. On a database without `0008` the page behaves as before:

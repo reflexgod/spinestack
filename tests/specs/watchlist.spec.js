@@ -175,8 +175,10 @@ test('the feed: someone\'s log cover goes onto your watchlist in one press, then
   await addFrom(page, log, 'Gummo (1997)');
   expect((await req).postDataJSON()).toEqual({ kind: 'movie', title: 'Gummo', author: 'Harmony Korine', year: 1997, cover_src: 'url:https://image.tmdb.org/t/p/w500/gummo.jpg' });
   await expect(page.locator('#toast')).toHaveText('Gummo is on your watchlist.');
-  if (isPhone()) { await log.getByRole('button', { name: 'More for Gummo (1997)' }).click(); await expect(log.getByRole('menuitem', { name: 'In watchlist' })).toBeDisabled(); }
-  else await expect(log.getByRole('button', { name: 'Gummo (1997): in watchlist' })).toBeDisabled();
+  // then grey text, not a button
+  await expect(log.locator('.win')).toHaveText('In watchlist');
+  expect(await log.locator('.win').evaluate(el => [el.tagName, getComputedStyle(el).color])).toEqual(['SPAN', 'rgb(107, 107, 107)']);
+  await expect(log.locator('.wbtn, .wmore')).toHaveCount(0);
   // your own logs have none
   await expect(page.locator('#items .item.log').filter({ hasText: '@tester read Just Kids' }).locator('.wbtn, .wmore')).toHaveCount(0);
   expect(errors).toEqual([]);
@@ -215,4 +217,18 @@ test('signed out, a cover\'s watchlist button is the sign-in sheet; once signed 
   const req = posted(page);
   await signBack(); await page.reload();
   expect((await req).postDataJSON()).toMatchObject({ title: 'Gummo', year: 1997 });
+});
+
+test('a title already on your watchlist says In watchlist from the start, in grey, with no button', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  // your watchlist has Gummo (1997) on it already
+  await page.route(u => u.pathname === '/rest/v1/watchlist' && u.searchParams.get('select') === 'kind,title,year', route => route.request().method() === 'OPTIONS'
+    ? route.fulfill({ status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' } })
+    : route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify([{ kind: 'movie', title: 'Gummo', year: 1997 }]) }));
+  await open(page, '/feed/?everyone');
+  const gummo = page.locator('#items .item.log').filter({ hasText: 'watched Gummo' }).first(), waves = page.locator('#items .item.log').filter({ hasText: 'read The Waves' }).first();
+  await expect(gummo.locator('.win')).toHaveText('In watchlist');
+  await expect(gummo.locator('.wbtn, .wmore')).toHaveCount(0);
+  await expect(waves.locator('.win')).toHaveCount(0);   // not on it: still offered
+  await expect(waves.locator('.wbtn')).toHaveCount(1);
 });
