@@ -40,13 +40,13 @@ test('with shelves on the site, home has no sample shelf', async ({ page }) => {
 test('shelves, members and the feed each say it in one line when there is nothing yet', async ({ page }) => {
   await mockNetwork(page, { empty: true });
   await open(page, '/shelves/');
-  await expect(page.locator('#none')).toHaveText('Nothing shelved yet. The first shelf here could be yours.');
+  await expect(page.locator('#none')).toHaveText('No public shelves yet.');
   await expect(page.locator('#grid li')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Load more' })).toBeHidden();
   await expect(page.locator('main').getByRole('link', { name: 'Make a shelf' })).toBeVisible();   // the way to be the first
   await open(page, '/members/');
-  await expect(page.locator('#activeState')).toHaveText('It’s quiet in here. Shelve something and yours is the first face on this page.');
+  await expect(page.locator('#activeState')).toHaveText('No members yet.');
   await expect(page.locator('#active li')).toHaveCount(0);
   await open(page, '/feed/?everyone');
-  await expect(page.locator('#none')).toHaveText('Nothing shelved yet. The first shelf here could be yours.');
+  await expect(page.locator('#none')).toHaveText('Nothing on the feed yet.');
 });

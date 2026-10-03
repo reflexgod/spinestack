@@ -52,7 +52,7 @@ test('Find @username: one search 300 ms after the last key; a person found has p
   await expect(row.getByRole('button')).toHaveCount(0);
   // no one, then nothing typed
   await box(page).fill('zzz');
-  await expect(page.locator('#findState')).toHaveText('No one found for “zzz”. Try the start of their username.');
+  await expect(page.locator('#findState')).toHaveText('No one called “zzz”.');
   await expect(rows(page)).toHaveCount(0);
   await box(page).fill('');
   await expect(page.locator('#findState')).toBeHidden();

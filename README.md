@@ -39,6 +39,16 @@ backend/              older self-hosted search server (not used right now)
   .env.example        copy to .env for your keys (never commit .env)
 ```
 
+## How the site talks and looks
+
+Letterboxd's habits are the rule. Each point here has a check in the tests.
+
+- **Nothing is said twice on one screen.** A heading says what a section is; the line under it doesn't say it again.
+- **Show, don't instruct.** No sentence explains the page ("Pick Watchlist in + Add to keep…"). An empty place says
+  so in six words at most, in words no other empty place uses ("Nothing saved for later.", "No public shelves yet."),
+  with a link only where there's somewhere to go. The sign-in sheet is its heading and Continue with Google; it has a
+  line only when it was opened on the way somewhere ("Sign in to start your shelf.").
+
 ## 1. Put the website on GitHub Pages
 
 1. Create a new public repository on GitHub, for example `spinestack`.
@@ -430,7 +440,8 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   it asks this site for; and the two things a browser asks for by itself (`/favicon.ico`, and Chrome's DevTools file)
   are there.
 - **An empty site** (`specs/empty.spec.js`): with no public shelves, home shows the sample shelf on the spine wall's line, and
-  shelves, members and the feed each say so in a line.
+  shelves, members and the feed each say so in a few words ("No public shelves yet.", "No members yet.", "Nothing on the
+  feed yet.").
 - **The feed** (`specs/feed.spec.js`): the three tabs and which one opens, what a line says for a shelf and for a log
   (with the clock held still, so "today", "2h" and "1w" are known), Load more, a log's cover (72 x 108px, in line
   with the text, the caption beside it on a phone too) more worn the older it is, You, signed out, a log posted with + ADD showing at
@@ -441,8 +452,9 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   keeping its place when the choice changes; signed out and with no username yet; before the database has logs.
 - **A new account** (`specs/newuser.spec.js`, with `mockNetwork`'s `fresh`: a username and nothing else): home says
   "Welcome, @you." (not "Welcome back", which is for someone with a shelf), and nothing else on that line; your empty shelf, watchlist, From friends, Activity, Following
-  and Followers each say what to do next, with a link to Members where that's it; someone else's empty lists stay
-  plain; the feed's Following and You; the username sheet speaks of one shelf.
+  and Followers each say so in a short line of their own ("Nothing saved for later.", "You follow nobody yet."), with a
+  link to Members where that's it, and no sentence about how to use the page; every empty place a new account meets is
+  six words at most and no two say the same; someone else's empty lists stay plain; the feed's Following and You.
 - **No connection** (`specs/offline.spec.js`): signed in, with the database out of reach, Settings, the feed's You tab
   and a profile say "Couldn’t reach shelfstackd", the bar offers no Finish sign-up, and the builder's Save says the
   account couldn't load instead of asking for a username. A page tells "couldn't read your account" (`unreachable`)

@@ -190,6 +190,7 @@ textarea{resize:vertical;line-height:1.5}
 .sheetbox > div{display:grid;gap:var(--s4)}
 .sheetbox h2{display:block;font-size:var(--fs-dialog);text-transform:none;letter-spacing:0;color:var(--ink);border:0;padding:0 var(--s5) 0 0;margin:0}
 .sheetbox p{margin:0}
+.sheetbox p:empty{display:none}   /* the sign-in sheet's line, said only when it was opened on the way somewhere (nav.js) */
 .sheetbox form{display:grid;gap:var(--s3)}
 .x{position:absolute;top:var(--s2);right:var(--s3);background:none;border:0;font:400 22px var(--mono);cursor:pointer;color:var(--ink);padding:var(--s1)}
 .toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + var(--s4));transform:translateX(-50%);background:var(--ink);color:var(--paper);border-radius:var(--radius);padding:var(--s2) var(--s4);font-size:var(--fs-card);max-width:calc(100% - 2*var(--s4));z-index:40}

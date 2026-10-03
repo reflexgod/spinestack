@@ -290,7 +290,7 @@ dlg.innerHTML = `
     <h3><span id="addSpinesTitle">Spines</span> <small id="addSpinesBy"></small> <button class="dash sm" id="addChange" type="button">Change</button></h3>
     <p id="addDup" hidden><span id="addDupText"></span> <button class="dash sm" id="addDupAdd" type="button">Add again</button> <button class="dash sm" id="addDupCancel" type="button">Cancel</button></p>
     <div class="addfound" id="addFound" role="radiogroup" aria-label="Which spine"></div>
-    <p class="grey" id="addNoReal" hidden>No real spine found yet. Upload a photo of yours on the builder to add it to the archive.</p>
+    <p class="grey" id="addNoReal" hidden>No real spine found.</p>
     <p class="grey" id="addNote" hidden>Real DVD and book spines show up once the shelfstackd server is connected. Until then, upload a full DVD scan on the builder.</p>
     <div class="addbar"><a class="addby" id="addBy" href="https://search.brave.com/" target="_blank" rel="noopener">Search by Brave</a><button class="btn primary" id="addGo" type="button" disabled>Add to shelf</button></div>
   </div>

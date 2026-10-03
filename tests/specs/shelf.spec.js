@@ -136,7 +136,7 @@ test('/u/?name&shelf is their shelf', async ({ page }) => {
 test('/u/?name&shelf with no shelf yet: yours says how to make it', async ({ page }) => {
   await mockNetwork(page, { signedIn: true, ownShelf: false });
   await open(page, '/u/?tester&shelf');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your shelf is empty.');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('This shelf has no spines.');
   await expect(page.locator('#oneActs').locator('button:visible, a:visible')).toHaveText(['Make your shelf']);
   await expect(page.getByRole('link', { name: 'Make your shelf' })).toHaveAttribute('href', '../build/');
   await expect(page.getByRole('button', { name: 'Share', exact: true })).toBeHidden();
@@ -145,14 +145,14 @@ test('/u/?name&shelf with no shelf yet: yours says how to make it', async ({ pag
 test('/u/?name&shelf with no shelf yet: a visitor is told so, with nothing to press', async ({ page }) => {
   await mockNetwork(page, { ownShelf: false });
   await open(page, '/u/?tester&shelf');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('No shelf here yet.');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Nothing shelved here yet.');
   await expect(page.locator('#oneActs')).toBeHidden();
 });
 
 test('a shelf that isn\'t there says so, with nothing to press but the way back', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?mira&shelf=cccccccc-cccc-4ccc-8ccc-cccccccccccc');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('This shelf is private, or it was deleted.');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('This shelf is private or gone.');
   await expect(page.locator('#oneActs')).toBeHidden();
   await expect(page.locator('#oneOn')).toBeHidden();
   await expect(page.locator('#backLink')).toHaveAttribute('href', '/u/?mira');
@@ -249,7 +249,7 @@ test('on a phone with a share sheet, Share to story hands the picture to it', as
 test('a shelf that isn\'t there has no Share', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?mira&shelf=cccccccc-cccc-4ccc-8ccc-cccccccccccc');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('This shelf is private, or it was deleted.');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('This shelf is private or gone.');
   await expect(page.getByRole('button', { name: 'Share', exact: true })).toBeHidden();
 });
 
