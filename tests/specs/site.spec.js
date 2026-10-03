@@ -344,7 +344,7 @@ test('signed out, + ADD asks to sign in, and once signed in the Add dialog opens
 test('signed-in home: a welcome by name, the row from people you follow with All activity, then Just shelved', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/');
-  await expect(page.locator('#hello')).toHaveText('Welcome back, @tester. Here’s what people you follow have been watching and reading…');
+  await expect(page.locator('#hello')).toHaveText('Welcome back, @tester.');   // the row's heading says the rest
   await expect(page.locator('#hello a')).toHaveAttribute('href', 'u/?tester');
   await expect(page.locator('main').getByRole('link', { name: /new shelf/i })).toHaveCount(0);   // + ADD in the bar is the way to a new shelf
   await expect(page.locator('#in h2')).toHaveText([/^New from people you follow/, /^Just shelved/]);
@@ -498,7 +498,7 @@ test('old builder links at the root go on to /build/', async ({ page }) => {
 
 // An ellipsis stays on home's welcome line, and on lines that say something is under way ("Loading…"). On a
 // placeholder or a menu item it reads as text that didn't fit.
-test('no placeholder or menu item ends in an ellipsis; home\'s welcome line keeps its one', async ({ page }) => {
+test('no placeholder or menu item ends in an ellipsis, nor home\'s welcome line', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/build/');
   const cut = /…|\.\.\./, placeholders = () => page.locator('input[placeholder], textarea[placeholder]').evaluateAll(els => els.map(e => e.placeholder));
@@ -511,5 +511,5 @@ test('no placeholder or menu item ends in an ellipsis; home\'s welcome line keep
   await page.locator('header.top .add').click();   // the Add dialog
   await expect(page.locator('#addQ')).toHaveAttribute('placeholder', 'Gummo, The Waves, Kids');   // it had three full stops
   await open(page, '/');
-  await expect(page.locator('#hello')).toHaveText(/have been watching and reading…$/);
+  await expect(page.locator('#hello')).not.toHaveText(cut);
 });

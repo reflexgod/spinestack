@@ -12,7 +12,7 @@ for (const at of ['/nope', '/shelves/nothing/here/', '/u/mira/shelf.html']) {
     expect(res.status()).toBe(404);
     await expect(page).toHaveTitle('Page not found · shelfstackd');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Nothing on this shelf.');
-    await expect(page.locator('main p').first()).toHaveText('The page you were after isn’t here. It may have moved, or the address is a little off.');
+    await expect(page.locator('main > p:not(.ways)')).toHaveCount(0);   // the heading says it; no second line saying it again
     // the shared stylesheet reached it from this depth: our type, and the button
     expect(await page.locator('body').evaluate(el => getComputedStyle(el).fontSize)).toBe('13px');
     const home = page.locator('main').getByRole('link', { name: 'Back home' });

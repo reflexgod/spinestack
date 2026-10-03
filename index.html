@@ -166,7 +166,7 @@ h2 .more.zapped svg{width:12px;height:12px;flex:none}
   <!-- signed in -->
   <div id="in" hidden>
     <section class="welcome">
-      <h1 id="hello">Welcome back. <span class="grey">Here’s what people you follow have been watching and reading…</span></h1>
+      <h1 id="hello">Welcome back.</h1>
     </section>
     <section>
       <h2>New from people you follow <a class="more zapped" href="feed/?following"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z"/></svg>All activity</a></h2>
@@ -429,18 +429,16 @@ async function showOut(){
 async function showIn(){
   document.documentElement.classList.remove('signedout');
   $('#state').hidden = true; $('#out').hidden = true; $('#in').hidden = false;
-  // welcome back, with what the people you follow have been watching and reading. With nothing from them: someone who
-  // has a shelf is told to follow people (and it's still "Welcome back"); only someone with no shelf yet is told to
-  // start one (a new account: "Welcome")
-  const hello = (back, line) => { if (me.profile) $('#hello').innerHTML = `${back ? 'Welcome back' : 'Welcome'}, <a href="${esc(profileUrl(me.profile.username))}">@${esc(me.profile.username)}</a>. <span class="grey">${line}</span>`; };
-  hello(true, 'Here’s what people you follow have been watching and reading…');
+  // welcome back, by name, and nothing more: the row under it says what it is. Only someone with no shelf yet (a new
+  // account) gets "Welcome"
+  const hello = back => { if (me.profile) $('#hello').innerHTML = `${back ? 'Welcome back' : 'Welcome'}, <a href="${esc(profileUrl(me.profile.username))}">@${esc(me.profile.username)}</a>.`; };
+  hello(true);
   // have you a shelf? (Row Level Security lets you read your own.) If that can't be read, you're taken to have one:
   // better than telling someone with a shelf to start it
   const hasShelf = () => api(`shelves?select=id&owner=eq.${me.user.id}&hidden=is.false&limit=1`).then(rows => rows.length > 0, () => true);
   const nobody = async () => {
     $('#folNone').hidden = false;
-    if (await hasShelf()) hello(true, 'Follow a few people to see their shelves here.');
-    else hello(false, 'Start your shelf with + Add, then follow a few people to see theirs.');
+    if (!(await hasShelf())) hello(false);
   };
   const fill = async (get, state, list, make, empty) => {
     try {

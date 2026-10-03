@@ -2,11 +2,11 @@
 const { test, expect } = require('@playwright/test');
 const { mockNetwork, watchErrors, open } = require('../site');
 
-test('home: "Welcome", not "Welcome back", and what to do first; the empty row says how to find people', async ({ page }) => {
+test('home: "Welcome", not "Welcome back", and nothing else on that line; the empty row says how to find people', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true, fresh: true });
   await open(page, '/');
-  await expect(page.locator('#hello')).toHaveText('Welcome, @tester. Start your shelf with + Add, then follow a few people to see theirs.');
+  await expect(page.locator('#hello')).toHaveText('Welcome, @tester.');
   await expect(page.locator('#folNone')).toHaveText('Follow people to see their shelves here. Find members');
   await expect(page.locator('#folNone').getByRole('link', { name: 'Find members' })).toHaveAttribute('href', 'members/');
   expect(errors).toEqual([]);
@@ -15,7 +15,7 @@ test('home: "Welcome", not "Welcome back", and what to do first; the empty row s
 test('home for someone who follows people with shelves still says "Welcome back"', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/');
-  await expect(page.locator('#hello')).toHaveText('Welcome back, @tester. Here’s what people you follow have been watching and reading…');
+  await expect(page.locator('#hello')).toHaveText('Welcome back, @tester.');
 });
 
 // nothing from the people you follow (or you follow no one), whichever way home asks for it
@@ -32,8 +32,7 @@ test('home for someone who has a shelf but nothing from people they follow: stil
   const asked = page.waitForRequest(r => r.url().includes('/rest/v1/shelves?') && r.url().includes('owner=eq.'));
   await open(page, '/');
   expect(new URL((await asked).url()).searchParams.get('owner')).toMatch(/^eq\.11111111-/);   // its own shelves, to see if it has one
-  await expect(page.locator('#hello')).toHaveText('Welcome back, @tester. Follow a few people to see their shelves here.');
-  await expect(page.locator('#hello')).not.toContainText('Start your shelf');
+  await expect(page.locator('#hello')).toHaveText('Welcome back, @tester.');   // the row's empty line says it once, not the welcome too
   await expect(page.locator('#folNone')).toHaveText('Follow people to see their shelves here. Find members');
   expect(errors).toEqual([]);
 });
@@ -42,7 +41,7 @@ test('home for someone with no shelf yet and nothing from people they follow: "W
   await mockNetwork(page, { signedIn: true, ownShelf: false });
   await nothingFromFollowing(page);
   await open(page, '/');
-  await expect(page.locator('#hello')).toHaveText('Welcome, @tester. Start your shelf with + Add, then follow a few people to see theirs.');
+  await expect(page.locator('#hello')).toHaveText('Welcome, @tester.');
 });
 
 test('home when your own shelves can\'t be read: nobody is told to start a shelf they may have', async ({ page }) => {
@@ -50,7 +49,7 @@ test('home when your own shelves can\'t be read: nobody is told to start a shelf
   await nothingFromFollowing(page);
   await page.route(u => u.pathname === '/rest/v1/shelves', route => route.request().method() === 'OPTIONS' ? route.fallback() : route.fulfill({ status: 500, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: '{"message":"no"}' }));
   await open(page, '/');
-  await expect(page.locator('#hello')).toHaveText('Welcome back, @tester. Follow a few people to see their shelves here.');
+  await expect(page.locator('#hello')).toHaveText('Welcome back, @tester.');
 });
 
 test('your empty profile: the shelf, the watchlist, From friends, Activity and Network each say what to do next', async ({ page }) => {
@@ -63,7 +62,7 @@ test('your empty profile: the shelf, the watchlist, From friends, Activity and N
   await expect(page.getByRole('link', { name: 'add a bio' })).toHaveCount(1);
   await expect(page.getByRole('link', { name: 'add a bio' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'add a bio' })).toHaveAttribute('href', '../settings/');
-  await expect(page.locator('#watchNone')).toHaveText('Add a film or book you want to get to. Watchlist');
+  await expect(page.locator('#watchNone')).toHaveText('Add a film or book you want to get to.');   // under the Watchlist heading: no second "Watchlist"
   await expect(page.locator('#friendsNone')).toHaveText('Nothing from friends yet. What people you follow log shows up here. Find people');
   await expect(page.locator('#friendsNone').getByRole('link', { name: 'Find people' })).toHaveAttribute('href', '../members/');
   await page.getByRole('tab', { name: 'Activity' }).click();

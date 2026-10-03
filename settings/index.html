@@ -83,7 +83,7 @@
   <p class="grey" id="state" role="status">Loading…</p>
   <!-- signed out, or signed in with no username yet -->
   <div class="gate" id="gate" hidden>
-    <p id="gateText">Sign in to change your settings.</p>
+    <p id="gateText" hidden></p>
     <button class="btn" id="gateBtn" type="button">Sign in</button>
     <a class="btn" id="gateLink" href="../build/" hidden>Finish sign-up</a>
   </div>
@@ -400,10 +400,10 @@ $('#privIn').addEventListener('change', async () => {
   $('#state').hidden = true;
   if (!me.user){ $('#gate').hidden = false; signIn(); return; }
   if (!me.profile && me.unreachable){   // signed in, but the account couldn't be read: not the same as no username
-    $('#gateText').textContent = 'Couldn’t reach shelfstackd. Check your connection and try again.'; $('#gateBtn').textContent = 'Try again'; $('#gate').hidden = false; return;
+    $('#gateText').textContent = 'Couldn’t reach shelfstackd. Check your connection and try again.'; $('#gateText').hidden = false; $('#gateBtn').textContent = 'Try again'; $('#gate').hidden = false; return;
   }
   if (!me.profile){   // signed in, no username yet: the builder asks for one
-    $('#gateText').textContent = 'Pick a username first, then your settings are here.'; $('#gateBtn').hidden = true; $('#gateLink').hidden = false; $('#gate').hidden = false; return;
+    $('#gateText').textContent = 'Pick a username first, then your settings are here.'; $('#gateText').hidden = false; $('#gateBtn').hidden = true; $('#gateLink').hidden = false; $('#gate').hidden = false; return;
   }
   fillProfile(); paintPhoto(); $('#privIn').checked = me.profile.is_private;
   $('#page').hidden = false; paintTabs();
