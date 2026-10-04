@@ -37,16 +37,16 @@ test('Shelves: signed out, Make a shelf in black, and no "Your shelf"', async ({
   await expect(main.getByRole('link', { name: 'Make a shelf' })).toBeVisible();
   await expect(main.getByText(/your shelf/i)).toHaveCount(0);
   expect(await main.getByRole('link', { name: 'Make a shelf' }).evaluate(bg)).toBe('rgb(0, 0, 0)');
-  expect(await page.locator('header.top .add').evaluate(bg)).toBe('rgb(255, 255, 255)');   // one black button a screen
-  expect(await page.locator('.btn:visible').evaluateAll(els => els.filter(e => getComputedStyle(e).backgroundColor === 'rgb(0, 0, 0)').length)).toBe(1);
+  expect(await page.locator('header.top .add').evaluate(bg)).toBe('rgb(0, 0, 0)');   // solid black too: two looks, solid or plain text
 });
-test('Shelves: signed in, Your shelf, outlined, and + ADD is the black button', async ({ page }) => {
+test('Shelves: signed in, Your shelf is plain grey text, and + ADD is solid black', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/shelves/');
   const mine = page.locator('main').getByRole('link', { name: 'Your shelf' });
   await expect(mine).toHaveAttribute('href', '../build/');
   await expect(page.locator('main').getByRole('link', { name: 'Make a shelf' })).toHaveCount(0);
-  expect(await mine.evaluate(bg)).toBe('rgb(255, 255, 255)');
+  expect(await mine.evaluate(bg)).toBe('rgba(0, 0, 0, 0)');
+  expect(await mine.evaluate(el => getComputedStyle(el).color)).toBe('rgb(107, 107, 107)');
   expect(await page.locator('header.top .add').evaluate(bg)).toBe('rgb(0, 0, 0)');
 });
 

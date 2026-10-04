@@ -255,7 +255,7 @@ test('a shelf that isn\'t there has no Share', async ({ page }) => {
 
 /* ---------- what a dashed link is for ---------- */
 // going somewhere, doing something small and losing something used to look the same (bold capitals, a dashed underline)
-test('the way back is plain grey text, a small action is plain ink, one that loses something is grey; nothing is dashed', async ({ page }) => {
+test('the way back and every small action are plain grey text (black on hover); nothing is dashed', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   const look = loc => loc.evaluate(el => { const s = getComputedStyle(el); return { dashed: s.backgroundImage.includes('repeating-linear-gradient') || s.textDecorationStyle === 'dashed', grey: s.color === 'rgb(107, 107, 107)', capitals: s.textTransform === 'uppercase' }; });
   await open(page, `/u/?mira&shelf=${theirs.id}`);
@@ -263,9 +263,12 @@ test('the way back is plain grey text, a small action is plain ink, one that los
   await expect(back).toHaveText('Back to @mira');
   expect(await look(back)).toEqual({ dashed: false, grey: true, capitals: false });   // going back: it does nothing
   expect(await back.evaluate(el => getComputedStyle(el).fontWeight)).toBe('400');
-  expect(await look(page.getByRole('button', { name: 'Report' }))).toEqual({ dashed: false, grey: false, capitals: false });   // a small action
+  expect(await look(page.getByRole('button', { name: 'Report' }))).toEqual({ dashed: false, grey: true, capitals: false });   // a small action
   await open(page, `/u/?tester&shelf=${mine.id}`);
-  expect(await look(page.getByRole('button', { name: 'Make private' }))).toEqual({ dashed: false, grey: false, capitals: false });
+  const priv = page.getByRole('button', { name: 'Make private' });
+  expect(await look(priv)).toEqual({ dashed: false, grey: true, capitals: false });
+  await priv.hover();
+  expect(await priv.evaluate(el => getComputedStyle(el).color)).toBe('rgb(0, 0, 0)');   // black on hover
   expect(await look(page.getByRole('button', { name: 'Delete' }))).toEqual({ dashed: false, grey: true, capitals: false });    // it loses the shelf
   await back.click();
   await expect(page).toHaveURL(/\/u\/\?tester$/);

@@ -85,8 +85,8 @@
   <!-- signed out, or signed in with no username yet -->
   <div class="gate" id="gate" hidden>
     <p id="gateText" hidden></p>
-    <button class="btn" id="gateBtn" type="button">Sign in</button>
-    <a class="btn" id="gateLink" href="../build/" hidden>Finish sign-up</a>
+    <button class="btn primary" id="gateBtn" type="button">Sign in</button>
+    <a class="btn primary" id="gateLink" href="../build/" hidden>Finish sign-up</a>
   </div>
   <div id="page" hidden>
     <nav class="tabs" role="tablist" aria-label="Settings">
@@ -100,7 +100,7 @@
         <label class="field"><span class="lbl">Display name</span><input type="text" id="nameIn" maxlength="40" autocomplete="name"></label>
         <label class="field"><span class="lbl">Bio</span><textarea id="bioIn" maxlength="160" rows="3"></textarea><span class="note" id="bioCount"></span></label>
         <p class="field"><span class="lbl">Username</span><b id="unameRO"></b></p>
-        <div class="row"><button class="btn" id="saveBtn" type="submit">Save</button><a class="dash sm" id="viewLink" href="../u/">View profile</a></div>
+        <div class="row"><button class="btn primary" id="saveBtn" type="submit">Save</button><a class="dash sm" id="viewLink" href="../u/">View profile</a></div>
         <p class="note" id="editNote" role="status"></p>
       </form>
     </div>
@@ -118,7 +118,7 @@
           <button class="btn zoom" id="zoomOut" type="button" aria-label="Zoom out">−</button>
           <button class="btn zoom" id="zoomIn" type="button" aria-label="Zoom in">+</button>
         </div>
-        <div class="row"><button class="btn" id="photoSave" type="button">Save photo</button><button class="dash sm" id="photoCancel" type="button">Cancel</button></div>
+        <div class="row"><button class="btn primary" id="photoSave" type="button">Save photo</button><button class="dash sm" id="photoCancel" type="button">Cancel</button></div>
       </div>
       <p class="note" id="photoNote" role="status"></p>
     </div>

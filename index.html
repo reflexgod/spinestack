@@ -72,8 +72,6 @@
 .wall figcaption{font-size:var(--fs-small);color:var(--grey)}
 @media (max-width:640px){ .spines{--wall:200px} }
 @media (pointer:coarse){ .spines a{min-width:44px} }
-.signedout .top .add.primary{background:var(--paper);color:var(--ink)}
-.signedout .top .add.primary:hover{background:var(--wash)}
 .welcome h1{margin:0}
 .welcome h1 a{text-decoration:none}
 .welcome h1 a:hover,.welcome h1 a:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px}
@@ -402,7 +400,7 @@ function sample(){ $('#sample').hidden = false; $('#wallCap').hidden = false; }
 let outShown = false;
 async function showOut(){
   if (outShown) return; outShown = true;
-  document.documentElement.classList.add('signedout');   // the bar's + is outlined: Make a shelf is the black button here
+  document.documentElement.classList.add('signedout');   // signed out (no + ADD outline any more: two button looks, solid black and plain text)
   $('#state').hidden = true; $('#in').hidden = true; $('#out').hidden = false;
   let rows;
   try { rows = await everyone(GRID); }

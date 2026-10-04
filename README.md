@@ -56,8 +56,10 @@ Letterboxd's habits are the rule. Each point here has a check in the tests.
   once at most. The way back from a shelf's page is "Back to @name". Buttons and text actions are in their own case
   (sentence case); only the bar's places and + ADD, section headings and the tiny labels ("Follows you", "private",
   "PRO", a field's name) are in capitals.
-- **No dashed underlines.** Links and text actions are plain and underlined on hover only; Delete, Remove and Clear
-  are grey.
+- **Two button looks, no third.** Solid black (`.btn.primary`) for what a screen is for (+ ADD, Save, Post, Follow,
+  a sheet's yes); everything else is a plain text action (`.btn` without primary, `.dash`): small, grey, black on
+  hover, never underlined or dashed. A state ("Following", "In Up next", "Main shelf") is grey text that isn't pressed;
+  Following says Unfollow when the pointer is on it.
 - **Our own words, not Letterboxd's.** The watchlist is **Up next** (the profile's tab, `#upnext`; `#watchlist` still
   works), Members is **People** (`/people/`), "me too" is **Same**, and the feed's tabs are **Friends · Everyone**
   (`?friends`). The tables and functions keep their names (`watchlist`, `metoo_of`, `following`).

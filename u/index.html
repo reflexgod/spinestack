@@ -323,7 +323,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
           <div class="none" id="none" hidden>
             <div class="outlines" aria-hidden="true"><i style="height:150px"></i><i style="height:170px"></i><i style="height:140px"></i><i style="height:162px"></i></div>
             <p id="noneText">No shelf yet.</p>
-            <a class="btn" id="noneMake" href="../build/" hidden>Make your shelf</a>
+            <a class="btn primary" id="noneMake" href="../build/" hidden>Make your shelf</a>
           </div>
         </section>
         <div class="pgrid" id="pgrid">
@@ -436,7 +436,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
     <div>
       <h2 id="confirmTitle">Delete this shelf?</h2>
       <p id="confirmText"></p>
-      <div class="row"><button class="btn" id="confirmYes" type="button">Delete</button><button class="dash sm" data-close type="button">Cancel</button></div>
+      <div class="row"><button class="btn primary" id="confirmYes" type="button">Delete</button><button class="dash sm" data-close type="button">Cancel</button></div>
     </div>
   </div>
 </div>
@@ -1354,7 +1354,7 @@ function personRow(x, kind, list){
     <a class="pn" href="${esc(href)}"><b>${esc(name || '@' + x.username)}</b><span>@${esc(x.username)}</span></a><div class="acts"></div>`;
   const acts = li.querySelector('.acts');
   if (kind === 'requests'){
-    acts.innerHTML = '<button class="btn sm" type="button" data-answer="1">Accept</button><button class="dash sm" type="button" data-answer="0">Decline</button>';
+    acts.innerHTML = '<button class="btn primary sm" type="button" data-answer="1">Accept</button><button class="dash sm" type="button" data-answer="0">Decline</button>';
     acts.addEventListener('click', async e => {
       const b = e.target.closest('[data-answer]'); if (!b) return;
       acts.querySelectorAll('button').forEach(y => { y.disabled = true; });

@@ -254,13 +254,12 @@ test('signed-out home: a wall of the newest spines from different shelves on a s
   expect(await h1.evaluate(el => getComputedStyle(el).textAlign)).toMatch(/^(start|left)$/);
   expect(line.y).toBeGreaterThan(st.y + st.h);
   await expect(hero.locator('p')).toHaveCount(0);
-  // Make a shelf: the one black button (the bar's + is outlined here), at the left, on the first screen
+  // Make a shelf: solid black, at the left, on the first screen
   const make = hero.getByRole('link', { name: 'Make a shelf' });
   await expect(make).toBeVisible();
   await expect(make).toHaveAttribute('href', 'build/');
   const bg = el => getComputedStyle(el).backgroundColor, at = await make.boundingBox();
   expect(await make.evaluate(bg)).toBe('rgb(0, 0, 0)');
-  expect(await page.locator('header.top .add').evaluate(bg)).toBe('rgb(255, 255, 255)');
   expect(Math.abs(at.x - main.x)).toBeLessThanOrEqual(1);
   expect(at.y + at.height).toBeLessThanOrEqual(page.viewportSize().height);
   await expect(page.getByText(/lets you/i)).toHaveCount(0);   // the six tiles are gone

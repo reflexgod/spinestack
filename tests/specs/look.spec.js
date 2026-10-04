@@ -24,7 +24,7 @@ for (const pg of [...PAGES, { name: 'own profile', path: '/u/?tester' }]) {
     if (!isPhone()) expect(Math.abs(foot.left - main.left)).toBeLessThanOrEqual(1);
   });
 
-  test(`${pg.name}: the type scale, and one black button`, async ({ page }) => {
+  test(`${pg.name}: the type scale, and two button looks: solid black or plain grey text`, async ({ page }) => {
     await mockNetwork(page, { signedIn: true });
     await open(page, pg.path);
     expect(await css(page.locator('body'), 'fontSize')).toEqual({ fontSize: '13px' });
@@ -43,11 +43,14 @@ for (const pg of [...PAGES, { name: 'own profile', path: '/u/?tester' }]) {
     expect(await css(btn, 'fontSize', 'fontWeight', 'textTransform', 'borderTopLeftRadius')).toEqual({ fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', borderTopLeftRadius: '3px' });
     const inPage = page.locator('main .btn:visible, .mkbar .btn:visible').first();
     if (await inPage.count()) expect(await css(inPage, 'textTransform')).toEqual({ textTransform: 'none' });
-    const any = page.locator('main .btn:visible, .mkbar .btn:visible').first();
+    const any = page.locator('main .btn.primary:visible, .mkbar .btn.primary:visible').first();
     if (await any.count()) expect(await css(any, 'paddingTop', 'paddingLeft')).toEqual({ paddingTop: '7px', paddingLeft: '12px' });
-    // one black button a screen: + ADD (its ▾ is part of it), or Save in the builder
-    const black = await page.locator('.btn.primary:visible').evaluateAll(els => [...new Set(els.map(e => e.closest('.addwrap') ? '+ ADD' : e.textContent.trim()))]);
-    expect(black).toEqual([pg.name === 'build' ? 'Save' : '+ ADD']);
+    // two looks and no third: solid black (what the screen is for, + ADD, Follow), or plain text, grey, with no box
+    const looks = await page.locator('.btn:visible, .dash:visible').evaluateAll(els => els.map(e => { const s = getComputedStyle(e);
+      return s.backgroundColor === 'rgb(0, 0, 0)' && s.color === 'rgb(255, 255, 255)' ? 'solid'
+        : s.backgroundColor === 'rgba(0, 0, 0, 0)' && (s.borderTopWidth === '0px' || s.borderTopColor === 'rgba(0, 0, 0, 0)') && s.color === 'rgb(107, 107, 107)' ? 'text' : 'other: ' + e.textContent.trim(); }));
+    expect(looks.filter(l => l.startsWith('other'))).toEqual([]);
+    expect(looks).toContain('solid');   // + ADD at least
   });
 }
 

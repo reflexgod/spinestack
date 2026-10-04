@@ -60,19 +60,20 @@ h2 .more:hover,h2 .more:focus-visible{color:var(--ink)}
 .note.warn{color:var(--ink);font-weight:700}
 em.pro,.tag{font-style:normal;font-weight:700;font-size:9px;border:1px solid currentColor;padding:0 3px;letter-spacing:.04em;text-transform:uppercase}
 
-/* ---------- buttons: one black one a screen, the rest outlined or plain text. In their own case (sentence case):
-   only the bar's places, section headings and the tiny labels are in capitals ---------- */
+/* ---------- buttons: two looks, no more. Solid black (.btn.primary) for what a screen is for; everything else is a
+   plain text action (.btn without primary, and .dash): small, grey, black on hover. A state ("Following", "In Up
+   next", "Main shelf") is grey text that isn't pressed. Follow is solid black until it's pressed; then it says
+   Following in grey, and Unfollow when the pointer is on it. In their own case (sentence case): only the bar's places,
+   section headings and the tiny labels are in capitals ---------- */
 .btn{display:inline-block;font:600 var(--fs-btn)/1.35 var(--mono);text-align:center;text-decoration:none;white-space:nowrap;
-  background:var(--paper);color:var(--ink);border:1px solid var(--ink);border-radius:var(--radius);padding:var(--btn-pad);cursor:pointer}
-.btn:hover{background:var(--wash)}
-.btn.primary{background:var(--ink);color:var(--paper)}
-.btn.primary:hover{background:#222}
+  background:none;color:var(--grey);border:1px solid transparent;border-radius:var(--radius);padding:var(--s1) 0;cursor:pointer}
+.btn:hover:not(:disabled),.btn:focus-visible{color:var(--ink)}
+.btn.primary,.btn.follow:not([aria-pressed="true"]){background:var(--ink);color:var(--paper);border-color:var(--ink);padding:var(--btn-pad)}
+.btn.primary:hover:not(:disabled),.btn.follow:not([aria-pressed="true"]):hover:not(:disabled){background:#222;color:var(--paper)}
 .btn.full{width:100%}
 .btn:disabled{opacity:.5;cursor:default}
-/* a text button: plain, underlined on hover only. Delete, Remove and Clear are grey */
-.dash{display:inline-block;background:none;border:0;padding:0 0 var(--s1);font:600 var(--fs-btn)/1.35 var(--mono);color:var(--ink);cursor:pointer;text-decoration:none;white-space:nowrap}
-.dash:hover:not(:disabled),.dash:focus-visible{text-decoration:underline;text-underline-offset:3px}
-.dash.grey{color:var(--grey)}
+.dash{display:inline-block;background:none;border:0;padding:0 0 var(--s1);font:600 var(--fs-btn)/1.35 var(--mono);color:var(--grey);cursor:pointer;text-decoration:none;white-space:nowrap}
+.dash:hover:not(:disabled),.dash:focus-visible{color:var(--ink)}
 .dash:disabled{opacity:.5;cursor:default}
 
 /* ---------- fields ---------- */
