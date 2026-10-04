@@ -1,7 +1,8 @@
--- shelfstackd, phase 6 (PROPOSED, NOT RUN): checks the feed as posts after docs/proposed-0009-social.sql: a log's
+-- shelfstackd, phase 6: checks the feed as posts after migration 0009 (supabase/migrations/0009_social.sql): a log's
 -- rating, review, spoiler, rewatch and date; likes, replies and me-too; notifications; the daily limits; reports on
 -- logs and replies; and who sees what. Run it in the Supabase dashboard (SQL Editor -> New query -> paste -> Run),
--- after 0009. It makes throwaway users inside a transaction and rolls everything back at the end: nothing is kept.
+-- after 0009. It passed on the live database. It makes throwaway users inside a transaction and rolls everything back
+-- at the end: nothing is kept.
 -- The last result says "ALL 0009 CHECKS PASSED". Any failed check stops with an error that starts "FAIL:".
 -- Real accounts can be in the database, so every check looks only at the test's own rows.
 --

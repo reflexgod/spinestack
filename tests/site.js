@@ -109,7 +109,7 @@ const logRow = l => { const p = [...PEOPLE, ...FRIENDS].find(x => x.id === l.own
 const NOT_THERE = { __status: 404, body: { code: 'PGRST202', message: 'Could not find the function in the schema cache', details: null, hint: null } };
 const NO_TABLE = { __status: 404, body: { code: 'PGRST205', message: 'Could not find the table in the schema cache', details: null, hint: null } };
 
-/* migration 0009 (docs/proposed-0009-social.sql), with mockNetwork's social: true: likes, replies, notifications, and
+/* migration 0009 (supabase/migrations/0009_social.sql), with mockNetwork's social: true: likes, replies, notifications, and
    what post_stats() says for each log. Mira's Gummo has likes, replies and a me-too; the made-up account liked it */
 const NEW_LOG = 'ffffffff-ffff-4fff-8fff-000000000001';   // the id a log posted here gets
 const STATS = { [logId(0)]: { rating: 9, review: 'The bathtub scene. Still thinking about it.', spoiler: false, rewatch: true, watched_on: '2026-09-30', metoo_of: null, likes: 3, replies: 2, metoos: 1, liked: true, logged: false },
@@ -263,7 +263,7 @@ const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers
    without migration 0007 (no logs, watchlist or From friends, and no activity()); ownShelf: false is the
    made-up account before it has saved its shelf; fresh: it has just picked its username, with nothing yet (no name,
    bio, shelf, log, watchlist or follow); friends: it follows five more people (FRIENDS), for home's row of cards;
-   social: the database has migration 0009 (likes, replies, notifications; docs/proposed-0009-social.sql).
+   social: the database has migration 0009 (likes, replies, notifications; supabase/migrations/0009_social.sql).
    Returns {unknown, asked}: requests nothing here could answer, and every search /identify was asked for. */
 async function mockNetwork(page, { signedIn = false, named = true, slow = 0, capped = false, realFonts = false, empty = false, logs = true, ownShelf = true, fresh = false, friends = false, social = false } = {}){
   const unknown = [], asked = [];

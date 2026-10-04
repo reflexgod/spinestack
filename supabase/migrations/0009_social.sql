@@ -1,11 +1,10 @@
--- shelfstackd, 0009 (PROPOSED, NOT RUN): the feed as posts. A log is a post: it gets a rating, a review, a spoiler
--- mark, a rewatch mark and the day it was watched or read; posts get likes, replies and "me too"; and the people
--- they're about get notifications.
+-- shelfstackd, 0009: the feed as posts. A log is a post: it gets a rating, a review, a spoiler mark, a rewatch mark
+-- and the day it was watched or read; posts get likes, replies and "me too"; and the people they're about get
+-- notifications.
 --
--- To run it: Supabase dashboard -> SQL Editor -> New query -> paste all of this -> Run. Then its test,
--- docs/proposed-rls_phase6.sql, the same way: the last line says "ALL 0009 CHECKS PASSED". It all runs in one
--- transaction: if anything fails, nothing is changed. Needs 0001 to 0008 (the live database has them).
--- Once it's run, move it to supabase/migrations/0009_social.sql and its test to supabase/tests/rls_phase6.sql.
+-- Run once, after 0008, in the Supabase dashboard (SQL Editor -> New query -> paste all of this -> Run), then run its
+-- test, supabase/tests/rls_phase6.sql: the last line says "ALL 0009 CHECKS PASSED". It all runs in one transaction:
+-- if anything fails, nothing is changed. It was run on the live database by the owner and its test passed.
 --
 -- The pages work without it and ask for what it adds only once it's there (they look for the likes table): until
 -- then there's no rating, review, spoiler, rewatch or date in the composer, no likes, replies or me-too on a post,

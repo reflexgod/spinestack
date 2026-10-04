@@ -285,6 +285,13 @@ watchlist read policies that ask it: the owner always sees theirs, anyone else o
 see the profile. Its test is `supabase/tests/rls_phase5.sql` (`ALL 0008 CHECKS PASSED`, on the live database and on a
 local Postgres 16). `rls_phase4.sql` now makes its private D's watchlist public, so it needs `0008` too.
 
+**`supabase/migrations/0009_social.sql` is in the live database too** (run by the owner; its test,
+`supabase/tests/rls_phase6.sql`, passed: `ALL 0009 CHECKS PASSED`). It makes a log a post: a rating, a review (the
+caption, kept as its first 280), spoiler, rewatch, watched_on and metoo_of; likes, replies and notifications (made by
+triggers), 300 likes and 100 replies a day under a per-person lock, reports on logs and replies, and `post_stats()`,
+`replies_of()`, `notifications_list()` and `notifications_read()` for the pages. The pages show what it adds only once
+the likes table answers (post.js and nav.js ask), so they still work on a database without it.
+
 The live pages are still `main`, which doesn't ask for any of this: logs and the watchlist reach the site when
 `letterboxd-flow` is merged. On a database without `0007` the pages do without: the feed asks for `activity()` once,
 and on "not found" uses `feed()` from `0006` (shelves only); a profile shows no Watchlist and no From friends, and
@@ -315,8 +322,8 @@ signed-out visitors never load the Supabase library.
   `[vars]`. Both are public; Row Level Security protects every table. The secret / service_role key isn't used
   anywhere and must never be added to the page, the repo or the Worker.
 - **Database:** run each file in `supabase/migrations/` once, in order, in the dashboard's SQL Editor (the live
-  database has them all, `0001` to `0008`; there is no `0003`). Then run the test for the newest one
-  (`supabase/tests/rls_phase5.sql` after `0008`, `rls_phase4.sql` after `0007` and `0008`, `rls_phase3.sql` after `0006`): it plays a few users and a signed-out visitor,
+  database has them all, `0001` to `0009`; there is no `0003`). Then run the test for the newest one
+  (`supabase/tests/rls_phase6.sql` after `0009`, `rls_phase5.sql` after `0008`, `rls_phase4.sql` after `0007` and `0008`, `rls_phase3.sql` after `0006`): it plays a few users and a signed-out visitor,
   undoes everything, and ends with `ALL ... CHECKS PASSED` (or stops at the first `FAIL:`). `rls_phase1.sql` is for a
   database with `0001` only.
 - **Pro:** two switches that must agree: `SHELFSTACKD_PRO_REQUIRED` in `build/index.html` (what the page offers) and

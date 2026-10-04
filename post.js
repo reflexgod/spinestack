@@ -1,5 +1,5 @@
 /* A log is a post. The feed (/feed/), a post's own page (/p/?<id>) and + ADD's Log it all use this file.
-   Posts.ready()            is migration 0009 in the database (docs/proposed-0009-social.sql)? It adds a log's rating,
+   Posts.ready()            is migration 0009 in the database (supabase/migrations/0009_social.sql)? It adds a log's rating,
                             review, spoiler, rewatch and date, likes, replies, me-too and notifications. Asked once a
                             page; until it's there nothing it adds shows, and a log is a caption of 280 as before.
    Posts.fields(host, m)    the composer's fields once a title is picked: the stars (half stars, optional), the review,

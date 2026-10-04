@@ -172,7 +172,7 @@
   });
 
   /* ---------- the bell ----------
-     Signed in, once migration 0009 is in the database (docs/proposed-0009-social.sql): the bell, with a dot while
+     Signed in, once migration 0009 is in the database (supabase/migrations/0009_social.sql): the bell, with a dot while
      something is unread. Whether 0009 is there is asked the way post.js asks it (the likes table, with the same keys
      kept in this browser: keep them in step), so a 404 comes at most every 10 minutes until it is. */
   const bell = q('#bell'), SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
