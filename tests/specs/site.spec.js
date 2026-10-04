@@ -27,7 +27,7 @@ for (const signedIn of [false, true]) {
         await expect(bar.getByRole('link', { name: 'Add a film or a book' })).toBeVisible();
         if (!isPhone()) await expect(bar.locator('.add')).toHaveText('Add');   // + ADD (a phone shows just the +)
         // the places are in one order, signed in or out: FEED · SHELVES · MEMBERS · search (they used to change places)
-        const places = await bar.locator('.links a').evaluateAll(as => as.map(a => ({ name: a.getAttribute('aria-label') || a.textContent.trim(), left: a.getBoundingClientRect().left, shown: a.getBoundingClientRect().width > 0 })));
+        const places = await bar.locator('.links a:not([hidden])').evaluateAll(as => as.map(a => ({ name: a.getAttribute('aria-label') || a.textContent.trim(), left: a.getBoundingClientRect().left, shown: a.getBoundingClientRect().width > 0 })));
         expect(places.map(p => p.name)).toEqual(['Feed', 'Shelves', 'Members', 'Search']);
         await expect(bar.locator('.links a', { hasText: 'Feed' })).toHaveCSS('text-transform', 'uppercase');   // a word in capitals, no ⚡
         expect(places.every(p => p.shown)).toBe(true);

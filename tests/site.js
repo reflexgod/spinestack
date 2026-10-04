@@ -19,6 +19,7 @@ const PAGES = [
   { name: 'shelves', path: '/shelves/' },
   { name: 'members', path: '/members/' },
   { name: 'post', path: '/p/?bbbbbbbb-bbbb-4bbb-8bbb-000000000000' },   // @mira's Gummo
+  { name: 'notifications', path: '/notifications/' },
 ];
 /* pages without it */
 const OTHER_PAGES = [

@@ -101,6 +101,12 @@ textarea{resize:vertical;line-height:1.5}
 .links a{display:flex;align-items:center;padding:var(--s1) 0;border-bottom:1px solid transparent}
 .links a[aria-current]{border-bottom-color:var(--ink)}
 .signin{flex:none}
+/* the bell, the last of the places: signed in, once migration 0009 is there; a black dot while something is unread (nav.js) */
+.links .bell{position:relative}
+.links .bell svg{width:20px;height:20px}
+.links .bell .dot{position:absolute;top:2px;right:-2px;width:8px;height:8px;border-radius:50%;background:var(--ink);border:2px solid var(--paper)}
+.links .bell[aria-current]{border-bottom-color:transparent}
+.links .bell[aria-current] svg{fill:currentColor}
 .addwrap{display:flex;flex:none}
 .top .add{display:flex;align-items:center;gap:var(--s1);font-size:var(--fs-btn);font-weight:600;letter-spacing:.04em}
 .top .addmore{display:flex;align-items:center;padding:7px var(--s2);margin-left:-1px;border-radius:0 var(--radius) var(--radius) 0}

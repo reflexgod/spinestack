@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Shelves · shelfstackd</title>
-<meta name="description" content="Every public shelf on shelfstackd, newest first. Make your own.">
+<title>Notifications · shelfstackd</title>
+<meta name="description" content="Who liked, replied to or logged what you posted, and who followed you, on shelfstackd.">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
 <meta name="theme-color" content="#FFFFFF">
 <meta property="og:site_name" content="shelfstackd">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Shelves · shelfstackd">
-<meta property="og:description" content="Every public shelf on shelfstackd, newest first. Make your own.">
-<meta property="og:url" content="https://shelfstackd.com/shelves/">
+<meta property="og:title" content="Notifications · shelfstackd">
+<meta property="og:description" content="Who liked, replied to or logged what you posted, and who followed you, on shelfstackd.">
+<meta property="og:url" content="https://shelfstackd.com/notifications/">
 <meta property="og:image" content="https://shelfstackd.com/og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -21,11 +21,6 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://shelfstackd.com/og.jpg">
 <script>
-  /* Signed out, this page's one black button is Make a shelf, so the bar's + is outlined (as on home). Said now, before
-     anything is drawn, so nothing changes as the page loads. */
-  try {
-    if (!Object.keys(localStorage).some(function(k){ return /^sb-.+-auth-token$/.test(k); }) && !/[?&](code|error|error_description)=/.test(location.search)) document.documentElement.classList.add('signedout');
-  } catch (e) {}
   /* The same public addresses as build/ (see the notes there). */
   window.SPINESTACK_WORKER = "https://api.shelfstackd.com";
   window.SPINESTACK_WORKER_FALLBACK = "https://spinestack.spinestack-worker.workers.dev";
@@ -37,15 +32,19 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap">
 <link rel="stylesheet" href="../site.css?v=20261012a">
 <style>
-/* shelves: a line and a button, then every public shelf as a card (site.css has the cards and the rest) */
-.shelves h1{margin-bottom:var(--s2)}
-.lead{display:flex;gap:var(--s3) var(--s5);align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:var(--s5)}
-.lead p{margin:0}
-#state,#none{margin:0}
-#more{margin-top:var(--s6)}
-/* signed out: Make a shelf is the black button, and the bar's + is outlined */
-.signedout .top .add.primary{background:var(--paper);color:var(--ink)}
-.signedout .top .add.primary:hover{background:var(--wash)}
+/* notifications: one line each (or one for several in a row about the same thing), newest first; unread in bold */
+.nlist{list-style:none;margin:var(--s5) 0 0;padding:0;display:grid;gap:var(--s4);max-width:680px}
+.nlist li{display:grid;grid-template-columns:32px minmax(0,1fr);gap:var(--s1) var(--s3);align-items:center}
+.nlist .fa{width:32px;height:32px;border-radius:50%;border:1px solid var(--ink);background:var(--wash);overflow:hidden;display:grid;place-items:center;font-size:var(--fs-body);text-transform:uppercase;text-decoration:none;color:var(--ink)}
+.nlist .fa img{width:100%;height:100%;object-fit:cover;display:block}
+.nlist .nl{margin:0;min-width:0;overflow-wrap:anywhere}
+.nlist .nl a{text-decoration:none}
+.nlist .nl a:hover,.nlist .nl a:focus-visible{text-decoration:underline;text-underline-offset:3px}
+.nlist .unread .nl{font-weight:700}
+.nlist .ago{color:var(--grey);font-size:var(--fs-small);font-weight:400;white-space:nowrap}
+.nlist .nt{grid-column:2;margin:0;color:var(--grey);white-space:pre-line;overflow-wrap:anywhere}
+#state{margin:var(--s5) 0 0}
+#more{margin-top:var(--s5)}
 </style>
 </head>
 <body>
@@ -55,22 +54,18 @@
   <button class="acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false" hidden><span class="ava" aria-hidden="true"></span><span class="who"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
   <nav class="links" aria-label="shelfstackd">
     <a href="../feed/">Feed</a>
-    <a href="./" aria-current="page">Shelves</a><a href="../members/">Members</a>
+    <a href="../shelves/">Shelves</a><a href="../members/">Members</a>
     <a class="find" href="../members/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
-    <a class="bell" id="bell" href="../notifications/" aria-label="Notifications" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="dot" hidden></span></a>
+    <a class="bell" id="bell" href="./" aria-label="Notifications" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="dot" hidden></span></a>
   </nav>
   <a class="signin" id="signInBtn" href="#" hidden>Sign in</a>
   <span class="addwrap"><a class="btn primary add" href="../build/" aria-label="Add a film or a book"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Add</span></a><button class="btn primary addmore" id="addMore" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More ways to add" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></span>
 </header>
 
-<main class="shelves">
-  <h1>Shelves</h1>
-  <div class="lead">
-    <a class="btn primary" id="mine" href="../build/">Make a shelf</a>
-  </div>
+<main class="notes">
+  <h1>Notifications</h1>
   <p class="grey" id="state" role="status">Loading…</p>
-  <ul class="thumbs" id="grid" aria-label="Shelves"></ul>
-  <p class="grey" id="none" hidden>No public shelves yet.</p>
+  <ol class="nlist" id="nlist"></ol>
   <button class="dash sm" id="more" type="button" hidden>Load more</button>
 </main>
 
@@ -93,29 +88,25 @@
 
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
-<script src="../cards.js?v=20261002a"></script>
 <script src="../nav.js?v=20261012a"></script>
+<script src="../post.js?v=20261012a"></script>
 <script>
 (() => {
-/* Shelves: /shelves/. Every public shelf of a public profile, newest saved first, as cards: 24 at a time, then Load
-   more. They come from feed() (0006) with scope 'everyone', as on home and feed/; the next 24 start after the last
-   one's saved_at and id. */
+/* Notifications: /notifications/, yours only (migration 0009, notifications_list()). Likes, replies, me-toos and new
+   followers, newest first, 30 at a time; ones in a row about the same thing are one line ("@a and 2 others liked your
+   log of Gummo"). A reply is its own line, with what was said. Each goes to the post (/p/) or, for a follower, their
+   profile. Opening the page marks them all read (notifications_read()), and the bell's dot goes; what was unread
+   until now is in bold. Signed out: Sign in. Without 0009: they aren't open yet. */
 const $ = s => document.querySelector(s);
 const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
 const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
 const SB_LIB = {src:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
-const PAGE = 24;
-
+const PAGE = 30;
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const profileUrl = (name, shelf) => '../u/?' + name + (shelf ? '&shelf=' + shelf : '');
 let toastT = 0; function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 4200); }
-function friendly(e){
-  const m = (e && e.message) || '';
-  if (/fetch|network/i.test(m)) return 'Couldn’t reach shelfstackd. Check your connection and try again.';
-  return m || 'Something went wrong. Try again in a moment.';
-}
+const friendly = e => Posts.friendly(e);
 
-/* ---------- signing in (the same Supabase client and settings as feed/ and u/) ---------- */
+/* ---------- signing in (the same Supabase client and settings as the feed) ---------- */
 const me = {sb:null, user:null, profile:null};
 let sbLoading = null;
 function supa(){
@@ -128,97 +119,86 @@ function supa(){
 }
 const hasSession = () => { try { return Object.keys(localStorage).some(k => /^sb-.+-auth-token$/.test(k)); } catch { return false; } };
 const returning = () => /[?&](code|error|error_description)=/.test(location.search);
-async function token(){
-  if (!me.sb) return null;
-  const {data:{session}} = await me.sb.auth.getSession();
-  return session ? session.access_token : null;
-}
-// Supabase's REST API: as the signed-in person when there is one, otherwise as a visitor
-async function api(path, opt = {}){
-  const t = await token(), r = await fetch(`${SB_URL}/rest/v1/${path}`, {...opt,
-    headers: {apikey: SB_KEY, 'Content-Type': 'application/json', ...(t ? {Authorization: 'Bearer ' + t} : {}), ...(opt.headers || {})}});
-  const j = r.status === 204 ? null : await r.json().catch(() => null);
-  if (!r.ok) throw new Error((j && j.message) || 'Couldn’t load the shelves. Try again in a moment.');
-  return j;
-}
-const rpc = (fn, args) => api('rpc/' + fn, {method:'POST', body: JSON.stringify(args)});
 async function startSession(){
-  const back = returning();   // asked before Supabase takes ?code= off
+  const back = returning();
   if (!hasSession() && !back) return;
   try {
-    const err = new URLSearchParams(location.search).get('error_description');
-    const sb = await supa(), {data:{session}} = await sb.auth.getSession();   // finishes a Google sign-in coming back with ?code=
-    if (back) history.replaceState(null, '', location.pathname + location.hash);
-    if (err) toast('Sign-in didn’t finish: ' + err);
+    const sb = await supa(), {data:{session}} = await sb.auth.getSession();
+    if (back) history.replaceState(null, '', location.pathname);
     me.user = session && session.user;
-    if (me.user){
-      const rows = await api(`profiles?select=id,username,display_name,avatar_key&id=eq.${me.user.id}`);
-      me.profile = rows[0] || null;
-    }
+    if (me.user){ const rows = await Posts.rest(`profiles?select=id,username,display_name,avatar_key&id=eq.${me.user.id}`); me.profile = rows[0] || null; }
     sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') location.reload(); });
-  } catch (e){ if (me.user && !me.profile) me.unreachable = true; toast(friendly(e)); }   // unreachable: signed in, but the account couldn't be read (not "no username yet")
+  } catch (e){ if (me.user && !me.profile) me.unreachable = true; toast(friendly(e)); }
 }
-Nav.onSignIn(() => openSheet('#signSheet', '#googleBtn'));
-// Sign out, from the account menu (nav.js): the page starts again signed out
+const signIn = () => openSheet('#signSheet', '#googleBtn');
+Nav.onSignIn(signIn);
 Nav.onSignOut(async () => { try { const {error} = await (await supa()).auth.signOut({scope: 'local'}); if (error) throw error; } catch (e){ toast(friendly(e)); } });
 $('#googleBtn').addEventListener('click', async () => {
   const btn = $('#googleBtn'); btn.disabled = true;
-  try {
-    const sb = await supa();
-    const {error} = await sb.auth.signInWithOAuth({provider:'google', options:{redirectTo: location.origin + location.pathname}});   // back to this page
-    if (error) throw error;
-  } catch (e){ btn.disabled = false; toast(friendly(e)); }
+  try { const sb = await supa(), {error} = await sb.auth.signInWithOAuth({provider:'google', options:{redirectTo: location.origin + location.pathname}}); if (error) throw error; }
+  catch (e){ btn.disabled = false; toast(friendly(e)); }
 });
-
-/* sheets */
 let sheetFrom = null;
 function openSheet(id, focus){ sheetFrom = document.activeElement; $(id).hidden = false; const f = $(focus); if (f) f.focus(); }
 function closeSheets(){ document.querySelectorAll('.sheet').forEach(s => s.hidden = true); if (sheetFrom && sheetFrom.focus) sheetFrom.focus(); }
 document.querySelectorAll('.sheet').forEach(s => s.addEventListener('click', e => { if (e.target === s || e.target.closest('[data-close]')) closeSheets(); }));
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.querySelector('.sheet:not([hidden])')) closeSheets(); });
+document.addEventListener('click', e => { if (e.target.closest('[data-signin]')) signIn(); });
 
-/* ---------- the shelves ---------- */
-let last = null;   // the last shelf shown: the next page starts after it
-// one shelf: its preview, its name, who made it (the same card as on home)
-function tile(x){
-  const li = document.createElement('li'), shelf = Shelf.shelfName({name: x.name, caption: x.caption});
-  const pic = x.preview_key ? `<img src="${esc(`${WORKER}/u/preview?k=${encodeURIComponent(x.preview_key)}&v=${encodeURIComponent(x.updated_at)}`)}" alt="" crossorigin="anonymous" loading="lazy" width="360" height="640">` : '';   // with CORS, so cards.js can read it and cut the card round the books
-  li.innerHTML = `<a href="${esc(profileUrl(x.username, x.shelf_id))}" aria-label="${esc(shelf)} by @${esc(x.username)}">
-      <span class="pic" data-shelf="${esc(x.shelf_id)}">${pic}</span><span class="cap">${esc(shelf)}</span><span class="by">@${esc(x.username)}</span></a>`;
+/* ---------- the list ---------- */
+const notes = {rows: [], last: null};
+// ones in a row about the same thing (the same kind, and the same log) are one; a reply is always its own
+function grouped(rows){
+  const out = [];
+  for (const n of rows){
+    const g = out[out.length - 1];
+    if (g && n.kind !== 'reply' && g.kind === n.kind && g.log === n.log && !g.who.some(w => w.actor === n.actor)) { g.who.push(n); g.unread = g.unread || !n.read; continue; }
+    out.push({kind: n.kind, log: n.log, log_kind: n.log_kind, log_title: n.log_title, at: n.created_at, reply_text: n.reply_text, unread: !n.read, who: [n]});
+  }
+  return out;
+}
+const DOES = {like: 'liked your log of', reply: 'replied to your log of', metoo: 'logged', follow: 'followed you'};
+function names(who){
+  const at = w => `<a href="../u/?${esc(w.username)}">@${esc(w.username)}</a>`, n = who.length;
+  return n === 1 ? at(who[0]) : n === 2 ? `${at(who[0])} and ${at(who[1])}` : `${at(who[0])} and ${n - 1} others`;
+}
+function line(g){
+  const li = document.createElement('li'), first = g.who[0], post = g.log ? `../p/?${esc(g.log)}` : '';
+  li.className = g.unread ? 'unread' : '';
+  const ava = first.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(first.avatar_key)}`)}" alt="" loading="lazy">` : esc(((first.display_name || '').trim() || first.username || '·').trim()[0] || '·');
+  const what = g.kind === 'follow' ? DOES.follow
+    : g.kind === 'metoo' ? `${DOES.metoo} <a href="${post}">${esc(g.log_title || 'it')}</a> too`
+    : `${DOES[g.kind]} <a href="${post}">${esc(g.log_title || 'a log')}</a>`;
+  li.innerHTML = `<a class="fa" href="../u/?${esc(first.username)}" tabindex="-1" aria-hidden="true">${ava}</a>
+    <p class="nl">${names(g.who)} ${what} <span class="ago">· <time datetime="${esc(g.at)}" title="${esc(new Date(g.at).toLocaleString())}">${Posts.ago(g.at)}</time></span></p>
+    ${g.kind === 'reply' && g.reply_text ? `<p class="nt">${esc(g.reply_text)}</p>` : ''}`;
   return li;
 }
 async function more(){
-  const btn = $('#more'), grid = $('#grid'), first = !grid.children.length;
-  btn.disabled = true;
+  const btn = $('#more'); btn.disabled = true;
   let rows;
-  try { rows = await rpc('feed', {scope: 'everyone', before: last ? last.at : null, before_id: last ? last.id : null, n: PAGE}); }
-  catch (e){
-    btn.disabled = false;
-    if (first) $('#state').textContent = friendly(e); else toast(friendly(e));
-    return;
-  }
-  btn.disabled = false; $('#state').hidden = true;
-  const added = rows.map(tile);
-  grid.append(...added);
-  const end = rows[rows.length - 1];
-  if (end) last = {at: end.saved_at, id: end.shelf_id};
+  try { rows = await Posts.rpc('notifications_list', {before: notes.last ? notes.last.at : null, before_id: notes.last ? notes.last.id : null, n: PAGE}); }
+  catch (e){ btn.disabled = false; $('#state').textContent = friendly(e); $('#state').hidden = false; return; }
+  btn.disabled = false;
+  notes.rows.push(...rows);
+  const end = rows[rows.length - 1]; if (end) notes.last = {at: end.created_at, id: end.id};
+  $('#nlist').replaceChildren(...grouped(notes.rows).map(line));
+  $('#state').hidden = !!notes.rows.length; $('#state').textContent = 'Nothing yet.';
   btn.hidden = rows.length < PAGE;
-  $('#none').hidden = !!grid.children.length;
-  if (!first && added[0]) added[0].querySelector('a').focus({preventScroll: true});   // the keyboard goes on from the first new card
 }
 $('#more').addEventListener('click', more);
 
-// the button by the line: signed in, Your shelf (outlined: + ADD is the black one); signed out, Make a shelf in black
-function paintMine(signedIn){
-  const a = $('#mine');
-  a.textContent = signedIn ? 'Your shelf' : 'Make a shelf'; a.classList.toggle('primary', !signedIn);
-  document.documentElement.classList.toggle('signedout', !signedIn);
-}
-paintMine(!document.documentElement.classList.contains('signedout'));
-// signed out, Make a shelf is the sign-in sheet, then the builder
-$('#mine').addEventListener('click', e => { if (Nav.visitor()){ e.preventDefault(); Nav.needAccount('build'); } });
-more();   // the shelves don't wait on the account
-(async () => { await startSession(); Nav.paint(me); paintMine(!!me.user); })();
+(async () => {
+  await startSession();
+  Nav.paint(me);
+  const st = $('#state');
+  if (!me.user){ st.innerHTML = '<button class="linkish" type="button" data-signin>Sign in</button> to see yours.'; return; }
+  if (!me.profile){ st.textContent = me.unreachable ? friendly(new Error('network')) : 'Pick a username first.'; return; }
+  if (!(await Posts.ready())){ st.textContent = 'Notifications aren’t open yet.'; return; }
+  await more();
+  // seen now: all of them read, and the bell's dot goes (what was unread stays in bold on this page)
+  try { await Posts.rpc('notifications_read', {}); document.dispatchEvent(new CustomEvent('shelfstackd:read')); } catch {}
+})();
 })();
 </script>
 </body>

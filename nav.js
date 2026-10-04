@@ -153,7 +153,7 @@
       return;
     }
     buildMenus(); fillAccount(p); loadLibs();
-    goOn();
+    goOn(); ring();
     acctBtn.querySelector('.who').textContent = '@' + p.username;
     acctBtn.setAttribute('aria-label', '@' + p.username + ', your account');   // on a phone only the photo shows
     const ava = acctBtn.querySelector('.ava'), key = p.avatar_key || '';
@@ -170,6 +170,40 @@
     if (!state.user){ e.preventDefault(); plainSignIn(); if (on.signIn) on.signIn(); }
     else if (on.finish){ e.preventDefault(); on.finish(); }   // signed in, no username yet (elsewhere the link goes to the builder, which asks)
   });
+
+  /* ---------- the bell ----------
+     Signed in, once migration 0009 is in the database (docs/proposed-0009-social.sql): the bell, with a dot while
+     something is unread. Whether 0009 is there is asked the way post.js asks it (the likes table, with the same keys
+     kept in this browser: keep them in step), so a 404 comes at most every 10 minutes until it is. */
+  const bell = q('#bell'), SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
+  const KEPT = 'shelfstackd-0009';
+  let rung = false;
+  async function social(){
+    try {
+      if (sessionStorage.getItem(KEPT) === 'yes') return true;
+      if (Date.now() - (+localStorage.getItem(KEPT + '-no') || 0) < 10 * 60e3) return false;
+    } catch {}
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/likes?select=log&limit=1`, {headers: {apikey: SB_KEY}});
+      try { if (r.ok) sessionStorage.setItem(KEPT, 'yes'); else localStorage.setItem(KEPT + '-no', String(Date.now())); } catch {}
+      return r.ok;
+    } catch { return false; }
+  }
+  async function ring(){
+    if (!bell || rung || !state.sb || !state.user || !SB_URL) return;
+    rung = true;
+    if (!(await social())) return;
+    bell.hidden = false;
+    if (new URL(bell.href).pathname === location.pathname) bell.setAttribute('aria-current', 'page');
+    try {
+      const {data} = await state.sb.from('notifications').select('id').eq('read', false).limit(1);
+      const unread = !!(data && data.length);
+      bell.querySelector('.dot').hidden = !unread;
+      bell.setAttribute('aria-label', unread ? 'Notifications, some unread' : 'Notifications');
+    } catch {}
+  }
+  // the notifications page, once it has marked them read
+  document.addEventListener('shelfstackd:read', () => { if (bell){ bell.querySelector('.dot').hidden = true; bell.setAttribute('aria-label', 'Notifications'); } });
 
   /* ---------- + ADD: the Add to your shelf dialog ---------- */
   // add.js draws spines with shelf.js, which every page with the bar loads. If either can't be had, + ADD is the
