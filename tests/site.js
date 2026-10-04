@@ -18,6 +18,7 @@ const PAGES = [
   { name: 'settings', path: '/settings/' },
   { name: 'shelves', path: '/shelves/' },
   { name: 'members', path: '/members/' },
+  { name: 'post', path: '/p/?bbbbbbbb-bbbb-4bbb-8bbb-000000000000' },   // @mira's Gummo
 ];
 /* pages without it */
 const OTHER_PAGES = [
@@ -139,6 +140,7 @@ function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, 
   if (/^(likes|replies|notifications|act_counts)$/.test(what)){
     if (!social) return NO_TABLE;
     if (method === 'GET' && what === 'notifications') return signedIn ? NOTES.filter(n => !n.read).slice(0, +(q.get('limit') || 30)).map(n => ({ id: n.id })) : [];
+    if (method === 'POST' && what === 'replies') return [{ id: 'abababab-abab-4bab-8bab-000000000099', created_at: new Date().toISOString(), owner: ME.id, ...body }];
     return method === 'GET' ? [] : method === 'DELETE' ? [] : null;
   }
   if (/^rpc\/(post_stats|replies_of|notifications_list|notifications_read)$/.test(what)){
