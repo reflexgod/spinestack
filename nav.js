@@ -237,9 +237,9 @@
   // kind, title and year, as a log or a spine keeps it (the page finds the id and takes that address)
   function titleUrl(m){
     const kind = m && m.kind === 'movie' ? 'movie' : 'book';
-    if (kind === 'movie' && /^\d{1,9}$/.test(String(m.tmdb || ''))) return ROOT + 't/?film=' + m.tmdb;
-    if (kind === 'book' && /^OL\d{1,10}W$/.test(String(m.ol || ''))) return ROOT + 't/?book=' + m.ol;
-    const q = new URLSearchParams({kind, title: String((m && m.title) || '').trim()});
+    // with the title and year too: what people did with it is found by them (logs keep no id)
+    const q = new URLSearchParams(kind === 'movie' && /^\d{1,9}$/.test(String(m.tmdb || '')) ? {film: m.tmdb} : kind === 'book' && /^OL\d{1,10}W$/.test(String(m.ol || '')) ? {book: m.ol} : {kind});
+    q.set('title', String((m && m.title) || '').trim());
     if (m && /^\d{4}$/.test(String(m.year || ''))) q.set('year', String(m.year));
     return ROOT + 't/?' + q;
   }

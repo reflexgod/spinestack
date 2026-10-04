@@ -184,10 +184,13 @@ const SHARE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
 
 /* ---------- which title ---------- */
 const P = new URLSearchParams(location.search);
-const ASK = /^\d{1,9}$/.test(P.get('film') || '') ? {kind: 'movie', film: P.get('film')}
-  : /^OL\d{1,10}W$/.test(P.get('book') || '') ? {kind: 'book', book: P.get('book')}
-  : (P.get('title') || '').trim() ? {kind: P.get('kind') === 'book' ? 'book' : 'movie', title: P.get('title').trim().slice(0, 200), year: /^\d{4}$/.test(P.get('year') || '') ? P.get('year') : ''}
-  : null;
+/* The address has its id (film, book) when it's known, and the title and year the link came with: logs and spines
+   keep no id, so what people did with it is found by that title and year (until ids are kept: 0011) */
+const ASK = (() => {
+  const film = /^\d{1,9}$/.test(P.get('film') || '') ? P.get('film') : '', book = film ? '' : /^OL\d{1,10}W$/.test(P.get('book') || '') ? P.get('book') : '';
+  const title = (P.get('title') || '').trim().slice(0, 200), year = /^\d{4}$/.test(P.get('year') || '') ? P.get('year') : '';
+  return film || book || title ? {kind: film ? 'movie' : book ? 'book' : P.get('kind') === 'book' ? 'book' : 'movie', film, book, title, year} : null;
+})();
 const here = () => { const q = new URLSearchParams(location.search); for (const k of ['code', 'error', 'error_description', 'state']) q.delete(k); return location.pathname + '?' + q; };
 
 /* ---------- signing in (the same Supabase client and settings as the feed) ---------- */
@@ -230,14 +233,23 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.q
 
 /* ---------- what it is ---------- */
 const T = {info: null, item: null, logs: [], mine: null, friends: new Set(), shelves: [], tab: '', social: false};
+// what the Worker says (null when it doesn't answer or doesn't know it)
 async function info(){
   const q = ASK.film ? `film=${ASK.film}` : ASK.book ? `book=${ASK.book}` : new URLSearchParams({kind: ASK.kind, title: ASK.title, ...(ASK.year ? {year: ASK.year} : {})});
   try {
     const r = await fetch(`${WORKER}/title?${q}`);
-    if (r.ok){ const j = await r.json(); if (j && j.title) return j; }
+    if (r.ok){ const j = await r.json(); if (j && j.title && j.kind === ASK.kind) return j; }
   } catch {}
-  // no Worker (or it doesn't know it): what the link said
-  return ASK.title ? {kind: ASK.kind, id: '', title: ASK.title, year: ASK.year, creator: '', runtime: null, pages: null, genres: [], overview: '', cover: '', spine: ''} : null;
+  return null;
+}
+// what the link says, drawn at once
+const fromLink = () => ({kind: ASK.kind, id: ASK.film || ASK.book, title: ASK.title, year: ASK.year, creator: '', runtime: null, pages: null, genres: [], overview: '', cover: '', spine: ''});
+// this title's address: its id when known, with the title and year to find it by
+function addressOf(){
+  const q = new URLSearchParams(), id = T.info.id;
+  if (id) q.set(T.info.kind === 'movie' ? 'film' : 'book', id); else q.set('kind', T.match.kind);
+  q.set('title', T.match.title); if (T.match.year) q.set('year', T.match.year);
+  return location.pathname + '?' + q;
 }
 const COVER_OK = /^https:\/\/(image\.tmdb\.org|covers\.openlibrary\.org)\/\S+$/;
 const viaWorker = u => u ? `${WORKER}/img?url=${encodeURIComponent(u)}` : '';
@@ -265,7 +277,7 @@ function paintCover(){
 /* ---------- what people here did with it ---------- */
 // PostgREST's ilike, with % and _ taken as themselves: the same title, whatever its capitals
 const likeOf = s => String(s).replace(/[\\%_]/g, c => '\\' + c);
-const titleQuery = () => `kind=eq.${T.info.kind}&title=ilike.${encodeURIComponent(likeOf(T.info.title))}&year=${T.info.year ? 'eq.' + T.info.year : 'is.null'}`;
+const titleQuery = () => `kind=eq.${T.match.kind}&title=ilike.${encodeURIComponent(likeOf(T.match.title))}&year=${T.match.year ? 'eq.' + T.match.year : 'is.null'}`;
 async function community(){
   const asks = [
     Posts.rest(`logs?select=id,owner,kind,title,author,year,cover_src,caption,created_at,profiles(username,display_name,avatar_key)&${titleQuery()}&order=created_at.desc&limit=200`).catch(() => []),
@@ -327,7 +339,7 @@ async function paintPanel(){
     recs ? `<button class="dash" type="button" data-t="rec">Recommend</button>` : '',
     `<span class="pmenuwrap"><button class="dash" type="button" data-t="share">Share</button></span>`,
   ].join('');
-  const url = () => new URL(location.pathname + '?' + (T.info.id ? `${k === 'movie' ? 'film' : 'book'}=${T.info.id}` : new URLSearchParams({kind: k, title: T.info.title, ...(T.info.year ? {year: T.info.year} : {})})), location.href).href;
+  const url = () => new URL(addressOf(), location.href).href;
   Posts.menuOn($('#tPanel [data-t=share]'), async () => {
     const label = `${T.info.title}${T.info.year ? ` (${T.info.year})` : ''}`;
     const list = [{label: 'Copy link', run: async () => { try { await navigator.clipboard.writeText(url()); toast('Link copied.'); } catch { toast(url()); } }},
@@ -399,22 +411,41 @@ $('#yPost').addEventListener('click', async () => {
 
 function paintAll(){ paintCover(); paintStats(); paintShelves(); paintPanel(); paintReviews(T.tab); paintYours(); }
 
-async function load(){
+/* At once, before anything is asked: what the link says (its title and year), and the Worker asked. Then, signed in
+   or not, what people did with it (your log, the cover from it); the Worker's details come in when it answers. */
+let asking = null;
+function first(){
   if (!ASK){ $('#state').textContent = 'Which film or book? This link doesn’t say.'; return; }
-  const t = await info();
-  if (!t){ $('#state').textContent = 'This title couldn’t load. Try again in a moment.'; return; }
-  T.info = t;
-  // the address of its id, once the Worker has found it
-  if (t.id && !ASK.film && !ASK.book) history.replaceState(null, '', location.pathname + `?${t.kind === 'movie' ? 'film' : 'book'}=${t.id}` + location.hash);
-  T.item = {kind: t.kind, title: t.title, year: t.year || '', creator: t.creator || '', cover: COVER_OK.test(t.cover || '') ? t.cover : '',
-    ...(t.kind === 'movie' ? {tmdb: t.id} : {ol: t.id})};
+  asking = info();
+  if (!ASK.title) return;   // an id alone: the Worker has to say what it is
+  T.info = fromLink(); T.match = {kind: ASK.kind, title: ASK.title, year: ASK.year};
+  T.item = {kind: ASK.kind, title: ASK.title, year: ASK.year, creator: '', cover: '', ...(ASK.film ? {tmdb: ASK.film} : ASK.book ? {ol: ASK.book} : {})};
+  paintInfo(); paintCover();
+  $('#state').hidden = true; $('#page').hidden = false;
+}
+// the Worker's details on top of the link's: the title as TMDB or Open Library writes it, who made it, how long, the rest
+function details(t){
+  T.info = {...t, title: t.title || T.info.title};
+  if (!T.match) T.match = {kind: t.kind, title: t.title, year: t.year || ''};
+  T.item = {...T.item, kind: t.kind, title: T.item && T.item.title || t.title, year: T.item && T.item.year || t.year || '', creator: t.creator || '',
+    cover: T.item && T.item.cover || (COVER_OK.test(t.cover || '') ? t.cover : ''), ...(t.kind === 'movie' ? {tmdb: t.id} : {ol: t.id})};
+  history.replaceState(null, '', addressOf() + location.hash);   // the id's address, still with the title and year to match by
   paintInfo();
+}
+async function load(){
+  if (!ASK) return;
+  if (!T.info){
+    const t = await asking;
+    if (!t){ $('#state').textContent = 'This title couldn’t load. Try again in a moment.'; return; }
+    T.item = {}; details(t);
+    $('#state').hidden = true; $('#page').hidden = false;
+  } else asking.then(t => { if (t){ details(t); if (T.logs) paintCover(); } });
   await community();
   watchKeys = await Posts.watched().catch(() => new Set());
-  $('#state').hidden = true; $('#page').hidden = false;
   paintAll();
 }
 
+first();
 (async () => {
   await startSession();
   Nav.paint(me);
