@@ -26,7 +26,7 @@ test('a line says who shelved or logged what and how long ago; a shelf\'s card o
   await open(page, '/feed/?everyone');
   await expect(lines(page)).toHaveCount(20);   // 20 at a time
   let text = (await lines(page).allTextContents()).map(t => t.replace(/\s+/g, ' ').trim());
-  expect(text[0]).toBe('@mira watched Gummo · today');
+  expect(text[0]).toBe('@mira watched Gummo · 1h');   // a post: how long ago, as a shelf has it
   expect(text[1]).toBe('@tester shelved a much longer shelf name that has to be cut short · 2h');
   expect(text[2]).toBe('@mira shelved shelf number 1 · 1d');
   expect(text[4]).toBe('@tester read Just Kids · 3d');
@@ -42,10 +42,11 @@ test('a line says who shelved or logged what and how long ago; a shelf\'s card o
   text = (await lines(page).allTextContents()).map(t => t.replace(/\s+/g, ' ').trim());
   expect(text[20]).toBe('@longusername_twenty1 shelved shelf number 17 · 2w');
   expect(text[21]).toBe('@longusername_twenty1 watched Kids · 1mo');
-  // a log: the title isn't a link (there's no page for a film), its cover is small (72 x 108px, not a card's 150 x
+  // a log: the title and the time go to the post's own page; its cover is small (72 x 108px, not a card's 150 x
   // 225), in line with the text, and the caption is beside it, on a phone too
   const log = page.locator('#items .item.log').first(), cover = log.locator('.cover canvas');
-  await expect(log.locator('.line a')).toHaveCount(1);
+  await expect(log.locator('.line a')).toHaveCount(3);   // @mira, Gummo, 1h
+  await expect(log.locator('.line').getByRole('link', { name: 'Gummo' })).toHaveAttribute('href', /\/p\/\?bbbbbbbb-bbbb-4bbb-8bbb-000000000000$/);
   await expect(log.locator('.line b')).toHaveText('Gummo');
   await expect(log.locator('time')).toHaveAttribute('datetime', LOGS[0].created_at);
   await expect(cover).toHaveAttribute('aria-label', 'Gummo (1997), watched by @mira');
@@ -57,7 +58,7 @@ test('a line says who shelved or logged what and how long ago; a shelf\'s card o
   expect(say.x).toBeGreaterThan(c.x + c.width);   // beside it
   expect(Math.abs(say.y - c.y)).toBeLessThanOrEqual(1);
   expect(say.width).toBeGreaterThan(200);          // with room to read it, on a phone too
-  expect((await log.boundingBox()).height).toBeLessThan(160);   // a log is a line and a small cover (it was about 300px on a phone)
+  expect((await log.boundingBox()).height).toBeLessThan(200);   // a log is a line, a small cover and a row of actions (it was about 300px on a phone)
   // drawn for that size, so it's sharp: the canvas has a pixel for each of the screen's
   expect(await cover.evaluate(el => el.width / (el.getBoundingClientRect().width * Math.min(2, devicePixelRatio)))).toBeCloseTo(1, 1);
   // older, more worn: today nearly new, a week faded, a month worn

@@ -206,7 +206,7 @@ document.querySelectorAll('.sheet').forEach(s => s.addEventListener('click', e =
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.querySelector('.sheet:not([hidden])')) closeSheets(); });
 
 /* ---------- the feed ---------- */
-const feed = {scope:'', last:null, run:0, logs:true};   // logs: false once the database says activity() isn't there
+const feed = {scope:'', last:null, run:0, logs:true, social:false};   // logs: false once the database says activity() isn't there
 const avatar = x => `<a class="fa" href="${esc(profileUrl(x.username))}" tabindex="-1" aria-hidden="true">${x.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(x.avatar_key)}`)}" alt="" loading="lazy">` : esc(((x.display_name || '').trim() || x.username).trim()[0] || '·')}</a>`;
 const when = (t, text) => `<span class="ago">· <time datetime="${esc(t)}" title="${esc(new Date(t).toLocaleString())}">${text}</time></span>`;
 const COVER = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cover')) || 72;   // how wide a log's cover is (site.css)
@@ -215,6 +215,8 @@ const COVER = parseFloat(getComputedStyle(document.documentElement).getPropertyV
 function item(x){
   const li = document.createElement('li'), who = esc(profileUrl(x.username)), by = `<a href="${who}">${x.mine ? 'You' : '@' + esc(x.username)}</a>`;
   li.className = 'item';
+  // a log is a post (post.js): its line, cover and review, and its row of actions
+  if (x.what === 'log' && window.Posts) return Posts.item(x, {social: feed.social, cover: COVER, onGone: () => { if (!$('#items').children.length) none(feed.scope); }});
   if (x.what === 'log'){
     const verb = x.kind === 'movie' ? 'watched' : 'read', label = `${x.title}${x.year ? ` (${x.year})` : ''}`;
     li.classList.add('log');
@@ -289,6 +291,14 @@ async function more(run = feed.run){
     return;
   }
   if (run !== feed.run) return;   // another tab was picked meanwhile
+  // with 0009, each log's rating, review, counts and what you've done to it (post_stats())
+  if (window.Posts){
+    feed.social = await Posts.ready();
+    const ids = rows.filter(x => x.what === 'log').map(x => x.id);
+    let st = new Map(); try { st = await Posts.stats(ids); } catch {}
+    if (run !== feed.run) return;
+    rows = rows.map(x => st.has(x.id) ? {...x, ...st.get(x.id)} : x);
+  }
   btn.disabled = false; $('#state').hidden = true;
   for (const x of rows) $('#items').append(item({...x, mine: feed.scope === 'you'}));
   const end = rows[rows.length - 1];

@@ -79,7 +79,9 @@ css.textContent = `
 .acts .state{cursor:default}
 .acts > :disabled{cursor:default}
 .acts .n{font-variant-numeric:tabular-nums}
-.pmenuwrap{position:relative;margin-left:auto}
+.pmenuwrap{position:relative;margin-left:auto;display:inline-flex}
+.acts .more{display:inline-flex;align-items:center;background:none;border:0;padding:var(--s1,4px) 0;color:var(--grey,#6B6B6B);cursor:pointer}
+.acts .more:hover,.acts .more:focus-visible,.acts .more[aria-expanded=true]{color:var(--ink,#000)}
 .pmenu{position:absolute;right:0;top:100%;z-index:8;background:var(--paper,#fff);border:1px solid var(--ink,#000);border-radius:var(--radius,3px);padding:var(--s1,4px) 0;white-space:nowrap}
 .pmenu.up{top:auto;bottom:100%}
 .pmenu button{display:block;width:100%;text-align:left;background:none;border:0;padding:var(--s2,8px) var(--s4,16px);font:500 var(--fs-nav,12px) var(--mono,monospace);color:inherit;cursor:pointer}
@@ -88,9 +90,10 @@ css.textContent = `
 .pask::backdrop{background:rgba(0,0,0,.35)}
 .pask p{margin:0 0 var(--s4,16px)}
 .pask .row{display:flex;gap:var(--s4,16px);align-items:center}
-@media (pointer:coarse){
-  .acts > *,.pmenu button{min-height:44px}
-  .acts{gap:0 var(--s4,16px)}
+@media (pointer:coarse){   /* 44 x 44px to press on a touch screen */
+  .acts > *,.acts .more,.pmenu button{min-height:44px}
+  .acts > :not(.pmenuwrap),.acts .more{min-width:44px;justify-content:center}
+  .acts{gap:0 var(--s2,8px)}
 }`;
 document.head.appendChild(css);
 
@@ -314,7 +317,7 @@ function item(x, opt = {}){
     ? `<div class="say spoil"><p class="sayt" aria-hidden="true">${esc(review)}</p><button class="spoilbtn" type="button" aria-label="Show the review. It has spoilers."><span>Spoilers. Show</span></button></div>`
     : `<p class="say">${esc(review)}</p>`;
   li.innerHTML = `<a class="fa" href="${esc(profileUrl(x.username))}" tabindex="-1" aria-hidden="true">${ava}</a>
-    <p class="line"><a href="${esc(profileUrl(x.username))}">@${esc(x.username)}</a> ${verb(x.kind)} <a href="${esc(url)}"><b>${esc(x.title)}</b></a>${social && x.rating ? ' ' + stars(x.rating, 'sm') : ''}${social && x.rewatch ? ` <span class="tag">${x.kind === 'movie' ? 'rewatch' : 'reread'}</span>` : ''}
+    <p class="line"><a href="${esc(profileUrl(x.username))}">${x.mine ? 'You' : '@' + esc(x.username)}</a> ${verb(x.kind)} <a href="${esc(url)}"><b>${esc(x.title)}</b></a>${social && x.rating ? ' ' + stars(x.rating, 'sm') : ''}${social && x.rewatch ? ` <span class="tag">${x.kind === 'movie' ? 'rewatch' : 'reread'}</span>` : ''}
       <span class="ago">· <a href="${esc(url)}"><time datetime="${esc(at)}" title="${esc(new Date(at).toLocaleString())}">${ago(at)}</time></a></span></p>
     <div class="logbody"><span class="cover"></span>${say}</div>
     <div class="acts"></div>`;
