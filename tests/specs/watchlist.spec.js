@@ -165,23 +165,22 @@ async function addFrom(page, scope, name) {
     await scope.getByRole('button', { name: `Add ${name} to watchlist` }).click();
   }
 }
-test('the feed: + Watchlist on someone\'s post puts it on your watchlist in one press, then says In watchlist', async ({ page }) => {
+test('the feed: a post\'s share has Add to Up next, then In Up next; your own post has none', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/feed/?everyone');
-  const log = page.locator('#items .item.log').first();
-  await expect(log.locator('.wbtn, .wmore')).toHaveCount(0);   // a post's is in its row of actions, not on its cover
+  const log = page.locator('#items .post').first();
+  await expect(log.locator('.wbtn, .wmore')).toHaveCount(0);   // a post's is in its share menu, not on its cover
   const req = posted(page);
-  await log.getByRole('button', { name: 'Add Gummo to your watchlist' }).click();
-  // kept from @mira's post: whose it was goes with it, as From friends' Keep (the database keeps it only while you follow her)
+  await log.getByRole('button', { name: /^Share/ }).click();
+  await log.getByRole('menuitem', { name: 'Add to Up next' }).click();
   expect((await req).postDataJSON()).toEqual({ kind: 'movie', title: 'Gummo', author: 'Harmony Korine', year: 1997, cover_src: 'url:https://image.tmdb.org/t/p/w500/gummo.jpg', from_user: '22222222-2222-4222-8222-222222222222' });
   await expect(page.locator('#toast')).toHaveText('Gummo is on your watchlist.');
-  // then grey text, not a button
-  await expect(log.locator('.win')).toHaveText('In watchlist');
-  expect(await log.locator('.win').evaluate(el => [el.tagName, getComputedStyle(el).color])).toEqual(['SPAN', 'rgb(107, 107, 107)']);
-  await expect(log.getByRole('button', { name: /watchlist/ })).toHaveCount(0);
-  // your own logs have none
-  await expect(page.locator('#items .item.log').filter({ hasText: '@tester read Just Kids' }).getByRole('button', { name: /watchlist/ })).toHaveCount(0);
+  await log.getByRole('button', { name: /^Share/ }).click();
+  await expect(log.getByRole('menuitem', { name: 'In Up next' })).toBeDisabled();
+  const mine = page.locator('#items .post').filter({ hasText: 'read Just Kids' });
+  await mine.getByRole('button', { name: /^Share/ }).click();
+  await expect(mine.getByRole('menuitem', { name: /Up next/ })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 test('someone\'s shelf page: each spine onto your watchlist; your own shelf has none', async ({ page }) => {
@@ -209,8 +208,9 @@ test('signed out, a cover\'s watchlist button is the sign-in sheet; once signed 
   const signBack = await putAside(page);
   let sent = 0; page.on('request', r => { if (r.method() === 'POST' && r.url().includes('/rest/v1/watchlist')) sent++; });
   await open(page, '/feed/?everyone');
-  const log = page.locator('#items .item.log').first();
-  await log.getByRole('button', { name: 'Add Gummo to your watchlist' }).click();
+  const log = page.locator('#items .post').first();
+  await log.getByRole('button', { name: /^Share/ }).click();
+  await log.getByRole('menuitem', { name: 'Add to Up next' }).click();
   await expect(page.locator('#signSheet')).toBeVisible();
   await expect(page.locator('#signSheet .sheetbox p:not(.note)').first()).toHaveText('Sign in to start your shelf.');
   expect(sent).toBe(0);
@@ -219,16 +219,16 @@ test('signed out, a cover\'s watchlist button is the sign-in sheet; once signed 
   expect((await req).postDataJSON()).toMatchObject({ title: 'Gummo', year: 1997 });
 });
 
-test('a title already on your watchlist says In watchlist from the start, in grey, with no button', async ({ page }) => {
+test('a title already on your watchlist says In watchlist from the start, on the feed In Up next, in a post\'s share menu', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   // your watchlist has Gummo (1997) on it already
   await page.route(u => u.pathname === '/rest/v1/watchlist' && u.searchParams.get('select') === 'kind,title,year', route => route.request().method() === 'OPTIONS'
     ? route.fulfill({ status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' } })
     : route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify([{ kind: 'movie', title: 'Gummo', year: 1997 }]) }));
   await open(page, '/feed/?everyone');
-  const gummo = page.locator('#items .item.log').filter({ hasText: 'watched Gummo' }).first(), waves = page.locator('#items .item.log').filter({ hasText: 'read The Waves' }).first();
-  await expect(gummo.locator('.win')).toHaveText('In watchlist');
-  await expect(gummo.getByRole('button', { name: /watchlist/ })).toHaveCount(0);
-  await expect(waves.locator('.win')).toHaveCount(0);   // not on it: still offered
-  await expect(waves.getByRole('button', { name: 'Add The Waves to your watchlist' })).toHaveCount(1);
+  const gummo = page.locator('#items .post').filter({ hasText: 'watched Gummo' }).first(), waves = page.locator('#items .post').filter({ hasText: 'read The Waves' }).first();
+  await gummo.getByRole('button', { name: /^Share/ }).click();
+  await expect(gummo.getByRole('menuitem', { name: 'In Up next' })).toBeDisabled();
+  await waves.getByRole('button', { name: /^Share/ }).click();
+  await expect(waves.getByRole('menuitem', { name: 'Add to Up next' })).toBeEnabled();   // not on it: still offered
 });

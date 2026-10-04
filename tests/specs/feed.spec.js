@@ -1,5 +1,6 @@
-// The feed (/feed/): Following · Everyone, a line for each shelf saved ("@abc shelved my films · 2h") with its card,
-// and for each film or book logged, a post ("@abc watched Gummo · 1h") with its cover, worn by how long ago that was.
+// The feed (/feed/), a timeline in one 600px column: the composer, Following · Everyone staying under the bar, then a
+// line for each shelf saved ("@abc shelved my films · 2h") with its card, and for each film or book logged a post
+// (name and @name, "watched Gummo (1997)", the review, its cover small at the right, worn by how long ago that was).
 // The next 20 come as the end nears; every minute it says how many newer ones there are; an empty Following has
 // People to follow.
 const { test, expect } = require('@playwright/test');
@@ -7,8 +8,13 @@ const { SHELVES, LOGS, mockNetwork, watchErrors, open } = require('../site');
 
 // the made-up shelves were saved at noon on 30 Sep 2026 and on each day before it: two hours later, the newest says 2h
 const NOW = new Date('2026-09-30T14:00:00Z');
-const lines = page => page.locator('#items .line');
+const lines = page => page.locator('#items > li');
+// what each says: a shelf's line, or a post's "@name watched Title (year) · when"
+const said = page => lines(page).evaluateAll(lis => lis.map(li => (li.classList.contains('post')
+  ? `${li.querySelector('.pwho span').textContent} ${li.querySelector('.pwhat').textContent} · ${li.querySelector('time').textContent}`
+  : li.querySelector('.line').textContent).replace(/\s+/g, ' ').trim()));
 const tabs = page => page.getByRole('tablist', { name: 'Feed' }).getByRole('tab');
+const isPhone = () => test.info().project.name.startsWith('phone');
 
 test('the tabs are Following · Everyone; signed in it opens on Following', async ({ page }) => {
   const errors = watchErrors(page);
@@ -18,53 +24,54 @@ test('the tabs are Following · Everyone; signed in it opens on Following', asyn
   await expect(page.getByRole('tab', { name: 'Following' })).toHaveAttribute('aria-selected', 'true');
   await expect(page).toHaveURL(/\/feed\/\?following$/);
   await expect(lines(page)).toHaveCount(8);   // only @mira is followed: her six shelves and two logs
-  for (const t of await lines(page).allTextContents()) expect(t).toMatch(/^@mira (shelved|updated|watched|read) /);
+  for (const t of await said(page)) expect(t).toMatch(/^@mira (shelved|updated|watched|read) /);
   expect(errors).toEqual([]);
 });
 
-test('a line says who shelved or logged what and how long ago; a shelf\'s card or a log\'s cover is under it', async ({ page }) => {
+test('a line says who shelved what and how long ago; a post who watched or read what; a shelf\'s card or a post\'s cover with it', async ({ page }) => {
   await page.clock.setFixedTime(NOW);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/feed/?everyone');
   await expect(lines(page)).toHaveCount(20);   // 20 at a time
-  let text = (await lines(page).allTextContents()).map(t => t.replace(/\s+/g, ' ').trim());
-  expect(text[0]).toBe('@mira watched Gummo · 1h');   // a post: how long ago, as a shelf has it
+  let text = await said(page);
+  expect(text[0]).toBe('@mira watched Gummo (1997) · 1h');
   expect(text[1]).toBe('@tester shelved a much longer shelf name that has to be cut short · 2h');
   expect(text[2]).toBe('@mira shelved shelf number 1 · 1d');
-  expect(text[4]).toBe('@tester read Just Kids · 3d');
+  expect(text[4]).toBe('@tester read Just Kids (2010) · 3d');
   expect(text[5]).toBe('@tester shelved shelf number 3 · 3d');
   expect(text[6]).toBe('@mira updated untitled shelf · 4d');   // saved again later than it was made
-  expect(text[9]).toBe('@mira read The Waves · 1w');
+  expect(text[9]).toBe('@mira read The Waves (1931) · 1w');
   expect(text[10]).toBe('@mira shelved shelf number 7 · 1w');
   // Load more: the rest, from after the last one shown
   const more = page.waitForRequest(r => r.url().includes('/rpc/activity') && r.postDataJSON().before_id);
   await page.getByRole('button', { name: 'Load more' }).click();
   expect((await more).postDataJSON()).toMatchObject({ scope: 'everyone', before_id: SHELVES[16].id });
   await expect(lines(page)).toHaveCount(22);
-  text = (await lines(page).allTextContents()).map(t => t.replace(/\s+/g, ' ').trim());
+  text = await said(page);
   expect(text[20]).toBe('@longusername_twenty1 shelved shelf number 17 · 2w');
-  expect(text[21]).toBe('@longusername_twenty1 watched Kids · 1mo');
-  // a log: the title and the time go to the post's own page; its cover is small (72 x 108px, not a card's 150 x
-  // 225), in line with the text, and the caption is beside it, on a phone too
-  const log = page.locator('#items .item.log').first(), cover = log.locator('.cover canvas');
-  await expect(log.locator('.line a')).toHaveCount(3);   // @mira, Gummo, 1h
-  await expect(log.locator('.line').getByRole('link', { name: 'Gummo' })).toHaveAttribute('href', /\/p\/\?bbbbbbbb-bbbb-4bbb-8bbb-000000000000$/);
-  await expect(log.locator('.line b')).toHaveText('Gummo');
-  await expect(log.locator('time')).toHaveAttribute('datetime', LOGS[0].created_at);
+  expect(text[21]).toBe('@longusername_twenty1 watched Kids (1995) · 1mo');
+  // a post: the photo (40px) at its left; "Mira @mira · 1h"; the title in bold, a link to the post's own page; the
+  // review; the cover small (72 x 108px) at its right; no box, a thin rule under it
+  const post = page.locator('#items .post').first(), cover = post.locator('.cover canvas');
+  const ava = await post.locator('.pava').boundingBox();
+  expect(Math.round(ava.width)).toBe(40);
+  await expect(post.locator('.phead .pwho')).toHaveText(/^Mira\s+@mira$/);
+  await expect(post.locator('.pwhat').getByRole('link', { name: 'Gummo' })).toHaveAttribute('href', /\/p\/\?bbbbbbbb-bbbb-4bbb-8bbb-000000000000$/);
+  expect(await post.locator('.pwhat').evaluate(el => getComputedStyle(el).fontWeight)).toBe('700');
+  await expect(post.locator('time')).toHaveAttribute('datetime', LOGS[0].created_at);
   await expect(cover).toHaveAttribute('aria-label', 'Gummo (1997), watched by @mira');
-  const c = await cover.boundingBox(), line = await log.locator('.line').boundingBox(), say = await log.locator('.say').boundingBox();
-  expect(Math.round(c.width)).toBe(72);
-  expect(Math.round(c.height)).toBe(108);
-  expect(Math.abs(c.x - line.x)).toBeLessThanOrEqual(1);
-  await expect(log.locator('.say')).toHaveText('The bathtub scene. Still thinking about it.');
-  expect(say.x).toBeGreaterThan(c.x + c.width);   // beside it
-  expect(Math.abs(say.y - c.y)).toBeLessThanOrEqual(1);
-  expect(say.width).toBeGreaterThan(200);          // with room to read it, on a phone too
-  expect((await log.boundingBox()).height).toBeLessThan(200);   // a log is a line, a small cover and a row of actions (it was about 300px on a phone)
+  const c = await cover.boundingBox(), say = await post.locator('.say').boundingBox(), whole = await post.boundingBox();
+  expect(Math.round(c.width)).toBe(isPhone() ? 56 : 72);
+  expect(Math.round(c.height)).toBe(isPhone() ? 84 : 108);
+  expect(c.x).toBeGreaterThan(say.x + say.width);                      // at the right of the review
+  expect(Math.abs(c.x + c.width - (whole.x + whole.width))).toBeLessThanOrEqual(1);
+  await expect(post.locator('.say')).toHaveText('The bathtub scene. Still thinking about it.');
+  expect(say.x).toBeGreaterThan(ava.x + ava.width);
+  expect(await post.evaluate(el => [getComputedStyle(el).borderBottomWidth, getComputedStyle(el).borderTopWidth, getComputedStyle(el).backgroundColor])).toEqual(['1px', '0px', 'rgba(0, 0, 0, 0)']);
   // drawn for that size, so it's sharp: the canvas has a pixel for each of the screen's
-  expect(await cover.evaluate(el => el.width / (el.getBoundingClientRect().width * Math.min(2, devicePixelRatio)))).toBeCloseTo(1, 1);
+  expect(await cover.evaluate(el => el.width / (el.getBoundingClientRect().width * Math.min(2, devicePixelRatio)))).toBeCloseTo(isPhone() ? 72 / 56 : 1, 1);
   // older, more worn: today nearly new, a week faded, a month worn
-  const worn = async title => page.locator('#items .item.log').filter({ has: page.locator('.line b', { hasText: new RegExp(`^${title}$`) }) }).locator('canvas')
+  const worn = async title => page.locator('#items .post').filter({ has: page.locator('.pwhat a', { hasText: new RegExp(`^${title}$`) }) }).locator('canvas')
     .evaluate(el => ({ fade: +el.dataset.fade, wear: +el.dataset.wear }));
   const today = await worn('Gummo'), week = await worn('The Waves'), month = await worn('Kids');
   expect(today.fade).toBeLessThan(.06);
@@ -74,11 +81,47 @@ test('a line says who shelved or logged what and how long ago; a shelf\'s card o
   expect(month.wear).toBeGreaterThan(week.wear + .25);
   expect(month.fade).toBeGreaterThan(week.fade);
   // a shelf: the name is a link to the person, the shelf's a link to the shelf, and so is its card
-  const first = page.locator('#items .item:not(.log)').first();
+  const first = page.locator('#items .item').first();
   await expect(first.locator('.line a').first()).toHaveAttribute('href', '../u/?tester');
   await expect(first.locator('.line a').nth(1)).toHaveAttribute('href', `../u/?tester&shelf=${SHELVES[0].id}`);
   await expect(first.locator('.pic')).toHaveAttribute('href', `../u/?tester&shelf=${SHELVES[0].id}`);
   await expect(first.locator('time')).toHaveAttribute('datetime', SHELVES[0].saved_at);
+});
+
+test('a timeline: one 600px column in the middle, no heading on screen, the tabs staying under the bar, and a post a press through to its page', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/feed/?everyone');
+  const tl = await page.locator('.tl').boundingBox(), main = await page.locator('main').boundingBox();
+  if (!isPhone()){ expect(Math.round(tl.width)).toBe(600); expect(Math.abs((tl.x + tl.width / 2) - (main.x + main.width / 2))).toBeLessThanOrEqual(1); }
+  else expect(Math.round(tl.width)).toBe(Math.round(main.width));
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Feed');   // for screen readers; nothing on screen says Activity
+  expect(await page.locator('main h1').evaluate(el => el.getBoundingClientRect().width)).toBeLessThanOrEqual(1);
+  // scrolled down, the tabs are just under the bar
+  await page.mouse.wheel(0, 1500); await page.waitForTimeout(300);
+  const bar = await page.locator('header.top').boundingBox(), tabsBox = await page.getByRole('tablist', { name: 'Feed' }).boundingBox();
+  expect(Math.abs(tabsBox.y - (bar.y + bar.height))).toBeLessThanOrEqual(14);
+  // a press anywhere on a post that isn't a link or a button opens it
+  const post = page.locator('#items .post').first();
+  await post.scrollIntoViewIfNeeded();
+  const say = await post.locator('.say').boundingBox();
+  await page.mouse.click(say.x + 4, say.y + say.height / 2);
+  await expect(page).toHaveURL(new RegExp(`/p/\\?${LOGS[0].id}$`));
+});
+
+test('the composer is a box like a tweet\'s: your photo at its left, and it grows when it has the focus', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/feed/?everyone');
+  const c = page.locator('#compose'), box = c.getByRole('combobox', { name: 'What did you watch or read?' });
+  await expect(c.locator('.cava')).toHaveText('T');   // the made-up account has no photo: its first letter
+  await expect(box).toHaveAttribute('placeholder', 'What did you watch or read?');
+  await expect(c.getByRole('button', { name: 'Post' })).toBeHidden();
+  const before = (await box.boundingBox()).height;
+  await box.focus();
+  await expect(c).toHaveClass(/open/);
+  expect((await box.boundingBox()).height).toBeGreaterThan(before + 10);
+  await expect(c.getByRole('button', { name: 'Post' })).toBeDisabled();   // nothing picked yet
+  await page.locator('main .tabs').click();   // the focus goes: it shuts again
+  await expect(c).not.toHaveClass(/open/);
 });
 
 test('?you, from when there was a You tab, is Following', async ({ page }) => {
@@ -126,10 +169,11 @@ test('a film logged with + ADD shows at the top of the feed', async ({ page }) =
   await d.getByRole('combobox', { name: 'Film or book name' }).fill('gummo');
   await d.getByRole('option', { name: /Gummo/ }).click();
   const posted = page.waitForRequest(r => r.method() === 'POST' && new URL(r.url()).pathname === '/rest/v1/logs');
-  const again = page.waitForRequest(r => r.url().includes('/rpc/activity'));
   await d.getByRole('button', { name: 'Post' }).click();
   expect((await posted).postDataJSON()).toMatchObject({ kind: 'movie', title: 'Gummo', caption: '' });
-  expect((await again).postDataJSON()).toMatchObject({ scope: 'everyone', before_id: null });   // the tab from the top
+  const top = page.locator('#items > li').first();   // on top at once
+  await expect(top.locator('.pwho')).toContainText('@tester');
+  await expect(top.locator('.pwhat')).toHaveText('watched Gummo (1997)');
   await expect(d).toBeHidden();
   await expect(page.locator('#toast')).toHaveText('Logged Gummo. It’s on the feed.');
   expect(errors).toEqual([]);

@@ -12,8 +12,9 @@ test('the post, with its replies oldest first and a box to reply in', async ({ p
   await open(page, GUMMO);
   await expect(page).toHaveTitle('@mira watched Gummo · shelfstackd');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('@mira watched Gummo');
-  const p = page.locator('#thePost .item.log');
-  await expect(p.locator('.line')).toContainText('@mira watched Gummo');
+  const p = page.locator('#thePost .post');
+  await expect(p.locator('.pwho')).toContainText('@mira');
+  await expect(p.locator('.pwhat')).toContainText('watched Gummo (1997)');
   await expect(p.locator('.say')).toHaveText('The bathtub scene. Still thinking about it.');
   expect(Math.round((await p.locator('.cover canvas').boundingBox()).width)).toBe(120);   // larger than on the feed
   await expect(page.getByRole('heading', { name: 'Replies' })).toBeVisible();
@@ -41,7 +42,7 @@ test('the post, with its replies oldest first and a box to reply in', async ({ p
 test('#reply puts the caret in the box; the feed\'s reply goes there', async ({ page }) => {
   await mockNetwork(page, { signedIn: true, social: true });
   await open(page, '/feed/?everyone');
-  await page.locator('#items .item.log').first().getByRole('link', { name: /^Reply\. / }).click();
+  await page.locator('#items .post').first().getByRole('link', { name: /^Reply\. / }).click();
   await expect(page).toHaveURL(new RegExp(`/p/\\?${LOGS[0].id}#reply$`));
   await expect(page.getByRole('textbox', { name: 'Reply' })).toBeFocused();
 });
@@ -79,7 +80,7 @@ test('without 0009: the post alone, no replies', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   await open(page, GUMMO);
-  await expect(page.locator('#thePost .item.log')).toHaveCount(1);
+  await expect(page.locator('#thePost .post')).toHaveCount(1);
   await expect(page.locator('#replies')).toBeHidden();
   expect(errors).toEqual([]);
 });

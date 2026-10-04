@@ -32,10 +32,14 @@ test('the feed, signed in: "What did you watch or read?" at the top; pick a titl
   await expect(c.getByRole('slider')).toHaveCount(0);
   await expect(c.getByRole('checkbox')).toHaveCount(0);
   await say.fill('The bathtub scene.');
-  const req = posted(page), again = page.waitForRequest(r => r.url().includes('/rpc/activity'));
+  const req = posted(page);
+  let again = 0; page.on('request', r => { if (r.url().includes('/rpc/activity')) again++; });
   await c.getByRole('button', { name: 'Post' }).click();
   expect((await req).postDataJSON()).toEqual({ kind: 'movie', title: 'Gummo', author: 'Harmony Korine', year: 1997, cover_src: 'url:https://image.tmdb.org/t/p/w500/gummo.jpg', caption: 'The bathtub scene.' });
-  expect((await again).postDataJSON()).toMatchObject({ scope: 'everyone', before_id: null });   // the feed from the top, with it there
+  // on top of the feed at once, nothing asked for again
+  await expect(page.locator('#items > li').first()).toContainText('@tester');
+  await expect(page.locator('#items > li').first().locator('.say')).toHaveText('The bathtub scene.');
+  expect(again).toBe(0);
   await expect(page.locator('#toast')).toHaveText('Logged Gummo. It’s on the feed.');
   await expect(box).toBeVisible();   // ready for the next
   await expect(box).toHaveValue('');

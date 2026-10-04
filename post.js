@@ -30,21 +30,30 @@ const DOTS = '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><cir
 
 const css = document.createElement('style');
 css.textContent = `
-.compose{display:grid;gap:var(--s2,8px);padding-bottom:var(--s5,24px);border-bottom:1px solid var(--hair,#D9D9D9);margin-bottom:var(--s5,24px)}
-.compose > .lbl{font:700 var(--fs-body,13px) var(--mono,monospace);letter-spacing:0;text-transform:none;color:var(--ink,#000)}
-.csearch{position:relative;display:grid;gap:var(--s1,4px);max-width:520px}
+.vh{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;padding:0}
+/* the composer: a box like a tweet's, your photo at its left; it grows while it has the focus */
+.compose{display:grid;grid-template-columns:40px minmax(0,1fr);gap:var(--s3,12px);padding:var(--s4,16px) 0;border-bottom:1px solid var(--hair,#D9D9D9)}
+.cava{width:40px;height:40px;border-radius:50%;border:1px solid var(--ink,#000);background:var(--wash,#F3F3F3);overflow:hidden;display:grid;place-items:center;text-transform:uppercase}
+.cava img{width:100%;height:100%;object-fit:cover;display:block}
+.cmain{min-width:0;display:grid;gap:var(--s2,8px)}
+.csearch{position:relative;display:grid;gap:var(--s1,4px)}
+.csearch input{border:0;border-radius:0;padding:var(--s2,8px) 0;font-size:var(--fs-dialog,16px);min-height:40px}
+.csearch input:focus{outline:0}
+.compose.open .csearch input{min-height:64px}
 .csearch .note{margin:0;min-height:1.5em}
+.compose:not(.open) .csearch .note:empty{display:none}
 .csugg{list-style:none;margin:0;padding:var(--s1,4px) 0;position:absolute;top:calc(100% - 1.5em);left:0;right:0;z-index:7;background:var(--paper,#fff);border:1px solid var(--ink,#000);border-radius:var(--radius,3px)}
 .csugg li{padding:var(--s2,8px) var(--s3,12px);cursor:pointer;display:flex;gap:var(--s1,4px) var(--s2,8px);flex-wrap:wrap;align-items:baseline}
 .csugg li[aria-selected="true"]{background:var(--ink,#000);color:var(--paper,#fff)}
 .csugg .y,.csugg .k,.csugg .by{color:var(--grey,#6B6B6B);font-size:var(--fs-small,11px)}
 .csugg li[aria-selected="true"] :is(.y,.k,.by){color:inherit}
-.cpost{display:grid;grid-template-columns:var(--cover,72px) minmax(0,1fr);gap:var(--s4,16px);align-items:start}
+.cpost{display:grid;grid-template-columns:minmax(0,1fr) var(--cover,72px);gap:var(--s4,16px);align-items:start}
 .ccov{line-height:0}
 .ccov canvas{width:100%;height:auto;display:block}
 .cpost h3{margin:0 0 var(--s3,12px);font-size:var(--fs-body,13px)}
 .cpost h3 small{color:var(--grey,#6B6B6B);font-weight:400}
-.cbar{display:flex;justify-content:flex-end;gap:var(--s4,16px);align-items:center;margin-top:var(--s3,12px)}
+.cbar{display:flex;justify-content:flex-end;gap:var(--s4,16px);align-items:center;border-top:1px solid var(--hair,#D9D9D9);padding-top:var(--s2,8px)}
+.compose:not(.open) .cbar{display:none}
 .cbar .note{margin:0 auto 0 0}
 .stars{display:inline-flex;gap:2px;vertical-align:-2px;color:var(--ink,#000)}
 .stars svg{width:16px;height:16px;display:block}
@@ -63,38 +72,65 @@ css.textContent = `
 .pdate{display:flex;align-items:center;gap:var(--s2,8px)}
 .pdate .lbl{margin:0}
 .pcount{display:block;text-align:right;color:var(--grey,#6B6B6B);font-size:var(--fs-small,11px);margin-top:var(--s1,4px)}
-.items .post .tag{margin-left:var(--s1,4px)}
-.items .post .say{display:-webkit-box;-webkit-line-clamp:8;-webkit-box-orient:vertical;overflow:hidden}
-.items .post.whole .say{display:block;-webkit-line-clamp:none}
+/* a post, as on a timeline: no box, a thin rule under it (the list draws it); the photo at its left, the cover at its
+   right, and the whole post a press through to its page */
+.post{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:0 var(--s3,12px);align-items:start;padding:var(--s4,16px) 0;cursor:pointer}
+.post.whole{cursor:auto}
+.post .pava{width:40px;height:40px;border-radius:50%;border:1px solid var(--ink,#000);background:var(--wash,#F3F3F3);overflow:hidden;display:grid;place-items:center;text-transform:uppercase;text-decoration:none;color:var(--ink,#000)}
+.post .pava img{width:100%;height:100%;object-fit:cover;display:block}
+.post .pbody{min-width:0}
+.post .cover{display:block;width:var(--cover,72px);line-height:0}
+.post.whole .cover{width:120px}
+.post .cover canvas{display:block;width:100%;height:auto}
+.phead{display:flex;align-items:baseline;gap:var(--s1,4px);margin:0;min-width:0}
+.phead .pwho{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:none}
+.phead .pwho b{font-weight:700}
+.phead .pwho span,.phead .ago,.phead .ago a{color:var(--grey,#6B6B6B);text-decoration:none;white-space:nowrap}
+.phead .pwho:hover b,.phead .ago a:hover{text-decoration:underline;text-underline-offset:3px}
+.phead .pmore{margin-left:auto}
+.pwhat{margin:var(--s1,4px) 0 0;font-weight:700;overflow-wrap:anywhere}
+.pwhat a{text-decoration:none}
+.pwhat a:hover,.pwhat a:focus-visible{text-decoration:underline;text-underline-offset:3px}
+.pwhat .tag{font-weight:700;margin-left:var(--s1,4px)}
+.prating{margin:var(--s1,4px) 0 0;line-height:0}
+.post .say{margin:var(--s2,8px) 0 0;white-space:pre-line;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:8;-webkit-box-orient:vertical;overflow:hidden}
+.post.whole .say{display:block;-webkit-line-clamp:none}
 .spoil{position:relative}
-.spoil .sayt{filter:blur(6px);user-select:none;pointer-events:none}
+.spoil .sayt{filter:blur(6px);user-select:none;pointer-events:none;margin:0}
 .spoil .spoilbtn{position:absolute;inset:0;width:100%;background:none;border:0;padding:0;font:600 var(--fs-btn,11px) var(--mono,monospace);color:var(--ink,#000);cursor:pointer;text-align:left}
 .spoil .spoilbtn span{background:var(--paper,#fff);padding:2px var(--s1,4px)}
-.pacts{grid-column:2;display:flex;align-items:center;gap:var(--s1,4px) var(--s4,16px);flex-wrap:wrap;margin:calc(-1 * var(--s1,4px)) 0 0;min-width:0}
-.pacts > *{display:inline-flex;align-items:center;gap:var(--s1,4px);background:none;border:0;padding:var(--s1,4px) 0;font:400 var(--fs-small,11px)/1.3 var(--mono,monospace);color:var(--grey,#6B6B6B);text-decoration:none;cursor:pointer;white-space:nowrap}
-.pacts > button:hover:not(:disabled),.pacts > a:hover,.pacts > button:focus-visible,.pacts > a:focus-visible{color:var(--ink,#000)}
-.pacts > [aria-pressed=true]{color:var(--ink,#000)}
-.pacts > [aria-pressed=true] svg{fill:currentColor}
-.pacts svg{width:16px;height:16px;display:block;flex:none}
-.pacts .state{cursor:default}
-.pacts > :disabled{cursor:default}
-.pacts .n{font-variant-numeric:tabular-nums}
-.pmenuwrap{position:relative;margin-left:auto;display:inline-flex}
-.pacts .more{display:inline-flex;align-items:center;background:none;border:0;padding:var(--s1,4px) 0;color:var(--grey,#6B6B6B);cursor:pointer}
-.pacts .more:hover,.pacts .more:focus-visible,.pacts .more[aria-expanded=true]{color:var(--ink,#000)}
+/* reply · Same · like · share, icons and their counts, spread under the post */
+.pacts{display:flex;align-items:center;justify-content:space-between;max-width:360px;margin:var(--s2,8px) 0 0 calc(-1 * var(--s1,4px));min-width:0}
+.pacts > *,.pacts .share,.phead .more{display:inline-flex;align-items:center;gap:var(--s1,4px);background:none;border:0;padding:var(--s1,4px);font:400 var(--fs-small,11px)/1.3 var(--mono,monospace);color:var(--grey,#6B6B6B);text-decoration:none;cursor:pointer;white-space:nowrap}
+.pacts > a:hover,.pacts button:hover:not(:disabled),.pacts > a:focus-visible,.pacts button:focus-visible,.phead .more:hover,.phead .more:focus-visible,.phead .more[aria-expanded=true]{color:var(--ink,#000)}
+.pacts [aria-pressed=true]{color:var(--ink,#000)}
+.pacts [aria-pressed=true] svg{fill:currentColor}
+.pacts .metoo[aria-pressed=true] svg{fill:none;stroke-width:2.6}
+.pacts svg,.phead .more svg{width:16px;height:16px;display:block;flex:none}
+.pacts :disabled{cursor:default}
+.pacts .n{font-variant-numeric:tabular-nums;min-width:1ch}
+.pmenuwrap{position:relative;display:inline-flex}
 .pmenu{position:absolute;right:0;top:100%;z-index:8;background:var(--paper,#fff);border:1px solid var(--ink,#000);border-radius:var(--radius,3px);padding:var(--s1,4px) 0;white-space:nowrap}
 .pmenu.up{top:auto;bottom:100%}
 .pmenu button{display:block;width:100%;text-align:left;background:none;border:0;padding:var(--s2,8px) var(--s4,16px);font:500 var(--fs-nav,12px) var(--mono,monospace);color:inherit;cursor:pointer}
-.pmenu button:hover,.pmenu button:focus-visible{background:var(--wash,#F3F3F3);outline:0}
+.pmenu button:hover:not(:disabled),.pmenu button:focus-visible{background:var(--wash,#F3F3F3);outline:0}
+.pmenu button:disabled{color:var(--grey,#6B6B6B);cursor:default}
 .pask{border:1px solid var(--ink,#000);border-radius:var(--radius,3px);padding:var(--s5,24px);max-width:340px;background:var(--paper,#fff);color:var(--ink,#000)}
 .pask::backdrop{background:rgba(0,0,0,.35)}
 .pask p{margin:0 0 var(--s4,16px)}
 .pask .row{display:flex;gap:var(--s4,16px);align-items:center}
+@media (max-width:520px){ .post{grid-template-columns:40px minmax(0,1fr) 56px} .post .cover{width:56px} .post.whole{grid-template-columns:40px minmax(0,1fr)} .post.whole .cover{grid-column:2;width:120px;margin-top:var(--s3,12px)} }
 @media (pointer:coarse){   /* 44 x 44px to press on a touch screen */
-  .pacts > *,.pacts .more,.pmenu button{min-height:44px}
-  .pacts > :not(.pmenuwrap),.pacts .more{min-width:44px;justify-content:center}
-  .pacts{gap:0 var(--s2,8px)}
-}`;
+  .post .pava{position:relative;overflow:visible}
+  .post .pava img{position:absolute;inset:0;border-radius:50%}
+  .post .pava::before{content:"";position:absolute;inset:-4px}
+  .phead .pwho{padding:12px 0;margin:-12px 0}
+  .pwhat{margin-top:var(--s3,12px)}   /* clear of the name's press area */
+  .csearch input{min-height:48px}
+  .pacts > *,.pacts .share,.phead .more,.pmenu button{min-height:44px}
+  .pacts > *,.pacts .share,.phead .more{min-width:44px;justify-content:center}
+}
+`;
 document.head.appendChild(css);
 
 /* ---------- is 0009 there ---------- */
@@ -227,37 +263,47 @@ async function fields(host, m, opt = {}){
 }
 
 /* ---------- the composer: "What did you watch or read?" ----------
-   Posts.composer(host, {onPosted(row)}): the title search (+ ADD's, from add.js), then the picked title with its cover
-   as the feed will show it, the fields, and Post. Gives {open(item)}: straight to a title (a Log button). */
+   Posts.composer(host, {onPosted(row)}): a box like a tweet's, your photo at its left. It grows when it has the focus;
+   in it, the title search (+ ADD's, from add.js), then the picked title with its cover as the feed will show it, the
+   fields, and Post. Gives {open(item)}: straight to a title (a Log button). */
 let compN = 0;
+const avaHtml = p => p && p.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(p.avatar_key)}`)}" alt="" loading="lazy">`
+  : esc((((p && p.display_name) || '').trim() || (p && p.username) || '·').trim()[0] || '·');
 async function composer(host, opt = {}){
-  const n = ++compN;
+  const n = ++compN, p = acct().profile;
   host.classList.add('compose');
-  host.innerHTML = `<label class="lbl" for="cq${n}">What did you watch or read?</label>
-    <div class="csearch"><input type="text" id="cq${n}" placeholder="Gummo, The Waves, Kids" maxlength="120" autocomplete="off"><p class="note grey" role="status"></p><ul class="csugg" hidden></ul></div>
-    <div class="cpicked" hidden>
-      <div class="cpost"><span class="ccov"></span><div class="cmain"><h3><span class="ct"></span> <small class="cby"></small> <button class="dash sm" type="button" data-change>Change</button></h3><div class="cfields"></div></div></div>
-      <div class="cbar"><p class="note grey" role="status"></p><button class="btn primary" type="button" data-post>Post</button></div>
+  host.innerHTML = `<span class="cava" aria-hidden="true">${avaHtml(p)}</span>
+    <div class="cmain">
+      <div class="csearch"><label class="vh" for="cq${n}">What did you watch or read?</label><input type="text" id="cq${n}" placeholder="What did you watch or read?" maxlength="120" autocomplete="off"><p class="note grey" role="status"></p><ul class="csugg" hidden></ul></div>
+      <div class="cpicked" hidden>
+        <div class="cpost"><div class="cmain2"><h3><span class="ct"></span> <small class="cby"></small> <button class="dash sm" type="button" data-change>Change</button></h3><div class="cfields"></div></div><span class="ccov"></span></div>
+      </div>
+      <div class="cbar"><p class="note grey" role="status"></p><button class="btn primary" type="button" data-post disabled>Post</button></div>
     </div>`;
   const q = s => host.querySelector(s), input = q('input'), picked = q('.cpicked'), search = q('.csearch'), go = q('[data-post]'), say = q('.cbar .note');
   let m = null, f = null, run = 0;
+  // open while it has the focus, or something is typed or picked
+  const sizeUp = () => host.classList.toggle('open', !!m || !!input.value || host.contains(document.activeElement));
+  host.addEventListener('focusin', sizeUp);
+  host.addEventListener('focusout', () => setTimeout(sizeUp, 0));
+  input.addEventListener('input', sizeUp);
   async function pick(item){
     const mine = ++run;
     m = item; say.textContent = '';
     q('.ct').textContent = m.title + (m.year ? ` (${m.year})` : ''); q('.cby').textContent = m.creator ? '· ' + m.creator : '';
     const cov = q('.ccov'); cov.replaceChildren();
     if (window.Wear) cov.append(Wear.cover({src: m.cover ? `${WORKER}/img?url=${encodeURIComponent(m.cover)}` : '', seed: keyOf(m), at: new Date().toISOString(), label: `The cover of ${m.title}, as the feed will show it`, width: 72}));
-    search.hidden = true; picked.hidden = false; go.disabled = false;
+    search.hidden = true; picked.hidden = false; go.disabled = false; sizeUp();
     f = await fields(q('.cfields'), m);
     if (mine === run) f.focus();
   }
-  q('[data-change]').addEventListener('click', () => { m = null; picked.hidden = true; search.hidden = false; input.focus(); });
+  q('[data-change]').addEventListener('click', () => { m = null; picked.hidden = true; search.hidden = false; go.disabled = true; input.focus(); sizeUp(); });
   go.addEventListener('click', async () => {
     if (!m || !f) return;
     go.disabled = true; say.textContent = 'Posting…';
     const r = await save(m, f.values());
     if (r.error){ go.disabled = false; say.textContent = r.error; return; }
-    say.textContent = ''; m = null; f.clear(); picked.hidden = true; search.hidden = false; input.value = '';
+    say.textContent = ''; m = null; f.clear(); picked.hidden = true; search.hidden = false; input.value = ''; sizeUp();
     toast(`Logged ${r.row.title}. It’s on the feed.`);
     if (opt.onPosted) opt.onPosted(r.row);
   });
@@ -290,7 +336,7 @@ async function save(m, v = {}){
 /* ---------- a post ---------- */
 const keyOf = m => [m.kind === 'movie' ? 'movie' : 'book', String(m.title || '').trim().toLowerCase(), String(m.year || '')].join('|');
 let watchKeys = null, watchAsk = null;
-// the titles on your watchlist, read once, so a post says In watchlist from the start
+// the titles on your Up next (the watchlist), read once, so a post's share menu says In Up next from the start
 function watched(){
   const a = acct();
   if (!(a.sb && a.user)) return Promise.resolve(new Set());
@@ -304,64 +350,86 @@ const profileUrl = name => ROOT + 'u/?' + name;
 const coverSrc = x => x.cover_src ? `${WORKER}/img?url=${encodeURIComponent(String(x.cover_src).replace(/^url:/, ''))}` : '';
 const itemOf = x => ({kind: x.kind, title: x.title, year: x.year ? String(x.year) : '', creator: x.author || '', cover: x.cover_src ? String(x.cover_src).replace(/^url:/, '') : ''});
 
+// a small menu under a button: items [{label, run(), disabled}], shut by Esc, a press elsewhere, or picking one
+function menuOn(btn, list){
+  const wrap = btn.parentNode, menu = document.createElement('span');
+  menu.className = 'pmenu'; menu.setAttribute('role', 'menu'); menu.hidden = true;
+  wrap.append(menu);
+  const shut = () => { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); };
+  btn.setAttribute('aria-haspopup', 'menu'); btn.setAttribute('aria-expanded', 'false');
+  btn.addEventListener('click', async e => {
+    e.stopPropagation();
+    if (!menu.hidden){ shut(); return; }
+    const items = await list();
+    menu.replaceChildren(...items.map(it => {
+      const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'menuitem'); b.textContent = it.label; b.disabled = !!it.disabled;
+      b.addEventListener('click', ev => { ev.stopPropagation(); shut(); it.run(); });
+      return b;
+    }));
+    menu.hidden = false; btn.setAttribute('aria-expanded', 'true');
+    menu.classList.remove('up'); if (menu.getBoundingClientRect().bottom > innerHeight - 8) menu.classList.add('up');
+    const first = menu.querySelector('button:not(:disabled)'); if (first) first.focus();
+  });
+  document.addEventListener('click', e => { if (!wrap.contains(e.target)) shut(); });
+  menu.addEventListener('keydown', e => {
+    const bs = [...menu.querySelectorAll('button:not(:disabled)')], i = bs.indexOf(document.activeElement);
+    if (e.key === 'Escape'){ shut(); btn.focus(); }
+    else if (e.key === 'ArrowDown' && bs.length){ e.preventDefault(); bs[(i + 1) % bs.length].focus(); }
+    else if (e.key === 'ArrowUp' && bs.length){ e.preventDefault(); bs[(i - 1 + bs.length) % bs.length].focus(); }
+  });
+}
+
 /* x: a log as activity() gives it, with post_stats() for it when 0009 is there; opt: {social, whole (the post's own
-   page: the review in full), cover (its width), watch (the Set of titles on your watchlist), onGone()} */
+   page: the review in full, and no tapping through), cover (its width), watch (the Set of titles on your Up next),
+   onGone()} */
 function item(x, opt = {}){
   const a = acct(), mine = !!(a.user && x.owner === a.user.id), social = !!opt.social && x.likes != null;
   const li = document.createElement('li');
-  li.className = 'item log post' + (opt.whole ? ' whole' : ''); li.dataset.id = x.id;
+  li.className = 'post' + (opt.whole ? ' whole' : ''); li.dataset.id = x.id;
   const review = x.review != null && x.review !== '' ? x.review : (x.caption || '');
-  const ava = x.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(x.avatar_key)}`)}" alt="" loading="lazy">` : esc(((x.display_name || '').trim() || x.username || '·').trim()[0] || '·');
-  const at = x.at || x.created_at, url = postUrl(x.id), label = `${x.title}${x.year ? ` (${x.year})` : ''}`;
+  const at = x.at || x.created_at, url = postUrl(x.id), label = `${x.title}${x.year ? ` (${x.year})` : ''}`, name = (x.display_name || '').trim();
   const say = !review ? '' : x.spoiler && social
     ? `<div class="say spoil"><p class="sayt" aria-hidden="true">${esc(review)}</p><button class="spoilbtn" type="button" aria-label="Show the review. It has spoilers."><span>Spoilers. Show</span></button></div>`
     : `<p class="say">${esc(review)}</p>`;
-  li.innerHTML = `<a class="fa" href="${esc(profileUrl(x.username))}" tabindex="-1" aria-hidden="true">${ava}</a>
-    <p class="line"><a href="${esc(profileUrl(x.username))}">${x.mine ? 'You' : '@' + esc(x.username)}</a> ${verb(x.kind)} <a href="${esc(url)}"><b>${esc(x.title)}</b></a>${social && x.rating ? ' ' + stars(x.rating, 'sm') : ''}${social && x.rewatch ? ` <span class="tag">${x.kind === 'movie' ? 'rewatch' : 'reread'}</span>` : ''}
-      <span class="ago">· <a href="${esc(url)}"><time datetime="${esc(at)}" title="${esc(new Date(at).toLocaleString())}">${ago(at)}</time></a></span></p>
-    <div class="logbody"><span class="cover"></span>${say}</div>
-    <div class="pacts"></div>`;
+  li.innerHTML = `<a class="pava" href="${esc(profileUrl(x.username))}" tabindex="-1" aria-hidden="true">${avaHtml(x)}</a>
+    <div class="pbody">
+      <p class="phead"><a class="pwho" href="${esc(profileUrl(x.username))}">${name ? `<b>${esc(name)}</b> ` : ''}<span>@${esc(x.username)}</span></a><span class="ago">· <a href="${esc(url)}"><time datetime="${esc(at)}" title="${esc(new Date(at).toLocaleString())}">${ago(at)}</time></a></span><span class="pmenuwrap pmore"></span></p>
+      <p class="pwhat">${verb(x.kind)} <a href="${esc(url)}">${esc(x.title)}</a>${x.year ? ` (${esc(x.year)})` : ''}${social && x.rewatch ? ` <span class="tag">${x.kind === 'movie' ? 'rewatch' : 'reread'}</span>` : ''}</p>
+      ${social && x.rating ? `<p class="prating">${stars(x.rating, 'sm')}</p>` : ''}
+      ${say}
+      <div class="pacts"></div>
+    </div>
+    <span class="cover"></span>`;
   if (window.Wear) li.querySelector('.cover').append(Wear.cover({src: coverSrc(x), seed: x.id, at, label: `${label}, ${verb(x.kind)} by @${x.username}`, width: opt.cover || 72}));
   const sp = li.querySelector('.spoilbtn');
-  if (sp) sp.addEventListener('click', () => { const box = sp.parentNode; box.classList.remove('spoil'); box.querySelector('.sayt').removeAttribute('aria-hidden'); sp.remove(); });
+  if (sp) sp.addEventListener('click', e => { e.stopPropagation(); const box = sp.parentNode; box.classList.remove('spoil'); box.querySelector('.sayt').removeAttribute('aria-hidden'); sp.remove(); });
   acts(li.querySelector('.pacts'), x, {mine, social, opt, li});
+  // the whole post goes to its page (but not a press on a link, a button, a menu, or text being selected)
+  if (!opt.whole) li.addEventListener('click', e => {
+    if (e.target.closest('a, button, input, textarea, [role=menu], .spoil')) return;
+    if (String(getSelection && getSelection()).trim()) return;
+    location.href = url;
+  });
   return li;
 }
 
+const REPEAT = '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>';
+const SHARE = '<path d="M12 2v13"/><path d="m16 6-4-4-4 4"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>';
+const count = (n, one, many) => `${n || 0} ${n === 1 ? one : many}`;
 function acts(row, x, {mine, social, opt, li}){
   const m = itemOf(x), name = x.title;
   const btn = (cls, html, label, extra = '') => `<button type="button" class="${cls}" aria-label="${esc(label)}" ${extra}>${html}</button>`;
   let h = '';
   if (social){
-    h += btn('like', `${ICON(HEART)}<span class="n">${x.likes || ''}</span>`, `Like. ${x.likes || 0} like${x.likes === 1 ? '' : 's'}`, `aria-pressed="${!!x.liked}"`);
-    h += `<a class="reply" href="${esc(postUrl(x.id))}#reply" aria-label="Reply. ${x.replies || 0} repl${x.replies === 1 ? 'y' : 'ies'}">${ICON(BUBBLE)}<span class="n">${x.replies || ''}</span></a>`;
-    if (!mine) h += x.logged ? `<span class="state metoo" aria-label="You logged ${esc(name)} too. ${x.metoos || 0} me too">Me too <span class="n">${x.metoos || ''}</span></span>`
-      : btn('metoo', `Me too <span class="n">${x.metoos || ''}</span>`, `Me too: log ${name} as ${verb(x.kind)} by you. ${x.metoos || 0} me too`);
-    else if (x.metoos) h += `<span class="state metoo">Me too <span class="n">${x.metoos}</span></span>`;
+    h += `<a class="reply" href="${esc(postUrl(x.id))}#reply" aria-label="Reply. ${count(x.replies, 'reply', 'replies')}">${ICON(BUBBLE)}<span class="n">${x.replies || ''}</span></a>`;
+    // Same: you watched or read it too, logged at once. Pressed once you've logged it; your own post just counts them
+    h += btn('metoo', `${ICON(REPEAT)}<span class="n">${x.metoos || ''}</span>`, mine ? `Same. ${count(x.metoos, 'person', 'people')} logged it too` : x.logged ? `You logged ${name} too. ${count(x.metoos, 'Same', 'Same')}` : `Same: log ${name} as ${verb(x.kind)} by you. ${count(x.metoos, 'Same', 'Same')}`,
+      `aria-pressed="${!!x.logged && !mine}"${mine || x.logged ? ' disabled' : ''}`);
+    h += btn('like', `${ICON(HEART)}<span class="n">${x.likes || ''}</span>`, `Like. ${count(x.likes, 'like', 'likes')}`, `aria-pressed="${!!x.liked}"`);
   }
-  if (!mine) h += `<span class="wslot"></span>`;
-  h += btn('share', 'Share', `Share a link to @${x.username}'s post about ${name}`);
-  const menu = (social && !mine) || mine;
-  if (menu) h += `<span class="pmenuwrap"><button type="button" class="more" aria-label="More for this post" aria-haspopup="menu" aria-expanded="false">${ICON(DOTS)}</button>
-    <span class="pmenu" role="menu" hidden>${mine ? '<button type="button" role="menuitem" data-del>Delete</button>' : '<button type="button" role="menuitem" data-report>Report</button>'}</span></span>`;
+  h += `<span class="pmenuwrap">${btn('share', ICON(SHARE), `Share @${x.username}'s post about ${name}`)}</span>`;
   row.innerHTML = h;
   const q = s => row.querySelector(s);
-
-  // + Watchlist, or In watchlist (grey) when it's on it
-  const slot = q('.wslot');
-  if (slot){
-    const add = document.createElement('button'); add.type = 'button'; add.className = 'watch'; add.textContent = '+ Watchlist'; add.setAttribute('aria-label', `Add ${name} to your watchlist`);
-    slot.replaceWith(add);
-    const showIn = () => { if (!add.isConnected) return; const s = document.createElement('span'); s.className = 'state win'; s.textContent = 'In watchlist'; add.replaceWith(s); };
-    (opt.watch ? Promise.resolve(opt.watch) : watched()).then(keys => { if (keys.has(keyOf(m))) showIn(); });
-    add.addEventListener('click', async () => {
-      if (!signedIn()){ if (window.Nav && Nav.visitor && Nav.visitor()) Nav.needAccount('watch', m); else if (window.Nav) Nav.signIn(); return; }
-      add.disabled = true;
-      const ok = window.Nav && await Nav.loadAdd();
-      const r = ok ? await Add.watch(m, {from: x.owner}) : {error: 'That didn’t work. Try again in a moment.'};
-      if (r.ok) showIn(); else { add.disabled = false; toast(r.error); }
-    });
-  }
 
   // like: the count changes at once, and goes back if it didn't save
   const like = q('.like');
@@ -369,7 +437,7 @@ function acts(row, x, {mine, social, opt, li}){
     if (!signedIn()){ if (window.Nav) Nav.signIn(); return; }
     const was = like.getAttribute('aria-pressed') === 'true', a = acct();
     const set = on => { x.liked = on; x.likes = Math.max(0, (x.likes || 0) + (on ? 1 : -1)); like.setAttribute('aria-pressed', String(on)); like.querySelector('.n').textContent = x.likes || '';
-      like.setAttribute('aria-label', `Like. ${x.likes} like${x.likes === 1 ? '' : 's'}`); };
+      like.setAttribute('aria-label', `Like. ${count(x.likes, 'like', 'likes')}`); };
     set(!was); like.disabled = true;
     let r;
     try { r = was ? await a.sb.from('likes').delete().eq('log', x.id).eq('owner', a.user.id) : await a.sb.from('likes').insert({log: x.id}); } catch (err){ r = {error: err}; }
@@ -377,52 +445,52 @@ function acts(row, x, {mine, social, opt, li}){
     if (r.error && r.error.code !== '23505'){ set(was); toast(friendly(r.error)); }
   });
 
-  // me too: logs the same title as yours, at once
-  const metoo = q('button.metoo');
-  if (metoo) metoo.addEventListener('click', async () => {
+  // Same: logs the same title as yours, at once
+  const same = q('.metoo');
+  if (same && !same.disabled) same.addEventListener('click', async () => {
     if (!signedIn()){ if (window.Nav) Nav.signIn(); return; }
-    metoo.disabled = true;
-    x.metoos = (x.metoos || 0) + 1; metoo.querySelector('.n').textContent = x.metoos;
+    same.disabled = true;
+    x.metoos = (x.metoos || 0) + 1; same.querySelector('.n').textContent = x.metoos;
     const r = await save(m, {metoo: x.id});
-    if (r.ok){ x.logged = true; const s = document.createElement('span'); s.className = 'state metoo'; s.innerHTML = `Me too <span class="n">${x.metoos}</span>`; metoo.replaceWith(s); toast(`Logged ${name}. It’s on the feed.`); }
-    else { x.metoos--; metoo.querySelector('.n').textContent = x.metoos || ''; metoo.disabled = false; toast(r.error); }
+    if (r.ok){ x.logged = true; same.setAttribute('aria-pressed', 'true'); same.setAttribute('aria-label', `You logged ${name} too. ${count(x.metoos, 'Same', 'Same')}`); toast(`Logged ${name}. It’s on the feed.`); }
+    else { x.metoos--; same.querySelector('.n').textContent = x.metoos || ''; same.disabled = false; toast(r.error); }
   });
 
-  // share: the post's own address (the phone's share sheet where there is one)
-  q('.share').addEventListener('click', async () => {
-    const url = new URL(postUrl(x.id), location.href).href, text = `@${x.username} ${verb(x.kind)} ${name}`;
-    if (navigator.share && matchMedia('(pointer: coarse)').matches){ try { await navigator.share({url, title: text}); return; } catch (e){ if (e && e.name === 'AbortError') return; } }
-    try { await navigator.clipboard.writeText(url); toast('Link copied.'); } catch { toast(url); }
+  // share: Copy link, the phone's own share sheet where there is one, and (someone else's) Up next
+  const url = () => new URL(postUrl(x.id), location.href).href;
+  menuOn(q('.share'), async () => {
+    const list = [{label: 'Copy link', run: async () => { try { await navigator.clipboard.writeText(url()); toast('Link copied.'); } catch { toast(url()); } }}];
+    if (navigator.share) list.push({label: 'Share…', run: async () => { try { await navigator.share({url: url(), title: `@${x.username} ${verb(x.kind)} ${name}`}); } catch {} }});
+    if (!mine){
+      const keys = opt.watch || await watched(), on = keys.has(keyOf(m));
+      list.push({label: on ? 'In Up next' : 'Add to Up next', disabled: on, run: async () => {
+        if (!signedIn()){ if (window.Nav && Nav.visitor && Nav.visitor()) Nav.needAccount('watch', m); else if (window.Nav) Nav.signIn(); return; }
+        const ok = window.Nav && await Nav.loadAdd();
+        const r = ok ? await Add.watch(m, {from: x.owner}) : {error: 'That didn’t work. Try again in a moment.'};
+        if (!r.ok) toast(r.error);
+      }});
+    }
+    return list;
   });
 
-  // ···: Report someone else's, Delete your own (it asks first)
-  const more = q('.more'), pm = q('.pmenu');
-  if (more){
-    const shut = () => { pm.hidden = true; more.setAttribute('aria-expanded', 'false'); };
-    more.addEventListener('click', e => {
-      e.stopPropagation(); const open = pm.hidden; pm.hidden = !open; more.setAttribute('aria-expanded', String(open));
-      if (open){ pm.classList.remove('up'); if (pm.getBoundingClientRect().bottom > innerHeight - 8) pm.classList.add('up'); pm.querySelector('button').focus(); }
-    });
-    document.addEventListener('click', e => { if (!row.contains(e.target)) shut(); });
-    pm.addEventListener('keydown', e => { if (e.key === 'Escape'){ shut(); more.focus(); } });
-    const del = pm.querySelector('[data-del]'), rep = pm.querySelector('[data-report]');
-    if (del) del.addEventListener('click', async () => {
-      shut();
+  // ···, in the post's top line: Report someone else's (0009), Delete your own (it asks first)
+  const slot = li.querySelector('.pmore');
+  if (mine || social){
+    slot.innerHTML = `<button type="button" class="more" aria-label="More for this post">${ICON(DOTS)}</button>`;
+    menuOn(slot.querySelector('.more'), () => mine ? [{label: 'Delete', run: async () => {
       if (!(await ask({text: `Delete your post about ${name}?`, yes: 'Delete'}))) return;
       const a = acct(); let r;
       try { r = await a.sb.from('logs').delete().eq('id', x.id).eq('owner', a.user.id); } catch (err){ r = {error: err}; }
       if (r.error){ toast(friendly(r.error)); return; }
       li.remove(); toast('Deleted.');
       if (opt.onGone) opt.onGone(x);
-    });
-    if (rep) rep.addEventListener('click', async () => {
-      shut();
+    }}] : [{label: x.reported ? 'Reported' : 'Report', disabled: !!x.reported, run: async () => {
       if (!signedIn()){ if (window.Nav) Nav.signIn(); return; }
       const r = await report('log', x.id);
       toast(r);
-      if (r === 'Reported. Thanks.'){ rep.disabled = true; rep.textContent = 'Reported'; }
-    });
-  }
+      if (r === 'Reported. Thanks.') x.reported = true;
+    }}]);
+  } else slot.remove();
 }
 async function report(type, id){
   const a = acct(); let r;
@@ -431,5 +499,5 @@ async function report(type, id){
   return friendly(r.error);
 }
 
-window.Posts = {ready, fields, composer, save, stats, item, ago, stars, ask, report, rest, rpc, watched, friendly, postUrl, verb};
+window.Posts = {ready, fields, composer, save, stats, item, ago, stars, ask, report, rest, rpc, watched, friendly, postUrl, verb, menuOn, avaHtml};
 })();

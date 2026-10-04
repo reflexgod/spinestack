@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Activity · shelfstackd</title>
+<title>Feed · shelfstackd</title>
 <meta name="description" content="The newest shelves and logs on shelfstackd, from everyone or from the people you follow.">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32">
@@ -11,7 +11,7 @@
 <meta name="theme-color" content="#FFFFFF">
 <meta property="og:site_name" content="shelfstackd">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Activity · shelfstackd">
+<meta property="og:title" content="Feed · shelfstackd">
 <meta property="og:description" content="The newest shelves and logs on shelfstackd, from everyone or from the people you follow.">
 <meta property="og:url" content="https://shelfstackd.com/feed/">
 <meta property="og:image" content="https://shelfstackd.com/og.jpg">
@@ -32,9 +32,13 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Geist+Mono:wght@400;500&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
 <link rel="stylesheet" href="../site.css?v=20261012a">
 <style>
-/* the feed: the tabs, then a line for each shelf saved (its card under it) and each film or book logged (its worn
-   cover and caption under it); site.css has the tabs, the lines, the card, the cover and the rest */
-.items{margin-top:var(--s5)}
+/* the feed: a timeline, one column of 600px in the middle of the page's. The composer, the tabs (staying under the
+   bar as you scroll), then the posts (post.js) and shelves saved, each with a thin rule under it and no box */
+.tl{max-width:600px;margin-inline:auto}
+.tl .tabs{position:sticky;top:var(--barh,64px);z-index:4;background:var(--paper);padding-top:var(--s3)}
+.tl .items{gap:0;margin-top:0}
+.tl .items > li{border-bottom:1px solid var(--hair)}
+.tl .items > li.item{padding:var(--s4) 0}
 .fnone{display:grid;justify-items:start;gap:var(--s3);margin:var(--s5) 0 0}
 .fnone p{margin:0}
 .linkish{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-decoration:none;text-decoration-thickness:1px;text-underline-offset:3px}
@@ -46,7 +50,7 @@
 .items .item.log>.wmorewrap{position:absolute;top:-12px;right:0}
 @media (pointer:coarse){.items .item.log .line{padding-right:44px}}
 /* "3 new posts": checked every minute, shown at the top of the list; it never moves the page by itself */
-.newpill{position:sticky;top:calc(64px + var(--s2));z-index:4;display:block;margin:var(--s4) auto 0;background:var(--ink);color:var(--paper);border:0;border-radius:999px;
+.newpill{position:sticky;top:calc(var(--barh,64px) + 48px);z-index:4;display:block;margin:var(--s4) auto 0;background:var(--ink);color:var(--paper);border:0;border-radius:999px;
   padding:var(--s2) var(--s4);font:600 var(--fs-btn)/1.35 var(--mono);cursor:pointer}
 .newpill:hover{background:#222}
 /* People to follow, when Following is empty: each person with their first five spines and Follow */
@@ -73,7 +77,8 @@
 </header>
 
 <main class="feed">
-  <h1>Activity</h1>
+<div class="tl">
+  <h1 class="vh">Feed</h1>
   <section id="compose" aria-label="Post" hidden></section>
   <nav class="tabs" role="tablist" aria-label="Feed">
     <button type="button" role="tab" id="tabF" data-scope="following" aria-selected="false" aria-controls="panel">Following</button>
@@ -86,6 +91,7 @@
     <div class="fnone" id="none" hidden></div>
     <button class="dash sm" id="more" type="button" hidden>Load more</button>
   </div>
+</div>
 </main>
 
 <div class="sheet" id="signSheet" hidden role="dialog" aria-modal="true" aria-label="Sign in">
@@ -311,7 +317,16 @@ async function more(run = feed.run){
   if (!$('#items').children.length) none(feed.scope);
 }
 // a log posted with + ADD on this page: the tab starts again, with it at the top
-document.addEventListener('shelfstackd:added', e => { if (e.detail && e.detail.what === 'log' && feed.scope) show(feed.scope); });
+// a log posted on this page (the composer, + ADD, Same): it goes on top of Everyone at once, with nothing reloaded and
+// nothing moved; Friends is the people you follow, so it isn't there
+document.addEventListener('shelfstackd:added', e => {
+  const d = e.detail || {};
+  if (d.what !== 'log' || feed.scope !== 'everyone') return;
+  if (!d.post || !d.post.id || !window.Posts){ show(feed.scope); return; }
+  $('#none').hidden = true;
+  $('#items').prepend(item(d.post));
+  feed.first = {at: d.post.at, id: d.post.id};
+});
 $('#more').addEventListener('click', () => more());
 // the next 20 come by themselves as the end of the list nears (Load more is still there to press)
 if ('IntersectionObserver' in window) new IntersectionObserver(es => { if (es.some(e => e.isIntersecting) && !$('#more').hidden && !$('#more').disabled) more(); }, {rootMargin: '600px 0px'}).observe($('#more'));
@@ -409,6 +424,9 @@ document.querySelector('.tabs').addEventListener('keydown', e => {
   const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]; next.focus(); next.click();
 });
 
+// how tall the bar is, so the tabs stay just under it (the bar is two rows on a phone)
+const bar = document.querySelector('header.top'), barh = () => document.documentElement.style.setProperty('--barh', bar.offsetHeight + 'px');
+barh(); if ('ResizeObserver' in window) new ResizeObserver(barh).observe(bar);
 // signed in with a username: "What did you watch or read?" at the top; a post goes on the feed at once
 async function compose(){
   if (!me.profile || !window.Posts) return;
