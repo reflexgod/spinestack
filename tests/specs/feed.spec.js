@@ -9,10 +9,9 @@ const { SHELVES, LOGS, mockNetwork, watchErrors, open } = require('../site');
 // the made-up shelves were saved at noon on 30 Sep 2026 and on each day before it: two hours later, the newest says 2h
 const NOW = new Date('2026-09-30T14:00:00Z');
 const lines = page => page.locator('#items > li');
-// what each says: a shelf's line, or a post's "@name watched Title (year) · when"
-const said = page => lines(page).evaluateAll(lis => lis.map(li => (li.classList.contains('post')
-  ? `${li.querySelector('.pwho span').textContent} ${li.querySelector('.pwhat').textContent} · ${li.querySelector('time').textContent}`
-  : li.querySelector('.line').textContent).replace(/\s+/g, ' ').trim()));
+// what each says: "@name watched Title (year) · when", or for a shelf saved "@name added 2 to their shelf · when"
+const said = page => lines(page).evaluateAll(lis => lis.map(li =>
+  `${li.querySelector('.pwho span').textContent} ${li.querySelector('.pwhat').textContent} · ${li.querySelector('time').textContent}`.replace(/\s+/g, ' ').trim()));
 const tabs = page => page.getByRole('tablist', { name: 'Feed' }).getByRole('tab');
 const isPhone = () => test.info().project.name.startsWith('phone');
 
@@ -24,7 +23,7 @@ test('the tabs are Following · Everyone; signed in it opens on Following', asyn
   await expect(page.getByRole('tab', { name: 'Following' })).toHaveAttribute('aria-selected', 'true');
   await expect(page).toHaveURL(/\/feed\/\?following$/);
   await expect(lines(page)).toHaveCount(8);   // only @mira is followed: her six shelves and two logs
-  for (const t of await said(page)) expect(t).toMatch(/^@mira (shelved|updated|watched|read) /);
+  for (const t of await said(page)) expect(t).toMatch(/^@mira (added|updated|started|watched|read) /);
   expect(errors).toEqual([]);
 });
 
@@ -35,24 +34,24 @@ test('a line says who shelved what and how long ago; a post who watched or read 
   await expect(lines(page)).toHaveCount(20);   // 20 at a time
   let text = await said(page);
   expect(text[0]).toBe('@mira watched Gummo (1997) · 1h');
-  expect(text[1]).toBe('@tester shelved a much longer shelf name that has to be cut short · 2h');
-  expect(text[2]).toBe('@mira shelved shelf number 1 · 1d');
+  expect(text[1]).toBe('@tester started their shelf · 2h');
+  expect(text[2]).toBe('@mira added 2 to their shelf · 1d');   // the two spines marked as first saved just before it
   expect(text[4]).toBe('@tester read Just Kids (2010) · 3d');
-  expect(text[5]).toBe('@tester shelved shelf number 3 · 3d');
-  expect(text[6]).toBe('@mira updated untitled shelf · 4d');   // saved again later than it was made
+  expect(text[5]).toBe('@tester started their shelf · 3d');
+  expect(text[6]).toBe('@mira updated their shelf · 4d');   // saved again later than it was made, nothing marked new
   expect(text[9]).toBe('@mira read The Waves (1931) · 1w');
-  expect(text[10]).toBe('@mira shelved shelf number 7 · 1w');
+  expect(text[10]).toBe('@mira started their shelf · 1w');
   // Load more: the rest, from after the last one shown
   const more = page.waitForRequest(r => r.url().includes('/rpc/activity') && r.postDataJSON().before_id);
   await page.getByRole('button', { name: 'Load more' }).click();
   expect((await more).postDataJSON()).toMatchObject({ scope: 'everyone', before_id: SHELVES[16].id });
   await expect(lines(page)).toHaveCount(22);
   text = await said(page);
-  expect(text[20]).toBe('@longusername_twenty1 shelved shelf number 17 · 2w');
+  expect(text[20]).toBe('@longusername_twenty1 started their shelf · 2w');
   expect(text[21]).toBe('@longusername_twenty1 watched Kids (1995) · 1mo');
   // a post: the photo (40px) at its left; "Mira @mira · 1h"; the title in bold, a link to the post's own page; the
   // review; the cover small (72 x 108px) at its right; no box, a thin rule under it
-  const post = page.locator('#items .post').first(), cover = post.locator('.cover canvas');
+  const post = page.locator('#items .post:not(.shelfpost)').first(), cover = post.locator('.cover canvas');
   const ava = await post.locator('.pava').boundingBox();
   expect(Math.round(ava.width)).toBe(40);
   await expect(post.locator('.phead .pwho')).toHaveText(/^Mira\s+@mira$/);
@@ -71,7 +70,7 @@ test('a line says who shelved what and how long ago; a post who watched or read 
   // drawn for that size, so it's sharp: the canvas has a pixel for each of the screen's
   expect(await cover.evaluate(el => el.width / (el.getBoundingClientRect().width * Math.min(2, devicePixelRatio)))).toBeCloseTo(isPhone() ? 72 / 56 : 1, 1);
   // older, more worn: today nearly new, a week faded, a month worn
-  const worn = async title => page.locator('#items .post').filter({ has: page.locator('.pwhat a', { hasText: new RegExp(`^${title}$`) }) }).locator('canvas')
+  const worn = async title => page.locator('#items .post:not(.shelfpost)').filter({ has: page.locator('.pwhat a', { hasText: new RegExp(`^${title}$`) }) }).locator('canvas')
     .evaluate(el => ({ fade: +el.dataset.fade, wear: +el.dataset.wear }));
   const today = await worn('Gummo'), week = await worn('The Waves'), month = await worn('Kids');
   expect(today.fade).toBeLessThan(.06);
@@ -80,12 +79,13 @@ test('a line says who shelved what and how long ago; a post who watched or read 
   expect(week.fade).toBeGreaterThan(today.fade + .1);
   expect(month.wear).toBeGreaterThan(week.wear + .25);
   expect(month.fade).toBeGreaterThan(week.fade);
-  // a shelf: the name is a link to the person, the shelf's a link to the shelf, and so is its card
-  const first = page.locator('#items .item').first();
-  await expect(first.locator('.line a').first()).toHaveAttribute('href', '../u/?tester');
-  await expect(first.locator('.line a').nth(1)).toHaveAttribute('href', `../u/?tester&shelf=${SHELVES[0].id}`);
-  await expect(first.locator('.pic')).toHaveAttribute('href', `../u/?tester&shelf=${SHELVES[0].id}`);
+  // a shelf saved: a compact post, the person a link to them, "their shelf" and the strip links to the shelf
+  const first = page.locator('#items .shelfpost').first();
+  await expect(first.locator('.pwho')).toHaveAttribute('href', /\/u\/\?tester$/);
+  await expect(first.locator('.pwhat a')).toHaveAttribute('href', new RegExp(`/u/\\?tester&shelf=${SHELVES[0].id}$`));
+  await expect(first.locator('.strip')).toHaveAttribute('href', new RegExp(`/u/\\?tester&shelf=${SHELVES[0].id}$`));
   await expect(first.locator('time')).toHaveAttribute('datetime', SHELVES[0].saved_at);
+  await expect(first.locator('.pic')).toHaveCount(0);   // no card
 });
 
 test('a timeline: one 600px column in the middle, no heading on screen, the tabs staying under the bar, and a post a press through to its page', async ({ page }) => {
@@ -124,6 +124,26 @@ test('the composer is a box like a tweet\'s: your photo at its left, and it grow
   await expect(c).not.toHaveClass(/open/);
 });
 
+test('a shelf saved is a compact post: "@mira added 2 to their shelf" and a strip of just those spines, 80px tall', async ({ page }) => {
+  await page.clock.setFixedTime(NOW);
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/feed/?everyone');
+  const mira = page.locator('#items .shelfpost').filter({ hasText: 'added 2 to their shelf' });
+  await expect(mira).toHaveCount(1);
+  const strip = mira.locator('.strip canvas');
+  await expect(strip).toHaveCount(2);   // Kids and Delta of Venus, not Orlando, which was there before
+  for (const c of await strip.all()) expect(Math.round((await c.boundingBox()).height)).toBeLessThanOrEqual(80);
+  expect(Math.max(...await strip.evaluateAll(cs => cs.map(c => Math.round(c.getBoundingClientRect().height))))).toBe(80);
+  // a save with nothing marked as new: its last five spines (this one has eight)
+  const older = page.locator('#items .shelfpost').filter({ hasText: '@longusername_twenty1' }).first();
+  await expect(older.locator('.pwhat')).toHaveText('started their shelf');
+  await expect(older.locator('.strip canvas')).toHaveCount(5);
+  // the whole post goes to the shelf
+  const b = await mira.locator('.phead').boundingBox();
+  await page.mouse.click(b.x + b.width - 2, b.y + b.height / 2);
+  await expect(page).toHaveURL(new RegExp(`/u/\\?mira&shelf=${SHELVES[1].id}$`));
+});
+
 test('?you, from when there was a You tab, is Following', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/feed/?you');
@@ -151,8 +171,8 @@ test('a database without logs (0007 not run on it): shelves only, as before', as
   page.on('request', r => { if (r.url().includes('/rest/v1/rpc/')) asked.push(new URL(r.url()).pathname.split('/').pop()); });
   await open(page, '/feed/?everyone');
   await expect(lines(page)).toHaveCount(18);
-  await expect(page.locator('#items .item.log')).toHaveCount(0);
-  for (const t of await lines(page).allTextContents()) expect(t).toMatch(/ (shelved|updated) /);
+  await expect(page.locator('#items .post:not(.shelfpost)')).toHaveCount(0);
+  for (const t of await said(page)) expect(t).toMatch(/ (added|started|updated) /);
   expect(asked).toEqual(['activity', 'feed']);   // asked once, then the feed of 0006
   await page.getByRole('tab', { name: 'Following' }).click();
   await expect(lines(page)).toHaveCount(6);   // @mira's shelves

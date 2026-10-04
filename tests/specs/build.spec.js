@@ -235,6 +235,10 @@ test('signed in with a shelf: the builder opens it, and Save saves over it (neve
   const { shelf, items } = (await saved).postDataJSON();
   expect(shelf.id).toBe(mine.id);
   expect(items.map(i => i.title)).toEqual(['The Waves', 'Journey by Moonlight', 'Gummo']);
+  // each spine is marked with when it was first saved (look.at, seconds), so the feed can say what a save added: the
+  // two saved before there were marks are long ago (1), Gummo is now
+  expect(items.map(i => i.look.at).slice(0, 2)).toEqual([1, 1]);
+  expect(Math.abs(items[2].look.at - Date.now() / 1000)).toBeLessThan(120);
   await expect(page).toHaveURL(new RegExp(`/u/\\?tester&shelf=${mine.id}$`));
   expect(errors).toEqual([]);
 });

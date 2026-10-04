@@ -101,15 +101,16 @@ test('profile: the name, the numbers and their labels, and the tabs', async ({ p
   expect(await css(page.locator('#featWrap'), 'borderBottomWidth', 'borderBottomStyle', 'borderBottomColor')).toEqual({ borderBottomWidth: '1px', borderBottomStyle: 'solid', borderBottomColor: 'rgb(0, 0, 0)' });
 });
 
-test('the feed shows each shelf as the same 2:3 card as home, under the line about it, not the whole story', async ({ page }) => {
+test('the feed shows a shelf saved as a strip of spines 80px tall, in line with the post’s text, not a card or the whole story', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/feed/?everyone');
-  const card = await box(page.locator('.item .pic').first()), line = await box(page.locator('.item .line').first());
-  expect(Math.round(card.width)).toBe(150);
-  expect(Math.round(card.height)).toBe(225);
-  expect(Math.abs(card.left - line.left)).toBeLessThanOrEqual(1);   // in line with the text above it
-  expect(card.left - (await box(page.locator('.item .fa').first())).right).toBeGreaterThan(0);   // and clear of the photo
-  expect(await css(page.locator('.item .pic').first(), 'borderTopLeftRadius')).toEqual({ borderTopLeftRadius: '3px' });
+  const post = page.locator('.shelfpost').first();
+  await expect(post.locator('.strip canvas').first()).toBeVisible();
+  const strip = await box(post.locator('.strip')), what = await box(post.locator('.pwhat'));
+  expect(Math.round(strip.height)).toBe(80);
+  expect(Math.abs(strip.left - what.left)).toBeLessThanOrEqual(1);   // in line with the text above it
+  expect(strip.left - (await box(post.locator('.pava'))).right).toBeGreaterThan(0);   // and clear of the photo
+  await expect(page.locator('#items .pic')).toHaveCount(0);
 });
 
 // The type is Courier Prime (400, 700 and italic 400, from Google Fonts with display=swap) on every page, not Geist Mono.

@@ -1221,8 +1221,10 @@ Nav.onSignOut(signOut);
 /* a shelf as rows: each spine points at its images (a:archive id, u:saved image, url:TMDB / Open Library cover) */
 const COVER_HOSTS = /^https:\/\/(image\.tmdb\.org|covers\.openlibrary\.org)\/\S+$/;
 async function itemFor(b, put){
+  // at: when the spine was first saved (seconds), kept as it was ever after, so the feed can say what a save added
+  if (!b.at) b.at = Math.floor(Date.now() / 1000);
   const look = clean0({style:b.style, font:b.font, bg:b.bg, fg:b.fg, accent:b.accent, wf:+(+b.wf).toFixed(3), hf:+(+b.hf).toFixed(3), jit:+(+b.jit).toFixed(3),
-    studio:b.studio || undefined, cat:b.cat || undefined, pt:b.titleImg ? 1 : undefined});
+    studio:b.studio || undefined, cat:b.cat || undefined, pt:b.titleImg ? 1 : undefined, at:b.at});
   const rec = {item_id:b.id, kind:b.kind === 'movie' ? 'movie' : 'book', title:String(b.title || '').slice(0, 200), author:String(b.author || '').slice(0, 200),
     year:/^\d{4}$/.test(String(b.year || '')) ? String(b.year) : null, look};
   if (isReal(b)) rec.spine_src = b.archiveId ? 'a:' + b.archiveId : await put(b.spineImg, 'spine');
@@ -1362,6 +1364,7 @@ async function rebuild(r){
     bg: look.bg, fg: look.fg, accent: look.accent, wf: look.wf, hf: look.hf, jit: look.jit, studio: look.studio, cat: look.cat, img, spineImg: spine || undefined,
     titleImg: t ? t.img : undefined, thumb: img && img.src, archiveId: r.spine_src && r.spine_src.startsWith('a:') ? r.spine_src.slice(2) : undefined,
     coverUrl: r.cover_src && r.cover_src.startsWith('url:') ? r.cover_src.slice(4) : undefined,
+    at: 'at' in look ? look.at : 1,   // saved before spines were marked: long ago (1), never new; a row brought over from another shelf has none: new
     source: style === 'real' ? (r.spine_src.startsWith('a:') ? 'the archive' : 'your saved shelf') : undefined}));
 }
 function applySettings(s){
@@ -1477,7 +1480,7 @@ function takeRow(){
   if (row){
     const name = row.title || 'That spine';
     $('#saveNote').textContent = 'Adding ' + name + '…';
-    let b = null; try { b = await rebuild({...row, item_id: undefined}); } catch {}   // a book of its own here, with a new id
+    let b = null; try { b = await rebuild({...row, item_id: undefined, look: {...(row.look || {}), at: undefined}}); } catch {}   // new on this shelf   // a book of its own here, with a new id
     $('#saveNote').textContent = '';
     if (!b) toast('Couldn’t add ' + name + '. Its picture didn’t load.');
     else { if (b.source === 'your saved shelf') b.source = 'a saved shelf'; if (shelve(b)) toast(name + ' added to your shelf.'); }

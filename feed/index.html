@@ -39,6 +39,9 @@
 .tl .items{gap:0;margin-top:0}
 .tl .items > li{border-bottom:1px solid var(--hair)}
 .tl .items > li.item{padding:var(--s4) 0}
+/* a shelf saved: the spines it added, in a strip 80px tall */
+.shelfpost .strip{display:flex;align-items:flex-end;gap:2px;height:80px;margin-top:var(--s2);overflow:hidden;max-width:100%}
+.shelfpost .strip canvas{display:block;flex:none}
 .fnone{display:grid;justify-items:start;gap:var(--s3);margin:var(--s5) 0 0}
 .fnone p{margin:0}
 .linkish{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-decoration:none;text-decoration-thickness:1px;text-underline-offset:3px}
@@ -113,7 +116,6 @@
 
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
-<script src="../cards.js?v=20261002a"></script>
 <script src="../wear.js?v=20261004a"></script>
 <script src="../bare.js?v=20261006a"></script>
 <script src="../nav.js?v=20261012a"></script>
@@ -248,10 +250,35 @@ function item(x){
     if (!(me.user && x.owner === me.user.id)) Nav.watchable(li.querySelector('.cover'), {kind: x.kind, title: x.title, year: x.year ? String(x.year) : '', creator: x.author || '', cover: x.cover_src ? x.cover_src.replace(/^url:/, '') : ''}, {moreIn: li});
     return li;
   }
-  const to = esc(profileUrl(x.username, x.id)), shelf = Shelf.shelfName({name: x.name, caption: x.caption});
-  const pic = x.preview_key ? `<img src="${esc(`${WORKER}/u/preview?k=${encodeURIComponent(x.preview_key)}&v=${encodeURIComponent(x.updated_at)}`)}" alt="" crossorigin="anonymous" loading="lazy" width="360" height="640">` : '';   // with CORS, so cards.js can read it and cut the card round the books
-  li.innerHTML = `${avatar(x)}<p class="line">${by} ${x.updated ? 'updated' : 'shelved'} <a href="${to}">${esc(shelf)}</a>${x.is_public === false ? ' <span class="tag">private</span>' : ''} ${when(x.at, ago(x.at))}</p>
-    <a class="pic" data-shelf="${esc(x.id)}" href="${to}" tabindex="-1" aria-label="Open ${esc(shelf)} by @${esc(x.username)}">${pic}</a>`;
+  return shelfPost(x);
+}
+/* A shelf saved, as a compact post: "@div added 3 to their shelf", and a strip of just the spines that save added
+   (80px tall, drawn by bare.js), the whole post a press through to the shelf. The builder marks each spine with when it
+   was first saved (look.at), so the spines added in the hour before the save are the new ones: saving again within
+   the hour keeps them together in one post, since a shelf is one line on the feed whatever its saves. A save from
+   before those marks, or one that only moved or changed spines, says "updated their shelf" (or "started their shelf")
+   with its last five spines. */
+const HOUR = 3600e3;
+function addedBy(x){
+  const items = x.items || [], at = new Date(x.at).getTime();
+  return items.filter(r => r.look && +r.look.at && +r.look.at * 1000 >= at - HOUR && +r.look.at * 1000 <= at + 60e3);
+}
+function shelfPost(x){
+  const li = document.createElement('li'), to = profileUrl(x.username, x.id), name = (x.display_name || '').trim(), added = addedBy(x);
+  li.className = 'post shelfpost'; li.dataset.id = x.id;
+  const what = added.length === 1 ? `added <a href="${esc(to)}">${esc(added[0].title || 'a spine')}</a> to their shelf`
+    : added.length ? `added <a href="${esc(to)}">${added.length}</a> to their shelf`
+    : `${x.updated ? 'updated' : 'started'} <a href="${esc(to)}">their shelf</a>`;
+  li.innerHTML = `<a class="pava" href="${esc(profileUrl(x.username))}" tabindex="-1" aria-hidden="true">${window.Posts ? Posts.avaHtml(x) : ''}</a>
+    <div class="pbody">
+      <p class="phead"><a class="pwho" href="${esc(profileUrl(x.username))}">${name ? `<b>${esc(name)}</b> ` : ''}<span>@${esc(x.username)}</span></a><span class="ago">· <a href="${esc(to)}"><time datetime="${esc(x.at)}" title="${esc(new Date(x.at).toLocaleString())}">${ago(x.at)}</time></a></span></p>
+      <p class="pwhat">${what}${x.is_public === false ? ' <span class="tag">private</span>' : ''}</p>
+      <a class="strip" href="${esc(to)}" tabindex="-1" aria-label="${esc(added.length ? `The ${added.length === 1 ? 'spine' : added.length + ' spines'} @${x.username} added` : `@${x.username}'s shelf`)}"></a>
+    </div>`;
+  li.addEventListener('click', e => { if (!e.target.closest('a, button') && !String(getSelection()).trim()) location.href = to; });
+  // the strip: the new spines, or the shelf's last five
+  const rows = added.length ? added : (x.items || []).slice(-5);
+  if (rows.length && window.Bare) Bare.ready.then(() => Bare.books(rows)).then(books => { if (books.length) li.querySelector('.strip').replaceChildren(...Bare.spines(books, 80)); });
   return li;
 }
 // a shelf as feed() (0006) gives it, in activity()'s shape
@@ -307,6 +334,14 @@ async function more(run = feed.run){
     let st = new Map(); try { st = await Posts.stats(ids); } catch {}
     if (run !== feed.run) return;
     rows = rows.map(x => st.has(x.id) ? {...x, ...st.get(x.id)} : x);
+  }
+  // each shelf's spines, in one ask, for its strip
+  const shelves = rows.filter(x => x.what !== 'log').map(x => x.id);
+  if (shelves.length){
+    let items = [];
+    try { items = await api(`shelf_items?select=shelf_id,position,item_id,kind,title,author,year,spine_src,cover_src,look&shelf_id=in.(${shelves.join(',')})&order=position`); } catch {}
+    if (run !== feed.run) return;
+    rows = rows.map(x => x.what === 'log' ? x : {...x, items: (items || []).filter(r => r.shelf_id === x.id)});
   }
   btn.disabled = false; $('#state').hidden = true;
   for (const x of rows) $('#items').append(item(x));

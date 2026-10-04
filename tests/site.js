@@ -96,6 +96,9 @@ const FRIEND_LOGS = [[0, 'book', 'Orlando', 'Virginia Woolf', 1928, 'url:https:/
   [4, 'movie', 'Paris, Texas', 'Wim Wenders', 1984, null, 20]].map(([who, kind, title, author, year, cover_src, days], i) =>
   ({ id: `eeeeeeee-eeee-4eee-8eee-${String(i).padStart(12, '0')}`, owner: FRIENDS[who].id, kind, title, author, year, cover_src, caption: 'A caption that home doesn’t show.', created_at: at(days, -1) }));
 const ITEMS_BY_SHELF = new Map([...SHELVES.map((s, i) => [s.id, itemsOf(s.id, COUNTS[i % COUNTS.length], i)]), ...FRIEND_SHELVES.map((s, i) => [s.id, itemsOf(s.id, [4, 6, 5][i], 20 + i)])]);
+// @mira's newest shelf (SHELVES[1]) had its last two spines added ten minutes before it was saved (look.at, seconds,
+// as the builder marks a spine when it's first saved): the feed says "@mira added 2 to their shelf"
+for (const r of ITEMS_BY_SHELF.get(SHELVES[1].id).slice(-2)) r.look = { ...r.look, at: Math.floor(new Date(SHELVES[1].saved_at).getTime() / 1000) - 600 };
 const keyOf = l => `${l.kind}:${l.title.toLowerCase()}:${l.year || ''}`;
 const FROM_FRIENDS = LOGS.filter(l => l.owner === PEOPLE[1].id).map(l => ({ item_key: keyOf(l), kind: l.kind, title: l.title, author: l.author, year: l.year, cover_src: l.cover_src,
   log_id: l.id, logged_at: l.created_at, from_id: PEOPLE[1].id, from_username: 'mira', from_display_name: 'Mira' }));

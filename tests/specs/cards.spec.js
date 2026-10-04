@@ -33,7 +33,7 @@ async function cutRound(loc, layout, dark){
   return s;
 }
 
-for (const [name, path, root] of [['home', '/', '#inGrid'], ['the feed', '/feed/?following', '#items'], ['a profile\'s Activity', '/u/?mira#activity', '#acts']]) {
+for (const [name, path, root] of [['home', '/', '#inGrid'], ['a profile\'s Activity', '/u/?mira#activity', '#acts']]) {   // (the feed has no cards: a shelf saved is a strip of spines)
   test(`${name}: each card is cut round its books, whatever the layout`, async ({ page }) => {
     const errors = watchErrors(page);
     await mockNetwork(page, { signedIn: true });
@@ -56,8 +56,8 @@ test('your own Activity\'s cards are cut the same way', async ({ page }) => {
 
 test('a picture is looked at once: what was found is kept per preview key, for this visit and the next', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
-  await open(page, '/feed/?following');
-  await cutRound(card(page, '#items', pile), 'stack', false);
+  await open(page, '/u/?mira#activity');
+  await cutRound(card(page, '#acts', pile), 'stack', false);
   // each shelf's picture once, however many cards show it
   const keys = await page.locator('.pic img').evaluateAll(els => els.map(im => new URL(im.src).searchParams.get('k')));
   await expect.poll(() => page.evaluate(() => Cards.measured)).toBe(new Set(keys).size);
@@ -77,8 +77,8 @@ test('a picture with no plain background keeps the stylesheet\'s cut', async ({ 
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   await page.route(u => u.pathname === '/u/preview', r => r.fulfill({ status: 200, headers: CORS, contentType: 'image/png', body: PICTURE }));   // a photo, as a wall would be
-  await open(page, '/feed/?following');
-  const cut = await card(page, '#items', pile).evaluate(pic => { const im = pic.querySelector('img'), r = im.getBoundingClientRect(), c = pic.getBoundingClientRect();
+  await open(page, '/u/?mira#activity');
+  const cut = await card(page, '#acts', pile).evaluate(pic => { const im = pic.querySelector('img'), r = im.getBoundingClientRect(), c = pic.getBoundingClientRect();
     return { loaded: im.naturalWidth > 0, w: +(r.width / c.width).toFixed(2), left: +((r.left - c.left) / c.width).toFixed(2), top: +((r.top - c.top) / c.height).toFixed(2), clip: getComputedStyle(im).clipPath, own: im.style.width }; });
   expect(cut).toEqual({ loaded: true, w: 1.2, left: -0.1, top: -0.33, clip: 'none', own: '' });
   expect(errors).toEqual([]);
@@ -87,8 +87,8 @@ test('a picture with no plain background keeps the stylesheet\'s cut', async ({ 
 test('a picture that comes without CORS still shows, with the stylesheet\'s cut', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await page.route(u => u.pathname === '/u/preview', r => r.fulfill({ status: 200, headers: { 'Access-Control-Allow-Origin': 'https://elsewhere.example' }, contentType: 'image/png', body: storyPicture('stack', false) }));   // CORS for some other site, so not for this one
-  await open(page, '/feed/?following');
-  const img = card(page, '#items', pile).locator('img');
+  await open(page, '/u/?mira#activity');
+  const img = card(page, '#acts', pile).locator('img');
   await expect.poll(() => img.evaluate(im => im.complete && im.naturalWidth)).toBe(360);
   expect(await img.evaluate(im => ({ cors: im.hasAttribute('crossorigin'), own: im.style.width }))).toEqual({ cors: false, own: '' });
 });
