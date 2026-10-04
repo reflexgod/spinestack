@@ -149,9 +149,15 @@ test('a spine’s Spine, Text and ✕ show only when its row is pressed, one row
   await expect(page.locator('#books .bbody:visible')).toHaveCount(1);
   await row(1).locator('.bopen').click();   // pressed again: shut
   await expect(page.locator('#books .bbody:visible')).toHaveCount(0);
-  // ✕ takes the spine off
+  // ✕ takes the spine off, after a yes (Cancel leaves it)
   await row(0).locator('.bopen').click();
   await remove(0).click();
+  const ask = page.locator('#confirmSheet');
+  await expect(ask.getByRole('heading')).toHaveText(/^Take “.+” off\?$/);
+  await ask.getByRole('button', { name: 'Cancel' }).click();
+  await expect(rows(page)).toHaveCount(4);
+  await remove(0).click();
+  await ask.getByRole('button', { name: 'Remove' }).click();
   await expect(rows(page)).toHaveCount(3);
 });
 
@@ -606,6 +612,7 @@ test('the builder starts empty: "No spines yet." and three titles to try, each a
   // taken off again: the chips are back
   await rows(page).first().locator('.bopen').click();
   await rows(page).first().getByRole('button', { name: /^Remove/ }).click();
+  await page.locator('#confirmSheet').getByRole('button', { name: 'Remove' }).click();   // it asks first
   await expect(chips).toHaveCount(3);
   const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(sideways).toBeLessThanOrEqual(0);

@@ -199,6 +199,7 @@ textarea{resize:vertical;line-height:1.5}
 .sheetbox > div{display:grid;gap:var(--s4)}
 .sheetbox h2{display:block;font-size:var(--fs-dialog);text-transform:none;letter-spacing:0;color:var(--ink);border:0;padding:0 var(--s5) 0 0;margin:0}
 .sheetbox p{margin:0}
+.sheetbox .row{display:flex;gap:var(--s4);align-items:center;flex-wrap:wrap}   /* a sheet's yes and Cancel */
 .sheetbox p:empty{display:none}   /* the sign-in sheet's line, said only when it was opened on the way somewhere (nav.js) */
 .sheetbox form{display:grid;gap:var(--s3)}
 .x{position:absolute;top:var(--s2);right:var(--s3);background:none;border:0;font:400 22px var(--mono);cursor:pointer;color:var(--ink);padding:var(--s1)}

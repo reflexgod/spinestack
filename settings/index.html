@@ -147,6 +147,16 @@
 <footer>
   <p class="fnav"><a href="../privacy.html#credits">About</a><span aria-hidden="true">·</span><a href="../privacy.html">Privacy</a><span aria-hidden="true">·</span><a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a></p>
 </footer>
+<div class="sheet" id="confirmSheet" hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div class="sheetbox">
+    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <div>
+      <h2 id="confirmTitle">Remove your photo?</h2>
+      <p id="confirmText"></p>
+      <div class="row"><button class="btn primary" id="confirmYes" type="button">Remove</button><button class="dash sm" data-close type="button">Cancel</button></div>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast" hidden></div>
 
 <script src="../shelf.js?v=20261002a"></script>
@@ -372,11 +382,22 @@ $('#photoSave').addEventListener('click', async () => {
     note.textContent = friendly(err);
   } finally { btn.disabled = false; }
 });
-// Remove: a second press does it
+// Remove: it asks first, on this page's sheet (true only when its own button is pressed)
+function sure(){
+  const sh = $('#confirmSheet'), from = document.activeElement;
+  $('#confirmText').textContent = 'People see your first letter where it was.';
+  sh.hidden = false; $('#confirmYes').focus();
+  return new Promise(res => {
+    const done = v => { sh.hidden = true; sh.removeEventListener('click', onClick); document.removeEventListener('keydown', onKey); if (from && from.focus) from.focus(); res(v); };
+    const onClick = e => { if (e.target.closest('#confirmYes')) done(true); else if (e.target === sh || e.target.closest('[data-close]')) done(false); };
+    const onKey = e => { if (e.key === 'Escape') done(false); };
+    sh.addEventListener('click', onClick); document.addEventListener('keydown', onKey);
+  });
+}
 $('#photoRemove').addEventListener('click', async () => {
   const b = $('#photoRemove'), note = $('#photoNote'), old = me.profile.avatar_key; if (!old) return;
-  if (!b.dataset.sure){ b.dataset.sure = '1'; b.textContent = 'Sure? Remove'; setTimeout(() => { delete b.dataset.sure; b.textContent = 'Remove'; }, 4000); return; }
-  delete b.dataset.sure; b.textContent = 'Remove'; b.disabled = true; note.textContent = 'Saving…';
+  if (!(await sure())) return;
+  b.disabled = true; note.textContent = 'Saving…';
   try {
     await patchProfile({avatar_key: null});
     workerPost('/m/delete?k=' + encodeURIComponent(old)).catch(() => {});

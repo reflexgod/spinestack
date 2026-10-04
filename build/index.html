@@ -639,24 +639,43 @@ $('#books').addEventListener('click', e => {
   const btn = e.target.closest('[data-a]'); if (!btn) return;
   const i = books.findIndex(b => b.id === btn.closest('.book').dataset.id), a = btn.dataset.a;
   if (a === 'archive'){ btn.disabled = true; archiveSpine(books[i]); return; }
-  if (a === 'del') books.splice(i,1);
+  if (a === 'del'){
+    const b = books[i];
+    sure(`Take ${b.title ? '“' + b.title + '”' : 'this spine'} off?`, acct.shelfId ? 'Your saved shelf stays as it was until you press Save.' : 'It comes off the list.', 'Remove')
+      .then(ok => { if (!ok) return; const at = books.indexOf(b); if (at >= 0){ books.splice(at, 1); renderList(); } });
+    return;
+  }
   if (a === 'up' && i > 0) [books[i-1], books[i]] = [books[i], books[i-1]];
   if (a === 'down' && i < books.length-1) [books[i+1], books[i]] = [books[i], books[i+1]];
   renderList();
 });
-// Clear: every spine off the list, after a yes (as Delete asks on a shelf's page). The sample shelf isn't yours to
-// lose, so that one just goes.
-const clearShelf = () => { books = []; isSample = false; renderList(); };
-const closeConfirm = () => { if ($('#confirmSheet').hidden) return; $('#confirmSheet').hidden = true; if ($('#clear').isConnected && !$('#clear').hidden) $('#clear').focus(); };
-$('#clear').addEventListener('click', () => {
-  if (isSample){ clearShelf(); return; }
-  const n = books.length;
-  $('#confirmText').textContent = (n === 1 ? 'The spine comes off the list. ' : `All ${n} spines come off the list. `) + (acct.shelfId ? 'Your saved shelf stays as it was until you press Save.' : 'This can’t be undone.');
+/* Anything that loses something asks first, on this page's own sheet: sure(title, text, yes) is true only when its
+   button is pressed (Cancel, Esc and a press outside are no). Clear (every spine off the list), a spine's ✕, a PNG's ✕
+   and the wall's Remove. The sample shelf isn't yours to lose, so Clear just clears it. */
+let asking = null, askFrom = null;
+function sure(title, text, yes){
+  if (asking) asking(false);
+  askFrom = document.activeElement;
+  $('#confirmTitle').textContent = title; $('#confirmText').textContent = text; $('#confirmYes').textContent = yes;
   $('#confirmSheet').hidden = false; $('#confirmYes').focus();
+  return new Promise(res => { asking = res; });
+}
+const closeConfirm = yes => {
+  if ($('#confirmSheet').hidden) return;
+  $('#confirmSheet').hidden = true;
+  const r = asking; asking = null; if (r) r(!!yes);
+  if (askFrom && askFrom.isConnected && askFrom.focus) askFrom.focus();
+};
+$('#confirmYes').addEventListener('click', () => closeConfirm(true));
+$('#confirmSheet').addEventListener('click', e => { if (e.target.id === 'confirmSheet' || e.target.closest('[data-close]')) closeConfirm(false); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeConfirm(false); });
+const clearShelf = () => { books = []; isSample = false; renderList(); };
+$('#clear').addEventListener('click', async () => {
+  if (isSample){ clearShelf(); return; }
+  const n = books.length, mine = !!acct.profile;
+  const ok = await sure(mine ? 'Clear your shelf?' : 'Clear this shelf?', (n === 1 ? 'The spine comes off the list. ' : `All ${n} spines come off the list. `) + (acct.shelfId ? 'Your saved shelf stays as it was until you press Save.' : 'This can’t be undone.'), 'Clear');
+  if (ok) clearShelf();
 });
-$('#confirmYes').addEventListener('click', () => { clearShelf(); closeConfirm(); });
-$('#confirmSheet').addEventListener('click', e => { if (e.target.id === 'confirmSheet' || e.target.closest('[data-close]')) closeConfirm(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeConfirm(); });
 function shelve(b){
   if (isSample){ books = []; isSample = false; }
   if (books.length >= spineMax()){ if (isPro()) toast('A shelf holds up to 20 spines. Remove one first.'); else proToast('Free shelves hold 6 spines. Pro holds 20.'); return false; }
@@ -835,7 +854,10 @@ $('#wallFile').addEventListener('change', async e => {
   catch (err){ $('#themeNote').textContent = err.message; }
   syncTheme(); paintWall(); redraw();
 });
-$('#wallRemove').addEventListener('click', () => { media.wall = null; settings.theme = 'paper'; wallPicking = false; syncTheme(); paintWall(); redraw(); });
+$('#wallRemove').addEventListener('click', async () => {
+  if (!(await sure('Remove the wall?', 'The shelf goes back on Paper.', 'Remove'))) return;
+  media.wall = null; settings.theme = 'paper'; wallPicking = false; syncTheme(); paintWall(); redraw();
+});
 
 /* ---------- PNGs on the wall (Pro): as many as you like, always behind the books ---------- */
 // a new PNG goes on the open wall between the caption and the books, as big as fits there (up to 45 % of the width),
@@ -923,7 +945,7 @@ stage.addEventListener('pointermove', e => {
 const letGo = e => { pointers.delete(e.pointerId); if (!pointers.size || (grab && grab.mode === 'pinch')) grab = null; };
 stage.addEventListener('pointerup', letGo); stage.addEventListener('pointercancel', letGo);
 function dropPng(){ if (sel < 0) return; media.pngs.splice(sel, 1); sel = -1; $('#pngNote').textContent = ''; paintPngs(); redraw(); }
-$('#pngX').addEventListener('click', dropPng);
+$('#pngX').addEventListener('click', async () => { if (await sure('Remove this PNG?', 'It comes off the wall.', 'Remove')) dropPng(); });
 $('#pngOp').addEventListener('input', e => { const p = media.pngs[sel]; if (!p) return; p.opacity = clamp(+e.target.value/100, .1, 1); $('#pngOpV').textContent = e.target.value + '%'; redraw(); });
 // Delete or Backspace removes the picked PNG and Escape lets go of it, never while typing in a box
 const typing = t => t.isContentEditable || /^(TEXTAREA|SELECT)$/.test(t.tagName) || (t.tagName === 'INPUT' && !/^(range|checkbox|radio|button|submit|reset|file|color)$/.test(t.type));

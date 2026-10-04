@@ -114,10 +114,6 @@ css.textContent = `
 .pmenu button{display:block;width:100%;text-align:left;background:none;border:0;padding:var(--s2,8px) var(--s4,16px);font:500 var(--fs-nav,12px) var(--mono,monospace);color:inherit;cursor:pointer}
 .pmenu button:hover:not(:disabled),.pmenu button:focus-visible{background:var(--wash,#F3F3F3);outline:0}
 .pmenu button:disabled{color:var(--grey,#6B6B6B);cursor:default}
-.pask{border:1px solid var(--ink,#000);border-radius:var(--radius,3px);padding:var(--s5,24px);max-width:340px;background:var(--paper,#fff);color:var(--ink,#000)}
-.pask::backdrop{background:rgba(0,0,0,.35)}
-.pask p{margin:0 0 var(--s4,16px)}
-.pask .row{display:flex;gap:var(--s4,16px);align-items:center}
 @media (max-width:520px){ .post{grid-template-columns:40px minmax(0,1fr) 56px} .post .cover{width:56px} .post.whole{grid-template-columns:40px minmax(0,1fr)} .post.whole .cover{grid-column:2;width:120px;margin-top:var(--s3,12px)} }
 @media (pointer:coarse){   /* 44 x 44px to press on a touch screen */
   .post .pava{position:relative;overflow:visible}
@@ -212,17 +208,20 @@ const rowOf = m => ({kind: m.kind === 'movie' ? 'movie' : 'book', title: String(
   year: /^\d{4}$/.test(String(m.year || '')) ? +m.year : null, cover_src: m.cover && COVER_OK.test(m.cover) && m.cover.length <= 396 ? 'url:' + m.cover : null});
 const verb = kind => kind === 'movie' ? 'watched' : 'read';
 
-// asks first, in a small sheet of its own: {text, yes} -> true when the person said yes
+// asks first, on the site's sheet (site.css's .sheet, as every page's own sheets are): {text, yes} -> true when the
+// person said yes; Cancel, Esc and a press outside are no
 function ask({text, yes}){
   return new Promise(res => {
-    const d = document.createElement('dialog');
-    d.className = 'pask'; d.setAttribute('aria-label', text);
-    d.innerHTML = `<p>${esc(text)}</p><div class="row"><button class="btn primary" type="button" data-yes>${esc(yes)}</button><button class="dash" type="button" data-no>Cancel</button></div>`;
+    const from = document.activeElement, d = document.createElement('div');
+    d.className = 'sheet'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-label', text);
+    d.innerHTML = `<div class="sheetbox"><button class="x" data-no type="button" aria-label="Close">×</button><div><h2>${esc(text)}</h2>
+      <div class="row"><button class="btn primary" type="button" data-yes>${esc(yes)}</button><button class="dash sm" type="button" data-no>Cancel</button></div></div></div>`;
     document.body.append(d);
-    const done = v => { if (d.open) d.close(); d.remove(); res(v); };
+    const done = v => { d.remove(); document.removeEventListener('keydown', onKey, true); if (from && from.focus) from.focus(); res(v); };
+    const onKey = e => { if (e.key === 'Escape'){ e.stopPropagation(); done(false); } };
     d.addEventListener('click', e => { if (e.target.closest('[data-yes]')) done(true); else if (e.target.closest('[data-no]') || e.target === d) done(false); });
-    d.addEventListener('cancel', e => { e.preventDefault(); done(false); });
-    d.showModal(); d.querySelector('[data-no]').focus();
+    document.addEventListener('keydown', onKey, true);
+    d.querySelector('.dash[data-no]').focus();
   });
 }
 

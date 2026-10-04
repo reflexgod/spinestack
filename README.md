@@ -60,6 +60,9 @@ Letterboxd's habits are the rule. Each point here has a check in the tests.
   a sheet's yes); everything else is a plain text action (`.btn` without primary, `.dash`): small, grey, black on
   hover, never underlined or dashed. A state ("Following", "In Up next", "Main shelf") is grey text that isn't pressed;
   Following says Unfollow when the pointer is on it.
+- **What loses something asks first,** on the page's own sheet (a heading, the action in black and Cancel; Esc and a
+  press outside are no): Delete (a shelf, a post, a log, a reply), Remove (from Up next, from From friends, a spine's ✕
+  in the builder, a PNG, the wall, your photo) and Clear.
 - **Our own words, not Letterboxd's.** The watchlist is **Up next** (the profile's tab, `#upnext`; `#watchlist` still
   works), Members is **People** (`/people/`), "me too" is **Same**, and the feed's tabs are **Friends · Everyone**
   (`?friends`). The tables and functions keep their names (`watchlist`, `metoo_of`, `following`).

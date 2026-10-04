@@ -960,6 +960,7 @@ const keptError = e => e && e.code === '23505' ? 'It’s already in Up next.' : 
 $('#wGrid').addEventListener('click', async e => {
   const b = e.target.closest('[data-w]'), r = b && lists.watch[+b.closest('li').dataset.i]; if (!r) return;
   if (b.dataset.w === 'log'){ Nav.add({mode: 'log', item: asItem(r)}); return; }
+  if (!(await sure(`Remove “${r.title}” from Up next?`, 'It comes off your Up next. You can put it back any time.', 'Remove'))) return;
   b.disabled = true;
   try {
     const rows = await api(`watchlist?id=eq.${r.id}&select=id`, {method: 'DELETE', headers: {Prefer: 'return=representation'}});
@@ -970,6 +971,7 @@ $('#wGrid').addEventListener('click', async e => {
 $('#friends').addEventListener('click', async e => {
   const b = e.target.closest('[data-f]'), r = b && lists.friends[+b.closest('li').dataset.i]; if (!r) return;
   if (b.dataset.f === 'log'){ Nav.add({mode: 'log', item: asItem(r)}); return; }
+  if (b.dataset.f === 'remove' && !(await sure(`Remove “${r.title}”?`, 'It won’t come back here.', 'Remove'))) return;
   b.disabled = true;
   try {
     if (b.dataset.f === 'keep'){

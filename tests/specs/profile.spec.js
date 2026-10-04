@@ -211,6 +211,7 @@ test('your watchlist: a strip on Profile; on its tab each cover has Remove and �
   // Remove, in From friends: kept out for good, by its title
   req = sent(page, 'POST', 'friend_hides');
   await row(page, 'friends', 'The Waves').getByRole('button', { name: 'Remove' }).click();
+  await page.locator('#confirmSheet').getByRole('button', { name: 'Remove' }).click();   // it asks first
   expect((await req).postDataJSON()).toEqual({ item_key: 'book:the waves:1931' });
   // the Watchlist tab: each cover with Remove and ✓ Mark watched (or read): an action, not a state
   await page.getByRole('tab', { name: 'Up next' }).click();
@@ -219,6 +220,8 @@ test('your watchlist: a strip on Profile; on its tab each cover has Remove and �
   await expect(row(page, 'wGrid', 'Orlando').getByRole('button')).toHaveText(['Remove', '✓ Mark read']);
   req = sent(page, 'DELETE', 'watchlist');
   await row(page, 'wGrid', 'Orlando').getByRole('button', { name: 'Remove' }).click();
+  await expect(page.locator('#confirmTitle')).toHaveText('Remove “Orlando” from Up next?');
+  await page.locator('#confirmSheet').getByRole('button', { name: 'Remove' }).click();
   expect(new URL((await req).url()).searchParams.get('id')).toBe('eq.' + WATCHLIST[1].id);
   await expect(page.locator('#toast')).toHaveText('Orlando is off Up next.');
   // ✓ Mark watched: + ADD's Log it, on that title; Post logs it, and the lists are read again

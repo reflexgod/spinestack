@@ -103,12 +103,15 @@ test('Photo: a photo is cut square, made small, sent to the Worker and saved; th
   await expect(page.locator('#cropWrap')).toBeHidden();
   await expect(page.locator('#ava img')).toHaveAttribute('src', new RegExp('/m/img\\?k=' + encodeURIComponent(key)));
   await expect(page.locator('#acctBtn .ava img')).toHaveCount(1);   // the bar's photo too
-  // Remove: a second press does it
-  const remove = page.getByRole('button', { name: /Remove/ });
+  // Remove: it asks first, on the page's own sheet; Cancel leaves the photo
+  const remove = page.locator('#photoRemove'), ask = page.getByRole('dialog', { name: 'Remove your photo?' });
   await remove.click();
-  await expect(remove).toHaveText('Sure? Remove');
+  await expect(ask).toBeVisible();
+  await ask.getByRole('button', { name: 'Cancel' }).click();
+  await expect(ask).toBeHidden();
+  await remove.click();
   const cleared = patch(page);
-  await remove.click();
+  await ask.getByRole('button', { name: 'Remove' }).click();
   expect((await cleared).postDataJSON()).toEqual({ avatar_key: null });
   await expect(page.locator('#toast')).toHaveText('Photo removed.');
   await expect(page.locator('#ava')).toHaveText('T');
