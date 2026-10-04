@@ -264,7 +264,16 @@ test('Friends with nothing from anyone you follow: People to follow as rows like
   const req = page.waitForRequest(r => r.url().includes('/rpc/follow'));
   await follow.click();
   expect((await req).postDataJSON()).toEqual({ target: '22222222-2222-4222-8222-222222222222' });
-  await expect(people.first().locator('button.follow')).toHaveAttribute('aria-pressed', 'true');
+  const now = people.first().locator('button.follow');
+  await expect(now).toHaveAttribute('aria-pressed', 'true');
+  if (!isPhone()) {   // Following in grey, Unfollow in black under the pointer
+    await page.mouse.move(0, 0);
+    await expect(now).toHaveText('Following');
+    expect(await now.evaluate(e => [getComputedStyle(e).backgroundColor, getComputedStyle(e).color])).toEqual(['rgba(0, 0, 0, 0)', 'rgb(107, 107, 107)']);
+    await now.hover();
+    await expect(now).toHaveText('Unfollow');
+    expect(await now.evaluate(e => getComputedStyle(e).color)).toBe('rgb(0, 0, 0)');
+  }
   // then Everyone, as the Everyone tab has it
   const all = page.locator('.tfall');
   await expect(all.getByRole('heading', { name: /^Everyone/ })).toBeVisible();

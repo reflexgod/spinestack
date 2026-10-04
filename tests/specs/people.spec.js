@@ -9,6 +9,8 @@ const rows = page => page.locator('#found .person');
 const searches = page => { const list = []; page.on('request', r => { if (r.method() === 'POST' && r.url().includes('/rpc/find_people')) list.push(r.postDataJSON().q); }); return list; };
 const [, mira, long] = PEOPLE;
 
+const look = el => el.evaluate(e => { const s = getComputedStyle(e); return s.backgroundColor === 'rgb(0, 0, 0)' && s.color === 'rgb(255, 255, 255)' ? 'solid' : s.backgroundColor === 'rgba(0, 0, 0, 0)' ? s.color : 'other'; });
+
 test('Find @username: one search 300 ms after the last key; a person found has photo, name, @username and FOLLOW', async ({ page }) => {
   const errors = watchErrors(page), net = await mockNetwork(page, { signedIn: true }), asked = searches(page);
   await open(page, '/people/');
@@ -32,6 +34,7 @@ test('Find @username: one search 300 ms after the last key; a person found has p
   const follow = row.getByRole('button');
   await expect(follow).toHaveText('Follow');
   await expect(follow).toHaveAttribute('aria-pressed', 'false');
+  expect(await look(follow)).toBe('solid');   // Follow is solid black; Following is a grey state
   const sent = page.waitForRequest(r => r.url().includes('/rpc/follow'));
   await follow.click();
   expect((await sent).postDataJSON()).toEqual({ target: long.id });
@@ -39,8 +42,10 @@ test('Find @username: one search 300 ms after the last key; a person found has p
   if (!isPhone()) {
     await expect(follow).toHaveText('Following');   // it says so until the pointer leaves and comes back
     await page.mouse.move(0, 0);
+    expect(await look(follow)).toBe('rgb(107, 107, 107)');   // grey text, no fill
     await follow.hover();
     await expect(follow).toHaveText('Unfollow');    // and then a click unfollows
+    expect(await look(follow)).toBe('rgb(0, 0, 0)');   // black on hover
     const undone = page.waitForRequest(r => r.url().includes('/rpc/unfollow'));
     await follow.click();
     expect((await undone).postDataJSON()).toEqual({ target: long.id });
