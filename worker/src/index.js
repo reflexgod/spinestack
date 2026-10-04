@@ -90,6 +90,7 @@ export default {
       }
       if (!(await allowed(env.LIMITER, ip))) return json({error: 'Too many requests. Wait a minute and try again.'}, 429, cors);
       if (!post && path === '/identify') return await identify(p, env, cors, ctx);
+      if (!post && path === '/title') return await titleInfo(p, env, cors, ctx);
       if (!post && path === '/scans') return await scans(p, env, cors, ctx);
       if (post && path === '/archive') return await upload(req, p, ip, env, cors);
       if (post && path === '/report') return await report(p.get('id'), ip, env, cors);
@@ -162,7 +163,7 @@ async function tmdbFilms(q, token) {
   return Promise.all(films.slice(0, 5).map(async (m, i) => {
     let creator = '';
     if (i < 3) try { const c = await getJSON(`https://api.themoviedb.org/3/movie/${m.id}/credits?` + key.slice(1), init); creator = ((c.crew || []).find(p => p.job === 'Director') || {}).name || ''; } catch {}
-    return {kind: 'movie', title: m.title || '', year: (m.release_date || '').slice(0, 4), creator, cover: m.poster_path ? 'https://image.tmdb.org/t/p/w500' + m.poster_path : ''};
+    return {kind: 'movie', tmdb: String(m.id), title: m.title || '', year: (m.release_date || '').slice(0, 4), creator, cover: m.poster_path ? 'https://image.tmdb.org/t/p/w500' + m.poster_path : ''};
   }));
 }
 /* Open Library also files government reports and the like as books ("John W. Gummo", 1888, by "United States.
@@ -206,7 +207,7 @@ async function authorName(d) {
   catch { return name; }
 }
 async function olBooks(q) {
-  const r = await getJSON('https://openlibrary.org/search.json?limit=50&fields=title,author_name,author_alternative_name,author_key,first_publish_year,publish_year,cover_i,edition_count,readinglog_count&q=' + encodeURIComponent(q), {headers: {'User-Agent': UA}});
+  const r = await getJSON('https://openlibrary.org/search.json?limit=50&fields=key,title,author_name,author_alternative_name,author_key,first_publish_year,publish_year,cover_i,edition_count,readinglog_count&q=' + encodeURIComponent(q), {headers: {'User-Agent': UA}});
   const typed = q.replace(/[\s,(]+(?:19|20)\d\d\)?$/, ''), wants = [words(typed), words(spelled(words(typed).join(' ')))];   // 1984 is also nineteen eighty four
   const says = d => { const hay = words([d.title, ...(d.author_name || [])].join(' ')).join(' '); return wants.some(want => want.length > 0 && want.every(w => hay.includes(w))); };
   const seen = new Set(), once = d => { const k = words(d.title).join(' ').replace(/^(the|a|an) /, '') + '|' + words((d.author_name || [''])[0]).join(' '); return !seen.has(k) && !!seen.add(k); };
@@ -215,7 +216,7 @@ async function olBooks(q) {
   // Open Library's first year is sometimes a stray record (It Ends With Us: 2012, The Bell Jar: 1948).
   // Wikidata's publication date is right for known books; without it, a lone early year with a gap after it is dropped.
   const [years, authors] = await Promise.all([Promise.all(docs.map(d => wikidataYear(d.title, (d.author_name || [''])[0]).then(y => y ? String(y) : olYear(d)))), Promise.all(docs.map(authorName))]);
-  return docs.map((d, i) => ({kind: 'book', title: d.title || '', year: years[i], creator: authors[i], cover: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-L.jpg` : ''}));
+  return docs.map((d, i) => ({kind: 'book', ol: workId(d.key), title: d.title || '', year: years[i], creator: authors[i], cover: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-L.jpg` : ''}));
 }
 function olYear(d) {
   const ys = (d.publish_year || []).filter(y => y > 1000).sort((a, b) => a - b), first = d.first_publish_year || ys[0];
@@ -239,10 +240,10 @@ async function wikidataYear(title, author) {
 async function identify(p, env, cors, ctx) {
   const q = clean(p.get('q'), 120), want = ['movie', 'book'].includes(p.get('want')) ? p.get('want') : 'all';
   if (!q) return json({error: 'Type a title to search.'}, 400, cors);
-  // id7: the closest titles first, ranked before five are kept, and 1984 finding Nineteen Eighty-Four;
+  // id8: each with its id (tmdb, or ol: Open Library's work), for the title page (/t/); id7: the closest titles first, ranked before five are kept, and 1984 finding Nineteen Eighty-Four;
   // id6: an author's name as they write it ("Haruki Murakami", not "MURAKAMI HARUKI"); id5: a book's author in Latin letters when Open Library has them (id4 answers could have 村上春樹); id4: books only
   // when the title or author has what was typed, each once (id3 answers had the rest; id2 the reports)
-  const key = `id7:${want}:${q.toLowerCase()}`, make = async () => {
+  const key = `id8:${want}:${q.toLowerCase()}`, make = async () => {
     const [f, b] = await Promise.allSettled([want !== 'book' ? tmdbFilms(q, env.TMDB_TOKEN) : [], want !== 'movie' ? olBooks(q) : []]);
     if (f.status === 'rejected' && b.status === 'rejected') throw new Error('TMDB and Open Library did not answer');
     return {results: [...(f.value || []), ...(b.value || [])]};
@@ -261,6 +262,79 @@ async function identify(p, env, cors, ctx) {
   }
   const {body, hit} = await cached(env, ctx, key, MONTH, make);
   return json(body, 200, cors, {'X-Cache': hit ? 'HIT' : 'MISS'});
+}
+
+/* ---------- /title: one film or book, for its page (/t/) ----------
+   ?film=<TMDB id> or ?book=<Open Library work id, OL…W>; or ?kind=movie|book&title=&year= (a title as a log or a
+   spine keeps it, with no id), answered with the closest match and its id, so the page can take that address. It gives
+   what TMDB or Open Library says: the title, year, director or author, runtime or pages, up to four genres, a short
+   overview, the cover; and the spine, when the archive has one approved. Kept at the edge for a week (no KV write). */
+// a 404 from TMDB or Open Library: there's no such film or book (null); anything else is still an error
+const orNone = p => p.catch(e => { if (/ answered 404$/.test(String(e && e.message))) return null; throw e; });
+const workId = k => (/^\/works\/(OL\d{1,10}W)$/.exec(k || '') || [])[1] || '';
+// an overview cut to its first sentences, 420 characters at most
+function short(t) {
+  t = String(t || '').replace(/\s+/g, ' ').trim().replace(/\s*\(\[source\][^)]*\)\s*$/i, '').replace(/\s*-{3,}.*$/, '');
+  if (t.length <= 420) return t;
+  const cut = t.slice(0, 420), end = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
+  return end > 120 ? cut.slice(0, end + 1) : cut.replace(/\s+\S*$/, '') + '…';
+}
+async function titleInfo(p, env, cors, ctx) {
+  const film = /^\d{1,9}$/.test(p.get('film') || '') ? p.get('film') : '', book = /^OL\d{1,10}W$/.test(p.get('book') || '') ? p.get('book') : '';
+  const kind = film ? 'movie' : book ? 'book' : ['movie', 'book'].includes(p.get('kind')) ? p.get('kind') : '';
+  const title = clean(p.get('title'), 200), year = /^\d{4}$/.test(p.get('year') || '') ? p.get('year') : '';
+  if (!kind || (!film && !book && !title)) return json({error: 'Which film or book?'}, 400, cors);
+  const key = 'title1:' + (film ? 'film:' + film : book ? 'book:' + book : `${kind}:${title.toLowerCase()}:${year}`);
+  const edge = caches.default, ekey = new Request('https://title.cache/' + encodeURIComponent(key));
+  const held = await edge.match(ekey);
+  if (held) return json(await held.json(), 200, cors, {'X-Cache': 'EDGE', 'Cache-Control': 'public, max-age=3600'});
+  let body;
+  try { body = kind === 'movie' ? await filmInfo(film, title, year, env.TMDB_TOKEN) : await bookInfo(book, title, year); }
+  catch { return json({error: 'TMDB or Open Library didn’t answer. Try again in a moment.'}, 502, cors); }
+  if (!body) return json({error: 'Not found.'}, 404, cors);
+  const spine = (await archiveFor(env, body.kind, body.title, body.year, body.creator).catch(() => []))[0];
+  body.spine = spine ? spine.img : '';
+  ctx.waitUntil(edge.put(ekey, new Response(JSON.stringify(body), {headers: {'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${7 * DAY}`}})));
+  return json(body, 200, cors, {'X-Cache': 'MISS', 'Cache-Control': 'public, max-age=3600'});
+}
+async function filmInfo(id, title, year, token) {
+  if (!token) return null;
+  const bearer = token.length > 40, init = {headers: bearer ? {Authorization: 'Bearer ' + token, 'User-Agent': UA} : {'User-Agent': UA}};
+  const key = bearer ? '' : 'api_key=' + encodeURIComponent(token);
+  if (!id) {   // by its title (and year): the closest TMDB has
+    const r = await getJSON('https://api.themoviedb.org/3/search/movie?include_adult=false&query=' + encodeURIComponent(title) + (year ? '&year=' + year : '') + (key ? '&' + key : ''), init);
+    const best = (r.results || []).map((m, i) => ({m, i, c: closeness(m.title || '', title)})).sort((a, b) => a.c - b.c || (b.m.vote_count || 0) - (a.m.vote_count || 0) || a.i - b.i)[0];
+    if (!best) return null;
+    id = String(best.m.id);
+  }
+  const m = await orNone(getJSON(`https://api.themoviedb.org/3/movie/${id}?append_to_response=credits` + (key ? '&' + key : ''), init));
+  if (!m || !m.id) return null;
+  return {kind: 'movie', id: String(m.id), title: m.title || '', year: (m.release_date || '').slice(0, 4),
+    creator: (((m.credits || {}).crew || []).find(c => c.job === 'Director') || {}).name || '', runtime: m.runtime || null, pages: null,
+    genres: (m.genres || []).map(g => g.name).filter(Boolean).slice(0, 4), overview: short(m.overview), cover: m.poster_path ? 'https://image.tmdb.org/t/p/w500' + m.poster_path : ''};
+}
+const olGet = u => getJSON(u, {headers: {'User-Agent': UA}});
+const FIELDS = 'key,title,author_name,author_alternative_name,author_key,first_publish_year,publish_year,number_of_pages_median,cover_i,subject';
+async function bookInfo(id, title, year) {
+  let d = null;
+  if (!id) {   // by its title (and year): the closest Open Library has, the one from that year first
+    const r = await olGet('https://openlibrary.org/search.json?limit=10&fields=' + FIELDS + '&title=' + encodeURIComponent(title));
+    const docs = (r.docs || []).filter(x => workId(x.key)).map((x, i) => ({x, i, c: closeness(x.title || '', title) + (year && String(x.first_publish_year) !== year ? 0.5 : 0)}));
+    d = (docs.sort((a, b) => a.c - b.c || a.i - b.i)[0] || {}).x;
+    if (!d) return null;
+    id = workId(d.key);
+  }
+  const [w, s] = await Promise.all([orNone(olGet(`https://openlibrary.org/works/${id}.json`)),
+    d ? Promise.resolve({docs: [d]}) : olGet('https://openlibrary.org/search.json?limit=1&fields=' + FIELDS + '&q=' + encodeURIComponent('key:/works/' + id))]);
+  d = (s.docs || []).find(x => workId(x.key) === id) || {};   // the one with this work key
+  if (!w || !w.title) return null;
+  const about = typeof w.description === 'string' ? w.description : (w.description || {}).value || '';
+  // genres: Open Library's subjects, the short plain ones (not "Fiction, general" or "nyt:..."), four at most
+  const genres = (d.subject || w.subjects || []).filter(g => /^[A-Za-z][A-Za-z '&-]{2,24}$/.test(g)).map(g => g[0].toUpperCase() + g.slice(1).toLowerCase())
+    .filter((g, i, all) => all.indexOf(g) === i).slice(0, 4);
+  const cover = d.cover_i || (w.covers || []).find(c => c > 0);
+  return {kind: 'book', id, title: w.title || d.title || '', year: d.first_publish_year ? String(d.first_publish_year) : '', creator: d.author_name ? await authorName(d) : '',
+    runtime: null, pages: d.number_of_pages_median || null, genres, overview: short(about), cover: cover ? `https://covers.openlibrary.org/b/id/${cover}-L.jpg` : ''};
 }
 
 /* ---------- /scans: DVD / book wraps and single spines, from image searches ---------- */

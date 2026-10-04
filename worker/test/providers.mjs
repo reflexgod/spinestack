@@ -73,6 +73,14 @@ async function outbound(request) {
     if (url.pathname.startsWith('/metadata/')) return json({result: [{name: 'full wrap.jpg', source: 'original', size: '300000'}, {name: '__ia_thumb.jpg', source: 'original', size: '30000'}, {name: 'full wrap_thumb.jpg', source: 'derivative', size: '9000'}]});
     if (url.pathname.startsWith('/download/')) { assert.equal(request.headers.get('Range'), 'bytes=0-65535'); return new Response(jpegHead(1500, 1000), {status: 206, headers: {'Content-Type': 'image/jpeg'}}); }
   }
+  // /title's book: The Waves, by its work id or by its title
+  if (url.hostname === 'openlibrary.org' && url.pathname === '/works/OL99W.json') return json({title: 'The Waves', description: {value: 'Six friends, from childhood on, in soliloquies. ([source][1])'}, covers: [7], subjects: ['Fiction']});
+  if (url.hostname === 'openlibrary.org' && url.pathname === '/search.json' && (url.searchParams.get('title') || /^key:/.test(url.searchParams.get('q') || ''))) {
+    calls.push('ol title ' + (url.searchParams.get('title') || url.searchParams.get('q')));
+    const waves = {key: '/works/OL99W', title: 'The Waves', author_name: ['Virginia Woolf'], author_key: ['OL3A'], first_publish_year: 1931, number_of_pages_median: 297, cover_i: 7,
+      subject: ['English fiction', 'Fiction, general', 'nyt:paperback', 'Modernism', 'english fiction']};
+    return json({docs: [{...waves, key: '/works/OL98W', title: 'The Waves (study guide)', first_publish_year: 2001}, waves]});
+  }
   // Open Library, for /identify's books: an author whose name comes in Japanese script, with Latin-script names in
   // the search result, only in the author record, or nowhere
   if (url.hostname === 'openlibrary.org' && url.pathname === '/search.json') {
@@ -99,11 +107,19 @@ async function outbound(request) {
   // TMDB, for /identify's films: "gumm" (Gummo, half typed) as TMDB answers it, most popular first by its own measure,
   // with Gummo itself seventh
   if (url.hostname === 'api.themoviedb.org' && url.pathname === '/3/search/movie') {
+    if (url.searchParams.get('query') === 'Gummo') return json({results: [{id: 900, title: 'Gummo 2', release_date: '1997-01-01', vote_count: 3}, {id: 106, title: 'Gummo', release_date: '1997-10-17', vote_count: 812}]});
     const q = url.searchParams.get('query'), films = q === 'gumm' ? [['Gumm: In the Middle of Nowhere', 2], ['Gummo 2', 3], ['Googly Gumm Hai', 1], ["Real Men Don't Eat Gummi Bears", 9], ['Gummy Bear Massacre', 4], ['Gummitwist', 0], ['Gummo', 812], ['The Gumm Sisters', 5]]
       : q === '1984' ? [['Wonder Woman 1984', 9000], ['1984', 40], ['Class of 1984', 300], ['Nineteen Eighty-Four', 1600]] : [];
     return json({results: films.map(([title, votes], i) => ({id: 100 + i, title, vote_count: votes, release_date: '1997-01-01', poster_path: null}))});
   }
   if (url.hostname === 'api.themoviedb.org' && /^\/3\/movie\/\d+\/credits$/.test(url.pathname)) return json({crew: [{job: 'Director', name: 'Someone'}]});
+  // /title's film: Gummo, by its TMDB id (106, as "gumm" gives it) or by its title and year
+  if (url.hostname === 'api.themoviedb.org' && /^\/3\/movie\/\d+$/.test(url.pathname)) {
+    calls.push('tmdb ' + url.pathname + ' ' + url.searchParams.get('append_to_response'));
+    if (url.pathname !== '/3/movie/106') return json({status_message: 'not found'}, 404);
+    return json({id: 106, title: 'Gummo', release_date: '1997-10-17', runtime: 89, genres: [{name: 'Drama'}], overview: 'Xenia, Ohio, after a tornado. '.repeat(30), poster_path: '/gummo.jpg',
+      credits: {crew: [{job: 'Writer', name: 'Harmony Korine'}, {job: 'Director', name: 'Harmony Korine'}]}});
+  }
   calls.push('?? ' + url.href);
   return new Response('not a provider', {status: 404});
 }
@@ -339,6 +355,43 @@ try {
   ok('"1984": the title as typed, or written out (Nineteen Eighty-Four, Orwell’s, which was dropped), then starting with it, then the rest');
   assert.deepEqual(await titles('great gatsby', 'book'), ['The Great Gatsby', 'The great Gatsby, by F. Scott Fitzgerald']);
   ok('"great gatsby": The Great Gatsby is the title as typed (a leading The doesn’t count), above a more-read book that only starts with it');
+} finally { await mf.dispose(); }
+
+/* ---------- /identify's ids, and /title ---------- */
+mf = worker({TMDB_TOKEN: 'tmdb-test-token-0000'});
+try {
+  const gumm = (await ask(mf, '/identify?want=movie&q=gumm&suggest=1')).body.results;
+  assert.equal(gumm.find(r => r.title === 'Gummo').tmdb, '106');
+  const waves = (await ask(mf, '/identify?want=book&q=the%20waves')).body.results[0];
+  assert.equal(waves.ol, '');   // this made-up search has no work key; a real one does (key is asked for)
+  ok('/identify gives each film its TMDB id, and asks Open Library for each book’s work key');
+  fresh();
+  let r = await ask(mf, '/title?film=106');
+  assert.equal(r.status, 200);
+  assert.deepEqual({...r.body, overview: r.body.overview.length <= 421}, {kind: 'movie', id: '106', title: 'Gummo', year: '1997', creator: 'Harmony Korine', runtime: 89, pages: null,
+    genres: ['Drama'], overview: true, cover: 'https://image.tmdb.org/t/p/w500/gummo.jpg', spine: ''});
+  assert.match(r.body.overview, /\.$/);
+  assert.deepEqual(calls, ['tmdb /3/movie/106 credits']);
+  ok('/title?film=: what TMDB says (the director from the credits, in one ask), the overview cut at a sentence');
+  r = await ask(mf, '/title?kind=movie&title=Gummo&year=1997');
+  assert.equal(r.body.id, '106');
+  ok('/title by a title and year: the closest film, with its id');
+  fresh();
+  r = await ask(mf, '/title?book=OL99W');
+  assert.deepEqual(r.body, {kind: 'book', id: 'OL99W', title: 'The Waves', year: '1931', creator: 'Virginia Woolf', runtime: null, pages: 297,
+    genres: ['English fiction', 'Modernism'], overview: 'Six friends, from childhood on, in soliloquies.', cover: 'https://covers.openlibrary.org/b/id/7-L.jpg', spine: ''});
+  ok('/title?book=: Open Library’s work, its pages, the plain subjects once each, the overview without its source note');
+  r = await ask(mf, '/title?kind=book&title=The%20Waves&year=1931');
+  assert.equal(r.body.id, 'OL99W');
+  ok('/title by a book’s title and year: the one from that year, not a later study guide');
+  assert.equal((await ask(mf, '/title?film=1234')).status, 404);
+  assert.equal((await ask(mf, '/title?film=abc')).status, 400);
+  assert.equal((await ask(mf, '/title')).status, 400);
+  ok('/title: an unknown film is 404; no id and no title, or a bad one, is 400');
+  fresh();
+  r = await ask(mf, '/title?film=106');
+  assert.deepEqual([r.from, calls], ['EDGE', []]);
+  ok('/title is kept at the edge: asked again, TMDB isn’t');
 } finally { await mf.dispose(); }
 
 /* ---------- no key ever comes back ---------- */
