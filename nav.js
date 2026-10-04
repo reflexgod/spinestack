@@ -143,7 +143,7 @@
     state = {sb: (s && s.sb) || null, user: (s && s.user) || null, profile: (s && s.profile) || null};
     if (state.sb && state.user) markKept();
     const p = state.profile;
-    acctBtn.hidden = !p; signBtn.hidden = !!p || !!(s && s.unreachable); moreBtn.hidden = !p;   // the places (⚡ · Shelves · Members · search) stay as they are, in one order, whoever you are
+    acctBtn.hidden = !p; signBtn.hidden = !!p || !!(s && s.unreachable); moreBtn.hidden = !p;   // the places (Feed · Shelves · Members · search) stay as they are, in one order, whoever you are
     addWrap.classList.toggle('split', !!p);
     if (!p){
       for (const m of menus) m.hide(false);

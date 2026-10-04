@@ -19,7 +19,7 @@ test('the privacy page covers follows, the feed, private profiles, settings and 
   expect(text).not.toMatch(/save a story|use everything on the site without an account/);   // a story comes from a saved shelf now
   expect(text).not.toMatch(/Edit profile|coming soon/i);   // the sheet that Settings replaced, and promises
   await expect(page.locator('main').getByRole('link', { name: 'Settings' }).first()).toHaveAttribute('href', 'settings/#account');
-  await expect(page.locator('.ptop').getByRole('link', { name: 'Activity' })).toHaveAttribute('href', 'feed/');
+  await expect(page.locator('.ptop').getByRole('link', { name: 'Feed' })).toHaveAttribute('href', 'feed/');
   const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(sideways).toBeLessThanOrEqual(0);
   expect(errors).toEqual([]);
