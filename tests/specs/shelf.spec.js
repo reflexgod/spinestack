@@ -191,7 +191,7 @@ for (const [whose, at] of [['someone\'s public shelf', `/u/?mira&shelf=${theirs.
     await share.click();
     await expect(shareMenu(page)).toBeVisible();
     await expect(share).toHaveAttribute('aria-expanded', 'true');
-    await expect(shareMenu(page).getByRole('menuitem')).toHaveText(['Share to story', 'Download image', 'Copy link']);
+    await expect(shareMenu(page).getByRole('menuitem')).toHaveText(['Share to story', 'Download image', 'Copy link', 'Share to WhatsApp']);
     // Copy link
     await shareMenu(page).getByRole('menuitem', { name: 'Copy link' }).click();
     await expect(shareMenu(page)).toBeHidden();

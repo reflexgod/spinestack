@@ -300,3 +300,16 @@ test('notifications, with 0010: a rec for you, your rec watched, a reply in a th
   await expect(lines.nth(4).locator('.nt')).toHaveText('Starting it tonight.');
   expect(errors).toEqual([]);
 });
+
+test('a shelf\'s Share: Share to WhatsApp, with its name and its link', async ({ page }) => {
+  await keepOpens(page);
+  await mockNetwork(page);
+  await open(page, `/u/?mira&shelf=${SHELVES[1].id}`);
+  await page.locator('#shareBtn').click();
+  await page.locator('#cardMenu').getByRole('menuitem', { name: 'Share to WhatsApp' }).click();
+  const [u] = await page.evaluate(() => window.__opened);
+  const text = decodeURIComponent(u.split('?text=')[1]);
+  expect(u).toMatch(/^https:\/\/wa\.me\/\?text=/);
+  expect(text).toContain(' by @mira on shelfstackd: http');
+  expect(text.endsWith(`/u/?mira&shelf=${SHELVES[1].id}`)).toBe(true);
+});
