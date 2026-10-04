@@ -23,3 +23,13 @@ below are fixed, and 8 was confirmed on the laptop.
 8. **4 checks in `specs/requests.spec.js` fail in the cloud container**, before and after this work: its Chromium (1194)
    is older than the one Playwright 1.63 wants (1243) and reports the icons' requests differently. They pass on a
    normal machine; it isn't the site. (Confirmed on the laptop on 2 October: all of `requests.spec.js` passes there.)
+
+## Found on 4 October 2026 (multiple shelves)
+
+- **The builder can't open a Covers-layout shelf whose spines have no picture.** `shelf.js`'s `renderStory` reads
+  `b.img.width` for each book when the layout is Covers, and a book rebuilt from a saved row has no `img` when neither
+  its cover nor its spine loads (or, in the tests' made-up data, when it never had one): the page throws "Cannot read
+  properties of undefined (reading 'width')" and the preview doesn't draw. The profile and home don't, because
+  `bare.js` and `u/` give such a book a plain cover first (`facing()`). Not fixed here: it's in `shelf.js`'s drawing,
+  which isn't to be touched. The fix would be the builder giving such a book a plain cover before it draws, as
+  `bare.js` does. Seen when the test account's oldest shelf (Covers, spines with no pictures) became its main one.
