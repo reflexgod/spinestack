@@ -78,7 +78,7 @@ come from), and passes scan images through with CORS so the page can cut the spi
 | Endpoint | What it returns |
 |---|---|
 | `/identify?q=&want=all\|movie\|book[&suggest=1]` | `{results:[{kind,title,year,creator,cover}]}`: up to 5 films (TMDB) and 5 books (Open Library: only those whose title or author has what was typed, each title once, most-read first, without the government reports it files as books). `suggest=1` is a half-typed title: answered the same, but not kept in KV |
-| `/scans?title=&year=&kind=movie\|book&creator=&round=0-3` | one query per round: up to 10 wrap-shaped (or single-spine) scans whose page names the title, plus approved archive spines first in round 0: `{results:[...], round, more}`, with `capped: true` when nothing usable was found and a provider was at its cap (see Where scans come from). With `&cacheonly=1` it never searches, answers from what's kept and says `cached: true` or `false`: the page asks that for rounds 1 to 3 while round 0 searches |
+| `/scans?title=&year=&kind=movie\|book&creator=&round=0-3` (a book 0-2) | one query per round: up to 10 wrap-shaped (or single-spine) scans whose page names the title, plus approved archive spines first in round 0: `{results:[...], round, more}`, with `capped: true` when nothing usable was found and a provider was at its cap (see Where scans come from). With `&cacheonly=1` it never searches, answers from what's kept and says `cached: true` or `false`: the page asks that for rounds 1 to 3 while round 0 searches |
 | `/img?url=` | the image, with CORS. http(s) and `image/*` only, 8 MB max, private addresses blocked, 3 redirects max |
 | `POST /archive?kind=&title=&year=&author=` | a PNG of one spine (300 KB max, at least 3 times taller than wide), re-encoded and kept as *pending* |
 | `/archive/img?id=` | an approved archive spine |
@@ -194,9 +194,10 @@ before the change aren't reused. `/scans` keeps what the providers said as it ca
    looked up as it's typed: a search starts 300 ms after the last key and replaces the one before it, Enter searches at
    once. Up to six results show, films and books together, the closest titles first (the same as what was typed, then
    starting with it, then containing it); ↑ ↓ move through them and Enter picks one.
-1. The page asks the Worker for one round at a time, at most 4 per title, and stops once two good spines turn up, to save searches.
+1. The page asks the Worker for one round at a time, to save searches. A film has at most 4 rounds and stops once two good spines turn up;
+   a book has at most 3 and stops at the first clean spine (each round after 0 is a paid search, and most books have no scan to find: `docs/BOOK-SPINES.md`).
    Films: `"<title>" <year> dvd cover`, `"<title>" <year> dvd cover english`, `"<title>" dvd cover scan`, `"<title>" criterion dvd`.
-   Books: `"<title>" <author> book cover spine`, `"<title>" <author> book spine`, `"<title>" spine`, `<title> <author> full cover wrap`.
+   Books: `"<title>" <author> book cover spine`, then `"<title>" <author> book spine`, then `"<title>" <author> dust jacket full wrap` (kept under its own key, `:2j`).
 2. It keeps images shaped like a wrap (1.3–1.9 wide for films, 1.2–2.4 for books) or like a single spine (4 times taller than wide), whose title or address contains the whole title; one-word titles also need the year or director.
 3. The page loads each scan through `/img`, and `findSpine()` looks for the strip between back and front: two clear edges near the middle, about 5 % wide for a DVD, lettering on it, an even colour down it. Photos of open cases and books on a table are turned down.
 4. Each cut gets a score from 0 to 100. A film's best cut is picked for you only at 75 or more (in tests right spines scored 76–97 and wrong ones up to 69) **and** when it looks like the English edition; books always let you pick, unless the spine comes from the archive. Cuts under 45 aren't shown, and each page gives one option at most.

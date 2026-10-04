@@ -524,9 +524,12 @@ async function cutOne(s, kind){
    search is still asked only when the ones before it weren't enough. LIVE rounds may search at the same time (1: one
    after another, as the search budget wants; more makes a slow title quicker and can spend searches that weren't
    needed). Each spine is passed to onCut as soon as it's cut. Returns the cuts, best first: the same ones, in the same
-   order, as asking one round after another. */
-const ROUNDS = 4, LIVE = 1;
+   order, as asking one round after another. A book has three rounds (round 0, then "<title>" <author> book spine,
+   then the dust jacket full wrap) and asks for the next only while it still has no clean spine to show: each one
+   after round 0 is a paid search, and most books have no scan to find (docs/BOOK-SPINES.md). */
+const LIVE = 1, roundsFor = kind => kind === 'book' ? 3 : 4;
 async function cutScans(cur, english, onCut){
+  const ROUNDS = roundsFor(cur.m.kind), book = cur.m.kind === 'book';
   const q = `${WORKER}/scans?kind=${cur.m.kind}&title=${encodeURIComponent(cur.m.title)}&year=${encodeURIComponent(cur.m.year || '')}&creator=${encodeURIComponent(cur.m.creator || '')}`;
   const get = (round, cacheOnly) => timeout(getJSON(q + '&round=' + round + (cacheOnly ? '&cacheonly=1' : '')), 20000);
   const kept = [Promise.resolve(null)];   // per round: what's kept, or null (a Worker from before cached= says nothing, so it's asked)
@@ -553,6 +556,7 @@ async function cutScans(cur, english, onCut){
     await Promise.all(fresh.map((s, i) => cutOne(s, cur.m.kind).then(c => { got[i] = c; if (c && onCut && cur === current) onCut(bestCuts(cur.m.kind, [...cuts, ...got.filter(Boolean)], english)); })));
     cuts.push(...got.filter(Boolean));
     if (cuts.filter(c => c.score >= AUTO_SCORE && (!english || isEnglish(c))).length >= 2 || !r.more) break;
+    if (book && bestCuts('book', cuts, english).length) break;   // a book: one clean spine is enough, no more searches
   }
   return {scans, rounds, busy, capped, cuts: bestCuts(cur.m.kind, cuts, english)};
 }

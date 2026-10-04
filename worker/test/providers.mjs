@@ -273,6 +273,23 @@ try {
   ok('/admin/raw: the quotes come out there too, and a 400 is shown as it is, asked once');
 } finally { await mf.dispose(); }
 
+/* ---------- a book's rounds: the spine, then the dust jacket, and no fourth ---------- */
+mf = worker({SERPER_DAILY_CAP: '20'});
+try {
+  plan = {serper: 'wrap'};
+  const book = async round => { fresh(); return ask(mf, `/scans?kind=book&title=psi%20twenty-three&creator=Some%20Writer&year=1950&round=${round}`); };
+  let r = await book(1);
+  assert.deepEqual([queries.serper, r.body.more], [['psi twenty-three Some Writer book spine'], true]);
+  r = await book(2);
+  assert.deepEqual([queries.serper, r.body.round, r.body.more], [['psi twenty-three Some Writer dust jacket full wrap'], 2, false]);
+  r = await book(3);
+  assert.deepEqual([queries.serper, r.body.round, r.from], [[], 2, 'raw']);   // there is no round 3 for a book: it's round 2, kept
+  fresh();
+  r = await ask(mf, '/scans?kind=movie&title=psi%20twenty-three&year=1950&round=3');
+  assert.deepEqual([r.body.round, r.body.more], [3, false]);
+  ok('a book: round 1 searches "<title>" <author> book spine, round 2 "<title>" <author> dust jacket full wrap, and that is the last');
+} finally { await mf.dispose(); }
+
 /* ---------- /identify: a book's author in Latin letters ---------- */
 mf = worker();
 try {

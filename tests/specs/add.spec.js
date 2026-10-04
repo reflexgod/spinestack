@@ -241,6 +241,16 @@ test('rounds that aren\'t kept are still searched one after another, each only w
   expect(live.map(a => a.round)).toEqual([0, 1, 2, 3]);
   for (let i = 1; i < live.length; i++) expect(live[i].at - live[i - 1].at).toBeGreaterThanOrEqual(250);   // after the one before answered
 });
+test('a book with no scan found has three rounds, not four: round 0, then the book spine, then the dust jacket', async ({ page }) => {
+  await openDialog(page, { signedIn: true });
+  const d = dialog(page), asked = slowScans(page, { kept: false });
+  await box(d).fill('the waves');
+  await d.getByRole('option', { name: /The Waves.*Book/ }).click();
+  await expect.poll(() => asked.filter(a => !a.only).length, { timeout: 8000 }).toBe(3);
+  await page.waitForTimeout(1000);
+  expect(asked.filter(a => !a.only).map(a => a.round)).toEqual([0, 1, 2]);
+  expect(asked.filter(a => a.only).map(a => a.round).sort()).toEqual([1, 2]);   // what's kept is asked for those two only
+});
 test('a title search starts 250 ms after the last key, not before', async ({ page }) => {
   const d = dialog(page);
   await openDialog(page, { signedIn: true });

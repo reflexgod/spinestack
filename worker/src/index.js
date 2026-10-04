@@ -4,7 +4,7 @@
 
    GET  /identify?q=&want=all|movie|book[&suggest=1]  -> {results:[{kind,title,year,creator,cover}]}
         suggest=1 is a half-typed title (the page suggests as you type): answered the same, but not kept in KV.
-   GET  /scans?title=&year=&kind=movie|book&creator=&round=0-3[&cacheonly=1]
+   GET  /scans?title=&year=&kind=movie|book&creator=&round=0-3 (a book 0-2)[&cacheonly=1]
         -> {results:[{img,source,title,width,height, archive?,id?}], round, more, capped?, cached? (with cacheonly)}
         One query per round, so the page asks for the next round only when it still needs spines.
         Round 0 starts with approved spines from the archive. What isn't already kept is looked for with Serper, then
@@ -43,7 +43,7 @@ import {DurableObject} from 'cloudflare:workers';
 
 const ORIGINS = ['https://reflexgod.github.io', 'https://shelfstackd.com', 'https://www.shelfstackd.com', 'http://localhost:8080'];
 const DAY = 86400, MONTH = 30 * DAY;
-const MAX_IMG = 8 * 1024 * 1024, MAX_UPLOAD = 300 * 1024, UPLOADS_PER_DAY = 10, REPORTS_TO_HIDE = 3, ROUNDS = 4;
+const MAX_IMG = 8 * 1024 * 1024, MAX_UPLOAD = 300 * 1024, UPLOADS_PER_DAY = 10, REPORTS_TO_HIDE = 3;
 const UA = 'Spinestack/1.0 (+https://reflexgod.github.io/spinestack/)';
 
 export default {
@@ -243,12 +243,18 @@ function edition(r, img, text) {
   const foreign = text.split(' ').some(w => FOREIGN_WORDS.has(w)) || / region [2-6] /.test(text) || FOREIGN_SCRIPT.test(r.title || '') || hosts.some(h => FOREIGN_TLD.test(h));
   return {en: !foreign, vhs: / vhs | videocassette /.test(text), hint: ENGLISH_HINTS.some(x => text.includes(x))};
 }
+/* A film has four rounds. A book has three: when round 0 finds no clean spine, a search for the spine itself, then for
+   the dust jacket laid flat (one paid search each, and the page asks for the next only while it still has nothing).
+   Image search mostly finds photos of a book on a table, which have no spine to cut (docs/BOOK-SPINES.md). */
+const roundsFor = kind => kind === 'book' ? 3 : 4;
 function queryFor(kind, round, title, year, creator) {
   const q = kind === 'movie'
     ? [`"${title}" ${year} dvd cover`, `"${title}" ${year} dvd cover english`, `"${title}" dvd cover scan`, `"${title}" criterion dvd`]
-    : [`"${title}" ${creator} book cover spine`, `"${title}" ${creator} book spine`, `"${title}" spine`, `${title} ${creator} full cover wrap`];
+    : [`"${title}" ${creator} book cover spine`, `"${title}" ${creator} book spine`, `"${title}" ${creator} dust jacket full wrap`];
   return q[round].replace(/\s+/g, ' ').trim();
 }
+// what a round is kept under: a book's round 2 asks something new (it was "<title>" spine), so it has a key of its own
+const roundKey = (kind, round) => kind === 'book' && round === 2 ? '2j' : String(round);
 /* Where a round's pictures are looked for, in this order, stopping at the first that gives a usable scan (one that
    passes the wrap and spine filters in pick() below):
      1. what's already kept in KV (and, on round 0, approved spines from the archive, which scans() adds)
@@ -367,12 +373,12 @@ const slim = list => list.map(r => ({title: r.title || '', url: r.url || '',
   thumbnail: r.thumbnail ? {width: +r.thumbnail.width || 0, height: +r.thumbnail.height || 0} : null}));
 async function rawScans(env, ctx, kind, title, year, creator, round, cacheOnly) {
   // book searches don't use the year (and book years get corrected), so a book's key has none
-  const ckey = `raw1:${kind}:${words(title).join(' ')}:${kind === 'book' ? '' : year}:${round}`, keep = n => ({expirationTtl: n ? 365 * DAY : 7 * DAY});
+  const ckey = `raw1:${kind}:${words(title).join(' ')}:${kind === 'book' ? '' : year}:${roundKey(kind, round)}`, keep = n => ({expirationTtl: n ? 365 * DAY : 7 * DAY});
   const hit = await env.SPINE_CACHE.get(ckey, 'json');
   if (hit) return {list: hit, from: 'raw'};
   // before raw1, only the filtered results were kept (sc6-sc11). They still carry everything the filters read,
   // so they stand in for the raw answer instead of a new search, and are copied to raw1 for next time.
-  for (const v of LEGACY) {
+  for (const v of kind === 'book' && round === 2 ? [] : LEGACY) {
     let old = await env.SPINE_CACHE.get(`${v}:${kind}:${title.toLowerCase()}:${year}:${creator.toLowerCase()}:${round}`, 'json');
     if (!old && kind === 'book') {   // stored under whatever year the book had then
       const k = (await env.SPINE_CACHE.list({prefix: `${v}:book:${title.toLowerCase()}:`, limit: 50})).keys.find(x => x.name.endsWith(':' + round));
@@ -450,7 +456,7 @@ function pick(found, kind, title, year, creator) {
 }
 async function scans(p, env, cors, ctx) {
   const title = clean(p.get('title'), 120), year = clean(p.get('year'), 4).replace(/\D/g, ''), creator = clean(p.get('creator'), 80);
-  const kind = p.get('kind') === 'book' ? 'book' : 'movie', round = Math.max(0, Math.min(ROUNDS - 1, parseInt(p.get('round'), 10) || 0));
+  const kind = p.get('kind') === 'book' ? 'book' : 'movie', rounds = roundsFor(kind), round = Math.max(0, Math.min(rounds - 1, parseInt(p.get('round'), 10) || 0));
   if (!title) return json({error: 'A title is needed.'}, 400, cors);
   const archived = round === 0 ? await archiveFor(env, kind, title, year, creator) : [];
   // cacheonly=1: never search, answer from what's stored. The page asks this for the later rounds while the first is
@@ -458,7 +464,7 @@ async function scans(p, env, cors, ctx) {
   const cacheOnly = p.get('cacheonly') === '1';
   const {list: found, from} = await rawScans(env, ctx, kind, title, year, creator, round, cacheOnly);
   // capped: nothing usable was found and a provider was at its cap or out for the day; the page makes a spine from the cover
-  return json({results: [...archived, ...pick(found, kind, title, year, creator)], round, more: round < ROUNDS - 1, ...(from === 'capped' ? {capped: true} : {}),
+  return json({results: [...archived, ...pick(found, kind, title, year, creator)], round, more: round < rounds - 1, ...(from === 'capped' ? {capped: true} : {}),
     ...(cacheOnly ? {cached: from !== 'miss'} : {})}, 200, cors, {'X-Cache': from});
 }
 /* ---------- admin: today's searches, and one provider's raw answer ---------- */
