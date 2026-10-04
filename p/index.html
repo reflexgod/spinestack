@@ -30,7 +30,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261012a">
+<link rel="stylesheet" href="../site.css?v=20261014a">
 <style>
 /* a post's own page: the post (its review in full), then its replies, oldest first, and the box to reply in */
 #thePost .cover{width:120px}   /* larger than on the feed: the post is the page */
@@ -41,7 +41,7 @@
 #state{margin:var(--s5) 0 0}
 .replies{margin-top:var(--s6)}
 .rlist{list-style:none;margin:0;padding:0;display:grid;gap:var(--s4)}
-.rlist li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:var(--s1) var(--s3);align-items:start}
+.rlist li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:var(--s1) var(--s4);align-items:start}
 .rlist .fa{width:28px;height:28px;border-radius:50%;border:1px solid var(--ink);background:var(--wash);overflow:hidden;display:grid;place-items:center;font-size:var(--fs-card);text-transform:uppercase;text-decoration:none;color:var(--ink)}
 .rlist .fa img{width:100%;height:100%;object-fit:cover;display:block}
 .rlist .rl{margin:0;min-width:0}
@@ -62,8 +62,8 @@
   <button class="acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false" hidden><span class="ava" aria-hidden="true"></span><span class="who"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
   <nav class="links" aria-label="shelfstackd">
     <a href="../feed/">Feed</a>
-    <a href="../shelves/">Shelves</a><a href="../members/">Members</a>
-    <a class="find" href="../members/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
+    <a href="../shelves/">Shelves</a><a href="../people/">People</a>
+    <a class="find" href="../people/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
     <a class="bell" id="bell" href="../notifications/" aria-label="Notifications" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="dot" hidden></span></a>
   </nav>
   <a class="signin" id="signInBtn" href="#" hidden>Sign in</a>
@@ -89,7 +89,7 @@
 
 <div class="sheet" id="signSheet" hidden role="dialog" aria-modal="true" aria-label="Sign in">
   <div class="sheetbox">
-    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <button class="x" data-close type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     <div>
       <h2>Sign in</h2>
       <p></p>
@@ -106,9 +106,9 @@
 
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
-<script src="../wear.js?v=20261004a"></script>
-<script src="../nav.js?v=20261012a"></script>
-<script src="../post.js?v=20261012a"></script>
+<script src="../wear.js?v=20261016a"></script>
+<script src="../nav.js?v=20261016a"></script>
+<script src="../post.js?v=20261016a"></script>
 <script>
 (() => {
 /* A post's own page: /p/?<log id>. The post as the feed shows it, with its review in full, then (with migration 0009)

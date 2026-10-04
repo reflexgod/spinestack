@@ -14,13 +14,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap">
-<link rel="stylesheet" href="/site.css?v=20261012a">
+<link rel="stylesheet" href="/site.css?v=20261014a">
 <style>
 /* a page that isn't there: the bar's logo and places (plain links: no script runs here), a line, the way home */
 .lost{min-height:50vh;padding-top:var(--s6)}
-.lost h1{margin-bottom:var(--s3)}
+.lost h1{margin-bottom:var(--s4)}
 .lost p{max-width:520px}
-.ways{display:flex;gap:var(--s3) var(--s5);align-items:center;flex-wrap:wrap;margin-top:var(--s5)}
+.ways{display:flex;gap:var(--s4) var(--s5);align-items:center;flex-wrap:wrap;margin-top:var(--s5)}
 /* a touch screen: with no button beside it here, the logo's row is only as tall as the logo, so it's padded to the
    height that row has on the other pages and a press just above the logo is still on the page */
 @media (pointer:coarse){ .top .mark{padding:var(--s2) 0} }
@@ -30,13 +30,13 @@
 <header class="top">
   <a class="mark" href="/" aria-label="shelfstackd, home"><img src="/assets/logo-hedgehog.svg" width="28" height="28" alt="">SHELFSTACKD</a>
   <nav class="links" aria-label="shelfstackd">
-    <a href="/shelves/">Shelves</a><a href="/members/">Members</a>
+    <a href="/shelves/">Shelves</a><a href="/people/">People</a>
   </nav>
 </header>
 
 <main class="lost">
   <h1>Nothing on this shelf.</h1>
-  <p class="ways"><a class="btn" href="/">Back home</a><a class="dash sm" href="/shelves/">See the shelves</a></p>
+  <p class="ways"><a class="btn primary" href="/">Go home</a><a class="dash sm" href="/shelves/">See the shelves</a></p>
 </main>
 
 <footer>

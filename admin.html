@@ -68,7 +68,7 @@ li img{height:220px;width:auto;display:block;background:#F2F2F2}
   <form id="login" autocomplete="off">
     <!-- [html-validate-disable-next autocomplete-password -- the admin token is typed each time and never offered back] -->
     <input type="password" id="token" placeholder="Admin token" aria-label="Admin token" autocomplete="off">
-    <button class="btn" type="submit">Open</button>
+    <button class="btn primary" type="submit">Open</button>
   </form>
   <div id="panel" hidden>
     <div class="seg" role="group" aria-label="Show"><button type="button" data-v="pending" aria-pressed="true">Pending</button><button type="button" data-v="approved" aria-pressed="false">Approved</button>
@@ -80,7 +80,7 @@ li img{height:220px;width:auto;display:block;background:#F2F2F2}
   <section class="reports" aria-labelledby="repHead">
     <h1 id="repHead">Reports</h1>
     <p class="grey">Profiles and shelves people reported, newest first. Sign in with the Google account that's in the admins table.</p>
-    <button class="btn" id="repIn" type="button">Sign in with Google</button>
+    <button class="btn primary" id="repIn" type="button">Sign in with Google</button>
     <div id="repPanel" hidden>
       <div class="acts" style="margin:0 0 6px;align-items:baseline"><span class="grey" id="repWho"></span><button class="dash" type="button" id="repOut" style="margin-left:auto">Sign out</button></div>
       <div class="status" id="repStatus" role="status"></div>

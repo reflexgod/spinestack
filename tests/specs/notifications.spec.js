@@ -13,7 +13,7 @@ test('the bell: signed in with 0009, a dot while something is unread; not withou
   await expect(bell(page)).toHaveAccessibleName('Notifications, some unread');
   await expect(bell(page).locator('.dot')).toBeVisible();
   await expect(bell(page)).toHaveAttribute('href', '../notifications/');
-  // the last of the places: Feed · Shelves · Members · search · the bell
+  // the last of the places: Feed · Shelves · People · search · the bell
   await expect(page.locator('header.top .links a:not([hidden])')).toHaveCount(5);
   await expect(page.locator('header.top .links a').last()).toHaveId('bell');
   // and the bar's first row still has the logo, you and + ADD on one line, on a phone too
@@ -42,7 +42,7 @@ test('/notifications/: newest first, ones about the same thing together, a reply
     '@mira and @longusername_twenty1 liked your log of Just Kids',
     '@mira replied to your log of Just Kids',
     '@longusername_twenty1 followed you',
-    '@mira logged Just Kids too',
+    '@mira said Same to your log of Just Kids',
   ]);
   await expect(lines.nth(1).locator('.nt')).toHaveText('Which train?');
   await expect(lines.first().getByRole('link', { name: 'Just Kids' })).toHaveAttribute('href', `../p/?${LOGS[1].id}`);

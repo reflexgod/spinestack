@@ -344,8 +344,41 @@ test('a full shelf: Add and upload are off and say why, and work again when a sp
   // one off: there's room again
   await page.locator('#books .bopen').first().click();
   await page.locator('#books .book').first().getByRole('button', { name: /^Remove/ }).click();
+  await page.locator('#confirmYes').click();   // it asks first
   await expect(page.locator('#count')).toHaveText('(19 of 20)');
   await expect(add).toBeEnabled();
   await expect(page.locator('#findNote')).toBeHidden();
   expect(errors).toEqual([]);
+});
+
+test('Put on shelf on another page, with more than one shelf: it asks which, your main one first; the builder opens that one', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });   // the test account has six shelves, its newest made main
+  await open(page, '/feed/?everyone');
+  await page.locator('header.top .add').click();
+  const d = dialog(page);
+  await d.getByRole('radio', { name: 'Put on shelf' }).check();
+  await box(d).fill('gummo');
+  await d.getByRole('option', { name: /Gummo/ }).click();
+  const on = d.getByRole('combobox', { name: 'On' });
+  await expect(on).toBeVisible();
+  const names = await on.locator('option').allTextContents();
+  expect(names[0]).toBe('a much longer shelf name that has to be cut short (main)');
+  expect(names).toHaveLength(6);
+  await on.selectOption({ label: 'shelf number 3' });
+  await d.getByRole('button', { name: 'Add to shelf' }).click();
+  await expect(page).toHaveURL(/\/build\/$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('shelf number 3');
+  await expect.poll(() => page.locator('#books .book .bt').allTextContents()).toEqual(['The Waves', 'Journey by Moonlight', 'Gummo']);
+  await expect(page.locator('#toast')).toHaveText('Gummo added to shelf number 3.');
+});
+
+test('on the builder, Put on shelf doesn’t ask', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/build/');
+  await page.locator('header.top .add').click();
+  const d = dialog(page);
+  await box(d).fill('gummo');
+  await d.getByRole('option', { name: /Gummo/ }).click();
+  await expect(d.locator('#addFound [data-use]').first()).toBeVisible();
+  await expect(d.getByRole('combobox', { name: 'On' })).toBeHidden();
 });

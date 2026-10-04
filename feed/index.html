@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Activity · shelfstackd</title>
+<title>Feed · shelfstackd</title>
 <meta name="description" content="The newest shelves and logs on shelfstackd, from everyone or from the people you follow.">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32">
@@ -11,7 +11,7 @@
 <meta name="theme-color" content="#FFFFFF">
 <meta property="og:site_name" content="shelfstackd">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Activity · shelfstackd">
+<meta property="og:title" content="Feed · shelfstackd">
 <meta property="og:description" content="The newest shelves and logs on shelfstackd, from everyone or from the people you follow.">
 <meta property="og:url" content="https://shelfstackd.com/feed/">
 <meta property="og:image" content="https://shelfstackd.com/og.jpg">
@@ -30,13 +30,20 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Geist+Mono:wght@400;500&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261012a">
+<link rel="stylesheet" href="../site.css?v=20261014a">
 <style>
-/* the feed: the tabs, then a line for each shelf saved (its card under it) and each film or book logged (its worn
-   cover and caption under it); site.css has the tabs, the lines, the card, the cover and the rest */
-.items{margin-top:var(--s5)}
-.fnone{display:grid;justify-items:start;gap:var(--s3);margin:var(--s5) 0 0}
-.fnone p{margin:0}
+/* the feed: a timeline, one column of 600px in the middle of the page's. The composer, the tabs (staying under the
+   bar as you scroll), then the posts (post.js) and shelves saved, each with a thin rule under it and no box */
+.tl{max-width:600px;margin-inline:auto}
+.tl .tabs{position:sticky;top:var(--barh,64px);z-index:4;background:var(--paper);padding-top:var(--s4)}
+.tl .items{gap:0;margin-top:0}
+.tl .items > li{border-bottom:1px solid var(--hair)}
+.tl .items > li.item{padding:var(--s4) 0}
+/* a shelf saved: the spines it added, in a strip 80px tall */
+.shelfpost .strip{display:flex;align-items:flex-end;gap:2px;height:80px;border-bottom:1px solid var(--ink);margin-top:var(--s2);overflow:hidden;max-width:100%}
+.shelfpost .strip canvas{display:block;flex:none}
+.fnone{display:grid;justify-items:start;gap:var(--s4);margin:var(--s5) 0 0}
+.fnone > p{margin:0}
 .linkish{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-decoration:none;text-decoration-thickness:1px;text-underline-offset:3px}
 .linkish:hover,.linkish:focus-visible{text-decoration:underline;text-underline-offset:3px}
 #state{margin:var(--s5) 0 0}
@@ -46,15 +53,17 @@
 .items .item.log>.wmorewrap{position:absolute;top:-12px;right:0}
 @media (pointer:coarse){.items .item.log .line{padding-right:44px}}
 /* "3 new posts": checked every minute, shown at the top of the list; it never moves the page by itself */
-.newpill{position:sticky;top:calc(64px + var(--s2));z-index:4;display:block;margin:var(--s4) auto 0;background:var(--ink);color:var(--paper);border:0;border-radius:999px;
+.newpill{position:sticky;top:calc(var(--barh,64px) + 48px);z-index:4;display:block;margin:var(--s4) auto 0;background:var(--ink);color:var(--paper);border:0;border-radius:999px;
   padding:var(--s2) var(--s4);font:600 var(--fs-btn)/1.35 var(--mono);cursor:pointer}
 .newpill:hover{background:#222}
-/* People to follow, when Following is empty: each person with their first five spines and Follow */
-.tofollow{margin-top:var(--s5);width:100%}
-.tofollow .person{grid-template-columns:40px minmax(0,1fr) auto auto}
-.tofollow .sp{display:flex;align-items:flex-end;gap:2px;height:64px;min-width:0;overflow:hidden}
-.tofollow .sp canvas{display:block;flex:none}
-@media (max-width:520px){ .tofollow .person{grid-template-columns:40px minmax(0,1fr) auto} .tofollow .sp{grid-column:2 / -1;grid-row:2} }
+/* an empty Friends tab: People to follow, rows like posts with Follow at the right, then the Everyone timeline */
+.tofollow,.tfall{margin-top:var(--s5);width:100%}
+.tfl{list-style:none;margin:0;padding:0}
+.tfl > li{border-bottom:1px solid var(--hair)}
+.post.tf{align-items:center;grid-template-columns:40px minmax(0,1fr) auto}
+.post.tf .tlast{margin:var(--s1) 0 0;color:var(--grey);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (pointer:coarse){ .post.tf .tlast{margin-top:var(--s4)} }   /* clear of the name's press area */
+.tfall h2 .more{margin-left:auto}
 </style>
 </head>
 <body>
@@ -64,8 +73,8 @@
   <button class="acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false" hidden><span class="ava" aria-hidden="true"></span><span class="who"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
   <nav class="links" aria-label="shelfstackd">
     <a href="./" aria-current="page">Feed</a>
-    <a href="../shelves/">Shelves</a><a href="../members/">Members</a>
-    <a class="find" href="../members/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
+    <a href="../shelves/">Shelves</a><a href="../people/">People</a>
+    <a class="find" href="../people/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
     <a class="bell" id="bell" href="../notifications/" aria-label="Notifications" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="dot" hidden></span></a>
   </nav>
   <a class="signin" id="signInBtn" href="#" hidden>Sign in</a>
@@ -73,10 +82,11 @@
 </header>
 
 <main class="feed">
-  <h1>Activity</h1>
+<div class="tl">
+  <h1 class="vh">Feed</h1>
   <section id="compose" aria-label="Post" hidden></section>
   <nav class="tabs" role="tablist" aria-label="Feed">
-    <button type="button" role="tab" id="tabF" data-scope="following" aria-selected="false" aria-controls="panel">Following</button>
+    <button type="button" role="tab" id="tabF" data-scope="following" aria-selected="false" aria-controls="panel">Friends</button>
     <button type="button" role="tab" id="tabE" data-scope="everyone" aria-selected="false" aria-controls="panel">Everyone</button>
   </nav>
   <div id="panel" role="tabpanel">
@@ -86,11 +96,12 @@
     <div class="fnone" id="none" hidden></div>
     <button class="dash sm" id="more" type="button" hidden>Load more</button>
   </div>
+</div>
 </main>
 
 <div class="sheet" id="signSheet" hidden role="dialog" aria-modal="true" aria-label="Sign in">
   <div class="sheetbox">
-    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <button class="x" data-close type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     <div>
       <h2>Sign in</h2>
       <p></p>
@@ -107,14 +118,13 @@
 
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
-<script src="../cards.js?v=20261002a"></script>
-<script src="../wear.js?v=20261004a"></script>
-<script src="../bare.js?v=20261006a"></script>
-<script src="../nav.js?v=20261012a"></script>
-<script src="../post.js?v=20261012a"></script>
+<script src="../wear.js?v=20261016a"></script>
+<script src="../bare.js?v=20261013a"></script>
+<script src="../nav.js?v=20261016a"></script>
+<script src="../post.js?v=20261016a"></script>
 <script>
 (() => {
-/* The feed: /feed/ (?following or ?everyone picks the tab). A line for each shelf saved and each film or book
+/* The feed: /feed/ (?friends, or ?following as it was, or ?everyone picks the tab: Friends · Everyone). A line for each shelf saved and each film or book
    logged (a post: post.js), newest first, 20 at a time, the next 20 coming as the end nears. The database decides what
    shows (activity(), supabase/migrations/0007_logs_watchlist.sql): EVERYONE is public profiles, FOLLOWING the people
    you follow; with nothing there, People to follow. Every minute it looks for newer ones and says how many ("3 new
@@ -127,7 +137,7 @@ const SB_LIB = {src:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/
 const PAGE = 20;
 const params = new URLSearchParams(location.search);
 // ?you, from when there was a You tab (your own are on your profile's Activity now), is Following
-const asked = params.has('you') ? 'following' : ['following', 'everyone'].find(k => params.has(k)) || '';
+const asked = params.has('you') || params.has('friends') ? 'following' : ['following', 'everyone'].find(k => params.has(k)) || '';
 
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const profileUrl = (name, shelf) => '../u/?' + name + (shelf ? '&shelf=' + shelf : '');
@@ -206,7 +216,7 @@ Nav.onSignOut(async () => { try { const {error} = await (await supa()).auth.sign
 $('#googleBtn').addEventListener('click', async () => {
   const btn = $('#googleBtn'); btn.disabled = true;
   try {
-    const sb = await supa(), back = location.origin + location.pathname + '?' + (feed.scope || 'following');
+    const sb = await supa(), back = location.origin + location.pathname + '?' + (feed.scope === 'everyone' ? 'everyone' : 'friends');
     const {error} = await sb.auth.signInWithOAuth({provider:'google', options:{redirectTo: back}});
     if (error) throw error;
   } catch (e){ btn.disabled = false; toast(friendly(e)); }
@@ -220,7 +230,7 @@ document.querySelectorAll('.sheet').forEach(s => s.addEventListener('click', e =
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.querySelector('.sheet:not([hidden])')) closeSheets(); });
 
 /* ---------- the feed ---------- */
-const feed = {scope:'', last:null, first:null, run:0, logs:true, social:false};   // logs: false once the database says activity() isn't there
+const feed = {scope:'', last:null, first:null, run:0, logs:true, social:false, recs:null};   // logs: false once the database says activity() isn't there; recs: is 0010 there (timeline())
 const avatar = x => `<a class="fa" href="${esc(profileUrl(x.username))}" tabindex="-1" aria-hidden="true">${x.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(x.avatar_key)}`)}" alt="" loading="lazy">` : esc(((x.display_name || '').trim() || x.username).trim()[0] || '·')}</a>`;
 const when = (t, text) => `<span class="ago">· <time datetime="${esc(t)}" title="${esc(new Date(t).toLocaleString())}">${text}</time></span>`;
 const COVER = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cover')) || 72;   // how wide a log's cover is (site.css)
@@ -236,16 +246,58 @@ function item(x){
     li.classList.add('log');
     li.innerHTML = `${avatar(x)}<p class="line">${by} ${verb} <b>${esc(x.title)}</b> ${when(x.at, day(x.at))}</p>
       <div class="logbody"><span class="cover"></span>${x.caption ? `<p class="say">${esc(x.caption)}</p>` : ''}</div>`;
-    li.querySelector('.cover').append(Wear.cover({src: x.cover_src ? `${WORKER}/img?url=${encodeURIComponent(x.cover_src.replace(/^url:/, ''))}` : '', seed: x.id, at: x.at,
+    li.querySelector('.cover').append(Wear.cover({kind: x.kind, src: x.cover_src ? `${WORKER}/img?url=${encodeURIComponent(x.cover_src.replace(/^url:/, ''))}` : '', seed: x.id, at: x.at,
       label: `${label}, ${verb} by @${x.username}`, width: COVER}));
     // someone else's log: onto your watchlist from its cover (signed out, the sign-in sheet first)
     if (!(me.user && x.owner === me.user.id)) Nav.watchable(li.querySelector('.cover'), {kind: x.kind, title: x.title, year: x.year ? String(x.year) : '', creator: x.author || '', cover: x.cover_src ? x.cover_src.replace(/^url:/, '') : ''}, {moreIn: li});
     return li;
   }
-  const to = esc(profileUrl(x.username, x.id)), shelf = Shelf.shelfName({name: x.name, caption: x.caption});
-  const pic = x.preview_key ? `<img src="${esc(`${WORKER}/u/preview?k=${encodeURIComponent(x.preview_key)}&v=${encodeURIComponent(x.updated_at)}`)}" alt="" crossorigin="anonymous" loading="lazy" width="360" height="640">` : '';   // with CORS, so cards.js can read it and cut the card round the books
-  li.innerHTML = `${avatar(x)}<p class="line">${by} ${x.updated ? 'updated' : 'shelved'} <a href="${to}">${esc(shelf)}</a>${x.is_public === false ? ' <span class="tag">private</span>' : ''} ${when(x.at, ago(x.at))}</p>
-    <a class="pic" data-shelf="${esc(x.id)}" href="${to}" tabindex="-1" aria-label="Open ${esc(shelf)} by @${esc(x.username)}">${pic}</a>`;
+  if (x.what === 'rec') return recPost(x);
+  return shelfPost(x);
+}
+/* A shelf saved, as a compact post: "@div added 3 to films for the train" (the shelf by its name), and a strip of just the spines that save added
+   (80px tall, drawn by bare.js), the whole post a press through to the shelf. The builder marks each spine with when it
+   was first saved (look.at), so the spines added in the hour before the save are the new ones: saving again within
+   the hour keeps them together in one post, since a shelf is one line on the feed whatever its saves. A save from
+   before those marks, or one that only moved or changed spines, says "updated <its name>" (or "started <its name>")
+   with its last five spines. */
+const HOUR = 3600e3;
+function addedBy(x){
+  const items = x.items || [], at = new Date(x.at).getTime();
+  return items.filter(r => r.look && +r.look.at && +r.look.at * 1000 >= at - HOUR && +r.look.at * 1000 <= at + 60e3);
+}
+function shelfPost(x){
+  const li = document.createElement('li'), to = profileUrl(x.username, x.id), name = (x.display_name || '').trim(), added = addedBy(x);
+  li.className = 'post shelfpost'; li.dataset.id = x.id;
+  // the shelf by its name (a person can have more than one): "added 3 to films for the train"
+  const shelf = `<a href="${esc(to)}">${esc(Shelf.shelfName({name: x.name, caption: x.caption}))}</a>`;
+  const what = added.length === 1 ? `added ${esc(added[0].title || 'a spine')} to ${shelf}`
+    : added.length ? `added ${added.length} to ${shelf}`
+    : `${x.updated ? 'updated' : 'started'} ${shelf}`;
+  li.innerHTML = `<a class="pava" href="${esc(profileUrl(x.username))}" tabindex="-1" aria-hidden="true">${window.Posts ? Posts.avaHtml(x) : ''}</a>
+    <div class="pbody">
+      <p class="phead"><a class="pwho" href="${esc(profileUrl(x.username))}">${name ? `<b>${esc(name)}</b> ` : ''}<span>@${esc(x.username)}</span></a><span class="ago">· <a href="${esc(to)}"><time datetime="${esc(x.at)}" title="${esc(new Date(x.at).toLocaleString())}">${ago(x.at)}</time></a></span></p>
+      <p class="pwhat">${what}${x.is_public === false ? ' <span class="tag">private</span>' : ''}</p>
+      <a class="strip" href="${esc(to)}" tabindex="-1" aria-label="${esc(added.length ? `The ${added.length === 1 ? 'spine' : added.length + ' spines'} @${x.username} added` : `@${x.username}'s shelf`)}"></a>
+    </div>`;
+  li.addEventListener('click', e => { if (!e.target.closest('a, button') && !String(getSelection()).trim()) location.href = to; });
+  // the strip: the new spines, or the shelf's last five
+  const rows = added.length ? added : (x.items || []).slice(-5);
+  if (rows.length && window.Bare) Bare.ready.then(() => Bare.books(rows)).then(books => { if (books.length) li.querySelector('.strip').replaceChildren(...Bare.spines(books, 80)); });
+  return li;
+}
+/* A rec shown in the feed (0010, only when its sender left Show in feed on): "@mira recommended Paris, Texas (1984) to
+   @kit", compact, with the cover small and clean at the right (not worn: nobody has logged it). Never the note. */
+function recPost(x){
+  const li = document.createElement('li'), name = (x.display_name || '').trim(), label = `${x.title}${x.year ? ` (${x.year})` : ''}`;
+  li.className = 'post recpost'; li.dataset.id = x.id;
+  li.innerHTML = `<a class="pava" href="${esc(profileUrl(x.username))}" tabindex="-1" aria-hidden="true">${window.Posts ? Posts.avaHtml(x) : ''}</a>
+    <div class="pbody">
+      <p class="phead"><a class="pwho" href="${esc(profileUrl(x.username))}">${name ? `<b>${esc(name)}</b> ` : ''}<span>@${esc(x.username)}</span></a><span class="ago">· <time datetime="${esc(x.at)}" title="${esc(new Date(x.at).toLocaleString())}">${ago(x.at)}</time></span></p>
+      <p class="pwhat">recommended <a href="${esc(Nav.titleUrl({kind: x.kind, title: x.title, year: x.year}))}">${esc(x.title)}</a>${x.year ? ` (${esc(x.year)})` : ''} to <a href="${esc(profileUrl(x.to_username))}">@${esc(x.to_username)}</a></p>
+    </div>
+    <span class="cover">${x.cover_src ? `<img class="clean" src="${esc(`${WORKER}/img?url=${encodeURIComponent(x.cover_src.replace(/^url:/, ''))}`)}" alt="The cover of ${esc(label)}" loading="lazy">` : ''}</span>`;
+  if (!(me.user && x.owner === me.user.id)) Nav.watchable(li.querySelector('.cover'), {kind: x.kind, title: x.title, year: x.year ? String(x.year) : '', creator: x.author || '', cover: x.cover_src ? x.cover_src.replace(/^url:/, '') : ''}, {moreIn: li.querySelector('.pbody')});
   return li;
 }
 // a shelf as feed() (0006) gives it, in activity()'s shape
@@ -253,10 +305,11 @@ const fromFeed = r => ({what: 'shelf', id: r.shelf_id, at: r.saved_at, owner: r.
   caption: r.caption, name: r.name, preview_key: r.preview_key, created_at: r.created_at, updated_at: r.updated_at, updated: r.updated, is_public: r.is_public});
 // the next page of the tab: activity() while it's there, otherwise what 0006 has
 const missing = e => /PGRST20[25]|42883|Could not find the function|does not exist/i.test(String(e && e.message));
+const recsThere = async () => { if (feed.recs === null) feed.recs = !!(await Nav.loadRecs()); return feed.recs; };
 async function page(){
   const last = feed.last;
   if (feed.logs){
-    try { return await rpc('activity', {scope: feed.scope, before: last ? last.at : null, before_id: last ? last.id : null, n: PAGE}); }
+    try { return await rpc((await recsThere()) ? 'timeline' : 'activity', {scope: feed.scope, before: last ? last.at : null, before_id: last ? last.id : null, n: PAGE}); }
     catch (e){ if (!missing(e)) throw e; feed.logs = false; }
   }
   return (await rpc('feed', {scope: feed.scope, before: last ? last.at : null, before_id: last ? last.id : null, n: PAGE})).map(fromFeed);
@@ -264,7 +317,7 @@ async function page(){
 function none(kind){
   const box = $('#none');
   if (kind === 'signin') box.innerHTML = `<p><button class="linkish" type="button" data-signin>Sign in</button> to see who you follow.</p>`;
-  else if (kind === 'following'){ box.innerHTML = '<p>Nobody you follow has posted.</p><button class="dash sm" type="button" data-scope="everyone">Everyone</button>'; toFollow(); }
+  else if (kind === 'following'){ box.innerHTML = '<p>Nobody you follow has posted.</p>'; toFollow(); }
   else box.innerHTML = '<p>Nothing on the feed yet.</p>';
   box.hidden = false;
 }
@@ -276,11 +329,32 @@ async function show(scope){
   const run = ++feed.run;
   feed.scope = scope; feed.last = null; feed.first = null; $('#newPill').hidden = true;
   document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.scope === scope)));
-  history.replaceState(null, '', location.pathname + '?' + scope + location.hash);   // back from a shelf lands on the same tab
+  history.replaceState(null, '', location.pathname + '?' + (scope === 'following' ? 'friends' : scope) + location.hash);   // back from a shelf lands on the same tab
   $('#items').replaceChildren(); $('#none').hidden = true; $('#more').hidden = true;
   if (scope !== 'everyone' && !me.user){ $('#state').hidden = true; none('signin'); return; }
   $('#state').textContent = 'Loading…'; $('#state').hidden = false;
   await more(run);
+}
+// what a page of rows needs before it's drawn: with 0009 each log's rating, review, counts and what you've done to it
+// (post_stats()); each shelf's spines, in one ask, for its strip. null when another tab was picked meanwhile
+async function enrich(rows, run){
+  // with 0009, each log's rating, review, counts and what you've done to it (post_stats())
+  if (window.Posts){
+    feed.social = await Posts.ready();
+    const ids = rows.filter(x => x.what === 'log').map(x => x.id);
+    let st = new Map(); try { st = await Posts.stats(ids); } catch {}
+    if (run !== feed.run) return null;
+    rows = rows.map(x => st.has(x.id) ? {...x, ...st.get(x.id)} : x);
+  }
+  // each shelf's spines, in one ask, for its strip
+  const shelves = rows.filter(x => x.what === 'shelf').map(x => x.id);
+  if (shelves.length){
+    let items = [];
+    try { items = await api(`shelf_items?select=shelf_id,position,item_id,kind,title,author,year,spine_src,cover_src,look&shelf_id=in.(${shelves.join(',')})&order=position`); } catch {}
+    if (run !== feed.run) return null;
+    rows = rows.map(x => x.what !== 'shelf' ? x : {...x, items: (items || []).filter(r => r.shelf_id === x.id)});
+  }
+  return rows;
 }
 async function more(run = feed.run){
   const btn = $('#more');
@@ -294,14 +368,7 @@ async function more(run = feed.run){
     return;
   }
   if (run !== feed.run) return;   // another tab was picked meanwhile
-  // with 0009, each log's rating, review, counts and what you've done to it (post_stats())
-  if (window.Posts){
-    feed.social = await Posts.ready();
-    const ids = rows.filter(x => x.what === 'log').map(x => x.id);
-    let st = new Map(); try { st = await Posts.stats(ids); } catch {}
-    if (run !== feed.run) return;
-    rows = rows.map(x => st.has(x.id) ? {...x, ...st.get(x.id)} : x);
-  }
+  rows = await enrich(rows, run); if (!rows) return;
   btn.disabled = false; $('#state').hidden = true;
   for (const x of rows) $('#items').append(item(x));
   const end = rows[rows.length - 1];
@@ -311,7 +378,16 @@ async function more(run = feed.run){
   if (!$('#items').children.length) none(feed.scope);
 }
 // a log posted with + ADD on this page: the tab starts again, with it at the top
-document.addEventListener('shelfstackd:added', e => { if (e.detail && e.detail.what === 'log' && feed.scope) show(feed.scope); });
+// a log posted on this page (the composer, + ADD, Same): it goes on top of Everyone at once, with nothing reloaded and
+// nothing moved; Friends is the people you follow, so it isn't there
+document.addEventListener('shelfstackd:added', e => {
+  const d = e.detail || {};
+  if (d.what !== 'log' || feed.scope !== 'everyone') return;
+  if (!d.post || !d.post.id || !window.Posts){ show(feed.scope); return; }
+  $('#none').hidden = true;
+  $('#items').prepend(item(d.post));
+  feed.first = {at: d.post.at, id: d.post.id};
+});
 $('#more').addEventListener('click', () => more());
 // the next 20 come by themselves as the end of the list nears (Load more is still there to press)
 if ('IntersectionObserver' in window) new IntersectionObserver(es => { if (es.some(e => e.isIntersecting) && !$('#more').hidden && !$('#more').disabled) more(); }, {rootMargin: '600px 0px'}).observe($('#more'));
@@ -336,51 +412,49 @@ $('#newPill').addEventListener('click', async () => {
   document.querySelector('.tabs').scrollIntoView({block: 'start'});
 });
 // the newest on a tab: activity() while it's there, otherwise feed() (0006)
-const page0 = scope => rpc('activity', {scope, before: null, before_id: null, n: PAGE}).catch(e => {
+const page0 = async scope => rpc((await recsThere()) ? 'timeline' : 'activity', {scope, before: null, before_id: null, n: PAGE}).catch(e => {
   if (!missing(e)) throw e;
   return rpc('feed', {scope, before: null, before_id: null, n: PAGE}).then(r => r.map(fromFeed));
 });
 
-/* ---------- People to follow (Following, when there's nothing from anyone you follow) ---------- */
-// the people behind the newest public shelves and posts, not you and not anyone you follow, each with the first five
-// spines of their shelf (drawn as home draws them, bare.js) and Follow
+/* ---------- an empty Friends tab: People to follow, then Everyone ---------- */
+// People to follow: the people behind the newest public shelves and posts, not you and not anyone you follow, as rows
+// like posts (photo, name and @name, what they did last, Follow at the right). Then the Everyone timeline under it,
+// with a way to the tab itself
 async function toFollow(){
   if (!me.user || !me.profile) return;
   const run = feed.run;
   let rows = [], follows = [];
   try { [rows, follows] = await Promise.all([page0('everyone'), api(`follows?select=followee&follower=eq.${me.user.id}`)]); } catch { return; }
   if (run !== feed.run) return;
-  const skip = new Set([me.user.id, ...(follows || []).map(f => f.followee)]), seen = new Set(), shelfOf = new Map(), people = [];
-  for (const x of rows){
-    if (x.what === 'shelf' && !shelfOf.has(x.owner)) shelfOf.set(x.owner, x.id);
-    if (skip.has(x.owner) || seen.has(x.owner)) continue;
-    seen.add(x.owner); people.push(x);
+  const skip = new Set([me.user.id, ...(follows || []).map(f => f.followee)]), seen = new Set(), people = [];
+  for (const x of rows){ if (skip.has(x.owner) || seen.has(x.owner)) continue; seen.add(x.owner); people.push(x); }
+  if (people.length){
+    const box = document.createElement('section'); box.className = 'tofollow'; box.setAttribute('aria-labelledby', 'tofollowH');
+    box.innerHTML = '<h2 id="tofollowH">People to follow</h2><ul class="tfl"></ul>';
+    box.querySelector('ul').append(...people.slice(0, 6).map(x => {
+      const li = document.createElement('li'), name = (x.display_name || '').trim(), href = profileUrl(x.username);
+      const last = x.what === 'log' ? `${x.kind === 'movie' ? 'watched' : 'read'} ${x.title}` : x.what === 'rec' ? `recommended ${x.title}` : `${x.updated ? 'updated' : 'started'} ${Shelf.shelfName({name: x.name, caption: x.caption})}`;
+      li.className = 'post tf'; li.dataset.owner = x.owner;
+      li.innerHTML = `<a class="pava" href="${esc(href)}" tabindex="-1" aria-hidden="true">${window.Posts ? Posts.avaHtml(x) : ''}</a>
+        <div class="pbody"><p class="phead"><a class="pwho" href="${esc(href)}">${name ? `<b>${esc(name)}</b> ` : ''}<span>@${esc(x.username)}</span></a></p>
+          <p class="tlast">${esc(last)} <span class="ago">· ${ago(x.at)}</span></p></div>
+        <div class="tfgo"></div>`;
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'btn follow'; li.querySelector('.tfgo').append(b);
+      followButton(b, {id: x.owner, username: x.username});
+      li.addEventListener('click', e => { if (!e.target.closest('a, button')) location.href = href; });
+      return li;
+    }));
+    $('#none').append(box);
   }
-  if (!people.length) return;
-  const list = people.slice(0, 6), ids = list.map(x => shelfOf.get(x.owner)).filter(Boolean);
-  const box = document.createElement('section'); box.className = 'tofollow'; box.setAttribute('aria-labelledby', 'tofollowH');
-  box.innerHTML = '<h2 id="tofollowH">People to follow</h2><ul class="people"></ul>';
-  box.querySelector('ul').append(...list.map(x => {
-    const li = document.createElement('li'), name = (x.display_name || '').trim(), href = profileUrl(x.username);
-    li.className = 'person'; li.dataset.owner = x.owner;
-    li.innerHTML = `<a class="pa" href="${esc(href)}" tabindex="-1" aria-hidden="true">${x.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(x.avatar_key)}`)}" alt="" loading="lazy">` : esc((name || x.username).trim()[0] || '·')}</a>
-      <a class="pn" href="${esc(href)}"><b>${esc(name || '@' + x.username)}</b><span>@${esc(x.username)}</span></a><span class="sp" aria-hidden="true"></span><div class="acts"></div>`;
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn follow'; li.querySelector('.acts').append(b);
-    followButton(b, {id: x.owner, username: x.username});
-    return li;
-  }));
-  $('#none').append(box);
-  if (!ids.length || !window.Bare) return;
-  let items = [];
-  try { items = await api(`shelf_items?select=shelf_id,position,item_id,kind,title,author,year,spine_src,cover_src,look&shelf_id=in.(${ids.join(',')})&order=position`); } catch { return; }
-  await Bare.ready;
-  for (const li of box.querySelectorAll('li')){
-    const sid = shelfOf.get(li.dataset.owner), five = (items || []).filter(r => r.shelf_id === sid).slice(0, 5);
-    const books = await Bare.books(five);
-    if (books.length) li.querySelector('.sp').replaceChildren(...Bare.spines(books, 64));
-  }
+  // Everyone, under it
+  const more = await enrich(rows.slice(0, PAGE), run); if (!more || !more.length) return;
+  const all = document.createElement('section'); all.className = 'tfall'; all.setAttribute('aria-labelledby', 'tfallH');
+  all.innerHTML = '<h2 id="tfallH">Everyone <button class="more" type="button" data-scope="everyone">See all</button></h2><ol class="items"></ol>';
+  all.querySelector('ol').append(...more.map(item));
+  $('#none').append(all);
 }
-// Follow, the same as on Members (u/ and members/: keep them in step): hover says Unfollow, and a click does it; a
+// Follow, the same as on People (u/ and people/: keep them in step): hover says Unfollow, and a click does it; a
 // private profile is asked (Requested)
 const LABEL = {none: 'Follow', following: 'Following', requested: 'Requested'}, UNDO = {following: 'Unfollow', requested: 'Cancel'};
 function followButton(btn, person){
@@ -409,6 +483,9 @@ document.querySelector('.tabs').addEventListener('keydown', e => {
   const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]; next.focus(); next.click();
 });
 
+// how tall the bar is, so the tabs stay just under it (the bar is two rows on a phone)
+const bar = document.querySelector('header.top'), barh = () => document.documentElement.style.setProperty('--barh', bar.offsetHeight + 'px');
+barh(); if ('ResizeObserver' in window) new ResizeObserver(barh).observe(bar);
 // signed in with a username: "What did you watch or read?" at the top; a post goes on the feed at once
 async function compose(){
   if (!me.profile || !window.Posts) return;

@@ -1,4 +1,4 @@
-// A site with nothing on it yet: no public shelves. Home's spine wall shows the sample shelf, and shelves, members and
+// A site with nothing on it yet: no public shelves. Home's spine wall shows the sample shelf, and shelves, people and
 // the feed each say so in a line.
 const { test, expect } = require('@playwright/test');
 const { mockNetwork, watchErrors, open } = require('../site');
@@ -37,15 +37,15 @@ test('with shelves on the site, home has no sample shelf', async ({ page }) => {
   await expect(page.locator('#wallCap')).toBeHidden();
 });
 
-test('shelves, members and the feed each say it in one line when there is nothing yet', async ({ page }) => {
+test('shelves, people and the feed each say it in one line when there is nothing yet', async ({ page }) => {
   await mockNetwork(page, { empty: true });
   await open(page, '/shelves/');
   await expect(page.locator('#none')).toHaveText('No public shelves yet.');
   await expect(page.locator('#grid li')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Load more' })).toBeHidden();
   await expect(page.locator('main').getByRole('link', { name: 'Make a shelf' })).toBeVisible();   // the way to be the first
-  await open(page, '/members/');
-  await expect(page.locator('#activeState')).toHaveText('No members yet.');
+  await open(page, '/people/');
+  await expect(page.locator('#activeState')).toHaveText('No one here yet.');
   await expect(page.locator('#active li')).toHaveCount(0);
   await open(page, '/feed/?everyone');
   await expect(page.locator('#none')).toHaveText('Nothing on the feed yet.');

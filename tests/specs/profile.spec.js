@@ -9,18 +9,18 @@ const tabs = page => page.getByRole('tablist', { name: 'Profile' }).getByRole('t
 const selected = (page, name) => expect(page.getByRole('tablist', { name: 'Profile' }).getByRole('tab', { name, exact: true })).toHaveAttribute('aria-selected', 'true');
 const followList = (page, kind) => page.waitForRequest(r => r.url().includes('/rpc/follow_list') && r.postDataJSON().kind === kind);   // the Network tab's list (the page asks for the followers once by itself, for "Followed by")
 
-test('the tabs are Profile · Activity · Watchlist · Network, each with its own address, kept on reload', async ({ page }) => {
+test('the tabs are Profile · Activity · Up next · Shelves (N) · Network, each with its own address, kept on reload', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?mira');
-  await expect(tabs(page)).toHaveText(['Profile', 'Activity', 'Watchlist', 'Network']);
+  await expect(tabs(page)).toHaveText(['Profile', 'Activity', 'Up next', 'Shelves (6)', 'Network']);
   await selected(page, 'Profile');
-  for (const [name, hash, panel] of [['Activity', '#activity', '#panelA'], ['Watchlist', '#watchlist', '#panelW'], ['Network', '#network', '#panelN'], ['Profile', '', '#panelP']]) {
+  for (const [name, hash, panel] of [['Activity', '#activity', '#panelA'], ['Up next', '#upnext', '#panelW'], ['Shelves (6)', '#shelves', '#panelS'], ['Network', '#network', '#panelN'], ['Profile', '', '#panelP']]) {
     await tabs(page).filter({ hasText: name }).click();
     await selected(page, name);
     expect(new URL(page.url()).hash).toBe(hash);
     await expect(page.locator(panel)).toBeVisible();
-    await expect(page.locator('#panelP, #panelA, #panelW, #panelN').locator('visible=true')).toHaveCount(1);
+    await expect(page.locator('#panelP, #panelA, #panelW, #panelS, #panelN').locator('visible=true')).toHaveCount(1);
   }
   await open(page, '/u/?mira#activity');
   await selected(page, 'Activity');
@@ -28,14 +28,15 @@ test('the tabs are Profile · Activity · Watchlist · Network, each with its ow
   // ← → move along the row
   await tabs(page).nth(1).focus();
   await page.keyboard.press('ArrowRight');
-  await selected(page, 'Watchlist');
+  await selected(page, 'Up next');
+  await page.keyboard.press('ArrowRight');
+  await selected(page, 'Shelves (6)');
   await page.keyboard.press('ArrowRight');
   await selected(page, 'Network');
   await page.keyboard.press('ArrowRight');
   await selected(page, 'Profile');
-  // a link from when there was a Shelves tab is Profile
   await open(page, '/u/?mira#shelves');
-  await selected(page, 'Profile');
+  await selected(page, 'Shelves (6)');
   expect(errors).toEqual([]);
 });
 
@@ -44,14 +45,14 @@ test('Profile: their shelf first, standing on a shelf line at one spine height f
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?mira');
   const hero = page.locator('#hero');
-  await expect(hero.locator('#featCap')).toHaveText('shelf number 1');   // none picked as main: the one saved last
+  await expect(hero.locator('#featCap')).toHaveText('untitled shelf');   // none made main: her oldest
   await expect(hero.locator('#featMeta')).toHaveText(/^2 spines · /);
   await expect(page.locator('#nSpines')).toHaveText('2');
   await expect(hero.locator('canvas')).toHaveCount(1);
   await expect(hero.getByRole('link', { name: 'Edit' })).toBeHidden();   // not yours
-  await expect(page.locator('#featLink')).toHaveAttribute('href', `/u/?mira&shelf=${SHELVES[1].id}`);
+  await expect(page.locator('#featLink')).toHaveAttribute('href', `/u/?mira&shelf=${SHELVES[16].id}`);   // her oldest
   await expect(page.getByText('Most shelved')).toHaveCount(0);
-  await expect(page.getByText(/Main shelf|Recent shelves/)).toHaveCount(0);
+  await expect(page.getByText(/Main shelf|Recent shelves/).locator('visible=true')).toHaveCount(0);
   const h = await hero.boundingBox(), main = await page.locator('main').boundingBox(), watch = await page.locator('#watchSec').boundingBox();
   expect(watch.y).toBeGreaterThan(h.y + h.height);
   expect(Math.abs(watch.width - main.width)).toBeLessThanOrEqual(1);   // the watchlist across the column
@@ -68,15 +69,15 @@ test('Profile: their shelf first, standing on a shelf line at one spine height f
   expect(Math.abs(pic.bottom - line.bottom)).toBeLessThanOrEqual(1.5);
   // someone else's watchlist: a strip of covers and See all; From friends is only ever your own
   await expect(page.locator('#watchStrip li')).toHaveCount(1);
-  await expect(page.locator('#watchStrip a')).toHaveAccessibleName('Stalker (1979), on the watchlist');
+  await expect(page.locator('#watchStrip a')).toHaveAccessibleName('Stalker (1979), up next');
   await expect(page.locator('#watchStrip canvas.clean')).toHaveCount(1);   // clean and sealed, not worn (that's for a log)
   await expect(page.locator('#watchStrip canvas.worn')).toHaveCount(0);
   await expect(page.locator('#watchStrip a.sealed')).toHaveCount(1);
   await expect(page.locator('#watchAll')).toHaveText('See all');
   await expect(page.locator('#friendsSec')).toBeHidden();
   await page.locator('#watchAll').click();
-  await selected(page, 'Watchlist');
-  expect(new URL(page.url()).hash).toBe('#watchlist');
+  await selected(page, 'Up next');
+  expect(new URL(page.url()).hash).toBe('#upnext');
   expect(errors).toEqual([]);
 });
 
@@ -184,11 +185,11 @@ test('on your own profile the account menu\'s Activity and Network change the ta
 const row = (page, list, title) => page.locator(`#${list} li`).filter({ hasText: title });
 const sent = (page, method, table) => page.waitForRequest(r => r.method() === method && new URL(r.url()).pathname === '/rest/v1/' + table);
 
-test('your watchlist: a strip on Profile; on its tab each cover has Remove and ✓ Mark watched (or read); From friends: Keep · Remove · ✓ Mark watched / read', async ({ page }) => {
+test('your watchlist: a strip on Profile; on its tab each cover has Remove and Mark watched (or read); From friends: Keep · Remove · Mark watched / read', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?tester');
-  await expect(page.locator('#watchSec h2')).toHaveText('Watchlist 2 of 6 See all');
+  await expect(page.locator('#watchSec h2')).toHaveText('Up next 2 of 6 See all');
   await expect(page.locator('#watchStrip li')).toHaveCount(2);
   await expect(page.locator('#watchStrip').getByRole('button')).toHaveCount(0);
   // small covers, up to four in one row: about 100px wide (80px on a phone), 2:3, left-aligned
@@ -200,27 +201,30 @@ test('your watchlist: a strip on Profile; on its tab each cover has Remove and �
   await expect(page.locator('#friendsSec h2')).toHaveText('From friends');
   await expect(page.locator('#friends li')).toHaveCount(2);
   await expect(row(page, 'friends', 'Gummo')).toContainText('from @mira');
-  await expect(row(page, 'friends', 'Gummo').locator('.tacts > button')).toHaveText(['Keep', 'Remove', '✓ Mark watched']);
-  await expect(row(page, 'friends', 'The Waves').locator('.tacts > button')).toHaveText(['Keep', 'Remove', '✓ Mark read']);
+  await expect(row(page, 'friends', 'Gummo').locator('.tacts > button:visible')).toHaveText(['Keep', 'Remove', 'Mark watched']);
+  await expect(row(page, 'friends', 'The Waves').locator('.tacts > button:visible')).toHaveText(['Keep', 'Remove', 'Mark read']);
   // Keep: on your watchlist, saying whose log it came from
   let req = sent(page, 'POST', 'watchlist');
   await row(page, 'friends', 'Gummo').getByRole('button', { name: 'Keep' }).click();
   expect((await req).postDataJSON()).toEqual({ kind: 'movie', title: 'Gummo', author: 'Harmony Korine', year: 1997, cover_src: 'url:https://image.tmdb.org/t/p/w500/gummo.jpg', from_user: PEOPLE[1].id });
-  await expect(page.locator('#toast')).toHaveText('Gummo is on your watchlist.');
+  await expect(page.locator('#toast')).toHaveText('Gummo is in Up next.');
   // Remove, in From friends: kept out for good, by its title
   req = sent(page, 'POST', 'friend_hides');
   await row(page, 'friends', 'The Waves').getByRole('button', { name: 'Remove' }).click();
+  await page.locator('#confirmSheet').getByRole('button', { name: 'Remove' }).click();   // it asks first
   expect((await req).postDataJSON()).toEqual({ item_key: 'book:the waves:1931' });
-  // the Watchlist tab: each cover with Remove and ✓ Mark watched (or read): an action, not a state
-  await page.getByRole('tab', { name: 'Watchlist' }).click();
-  await expect(row(page, 'wGrid', 'Paris, Texas').getByRole('button')).toHaveText(['Remove', '✓ Mark watched']);
+  // the Watchlist tab: each cover with Remove and Mark watched (or read): an action, not a state
+  await page.getByRole('tab', { name: 'Up next' }).click();
+  await expect(row(page, 'wGrid', 'Paris, Texas').getByRole('button')).toHaveText(['Remove', 'Mark watched']);
   await expect(row(page, 'wGrid', 'Paris, Texas').getByRole('button', { name: 'Mark watched', exact: true })).toHaveCount(1);   // the tick isn't read out
-  await expect(row(page, 'wGrid', 'Orlando').getByRole('button')).toHaveText(['Remove', '✓ Mark read']);
+  await expect(row(page, 'wGrid', 'Orlando').getByRole('button')).toHaveText(['Remove', 'Mark read']);
   req = sent(page, 'DELETE', 'watchlist');
   await row(page, 'wGrid', 'Orlando').getByRole('button', { name: 'Remove' }).click();
+  await expect(page.locator('#confirmTitle')).toHaveText('Remove “Orlando” from Up next?');
+  await page.locator('#confirmSheet').getByRole('button', { name: 'Remove' }).click();
   expect(new URL((await req).url()).searchParams.get('id')).toBe('eq.' + WATCHLIST[1].id);
-  await expect(page.locator('#toast')).toHaveText('Orlando is off your watchlist.');
-  // ✓ Mark watched: + ADD's Log it, on that title; Post logs it, and the lists are read again
+  await expect(page.locator('#toast')).toHaveText('Orlando is off Up next.');
+  // Mark watched: + ADD's Log it, on that title; Post logs it, and the lists are read again
   await row(page, 'wGrid', 'Paris, Texas').getByRole('button', { name: 'Mark watched' }).click();
   const d = page.getByRole('dialog', { name: 'What did you watch or read?' });
   await expect(d).toBeVisible();
@@ -244,7 +248,7 @@ test('a database without logs (0007 not run on it): no watchlist, no From friend
   await expect(page.locator('#hero canvas')).toHaveCount(1);
   await expect(page.locator('#watchSec')).toBeHidden();
   await expect(page.locator('#friendsSec')).toBeHidden();
-  await expect(page.getByRole('tab', { name: 'Watchlist' })).toBeHidden();
+  await expect(page.getByRole('tab', { name: 'Up next' })).toBeHidden();
   await tabs(page).nth(1).click();
   await expect(page.locator('#acts .line')).toHaveCount(6);
   await expect(page.locator('#acts .item.log')).toHaveCount(0);
@@ -355,4 +359,31 @@ test('a short bio has no "more"', async ({ page }) => {
   await open(page, '/u/?mira');
   await expect(page.locator('#bio')).toHaveText('Films, mostly.');
   await expect(page.getByRole('button', { name: 'more', exact: true })).toBeHidden();
+});
+
+test('Shelves (N): every shelf of theirs, newest first, its spines on a shelf line and its name under it; a press opens it', async ({ page }) => {
+  const errors = watchErrors(page);
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/u/?mira#shelves');
+  await selected(page, 'Shelves (6)');
+  const rows = page.locator('#sList li');
+  await expect(rows).toHaveCount(6);
+  await expect(rows.first().locator('.sn b')).toHaveText('shelf number 1');   // the one saved last first
+  await expect(rows.last().locator('.sn')).toContainText('main');            // her oldest, the one on her profile
+  await expect(rows.first().locator('.sline canvas')).toHaveCount(3);        // its spines, standing on the line
+  expect(await rows.first().locator('.sline').evaluate(el => getComputedStyle(el).borderBottomWidth)).toBe('1px');
+  await rows.first().click();
+  await expect(page).toHaveURL(/\/u\/\?mira&shelf=aaaaaaaa-aaaa-4aaa-8aaa-000000000001$/);
+  expect(errors).toEqual([]);
+});
+
+test('your own Shelves tab has your private ones too, marked', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await page.route(u => u.pathname === '/rest/v1/shelves' && u.searchParams.get('owner') === 'eq.11111111-1111-4111-8111-111111111111', async route => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    const rows = SHELVES.filter(x => x.owner === '11111111-1111-4111-8111-111111111111').map(x => x.id === SHELVES[3].id ? { ...x, is_public: false } : x);
+    return route.fulfill({ status: 200, headers: { 'Access-Control-Allow-Origin': '*' }, contentType: 'application/json', body: JSON.stringify(rows) });
+  });
+  await open(page, '/u/?tester#shelves');
+  await expect(page.locator('#sList li .tag', { hasText: 'private' })).toHaveCount(1);
 });

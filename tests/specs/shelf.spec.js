@@ -40,7 +40,7 @@ test('someone\'s shelf: its name, who made it and when, the shelf itself, and wh
   await expect(first.locator('.sthumb canvas')).toHaveCount(1);
   // both titles are on the made-up account's own shelf already: "On your shelf", not + Add to my shelf
   await expect(rows(page).locator('.onmine')).toHaveText(['On your shelf', 'On your shelf']);
-  await expect(page.locator('#oneItems').getByRole('button', { name: '+ Add to my shelf' })).toHaveCount(0);
+  await expect(page.locator('#oneItems').getByRole('button', { name: 'Add to my shelf' })).toHaveCount(0);
   // the list is beside the picture on a wide window, its top in line with the picture's; under it on a phone
   const pic = await page.locator('#oneShelf').boundingBox(), list = await page.locator('#oneOn').boundingBox();
   if (test.info().project.name.startsWith('desktop')){
@@ -56,7 +56,7 @@ test('someone\'s shelf: its name, who made it and when, the shelf itself, and wh
 test('+ Add to my shelf puts that same spine on the shelf being built, with no new search', async ({ page }) => {
   const errors = watchErrors(page), net = await mockNetwork(page, { signedIn: true, ownShelf: false });   // signed in, with no shelf yet
   await open(page, `/u/?mira&shelf=${theirs.id}`);
-  await rows(page).nth(1).getByRole('button', { name: '+ Add to my shelf' }).click();
+  await rows(page).nth(1).getByRole('button', { name: 'Add to my shelf' }).click();
   await expect(page).toHaveURL(/\/build\/$/);
   await expect.poll(() => titles(page)).toEqual(['Journey by Moonlight']);
   await expect(page.locator('#toast')).toHaveText('Journey by Moonlight added to your shelf.');
@@ -70,19 +70,19 @@ test('+ Add to my shelf puts that same spine on the shelf being built, with no n
   await page.waitForFunction(() => !!sessionStorage.getItem('spinestack-draft'));
   await page.waitForTimeout(700);
   await open(page, `/u/?mira&shelf=${theirs.id}`);
-  await rows(page).first().getByRole('button', { name: '+ Add to my shelf' }).click();
+  await rows(page).first().getByRole('button', { name: 'Add to my shelf' }).click();
   await expect(page).toHaveURL(/\/build\/$/);
   await expect.poll(() => titles(page)).toEqual(['Journey by Moonlight', 'The Waves']);
   expect(net.asked).toEqual([]);   // nothing was searched for
   expect(errors).toEqual([]);
 });
 
-test('your own shelf: Edit, Make private, and Delete after a confirm', async ({ page }) => {
+test('your own shelf: Edit, Rename, Make main, Make private, and Delete after a confirm', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   const at = `/u/?tester&shelf=${mine.id}`;
   await open(page, at);
-  await expect(page.locator('#oneActs').locator('button:visible, a:visible')).toHaveText(['Edit', 'Make private', 'Delete']);
+  await expect(page.locator('#oneActs').locator('button:visible, a:visible')).toHaveText(['Edit', 'Rename', 'Make main', 'Make private', 'Delete']);
   await expect(page.locator('#oneActs').getByRole('link', { name: 'Edit' })).toHaveAttribute('href', `../build/?open=${mine.id}`);
   // Make private
   let req = sent(page, 'PATCH', `/rest/v1/shelves?id=eq.${mine.id}`);
@@ -128,7 +128,7 @@ test('your own shelf: its name in the heading renames it; nothing says main', as
 test('/u/?name&shelf is their shelf', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?mira&shelf');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('shelf number 1');   // the one saved last
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('untitled shelf');   // her main one: none made main, so her oldest
   await expect(page.locator('#oneItems li')).toHaveCount(2);
   await expect(page.locator('#backLink')).toHaveAttribute('href', '/u/?mira');
 });
@@ -191,7 +191,7 @@ for (const [whose, at] of [['someone\'s public shelf', `/u/?mira&shelf=${theirs.
     await share.click();
     await expect(shareMenu(page)).toBeVisible();
     await expect(share).toHaveAttribute('aria-expanded', 'true');
-    await expect(shareMenu(page).getByRole('menuitem')).toHaveText(['Share to story', 'Download image', 'Copy link']);
+    await expect(shareMenu(page).getByRole('menuitem')).toHaveText(['Share to story', 'Download image', 'Copy link', 'Share to WhatsApp']);
     // Copy link
     await shareMenu(page).getByRole('menuitem', { name: 'Copy link' }).click();
     await expect(shareMenu(page)).toBeHidden();
@@ -255,7 +255,7 @@ test('a shelf that isn\'t there has no Share', async ({ page }) => {
 
 /* ---------- what a dashed link is for ---------- */
 // going somewhere, doing something small and losing something used to look the same (bold capitals, a dashed underline)
-test('the way back is plain grey text, a small action is plain ink, one that loses something is grey; nothing is dashed', async ({ page }) => {
+test('the way back and every small action are plain grey text (black on hover); nothing is dashed', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   const look = loc => loc.evaluate(el => { const s = getComputedStyle(el); return { dashed: s.backgroundImage.includes('repeating-linear-gradient') || s.textDecorationStyle === 'dashed', grey: s.color === 'rgb(107, 107, 107)', capitals: s.textTransform === 'uppercase' }; });
   await open(page, `/u/?mira&shelf=${theirs.id}`);
@@ -263,9 +263,12 @@ test('the way back is plain grey text, a small action is plain ink, one that los
   await expect(back).toHaveText('Back to @mira');
   expect(await look(back)).toEqual({ dashed: false, grey: true, capitals: false });   // going back: it does nothing
   expect(await back.evaluate(el => getComputedStyle(el).fontWeight)).toBe('400');
-  expect(await look(page.getByRole('button', { name: 'Report' }))).toEqual({ dashed: false, grey: false, capitals: false });   // a small action
+  expect(await look(page.getByRole('button', { name: 'Report' }))).toEqual({ dashed: false, grey: true, capitals: false });   // a small action
   await open(page, `/u/?tester&shelf=${mine.id}`);
-  expect(await look(page.getByRole('button', { name: 'Make private' }))).toEqual({ dashed: false, grey: false, capitals: false });
+  const priv = page.getByRole('button', { name: 'Make private' });
+  expect(await look(priv)).toEqual({ dashed: false, grey: true, capitals: false });
+  await priv.hover();
+  expect(await priv.evaluate(el => getComputedStyle(el).color)).toBe('rgb(0, 0, 0)');   // black on hover
   expect(await look(page.getByRole('button', { name: 'Delete' }))).toEqual({ dashed: false, grey: true, capitals: false });    // it loses the shelf
   await back.click();
   await expect(page).toHaveURL(/\/u\/\?tester$/);
@@ -277,7 +280,7 @@ const myShelfHolds = (page, titles) => page.route(u => u.pathname === '/rest/v1/
   if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
   return route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify(titles.map((t, i) => ({ position: i, kind: t[0], title: t[1], year: t[2] }))) });
 });
-const offered = page => page.locator('#oneItems li').evaluateAll(lis => lis.map(li => li.querySelector('[data-add]') ? '+ Add to my shelf' : (li.querySelector('.onmine') || {}).textContent || ''));
+const offered = page => page.locator('#oneItems li').evaluateAll(lis => lis.map(li => li.querySelector('[data-add]') ? 'Add to my shelf' : (li.querySelector('.onmine') || {}).textContent || ''));
 
 test('someone else\'s shelf: a title already on your shelf says "On your shelf" in grey; one that isn\'t has + Add to my shelf', async ({ page }) => {
   const errors = watchErrors(page);
@@ -287,18 +290,18 @@ test('someone else\'s shelf: a title already on your shelf says "On your shelf" 
   await open(page, `/u/?mira&shelf=${theirs.id}`);
   expect(new URL((await asked).url()).searchParams.get('select')).toBe('kind,title,year');   // your own shelf (the one saved last), only what's needed to compare
   await expect(rows(page)).toHaveCount(2);
-  expect(await offered(page)).toEqual(['On your shelf', '+ Add to my shelf']);   // The Waves is on yours; Journey by Moonlight isn't
+  expect(await offered(page)).toEqual(['On your shelf', 'Add to my shelf']);   // The Waves is on yours; Journey by Moonlight isn't
   const said = rows(page).first().locator('.onmine');
   expect(await said.evaluate(el => { const s = getComputedStyle(el); return [s.color, s.fontSize, s.textTransform]; })).toEqual(['rgb(107, 107, 107)', '11px', 'none']);
   await expect(rows(page).first().getByRole('button', { name: /add to my shelf/i })).toHaveCount(0);   // only its watchlist button (specs/watchlist.spec.js)
   // where the button would be: at the right of its row (on a touch screen, just before its •••)
   const more = rows(page).first().locator('.wmorewrap'), end = await more.isVisible() ? (await more.boundingBox()).x : (await rows(page).first().boundingBox()).x + (await rows(page).first().boundingBox()).width;
   const at = await said.boundingBox();
-  expect(Math.abs(at.x + at.width - end)).toBeLessThanOrEqual(13);
+  expect(Math.abs(at.x + at.width - end)).toBeLessThanOrEqual(17);   // one 16px step
   // the same film in another year is another title
   await myShelfHolds(page, [['book', 'The Waves', 2019], ['movie', 'The Waves', 1931]]);
   await open(page, `/u/?mira&shelf=${theirs.id}`);
-  expect(await offered(page)).toEqual(['+ Add to my shelf', '+ Add to my shelf']);
+  expect(await offered(page)).toEqual(['Add to my shelf', 'Add to my shelf']);
   expect(errors).toEqual([]);
 });
 
@@ -316,14 +319,14 @@ test('an older shelf of yours: only the titles that aren\'t on your shelf are of
   await myShelfHolds(page, [['book', 'Journey by Moonlight', 1937]]);
   await open(page, `/u/?tester&shelf=${mine.id}`);   // from before there was one shelf each: not the one saved last
   await expect(rows(page)).toHaveCount(2);
-  expect(await offered(page)).toEqual(['+ Add to my shelf', '']);
+  expect(await offered(page)).toEqual(['Add to my shelf', '']);
 });
 
 test('with no shelf of your own yet, every title is offered', async ({ page }) => {
   await mockNetwork(page, { signedIn: true, ownShelf: false });
   await open(page, `/u/?mira&shelf=${theirs.id}`);
   await expect(rows(page)).toHaveCount(2);
-  expect(await offered(page)).toEqual(['+ Add to my shelf', '+ Add to my shelf']);
+  expect(await offered(page)).toEqual(['Add to my shelf', 'Add to my shelf']);
 });
 
 // Signed out the site is read only: + Add to my shelf is there, and opens the sign-in sheet; once signed in, the
@@ -334,10 +337,10 @@ test('signed out, + Add to my shelf opens the sign-in sheet, and once signed in 
   const signBack = await putAside(page);
   await open(page, `/u/?mira&shelf=${theirs.id}`);
   await expect(rows(page)).toHaveCount(2);
-  expect(await offered(page)).toEqual(['+ Add to my shelf', '+ Add to my shelf']);
+  expect(await offered(page)).toEqual(['Add to my shelf', 'Add to my shelf']);
   for (const t of ['Edit', 'Make private', 'Make public', 'Delete']) await expect(page.locator('main').getByRole('button', { name: t, exact: true })).toHaveCount(0);
   await expect(page.locator('main').getByRole('link', { name: 'Edit', exact: true })).toHaveCount(0);
-  await rows(page).nth(1).getByRole('button', { name: '+ Add to my shelf' }).click();
+  await rows(page).nth(1).getByRole('button', { name: 'Add to my shelf' }).click();
   await expect(page).toHaveURL(new RegExp(`shelf=${theirs.id}$`));   // still here: nothing goes to the builder yet
   await expect(page.locator('#signSheet')).toBeVisible();
   await expect(page.locator('#signSheet .sheetbox p:not(.note)').first()).toHaveText('Sign in to start your shelf.');
@@ -354,6 +357,34 @@ test('if your own shelf can\'t be read, every title is offered, as before', asyn
     route.request().method() === 'OPTIONS' ? route.fulfill({ status: 204, headers: CORS }) : route.fulfill({ status: 500, headers: CORS, contentType: 'application/json', body: '{"message":"no"}' }));
   await open(page, `/u/?mira&shelf=${theirs.id}`);
   await expect(rows(page)).toHaveCount(2);
-  expect(await offered(page)).toEqual(['+ Add to my shelf', '+ Add to my shelf']);
+  expect(await offered(page)).toEqual(['Add to my shelf', 'Add to my shelf']);
 });
 
+
+test('Make main: your shelf becomes the one on your profile; the main one says so instead, and a private one can\'t be', async ({ page }) => {
+  const errors = watchErrors(page);
+  await mockNetwork(page, { signedIn: true });
+  await open(page, `/u/?tester&shelf=${mine.id}`);
+  const req = sent(page, 'PATCH', '/rest/v1/profiles?id=eq.11111111-1111-4111-8111-111111111111');
+  await page.locator('#oneActs').getByRole('button', { name: 'Make main' }).click();
+  expect((await req).postDataJSON()).toEqual({ pinned_shelf_id: mine.id });
+  await expect(page.locator('#toast')).toHaveText('This is your main shelf now: the one on your profile.');
+  // your main one (pinned in the test account): "Main shelf", no button
+  await open(page, `/u/?tester&shelf=${SHELVES[0].id}`);
+  await expect(page.locator('#oneIsMain')).toHaveText('Main shelf');
+  await expect(page.locator('#oneActs').getByRole('button', { name: 'Make main' })).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('Rename: the shelf\'s name in its heading turns into a box, and Enter keeps it', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, `/u/?tester&shelf=${mine.id}`);
+  await page.locator('#oneActs').getByRole('button', { name: 'Rename' }).click();
+  const box = page.getByRole('textbox', { name: 'Shelf name' });
+  await expect(box).toBeFocused();
+  await box.fill('the good ones');
+  const req = sent(page, 'PATCH', `/rest/v1/shelves?id=eq.${mine.id}`);
+  await box.press('Enter');
+  expect((await req).postDataJSON()).toEqual({ name: 'the good ones' });
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('the good ones');
+});

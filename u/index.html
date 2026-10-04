@@ -29,7 +29,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Geist+Mono:wght@400;500&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261012a">
+<link rel="stylesheet" href="../site.css?v=20261014a">
 <style>
 /* the profile (site.css has the cards, the tabs, the sheets and everything shared) */
 .phead{display:grid;grid-template-columns:96px minmax(0,1fr) auto;grid-template-areas:"ava who stats";gap:0 var(--s5);align-items:center}
@@ -39,13 +39,13 @@
 .addphoto{width:100%;height:100%;border-radius:50%;display:grid;place-items:center;font:400 var(--fs-small) var(--mono);color:var(--ink);text-decoration:none}
 .who{grid-area:who;min-width:0}
 .who h1{margin:0}
-.namerow{display:flex;gap:var(--s1) var(--s3);align-items:center;flex-wrap:wrap}
+.namerow{display:flex;gap:var(--s1) var(--s4);align-items:center;flex-wrap:wrap}
 /* under the bio: people you follow who follow them */
 .mutual{margin:0;font-size:var(--fs-small);color:var(--grey);overflow-wrap:anywhere}
 .mutual a{color:var(--ink);font-weight:500;text-decoration:none}
 .mutual a:hover,.mutual a:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .handle{color:var(--grey);margin:var(--s1) 0 0;font-size:var(--fs-card)}
-.pbtns{display:flex;gap:var(--s2);align-items:center;position:relative;margin-top:var(--s3)}
+.pbtns{display:flex;gap:var(--s2);align-items:center;position:relative;margin-top:var(--s4)}
 .menu{position:absolute;top:calc(100% + var(--s1));left:0;z-index:6;background:var(--paper);border:1px solid var(--ink);border-radius:var(--radius);padding:var(--s1) 0;min-width:160px;display:grid}
 .menu button,.menu a{background:none;border:0;font:500 var(--fs-nav) var(--mono);text-align:left;text-decoration:none;padding:var(--s2) var(--s4);cursor:pointer;color:var(--ink)}
 .menu button:hover,.menu a:hover,.menu button:focus-visible,.menu a:focus-visible{background:var(--wash);outline:0}
@@ -82,7 +82,7 @@
 @media (pointer:coarse) and (max-width:640px){ .pbtns{margin-top:var(--s5)} }   /* and the buttons under the line a press away from it */
 #privNote{margin:var(--s4) 0 0}
 .privmsg{margin:var(--s6) 0 0}
-#people{padding-right:2px;max-height:min(60vh,520px);overflow:auto}   /* in the Requests sheet the list scrolls */
+#people{padding-right:var(--s1);max-height:min(60vh,520px);overflow:auto}   /* in the Requests sheet the list scrolls */
 .tabs{margin-top:var(--s5)}
 /* the Profile tab: their shelf, standing on a thin shelf line across the column as home's spine wall does, at one
    spine height (240px; 180px on a phone) from the left, so two spines make a short shelf and twenty fill the row.
@@ -94,13 +94,13 @@
 #featWrap{justify-self:stretch;border-bottom:1px solid var(--ink);line-height:0;padding-top:var(--s2);--sh:240px}
 .hero .pic1{display:block;line-height:0;overflow:hidden;width:min(calc(var(--sh) * var(--wr, 1)), 100%);aspect-ratio:var(--ar, 1)}
 .hero .pic1 canvas{display:block;width:100%;height:auto}
-.featmeta{display:flex;gap:var(--s1) var(--s3);flex-wrap:wrap;align-items:baseline;max-width:100%;font-size:var(--fs-small)}
+.featmeta{display:flex;gap:var(--s1) var(--s4);flex-wrap:wrap;align-items:baseline;max-width:100%;font-size:var(--fs-small)}
 .featmeta b{font-weight:500;font-size:var(--fs-card);min-width:0;max-width:100%}
 .hero .none{justify-self:stretch}
 .pgrid{display:grid;gap:var(--s6);margin-top:var(--s6)}
 .pmain{display:grid;gap:var(--s6);min-width:0}
 /* the watchlist on the Profile tab: up to four of its covers, and See all */
-.wstrip{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,var(--wcov));justify-content:start;gap:var(--s3);--wcov:100px}   /* up to four in one row: 100px covers, 80px on a phone */
+.wstrip{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,var(--wcov));justify-content:start;gap:var(--s4);--wcov:100px}   /* up to four in one row: 100px covers, 80px on a phone */
 .wstrip:empty{display:none}
 .wstrip a{display:block;line-height:0;position:relative}
 .wstrip canvas{display:block;width:100%;height:auto;aspect-ratio:2/3}
@@ -115,7 +115,7 @@
 .wsearch{position:relative;display:grid;gap:var(--s1);max-width:420px;margin-bottom:var(--s5)}
 .wsearch .note{margin:0;min-height:1.5em}
 .wsugg{list-style:none;margin:0;padding:var(--s1) 0;position:absolute;top:calc(100% - 1.5em);left:0;right:0;z-index:7;background:var(--paper);border:1px solid var(--ink);border-radius:var(--radius)}
-.wsugg li{padding:var(--s2) var(--s3);cursor:pointer;display:flex;gap:var(--s1) var(--s2);flex-wrap:wrap;align-items:baseline}
+.wsugg li{padding:var(--s2) var(--s4);cursor:pointer;display:flex;gap:var(--s1) var(--s2);flex-wrap:wrap;align-items:baseline}
 .wsugg li[aria-selected="true"]{background:var(--ink);color:var(--paper)}
 .wsugg .y,.wsugg .k,.wsugg .by{color:var(--grey);font-size:var(--fs-small)}
 .wsugg li[aria-selected="true"] :is(.y,.k,.by){color:inherit}
@@ -126,10 +126,13 @@
 .wcap{font-size:var(--fs-small);overflow-wrap:anywhere}
 .wcap b{font-weight:500}
 .wcap span{color:var(--grey)}
-.wacts{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s2)}   /* one under the other: ✓ Mark watched doesn't fit beside Remove under a cover */
+html:not(.recs-on) .recbtn{display:none}   /* Recommend: only once 0010 is there, signed in */
+.wacts{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s2)}   /* one under the other: Mark watched doesn't fit beside Remove under a cover */
 @media (pointer:coarse){ .wacts{gap:calc(var(--s5) + var(--s1))} }   /* and a press apart (44px, middle to middle) */
 .wplus{display:grid;place-items:center;width:100%;aspect-ratio:2/3;border:1px dashed var(--ink);border-radius:var(--radius);background:var(--paper);color:var(--ink);font:400 32px var(--mono);cursor:pointer;padding:0}
 .wplus:hover{background:var(--wash)}
+.wplus svg{width:20px;height:20px}
+#moreBtn svg{width:16px;height:16px;display:block}
 @media (hover:hover) and (pointer:fine){   /* over the cover, at its foot: the two share the tile's first row */
   .wt .wc,.wt .wcap{grid-row:1;grid-column:1}
   .wt .wcap{align-self:end;z-index:1;padding:var(--s1) var(--s2);background:var(--ink);color:var(--paper);line-height:1.4;opacity:0;transition:opacity .12s;pointer-events:none}
@@ -138,7 +141,7 @@
 }
 /* the watchlist and From friends: a row each, as On this shelf has them */
 .titles{list-style:none;margin:0;padding:0}
-.titles li{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:var(--s3);align-items:center;padding:var(--s2) 0;border-bottom:1px solid var(--hair)}
+.titles li{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:var(--s4);align-items:center;padding:var(--s2) 0;border-bottom:1px solid var(--hair)}
 .titles .tc{display:block;width:40px;aspect-ratio:2/3;border-radius:2px;overflow:hidden;background:var(--wash)}
 .titles .tc img{width:100%;height:100%;object-fit:cover;display:block}
 .titles .tt{display:grid;min-width:0}
@@ -147,7 +150,24 @@
 .titles .tt > span{color:var(--grey);font-size:var(--fs-small);overflow-wrap:anywhere}
 .titles .tt a{color:var(--ink);font-weight:500;text-decoration:none}
 .titles .tt a:hover,.titles .tt a:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
-.tacts{display:flex;gap:var(--s2) var(--s3);align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.tacts{display:flex;gap:var(--s2) var(--s4);align-items:center;flex-wrap:wrap;justify-content:flex-end}
+/* Recs: "12 sent · 7 watched", then (your own) For you · Sent, a row each as Up next has them, the note under the
+   title, and the thread under the row when it's open */
+#panelR{margin-top:var(--s5)}
+.rstats{margin:0 0 var(--s4);color:var(--grey)}
+.recs li{grid-template-columns:40px minmax(0,1fr)}
+.recs .tacts{grid-column:2;justify-content:flex-start}
+.recs .rnote{margin:var(--s1) 0 0;overflow-wrap:anywhere}
+.recs .rstate{display:inline-flex;align-items:center;gap:var(--s1);color:var(--grey);font-size:var(--fs-btn);font-weight:600}
+.recs .rstate svg{width:16px;height:16px}
+.recs .rthread{grid-column:2;display:grid;gap:var(--s2)}
+.recs .rthread[hidden]{display:none}
+.recs .rmsgs{list-style:none;margin:0;padding:0;display:grid;gap:var(--s2)}
+.recs .rmsgs li{display:block;padding:0;border:0;overflow-wrap:anywhere}
+.recs .rmsgs b{font-weight:500}
+.recs .rmsgs time{color:var(--grey);font-size:var(--fs-small)}
+.recs .rform{display:flex;gap:var(--s2);align-items:flex-end}
+.recs .rform textarea{flex:1;min-width:0;resize:vertical}
 .pmain .grey{margin:0}
 #panelA,#panelN,#viewShelf{margin-top:var(--s5)}
 /* Activity: this person's lines (site.css draws them). Network: Following · Followers under the tabs, then the
@@ -169,24 +189,33 @@
 #viewShelf .pic1:empty{display:none}
 #viewShelf .pic1 canvas{display:block;height:auto;width:min(calc(var(--w, 600) * var(--fk) * 1px), 100cqw, calc(var(--hmax) * var(--w, 600) / var(--h, 600)))}
 @media (min-width:821px){ .sgrid{grid-template-columns:minmax(0,1fr) 380px} }
-@media (max-width:640px){ #viewShelf .pic1{--fk:.36;--hmax:340px;padding:var(--s5) var(--s3)} }
+@media (max-width:640px){ #viewShelf .pic1{--fk:.36;--hmax:340px;padding:var(--s5) var(--s4)} }
 /* a shelf's own page: its name, who made it and when, what can be done with it; under the shelf, what's on it */
 .shead{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--s2);margin-bottom:var(--s5)}
 .shead h1{margin:0;min-width:0;max-width:100%}
-.stitle{display:flex;gap:var(--s2) var(--s3);align-items:center;flex-wrap:wrap}
+.stitle{display:flex;gap:var(--s2) var(--s4);align-items:center;flex-wrap:wrap}
 /* Share, by the shelf's name: a small button with an icon */
 .iconbtn{display:grid;place-items:center;flex:none;width:28px;height:28px;padding:0;border:1px solid var(--ink);border-radius:var(--radius);background:var(--paper);color:var(--ink);cursor:pointer}
 .iconbtn:hover,.iconbtn[aria-expanded="true"]{background:var(--wash)}
-.iconbtn svg{width:14px;height:14px;display:block}
+.iconbtn svg{width:16px;height:16px;display:block}
 .sby{margin:0;display:flex;gap:var(--s1) var(--s2);align-items:center;flex-wrap:wrap}
 .sby a{font-weight:500;text-decoration:none}
 .sby a:hover,.sby a:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
-.sacts{display:flex;gap:var(--s3) var(--s4);align-items:center;flex-wrap:wrap;margin-top:var(--s2)}
+.sacts{display:flex;gap:var(--s4) var(--s4);align-items:center;flex-wrap:wrap;margin-top:var(--s2)}
 .onshelf{max-width:680px;min-width:0}
 .spines{list-style:none;margin:0;padding:0}
-.sact{display:flex;align-items:center;gap:var(--s1) var(--s3)}
-.sact [data-log]{margin-right:var(--s3)}   /* Log and + Add to my shelf: a press apart on a touch screen */
-.spines li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:var(--s3);align-items:center;padding:var(--s2) 0;border-bottom:1px solid var(--hair)}
+.sact{display:flex;align-items:center;gap:var(--s1) var(--s4)}
+/* the Shelves tab: each shelf's spines standing on a shelf line, its name under it */
+.slist{list-style:none;margin:var(--s5) 0 0;padding:0;display:grid;gap:var(--s5)}
+.slist a{display:block;text-decoration:none;color:var(--ink)}
+.slist .sline{display:flex;align-items:flex-end;gap:2px;height:64px;border-bottom:1px solid var(--ink);overflow:hidden}
+.slist .sline canvas{display:block;flex:none}
+.slist .sn{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s1) var(--s2);margin-top:var(--s2)}
+.slist .sn b{font-weight:500}
+.slist a:hover .sn b,.slist a:focus-visible .sn b{text-decoration:underline;text-underline-offset:3px}
+.slist .sn .grey{font-size:var(--fs-small)}
+.sact [data-log]{margin-right:var(--s4)}   /* Log and + Add to my shelf: a press apart on a touch screen */
+.spines li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:var(--s4);align-items:center;padding:var(--s2) 0;border-bottom:1px solid var(--hair)}
 .spines .sthumb{display:grid;place-items:center;height:56px}
 .spines .sthumb canvas{display:block}
 .spines .st{display:grid;min-width:0}
@@ -195,7 +224,7 @@
 .spines .st > span{color:var(--grey);font-size:var(--fs-small);overflow-wrap:anywhere}
 .spines .onmine{color:var(--grey);font-size:var(--fs-small);white-space:nowrap}
    /* "On your shelf", where + Add to my shelf would be */
-.row{display:flex;gap:var(--s3) var(--s4);align-items:center;flex-wrap:wrap}
+.row{display:flex;gap:var(--s4) var(--s4);align-items:center;flex-wrap:wrap}
 /* a shelf's name that renames it when pressed (the hero's, and a shelf page's heading) */
 .name{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;cursor:text;text-align:left;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
 .name:hover,.name:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
@@ -205,10 +234,10 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 .tag{vertical-align:1px}
 .addbio{color:var(--grey);text-decoration:none}
 .addbio:hover,.addbio:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
-.none{display:grid;justify-items:center;gap:var(--s3);padding:var(--s5) 0 var(--s2);text-align:center}
+.none{display:grid;justify-items:center;gap:var(--s4);padding:var(--s5) 0 var(--s2);text-align:center}
 .hero .none{padding:0}
 .none p{margin:0}
-.outlines{display:flex;gap:var(--s1);align-items:flex-end;height:180px;margin-bottom:var(--s3)}
+.outlines{display:flex;gap:var(--s1);align-items:flex-end;height:180px;margin-bottom:var(--s4)}
 .outlines i{display:block;width:32px;border:1px dashed var(--ink)}
 /* the way back is plain grey text, in its own case: it goes somewhere, it doesn't do anything. (A dashed underline
    is for a small action; a grey one for an action that loses something: Delete, Remove.) */
@@ -221,7 +250,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 @media (pointer:coarse){
   .iconbtn,.addbio{position:relative}
   :is(.iconbtn,.addbio)::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))}
-  .menu button,.menu a{padding-top:15px;padding-bottom:15px}
+  .menu button,.menu a{padding-top:var(--s4);padding-bottom:var(--s4)}
   .name{position:relative;padding-top:10px;padding-bottom:10px;margin-top:-10px;margin-bottom:-10px}   /* over the date under it, under Edit and Share */
   .featmeta{row-gap:var(--s5)}   /* the name's press clears Edit when it goes under */
   .featmeta .name{z-index:1;padding-top:13px;padding-bottom:13px;margin-top:-13px;margin-bottom:-13px}   /* the hero's, in the small line under the shelf */
@@ -235,7 +264,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
   .statcol:has(> #reqBtn[hidden]){display:none}     /* with no requests waiting, nothing is left in it */
   #reqBtn{justify-self:start}
   #featWrap{--sh:180px}
-  .wstrip{--wcov:80px}
+  .wstrip{--wcov:80px;gap:var(--s2)}
   .titles li{grid-template-columns:40px minmax(0,1fr)}
   .tacts{grid-column:2;justify-content:flex-start}
 }
@@ -243,6 +272,8 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 .items .item.log{position:relative}
 .items .item.log>.wmorewrap{position:absolute;top:-12px;right:0}
 @media (pointer:coarse){.items .item.log .line{padding-right:44px}}
+/* a title, to its page (/t/): 44px to press on a touch screen, as the other small links are */
+@media (pointer:coarse){ :is(.titles .tt b, .spines .st b, .wcap b) a{position:relative} :is(.titles .tt b, .spines .st b, .wcap b) a::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))} }
 </style>
 </head>
 <body>
@@ -252,8 +283,8 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
   <button class="acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false" hidden><span class="ava" aria-hidden="true"></span><span class="who"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
   <nav class="links" aria-label="shelfstackd">
     <a href="../feed/">Feed</a>
-    <a href="../shelves/">Shelves</a><a href="../members/">Members</a>
-    <a class="find" href="../members/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
+    <a href="../shelves/">Shelves</a><a href="../people/">People</a>
+    <a class="find" href="../people/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
     <a class="bell" id="bell" href="../notifications/" aria-label="Notifications" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="dot" hidden></span></a>
   </nav>
   <a class="signin" id="signInBtn" href="#" hidden>Sign in</a>
@@ -281,7 +312,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
         <div class="pbtns">
           <a class="btn ghost sm" id="editBtn" href="../settings/" hidden>Edit profile</a>
           <button class="btn ghost sm follow" id="followBtn" type="button" hidden>Follow</button>
-          <button class="btn ghost sm" id="moreBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More">···</button>
+          <button class="btn ghost sm" id="moreBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
           <div class="menu" id="menu" role="menu" hidden><button type="button" role="menuitem" id="copyLink">Copy link</button><button type="button" role="menuitem" id="reportProfile" hidden>Report</button></div>
         </div>
       </div>
@@ -301,7 +332,9 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
       <nav class="tabs" role="tablist" aria-label="Profile">
         <button type="button" role="tab" id="tabP" data-tab="profile" aria-selected="true" aria-controls="panelP">Profile</button>
         <button type="button" role="tab" id="tabA" data-tab="activity" aria-selected="false" aria-controls="panelA">Activity</button>
-        <button type="button" role="tab" id="tabW" data-tab="watchlist" aria-selected="false" aria-controls="panelW">Watchlist</button>
+        <button type="button" role="tab" id="tabW" data-tab="watchlist" aria-selected="false" aria-controls="panelW">Up next</button>
+        <button type="button" role="tab" id="tabR" data-tab="recs" aria-selected="false" aria-controls="panelR" hidden>Recs</button>
+        <button type="button" role="tab" id="tabS" data-tab="shelves" aria-selected="false" aria-controls="panelS">Shelves</button>
         <button type="button" role="tab" id="tabN" data-tab="network" aria-selected="false" aria-controls="panelN">Network</button>
       </nav>
       <div id="panelP" role="tabpanel" aria-labelledby="tabP">
@@ -313,20 +346,20 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
           <div class="none" id="none" hidden>
             <div class="outlines" aria-hidden="true"><i style="height:150px"></i><i style="height:170px"></i><i style="height:140px"></i><i style="height:162px"></i></div>
             <p id="noneText">No shelf yet.</p>
-            <a class="btn" id="noneMake" href="../build/" hidden>Make your shelf</a>
+            <a class="btn primary" id="noneMake" href="../build/" hidden>Make your shelf</a>
           </div>
         </section>
         <div class="pgrid" id="pgrid">
           <div class="pmain">
             <section id="watchSec" hidden>
-              <h2>Watchlist <small id="watchCount"></small> <a class="more" id="watchAll" href="#watchlist">See all</a></h2>
+              <h2>Up next <small id="watchCount"></small> <a class="more" id="watchAll" href="#upnext">See all</a></h2>
               <ol class="wstrip" id="watchStrip"></ol>
               <p class="grey" id="watchNone" hidden>Nothing saved for later.</p>
             </section>
             <section id="friendsSec" hidden>
               <h2>From friends</h2>
               <ol class="titles" id="friends"></ol>
-              <p class="grey" id="friendsNone" hidden>Your friends haven’t logged anything. <a href="../members/">Find people</a></p>
+              <p class="grey" id="friendsNone" hidden>Your friends haven’t logged anything. <a href="../people/">Find people</a></p>
             </section>
           </div>
         </div>
@@ -340,13 +373,30 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
       <div id="panelW" role="tabpanel" aria-labelledby="tabW" hidden>
         <div class="whead"><p class="wline" id="wLine"></p><button class="dash sm" id="wPrivacy" type="button" hidden>Make public</button><span class="note" id="wPrivNote" hidden></span></div>
         <div class="wsearch" id="wSearch" hidden>
-          <label class="lbl" for="wQ">Add to your watchlist</label>
+          <label class="lbl" for="wQ">Add to Up next</label>
           <input type="text" id="wQ" placeholder="find a film or book" maxlength="120" autocomplete="off">
           <p class="note" id="wSay" role="status"></p>
           <ul class="wsugg" id="wSugg" hidden></ul>
         </div>
         <ol class="wgrid" id="wGrid"></ol>
-        <p class="grey" id="wNone" hidden>Your watchlist is empty.</p>
+        <p class="grey" id="wNone" hidden>Nothing up next.</p>
+      </div>
+      <div id="panelR" role="tabpanel" aria-labelledby="tabR" hidden>
+        <p class="rstats" id="rStats"></p>
+        <div id="rMine" hidden>
+          <nav class="tabs sub" role="tablist" aria-label="Recs">
+            <button type="button" role="tab" id="tabRf" data-rbox="for" aria-selected="true" aria-controls="rPanel">For you</button>
+            <button type="button" role="tab" id="tabRs" data-rbox="sent" aria-selected="false" aria-controls="rPanel">Sent</button>
+          </nav>
+          <div id="rPanel" role="tabpanel" aria-label="Recs">
+            <ol class="titles recs" id="rList"></ol>
+            <p class="grey" id="rNone" hidden></p>
+          </div>
+        </div>
+      </div>
+      <div id="panelS" role="tabpanel" aria-labelledby="tabS" hidden>
+        <ol class="slist" id="sList"></ol>
+        <p class="grey" id="sNone" hidden>No shelves yet.</p>
       </div>
       <div id="panelN" role="tabpanel" aria-labelledby="tabN" hidden>
         <nav class="tabs sub" role="tablist" aria-label="Network">
@@ -373,6 +423,9 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
         <p class="sby" id="oneBy"></p>
         <div class="sacts" id="oneActs">
           <a class="btn" id="openBuilder" href="../build/" hidden>Edit</a>
+          <button class="dash sm" id="oneRename" type="button" hidden>Rename</button>
+          <button class="dash sm" id="oneMain" type="button" data-act="main" hidden>Make main</button>
+          <span class="grey sm" id="oneIsMain" hidden>Main shelf</span>
           <button class="dash sm" id="onePrivacy" type="button" data-act="privacy" hidden>Make private</button>
           <button class="dash sm grey" id="oneDelete" type="button" data-act="delete" hidden>Delete</button>
           <button class="dash sm" id="reportShelf" type="button" hidden>Report</button>
@@ -391,7 +444,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 
 <div class="sheet" id="signSheet" hidden role="dialog" aria-modal="true" aria-label="Sign in">
   <div class="sheetbox">
-    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <button class="x" data-close type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     <div>
       <h2>Sign in</h2>
       <p></p>
@@ -403,7 +456,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 
 <div class="sheet" id="listSheet" hidden role="dialog" aria-modal="true" aria-labelledby="listTitle">
   <div class="sheetbox">
-    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <button class="x" data-close type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     <div>
       <h2 id="listTitle">Requests</h2>
       <ul class="people" id="people"></ul>
@@ -415,18 +468,18 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 
 <div class="sheet" id="confirmSheet" hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
   <div class="sheetbox">
-    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <button class="x" data-close type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     <div>
       <h2 id="confirmTitle">Delete this shelf?</h2>
       <p id="confirmText"></p>
-      <div class="row"><button class="btn" id="confirmYes" type="button">Delete</button><button class="dash sm" data-close type="button">Cancel</button></div>
+      <div class="row"><button class="btn primary" id="confirmYes" type="button">Delete</button><button class="dash sm" data-close type="button">Cancel</button></div>
     </div>
   </div>
 </div>
 
 <div class="sheet" id="reportSheet" hidden role="dialog" aria-modal="true" aria-labelledby="reportTitle">
   <div class="sheetbox">
-    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <button class="x" data-close type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     <div>
       <h2 id="reportTitle">Report</h2>
       <p class="grey" id="reportWhat"></p>
@@ -444,10 +497,9 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
-<script src="../cards.js?v=20261002a"></script>
 <script src="../spinetip.js?v=20261004a"></script>
-<script src="../wear.js?v=20261004a"></script>
-<script src="../nav.js?v=20261012a"></script>
+<script src="../wear.js?v=20261016a"></script>
+<script src="../nav.js?v=20261016a"></script>
 <script>
 (() => {
 /* A profile: /u/?username, and its shelf on its own page: /u/?username&shelf (one shelf each), or a shelf by its id,
@@ -678,12 +730,10 @@ const savedAt = s => s.saved_at || s.updated_at;
 const PROFILE_COLS = 'id,username,display_name,bio,avatar_key,pinned_shelf_id,is_private,created_at';
 const SHELF_COLS = 'id,caption,name,filter,intensity,background,wood,layout,varied,is_public,preview_key,pro,created_at,updated_at,saved_at,shelf_items(count)';
 const fetchShelves = () => api(`shelves?select=${SHELF_COLS}&owner=eq.${view.profile.id}${view.mine ? '' : '&is_public=is.true'}&hidden=is.false&order=saved_at.desc&limit=200`);
-// their shelf: the main one (pinned, from before) when it's set, otherwise the one saved last. The builder opens the
-// same one (yourShelf() there).
-function theShelf(){
-  const p = view.profile, list = view.shelves;
-  return list.find(s => s.id === p.pinned_shelf_id) || list.slice().sort((a, b) => new Date(savedAt(b)) - new Date(savedAt(a)))[0] || null;
-}
+// their main shelf, the profile's hero: the one they made main (pinned_shelf_id), otherwise their oldest. The builder
+// opens the same one (yourShelf() there). The rest are on the Shelves tab.
+const mainOf = (list, pinned) => list.find(s => s.id === pinned) || list.slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at))[0] || null;
+function theShelf(){ return mainOf(view.shelves, view.profile.pinned_shelf_id); }
 let redrawT = 0;
 function redrawAll(){ clearTimeout(redrawT); redrawT = setTimeout(() => { for (const f of view.drawn) f(); }, 60); }
 Shelf.onTextureLoaded(() => redrawAll());
@@ -691,6 +741,12 @@ Shelf.onTextureLoaded(() => redrawAll());
 async function load(){
   await startSession();
   paintAcct();
+  // Recommend, on a spine, a cover in Up next and From friends: signed in, once 0010 is there (recs.js)
+  Nav.loadRecs().then(ok => {
+    view.recs = !!ok; $('#tabR').hidden = !ok;
+    document.documentElement.classList.toggle('recs-on', !!ok && !!(me.user && me.profile));
+    if (ok && /^#(recs|sent)$/.test(location.hash) && view.profile) paintTabs();   // landed on it before 0010 was known to be there
+  });
   if (!NAME){
     if (me.profile){ location.replace(pageUrl(me.profile.username)); return; }
     $('#state').innerHTML = 'Whose shelf? <a href="../build/">Make your own</a>.'; return;
@@ -707,7 +763,7 @@ async function load(){
   view.profile = p; view.mine = !!(me.user && me.user.id === p.id);
   titled(person(p), `${person(p)} on shelfstackd: their shelf, and the films and books they log.`);
   view.shelves = await fetchShelves().catch(() => []);
-  paintStats();
+  paintStats(); paintShelfCount();
   paintHead();
   paintFollow().then(async () => { if (await finishFollow()) paintFollow(); });
   paintKnown();
@@ -724,7 +780,8 @@ async function refresh(){
   const [rows, shelves] = await Promise.all([api(`profiles?select=${PROFILE_COLS}&id=eq.${view.profile.id}`), fetchShelves()]);
   if (rows && rows[0]) view.profile = rows[0];
   view.shelves = shelves; view.drawn = [];
-  paintStats(); paintHead();
+  paintStats(); paintShelfCount(); paintHead();
+  if (!$('#panelS').hidden) paintShelvesTab();
   if (ONE) return showShelf(SHELF || (theShelf() || {}).id || '');
   paintHero();
   if (!$('#panelA').hidden) paintActivity();
@@ -744,7 +801,7 @@ function paintHead(){
   $('#handle').hidden = !name;
   const ava = $('#ava');
   if (p.avatar_key){ ava.className = 'ava'; ava.innerHTML = `<img src="${esc(WORKER + '/m/img?k=' + encodeURIComponent(p.avatar_key))}" alt="${esc(name || p.username)}">`; }
-  else if (mine){ ava.className = 'ava add'; ava.innerHTML = '<a class="addphoto" href="../settings/#photo">+ photo</a>'; }   // Settings, on its Photo tab
+  else if (mine){ ava.className = 'ava add'; ava.innerHTML = '<a class="addphoto" href="../settings/#photo">Add a photo</a>'; }   // Settings, on its Photo tab
   else { ava.className = 'ava'; ava.textContent = (name || p.username).trim()[0] || '·'; ava.setAttribute('aria-hidden', 'true'); }
   $('#editBtn').hidden = !mine;
   $('#reportProfile').hidden = mine;
@@ -756,6 +813,102 @@ function paintHead(){
   $('#since').textContent = 'on shelfstackd since ' + new Date(p.created_at).toLocaleDateString('en-US', {month:'short', year:'numeric'});
 }
 $('#bioMore').addEventListener('click', () => { $('#pbio').classList.add('open'); $('#bioMore').hidden = true; });
+/* ---------- Shelves (N): every shelf of theirs (public ones; yours, private ones too), newest first, each its spines
+   standing on a shelf line with its name under it; pressing one opens its page ---------- */
+function paintShelfCount(){ $('#tabS').textContent = `Shelves (${view.shelves.length})`; }
+let shelvesRun = 0;
+async function paintShelvesTab(){
+  const run = ++shelvesRun, list = view.shelves.slice().sort((a, b) => new Date(savedAt(b)) - new Date(savedAt(a))), main = theShelf();
+  $('#sNone').hidden = !!list.length;
+  $('#sList').replaceChildren(...list.map(s => {
+    const li = document.createElement('li'); li.dataset.id = s.id;
+    li.innerHTML = `<a href="${esc(pageUrl(view.profile.username, s.id))}"><span class="sline" aria-hidden="true"></span>
+      <span class="sn"><b>${esc(shelfName(s))}</b>${s === main ? ' <span class="tag">main</span>' : ''}${s.is_public ? '' : ' <span class="tag">private</span>'}<span class="grey">${esc(spines(countOf(s)))} · ${esc(fmtDate(s.updated_at))}</span></span></a>`;
+    return li;
+  }));
+  if (!list.length) return;
+  let rows = [];
+  try { rows = await api(`shelf_items?select=shelf_id,${ITEM_COLS}&shelf_id=in.(${list.map(s => s.id).join(',')})&order=position`); } catch { return; }
+  await fontsReady;
+  for (const li of $('#sList').children){
+    const mine = await books((rows || []).filter(r => r.shelf_id === li.dataset.id));
+    if (run !== shelvesRun) return;
+    if (mine.length) li.querySelector('.sline').replaceChildren(...smallSpines(mine, 64).map(c => { c.setAttribute('aria-hidden', 'true'); return c; }));
+  }
+}
+
+/* ---------- Recs (0010): "12 sent · 7 watched" for anyone who can see the profile; on your own, For you (what's
+   been recommended to you, waiting or kept: Keep puts it on Up next, Mark watched logs it, saying who recommended it,
+   Dismiss asks first) and Sent (waiting, kept, watched, or passed when they let it go). Each has its thread with the
+   other person: Reply opens it. ---------- */
+let recRun = 0, recBox = 'for', recRows = [];
+const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+async function paintRecs(box){
+  const run = ++recRun, mine = view.mine; recBox = box === 'sent' ? 'sent' : 'for';
+  try { const st = await Recs.stats(view.profile.id); if (run === recRun) $('#rStats').textContent = `${st.sent} sent · ${st.watched} watched`; } catch {}
+  $('#rMine').hidden = !mine;
+  if (!mine) return;
+  for (const b of document.querySelectorAll('#panelR .tabs.sub button')) b.setAttribute('aria-selected', String(b.dataset.rbox === recBox));
+  let rows;
+  try { rows = await Recs.list(recBox); } catch (e){ if (run === recRun){ $('#rList').replaceChildren(); $('#rNone').textContent = friendly(e); $('#rNone').hidden = false; } return; }
+  if (run !== recRun) return;
+  recRows = rows || [];
+  if (recBox === 'for') $('#tabRf').textContent = `For you (${recRows.length})`;
+  $('#rNone').textContent = recBox === 'for' ? 'Nothing recommended to you right now.' : 'You haven’t recommended anything yet.';
+  $('#rNone').hidden = !!recRows.length;
+  $('#rList').replaceChildren(...recRows.map((r, i) => recRow(r, i)));
+}
+const STATE = {open: 'Waiting', kept: 'Kept', watched: '', dismissed: 'Passed'};
+function recRow(r, i){
+  const li = document.createElement('li'); li.dataset.i = i;
+  const sent = recBox === 'sent', who = `<a href="${esc(pageUrl(r.username))}">@${esc(r.username)}</a>`, done = r.kind === 'movie' ? 'Watched' : 'Read';
+  const state = sent ? `<span class="rstate">${r.status === 'watched' ? `${done} ${CHECK}` : esc(STATE[r.status] || '')}</span>`
+    : (r.status === 'open' ? '<button class="dash sm" type="button" data-r="keep">Keep</button>' : '<span class="rstate">Kept</span>')
+      + `<button class="dash sm" type="button" data-r="log">${didIt(r)}</button><button class="dash sm" type="button" data-r="dismiss">Dismiss</button>`;
+  li.innerHTML = `<span class="tc">${r.cover_src ? `<img src="${esc(coverOf(r.cover_src))}" alt="" loading="lazy">` : ''}</span>
+    <span class="tt"><b><a href="${esc(Nav.titleUrl(asItem(r)))}">${esc(r.title)}</a>${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${sent ? 'to' : 'from'} ${who} · ${esc(ago(r.created_at))}</span>${r.note ? `<p class="rnote">${esc(r.note)}</p>` : ''}</span>
+    <span class="tacts">${state}<button class="dash sm" type="button" data-r="thread" aria-expanded="false">Reply${r.replies ? ` (${r.replies})` : ''}</button></span>
+    <div class="rthread" hidden><ol class="rmsgs"></ol><form class="rform"><textarea maxlength="280" rows="1" aria-label="Reply to @${esc(r.username)}" placeholder="Reply to @${esc(r.username)}"></textarea><button class="btn primary sm" type="submit">Send</button></form></div>`;
+  return li;
+}
+function paintThread(li, list){
+  li.querySelector('.rmsgs').replaceChildren(...list.map(m => { const x = document.createElement('li');
+    x.innerHTML = `<b>@${esc(m.username)}</b> ${esc(m.text)} <time datetime="${esc(m.created_at)}">${esc(ago(m.created_at))}</time>`; return x; }));
+}
+$('#rList').addEventListener('click', async e => {
+  const b = e.target.closest('[data-r]'), li = b && b.closest('li[data-i]'), r = li && recRows[+li.dataset.i]; if (!r) return;
+  const act = b.dataset.r, item = asItem(r);
+  if (act === 'log'){ Nav.add({mode: 'log', item, rec: {id: r.id, by: r.username}}); return; }
+  if (act === 'thread'){
+    const box = li.querySelector('.rthread'), open = box.hidden;
+    box.hidden = !open; b.setAttribute('aria-expanded', String(open));
+    if (!open) return;
+    li.querySelector('textarea').focus();
+    try { paintThread(li, await Recs.thread(r.id)); } catch (err){ toast(friendly(err)); }
+    return;
+  }
+  if (act === 'dismiss' && !(await sure(`Dismiss “${r.title}”?`, `It goes from For you. @${r.username} isn’t told.`, 'Dismiss'))) return;
+  b.disabled = true;
+  try {
+    if (act === 'keep'){ await Recs.keep(r.id); toast(`${r.title} is on Up next.`); paintLists(); }
+    else { await Recs.dismiss(r.id); toast('Dismissed.'); }
+    paintRecs(recBox);
+  } catch (err){ toast(Recs.friendly(err)); if (b.isConnected) b.disabled = false; }
+});
+$('#rList').addEventListener('submit', async e => {
+  e.preventDefault();
+  const form = e.target, li = form.closest('li[data-i]'), r = li && recRows[+li.dataset.i], ta = form.querySelector('textarea'), text = ta.value.trim();
+  if (!r || !text) return;
+  const go = form.querySelector('button'); go.disabled = true;
+  try {
+    const m = await Recs.reply(r.id, text);
+    ta.value = ''; r.replies = (r.replies || 0) + 1;
+    li.querySelector('[data-r=thread]').textContent = `Reply (${r.replies})`;
+    li.querySelector('.rmsgs').append(Object.assign(document.createElement('li'), {innerHTML: `<b>@${esc(me.profile.username)}</b> ${esc(m.text || text)} <time datetime="${esc(m.created_at)}">${esc(ago(m.created_at))}</time>`}));
+  } catch (err){ toast(Recs.friendly(err)); }
+  go.disabled = false;
+});
+
 /* the hero: their shelf, big, across the column, the way the builder draws it (shelf.js), cut down to the books.
    Pressing it opens the shelf's page. Its name under it (yours: press it to rename it), and Edit on your own. */
 let heroRun = 0;
@@ -789,19 +942,19 @@ async function paintHero(){
    database without them, neither shows. The watchlist holds Add.WATCH_CAP titles (add.js; 6). On the Profile tab it's
    a strip of up to four covers and See all; its own tab (#watchlist) has them all, clean and still sealed (not worn: that is for a log), with what they want
    to see and read over them. Yours has a box to add one (the + ADD dialog's search, add.js), a dotted + first, and
-   Remove and ✓ Mark watched (or read) on each. From friends (yours only) is what the people you follow logged lately, that you
+   Remove and Mark watched (or read) on each. From friends (yours only) is what the people you follow logged lately, that you
    haven't. A watchlist is private once migration 0008 is run (profiles.watchlist_public):
    until then there's no such column, and it's seen as before, by whoever can see the profile. ---------- */
 const lists = {watch: [], friends: [], privacy: null};   // privacy: null before 0008; then true (public) or false
 const coverOf = ref => ref ? `${WORKER}/img?url=${encodeURIComponent(String(ref).replace(/^url:/, ''))}` : '';
 const asItem = r => ({kind: r.kind, title: r.title, year: r.year ? String(r.year) : '', creator: r.author || '', cover: r.cover_src ? String(r.cover_src).replace(/^url:/, '') : ''});
 // the action, not a state: it logs the title (+ ADD's Log it). The tick is left out of its name for a screen reader
-const didIt = r => `<span aria-hidden="true">✓ </span>Mark ${r.kind === 'movie' ? 'watched' : 'read'}`;
+const didIt = r => `Mark ${r.kind === 'movie' ? 'watched' : 'read'}`;
 // a title: its cover, its name and year, who made it, Film or Book (and whose log it came from), and its buttons
 function titleRow(r, i, acts, from){
   const li = document.createElement('li'); li.dataset.i = i;
   li.innerHTML = `<span class="tc">${r.cover_src ? `<img src="${esc(coverOf(r.cover_src))}" alt="" loading="lazy">` : ''}</span>
-    <span class="tt"><b>${esc(r.title)}${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${esc([r.author, r.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · '))}${from ? ` · from <a href="${esc(pageUrl(from))}">@${esc(from)}</a>` : ''}</span></span>
+    <span class="tt"><b><a href="${esc(Nav.titleUrl(asItem(r)))}">${esc(r.title)}</a>${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${esc([r.author, r.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · '))}${from ? ` · from <a href="${esc(pageUrl(from))}">@${esc(from)}</a>` : ''}</span></span>
     ${acts ? `<span class="tacts">${acts}</span>` : ''}`;
   return li;
 }
@@ -846,12 +999,12 @@ async function paintWatch(){
   $('#watchAll').hidden = !lists.watch.length;
   $('#watchStrip').replaceChildren(...lists.watch.slice(0, 4).map(r => {
     const li = document.createElement('li'), a = document.createElement('a');
-    a.href = '#watchlist'; a.className = 'sealed'; a.setAttribute('aria-label', `${r.title}${r.year ? ` (${r.year})` : ''}, on the watchlist`); a.append(cleanCover(r, 100));
+    a.href = '#upnext'; a.className = 'sealed'; a.setAttribute('aria-label', `${r.title}${r.year ? ` (${r.year})` : ''}, up next`); a.append(cleanCover(r, 100));
     li.append(a); return li;
   }));
   $('#watchNone').hidden = !!lists.watch.length;
   if (!$('#panelW').hidden) paintWatchTab();
-  if (!shown && location.hash === '#watchlist') goTab('');
+  if (!shown && (location.hash === '#upnext' || location.hash === '#watchlist')) goTab('');
 }
 function paintWatchTab(){
   const mine = view.mine, rows = lists.watch;
@@ -866,14 +1019,14 @@ function paintWatchTab(){
   if (mine) watchSearch();
   const tiles = rows.map((r, i) => {
     const li = document.createElement('li'); li.className = 'wt'; li.dataset.i = i;
-    li.innerHTML = `<span class="wc sealed"></span><span class="wcap"><b>${esc(r.title)}</b>${r.year ? ` <span>${esc(r.year)}</span>` : ''}</span>${mine ? `<span class="wacts"><button class="dash sm grey" type="button" data-w="remove">Remove</button><button class="dash sm" type="button" data-w="log">${didIt(r)}</button></span>` : ''}`;
+    li.innerHTML = `<span class="wc sealed"></span><span class="wcap"><b><a href="${esc(Nav.titleUrl(asItem(r)))}">${esc(r.title)}</a></b>${r.year ? ` <span>${esc(r.year)}</span>` : ''}</span>${mine ? `<span class="wacts"><button class="dash sm grey" type="button" data-w="remove">Remove</button><button class="dash sm" type="button" data-w="log">${didIt(r)}</button><button class="dash sm recbtn" type="button" data-w="rec">Recommend</button></span>` : ''}`;
     const wc = li.querySelector('.wc'); wc.append(cleanCover(r));
     if (!mine) Nav.watchable(wc, asItem(r), {moreIn: li});   // someone else's: on yours too
     return li;
   });
   if (mine){
     const plus = document.createElement('li'); plus.className = 'wt';
-    plus.innerHTML = '<button class="wplus" type="button" aria-label="Add a film or book to your watchlist">+</button>';
+    plus.innerHTML = '<button class="wplus" type="button" aria-label="Add a film or book to Up next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>';
     tiles.unshift(plus);
   }
   $('#wGrid').replaceChildren(...tiles);
@@ -886,7 +1039,7 @@ function watchSearch(){
   searching = Nav.loadAdd().then(ok => {
     if (!ok){ $('#wSay').textContent = 'Search couldn’t load. Try again in a moment.'; searching = null; return; }
     Add.attachSearch({input: $('#wQ'), list: $('#wSugg'), say: t => { $('#wSay').textContent = t; }, onPick: async m => {
-      if (lists.watch.length >= Add.WATCH_CAP){ $('#wSay').textContent = `Your watchlist is full (${Add.WATCH_CAP}). Remove one to add another.`; return; }
+      if (lists.watch.length >= Add.WATCH_CAP){ $('#wSay').textContent = `Up next is full (${Add.WATCH_CAP}). Remove one to add another.`; return; }
       $('#wSay').textContent = 'Adding…';
       const r = await Add.watch(m);
       $('#wSay').textContent = r.ok && !r.already ? '' : r.error;
@@ -900,7 +1053,7 @@ $('#wPrivacy').addEventListener('click', async () => {
   try {
     const rows = await api(`profiles?id=eq.${view.profile.id}&select=watchlist_public`, {method: 'PATCH', headers: {Prefer: 'return=representation'}, body: JSON.stringify({watchlist_public: next})});
     if (!rows || !rows[0]) throw new Error('That didn’t save. Try again in a moment.');
-    lists.privacy = rows[0].watchlist_public; toast(lists.privacy ? 'Your watchlist is public.' : 'Your watchlist is private.'); paintWatchTab();
+    lists.privacy = rows[0].watchlist_public; toast(lists.privacy ? 'Your Up next is public.' : 'Your Up next is private.'); paintWatchTab();
   } catch (err){ toast(friendly(err)); }
   b.disabled = false;
 });
@@ -909,32 +1062,36 @@ async function paintFriends(){
   if (view.mine) try { rows = await rpc('from_friends', {n: 6}); } catch {}
   lists.friends = rows || [];
   $('#friendsSec').hidden = !rows;
-  // Keep puts it on your watchlist, Remove takes it out of here for good, ✓ Mark watched (or read) logs it
-  $('#friends').replaceChildren(...lists.friends.map((r, i) => titleRow(r, i, `<button class="dash sm" type="button" data-f="keep">Keep</button><button class="dash sm grey" type="button" data-f="remove">Remove</button><button class="dash sm" type="button" data-f="log">${didIt(r)}</button>`, r.from_username)));
+  // Keep puts it on your watchlist, Remove takes it out of here for good, Mark watched (or read) logs it
+  $('#friends').replaceChildren(...lists.friends.map((r, i) => titleRow(r, i, `<button class="dash sm" type="button" data-f="keep">Keep</button><button class="dash sm grey" type="button" data-f="remove">Remove</button><button class="dash sm" type="button" data-f="log">${didIt(r)}</button><button class="dash sm recbtn" type="button" data-f="rec">Recommend</button>`, r.from_username)));
   $('#friendsNone').hidden = !!lists.friends.length;
   // each cover: a watchlist button (kept from whose log it was), as Keep does
   lists.friends.forEach((r, i) => { const li = $('#friends').children[i]; if (li) Nav.watchable(li.querySelector('.tc'), asItem(r), {from: r.from_id, moreIn: li.querySelector('.tacts')}); });
 }
 function paintLists(){ paintWatch(); paintFriends(); }
-const keptError = e => e && e.code === '23505' ? 'It’s already on your watchlist.' : friendly(e);
+const keptError = e => e && e.code === '23505' ? 'It’s already in Up next.' : friendly(e);
 $('#wGrid').addEventListener('click', async e => {
   const b = e.target.closest('[data-w]'), r = b && lists.watch[+b.closest('li').dataset.i]; if (!r) return;
   if (b.dataset.w === 'log'){ Nav.add({mode: 'log', item: asItem(r)}); return; }
+  if (b.dataset.w === 'rec'){ Nav.recommend(asItem(r)); return; }
+  if (!(await sure(`Remove “${r.title}” from Up next?`, 'It comes off your Up next. You can put it back any time.', 'Remove'))) return;
   b.disabled = true;
   try {
     const rows = await api(`watchlist?id=eq.${r.id}&select=id`, {method: 'DELETE', headers: {Prefer: 'return=representation'}});
     if (!rows || !rows[0]) throw new Error('Couldn’t take it off. Sign in again and try once more.');
-    toast(`${r.title} is off your watchlist.`); paintLists();
+    toast(`${r.title} is off Up next.`); paintLists();
   } catch (err){ toast(friendly(err)); if (b.isConnected) b.disabled = false; }
 });
 $('#friends').addEventListener('click', async e => {
   const b = e.target.closest('[data-f]'), r = b && lists.friends[+b.closest('li').dataset.i]; if (!r) return;
   if (b.dataset.f === 'log'){ Nav.add({mode: 'log', item: asItem(r)}); return; }
+  if (b.dataset.f === 'rec'){ Nav.recommend(asItem(r)); return; }
+  if (b.dataset.f === 'remove' && !(await sure(`Remove “${r.title}”?`, 'It won’t come back here.', 'Remove'))) return;
   b.disabled = true;
   try {
     if (b.dataset.f === 'keep'){
       await api('watchlist', {method: 'POST', headers: {Prefer: 'return=minimal'}, body: JSON.stringify({kind: r.kind, title: r.title, author: r.author || '', year: r.year || null, cover_src: r.cover_src || null, from_user: r.from_id})});
-      toast(`${r.title} is on your watchlist.`);
+      toast(`${r.title} is in Up next.`);
     } else {
       await api('friend_hides', {method: 'POST', headers: {Prefer: 'return=minimal'}, body: JSON.stringify({item_key: r.item_key})});
       toast(`Removed ${r.title}.`);
@@ -942,10 +1099,11 @@ $('#friends').addEventListener('click', async e => {
     paintLists();
   } catch (err){ toast(keptError(err)); if (b.isConnected) b.disabled = false; }
 });
-// something logged or put on the watchlist with + ADD on this page (a ✓ Mark watched here, too): the lists and Activity again
+// something logged or put on the watchlist with + ADD on this page (a Mark watched here, too): the lists and Activity again
 document.addEventListener('shelfstackd:added', () => {
   if (!view.mine || ONE) return;
   paintLists();
+  if (!$('#panelR').hidden) paintRecs(recBox);
   if (!$('#panelA').hidden) paintActivity();
 });
 /* ---------- one shelf on its own page: its name, who made it and when, what can be done with it, the shelf itself
@@ -953,14 +1111,14 @@ document.addEventListener('shelfstackd:added', () => {
    (signed out, it's the sign-in sheet first) ---------- */
 const shown = {shelf: null, rows: [], list: [], wall: null, pngs: [], onMine: null};   // the shelf on the page: its saved rows, the books made from them (the same order), its wall and PNGs; onMine: the titles on your own shelf (see titlesOnMine)
 /* What's already on your own shelf, so a title that's there isn't offered to it again. Your shelf is the main one if
-   one was picked before, otherwise the one saved last (as theShelf() has it, and the builder). A title is the same
+   one was picked, otherwise the oldest (as theShelf() has it, and the builder). A title is the same
    title by its kind, its name and its year. */
 const titleKey = r => [r.kind, String(r.title || '').trim().toLowerCase(), r.year || ''].join('|');
 async function myShelfId(){
   if (!me.profile) return '';
   if (view.mine) return (theShelf() || {}).id || '';
-  const list = await api(`shelves?select=id,saved_at,updated_at&owner=eq.${me.user.id}&hidden=is.false&order=saved_at.desc&limit=200`);
-  return (list.find(s => s.id === me.profile.pinned_shelf_id) || list.slice().sort((a, b) => new Date(savedAt(b)) - new Date(savedAt(a)))[0] || {}).id || '';
+  const list = await api(`shelves?select=id,created_at&owner=eq.${me.user.id}&hidden=is.false&limit=200`);
+  return (mainOf(list, me.profile.pinned_shelf_id) || {}).id || '';
 }
 // the rows of your shelf, to compare with the rows of the shelf shown (id): null when it's that very shelf, [] with
 // no shelf or signed out, undefined when it couldn't be read (then every row offers + Add, as before)
@@ -984,7 +1142,7 @@ async function showShelf(id){
     // no shelf yet (&shelf), or one that's private or gone (&shelf=<id>); yours: the way to make it
     $('#oneCap').textContent = !id ? (mine ? 'This shelf has no spines.' : 'Nothing shelved here yet.') : 'This shelf is private or gone.';
     $('#oneShelf').replaceChildren();
-    for (const b of [$('#onePrivacy'), $('#oneDelete'), $('#reportShelf')]) b.hidden = true;
+    for (const b of [$('#onePrivacy'), $('#oneDelete'), $('#reportShelf'), $('#oneRename'), $('#oneMain'), $('#oneIsMain')]) b.hidden = true;
     $('#openBuilder').hidden = !(mine && !id); $('#openBuilder').textContent = 'Make your shelf'; $('#openBuilder').href = '../build/';
     return;
   }
@@ -994,6 +1152,11 @@ async function showShelf(id){
   // yours: Edit, Make private or public, Delete. Anyone else's: Report.
   $('#openBuilder').hidden = !mine; $('#openBuilder').textContent = 'Edit'; $('#openBuilder').href = '../build/?open=' + s.id;
   for (const [b, on] of [[$('#onePrivacy'), mine], [$('#oneDelete'), mine]]){ b.hidden = !on; b.dataset.id = s.id; b.disabled = false; }
+  // yours: Rename; Make main for a public one that isn't (a private shelf can't be the one on your profile), or "Main shelf"
+  const isMain = theShelf() === s;
+  $('#oneRename').hidden = !mine;
+  $('#oneMain').hidden = !(mine && !isMain && s.is_public); $('#oneMain').dataset.id = s.id; $('#oneMain').disabled = false;
+  $('#oneIsMain').hidden = !(mine && isMain);
   $('#onePrivacy').textContent = s.is_public ? 'Make private' : 'Make public';
   $('#reportShelf').hidden = mine; $('#reportShelf').dataset.id = s.id;
   titled(`${shelfName(s)} by ${person(p)}`, `${shelfName(s)}: a shelf by ${person(p)} on shelfstackd.`);
@@ -1020,8 +1183,8 @@ function paintItems(){
   ol.replaceChildren(...shown.rows.map((r, i) => {
     const li = document.createElement('li'); li.dataset.i = i;
     li.innerHTML = `<span class="sthumb"></span>
-      <span class="st"><b>${esc(r.title || 'Untitled')}${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${esc([r.author, r.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · '))}</span></span>
-      <span class="sact"><button class="dash sm" type="button" data-log="${i}">Log</button>${!have(r) ? `<button class="dash sm" type="button" data-add="${i}">+ Add to my shelf</button>` : view.mine ? '' : '<span class="onmine">On your shelf</span>'}</span>`;
+      <span class="st"><b>${r.title ? `<a href="${esc(Nav.titleUrl(asItem(r)))}">${esc(r.title)}</a>` : 'Untitled'}${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${esc([r.author, r.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · '))}</span></span>
+      <span class="sact"><button class="dash sm" type="button" data-log="${i}">Log</button><button class="dash sm recbtn" type="button" data-rec="${i}">Recommend</button>${!have(r) ? `<button class="dash sm" type="button" data-add="${i}">Add to my shelf</button>` : view.mine ? '' : '<span class="onmine">On your shelf</span>'}</span>`;
     // someone else's shelf: each spine onto your watchlist too
     if (!view.mine) Nav.watchable(li.querySelector('.sthumb'), {kind: r.kind, title: r.title, year: r.year ? String(r.year) : '', creator: r.author || '', cover: /^url:/.test(r.cover_src || '') ? r.cover_src.slice(4) : ''}, {moreIn: li.querySelector('.sact')});
     return li;
@@ -1037,6 +1200,8 @@ $('#oneItems').addEventListener('click', e => {
   // Log: this title in + ADD's Log it (signed out, the sign-in sheet first)
   const lg = e.target.closest('[data-log]'), lr = lg && shown.rows[+lg.dataset.log];
   if (lr){ if (Nav.visitor()) Nav.needAccount('add'); else Nav.add({mode: 'log', item: asItem(lr)}); return; }
+  const rc = e.target.closest('[data-rec]'), rr = rc && shown.rows[+rc.dataset.rec];
+  if (rr){ Nav.recommend(asItem(rr)); return; }
   const b = e.target.closest('[data-add]'), r = b && shown.rows[+b.dataset.add]; if (!r) return;
   try { sessionStorage.setItem(ADD_ROW, JSON.stringify({at: Date.now(), row: {kind: r.kind, title: r.title, author: r.author, year: r.year, spine_src: r.spine_src, cover_src: r.cover_src, look: r.look}})); }
   catch { toast('Couldn’t take it to the builder. Try again.'); return; }
@@ -1064,6 +1229,11 @@ function saveFile(blob){
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
 async function shareShelf(what){
+  if (what === 'whatsapp'){   // WhatsApp, with the shelf's name and its link
+    const url = location.origin + pageUrl(view.profile.username, shown.shelf.id);
+    window.open(Nav.whatsapp(`${shelfName(shown.shelf)} by @${view.profile.username} on shelfstackd:`, url), '_blank', 'noopener');
+    return;
+  }
   if (what === 'link'){
     const url = location.origin + pageUrl(view.profile.username, shown.shelf.id);
     try { await navigator.clipboard.writeText(url); toast('Link copied.'); } catch { toast(url); }
@@ -1084,15 +1254,21 @@ async function shareShelf(what){
   saveFile(blob); toast('Downloaded ' + STORY_FILE + '.');
 }
 $('#oneActs').addEventListener('click', e => { const act = e.target.closest('[data-act]'); if (act) cardAction(act); });
+// Rename: the same as pressing the shelf's name in the heading
+$('#oneRename').addEventListener('click', () => { const b = $('#oneCap button[data-rename]'); if (b) startRename(b); });
 
-/* ---------- your shelf, from its page: Make private or public, Delete (Edit is a link to the builder) ---------- */
+/* ---------- your shelf, from its page: Make main, Make private or public, Delete (Edit is a link to the builder) ---------- */
 async function cardAction(b){
   const act = b.dataset.act, id = b.dataset.id, s = view.shelves.find(x => x.id === id);
   if (!s) return;
   if (act === 'delete' && !(await sure(`Delete “${shelfName(s)}”?`, 'The shelf and its picture go for good. This can’t be undone.', 'Delete'))) return;
   b.disabled = true;
   try {
-    if (act === 'privacy'){
+    if (act === 'main'){
+      const rows = await api(`profiles?id=eq.${view.profile.id}&select=id,pinned_shelf_id`, {method:'PATCH', headers:{Prefer:'return=representation'}, body: JSON.stringify({pinned_shelf_id: id})});
+      if (!rows || !rows[0]) throw new Error('Couldn’t change it. Sign in again and try once more.');
+      await refresh(); toast('This is your main shelf now: the one on your profile.');
+    } else if (act === 'privacy'){
       const rows = await api(`shelves?id=eq.${id}&select=id`, {method:'PATCH', headers:{Prefer:'return=representation'}, body: JSON.stringify({is_public: !s.is_public})});
       if (!rows || !rows[0]) throw new Error('Couldn’t change it. Sign in again and try once more.');
       await refresh(); toast(s.is_public ? 'Only you can see this shelf now.' : 'This shelf shows on your profile again.');
@@ -1136,7 +1312,7 @@ function startRename(btn){
   f.addEventListener('blur', () => finish(true, false));
 }
 document.addEventListener('click', e => { const b = e.target.closest('button[data-rename]'); if (b && view.mine){ e.preventDefault(); startRename(b); } });
-/* The small menu under Share on a shelf's page (Share to story, Download image, Copy link), put under the button,
+/* The small menu under Share on a shelf's page (Share to story, Download image, Copy link, Share to WhatsApp), put under the button,
    inside the window. */
 const cardMenu = document.createElement('div');
 cardMenu.id = 'cardMenu'; cardMenu.className = 'menu cardmenu'; cardMenu.setAttribute('role', 'menu'); cardMenu.hidden = true;
@@ -1157,7 +1333,7 @@ function closeCardMenu(refocus){
 function openCardMenu(btn){
   if (!shown.shelf) return;
   closeCardMenu(false); closeMenu();
-  cardMenu.innerHTML = [['story', 'Share to story'], ['download', 'Download image'], ['link', 'Copy link']].map(([k, text]) => `<button type="button" role="menuitem" data-share="${k}">${text}</button>`).join('');
+  cardMenu.innerHTML = [['story', 'Share to story'], ['download', 'Download image'], ['link', 'Copy link'], ['whatsapp', 'Share to WhatsApp']].map(([k, text]) => `<button type="button" role="menuitem" data-share="${k}">${text}</button>`).join('');
   cardMenu.setAttribute('aria-label', 'Share');
   cardMenu.hidden = false; cardBtn = btn; btn.setAttribute('aria-expanded', 'true');
   placeCardMenu(); cardMenu.firstElementChild.focus();
@@ -1294,7 +1470,7 @@ async function showPrivate(card){
    30 at a time ---------- */
 const LIST_NONE = {followers: 'No followers yet.', following: 'Not following anyone yet.', requests: 'No requests waiting.'};
 // your own lists say what to do next
-const LIST_NONE_MINE = {followers: 'Nobody follows you yet.', following: 'You follow nobody yet. <a href="../members/">Find people</a>'};
+const LIST_NONE_MINE = {followers: 'Nobody follows you yet.', following: 'You follow nobody yet. <a href="../people/">Find people</a>'};
 // one person: photo, name, and FOLLOW (or, for a request, Accept and Decline). list: the list the row is in
 function personRow(x, kind, list){
   const li = document.createElement('li'), name = (x.display_name || '').trim(), href = pageUrl(x.username);
@@ -1303,7 +1479,7 @@ function personRow(x, kind, list){
     <a class="pn" href="${esc(href)}"><b>${esc(name || '@' + x.username)}</b><span>@${esc(x.username)}</span></a><div class="acts"></div>`;
   const acts = li.querySelector('.acts');
   if (kind === 'requests'){
-    acts.innerHTML = '<button class="btn sm" type="button" data-answer="1">Accept</button><button class="dash sm" type="button" data-answer="0">Decline</button>';
+    acts.innerHTML = '<button class="btn primary sm" type="button" data-answer="1">Accept</button><button class="dash sm" type="button" data-answer="0">Decline</button>';
     acts.addEventListener('click', async e => {
       const b = e.target.closest('[data-answer]'); if (!b) return;
       acts.querySelectorAll('button').forEach(y => { y.disabled = true; });
@@ -1349,7 +1525,7 @@ document.querySelectorAll('.statlink').forEach(d => {
   d.addEventListener('click', () => goTab(d.dataset.list === 'followers' ? '#followers' : '#network'));   // its button too: Enter and Space click it
 });
 for (const a of document.querySelectorAll('#cFollowing, #cFollowers')) a.addEventListener('click', e => { e.preventDefault(); goTab(a.getAttribute('href')); });
-$('#watchSec').addEventListener('click', e => { const a = e.target.closest('a[href="#watchlist"]'); if (a){ e.preventDefault(); goTab('#watchlist'); scrollTo(0, 0); } });   // the phone's line does the same
+$('#watchSec').addEventListener('click', e => { const a = e.target.closest('a[href="#upnext"]'); if (a){ e.preventDefault(); goTab('#upnext'); scrollTo(0, 0); } });   // the phone's line does the same
 
 /* ---------- the Activity tab: a line for each shelf saved and each film or book logged, newest first (the feed's
    lines, without the photo: they're all this person's). On your own profile a private shelf is there too, marked, and
@@ -1365,9 +1541,9 @@ function actLine(x){
   if (x.log){
     const l = x.log, verb = l.kind === 'movie' ? 'watched' : 'read';
     li.classList.add('log');
-    li.innerHTML = `<p class="line">${who} ${verb} <a href="../p/?${esc(l.id)}"><b>${esc(l.title)}</b></a> ${when(l.created_at, day(l.created_at))}${view.mine ? ` <button class="dash sm grey" type="button" data-unlog="${esc(l.id)}">Delete</button>` : ` <button class="dash sm" type="button" data-relog="${esc(l.id)}">Log</button>`}</p>
+    li.innerHTML = `<p class="line">${who} ${verb} <a href="${esc(Nav.titleUrl(asItem(l)))}"><b>${esc(l.title)}</b></a> <a class="ago" href="../p/?${esc(l.id)}">· <time datetime="${esc(l.created_at)}" title="${esc(new Date(l.created_at).toLocaleString())}">${day(l.created_at)}</time></a>${view.mine ? ` <button class="dash sm grey" type="button" data-unlog="${esc(l.id)}">Delete</button>` : ` <button class="dash sm" type="button" data-relog="${esc(l.id)}">Log</button>`}</p>
       <div class="logbody"><span class="cover"></span>${l.caption ? `<p class="say">${esc(l.caption)}</p>` : ''}</div>`;
-    li.querySelector('.cover').append(Wear.cover({src: coverOf(l.cover_src), seed: l.id, at: l.created_at, label: `${l.title}${l.year ? ` (${l.year})` : ''}, ${verb} by @${p.username}`, width: COVER}));
+    li.querySelector('.cover').append(Wear.cover({kind: l.kind, src: coverOf(l.cover_src), seed: l.id, at: l.created_at, label: `${l.title}${l.year ? ` (${l.year})` : ''}, ${verb} by @${p.username}`, width: COVER}));
     if (!view.mine) Nav.watchable(li.querySelector('.cover'), asItem(l), {moreIn: li});   // someone else's log: onto your watchlist
     return li;
   }
@@ -1417,30 +1593,34 @@ $('#acts').addEventListener('click', async e => {
   } catch (err){ toast(friendly(err)); if (b.isConnected) b.disabled = false; }
 });
 
-/* ---------- tabs: Profile · Activity (#activity) · Watchlist (#watchlist) · Network (#network is Following, #followers is Followers). The
+/* ---------- tabs: Profile · Activity (#activity) · Up next (#upnext; #watchlist, its old name, too) · Shelves (#shelves) · Network (#network is Following, #followers is Followers). The
    address has the tab, so a reload lands on it, and so do the account menu's links. #shelves, from when there was a
    Shelves tab, is Profile. ---------- */
-const HASH = {'': ['profile'], '#shelves': ['profile'], '#activity': ['activity'], '#watchlist': ['watchlist'], '#network': ['network', 'following'], '#following': ['network', 'following'], '#followers': ['network', 'followers']};
-const PANEL = {profile: '#panelP', activity: '#panelA', watchlist: '#panelW', network: '#panelN'};
+const HASH = {'': ['profile'], '#recs': ['recs', 'for'], '#sent': ['recs', 'sent'], '#shelves': ['shelves'], '#activity': ['activity'], '#upnext': ['watchlist'], '#watchlist': ['watchlist'], '#network': ['network', 'following'], '#following': ['network', 'following'], '#followers': ['network', 'followers']};
+const PANEL = {profile: '#panelP', activity: '#panelA', watchlist: '#panelW', recs: '#panelR', shelves: '#panelS', network: '#panelN'};
 function paintTabs(){
   let [tab, net] = HASH[location.hash] || HASH[''];
   if (tab === 'watchlist' && $('#tabW').hidden) tab = 'profile';   // a watchlist that isn't shown (private, or no database for it)
+  if (tab === 'recs' && $('#tabR').hidden) tab = 'profile';        // no recs in the database yet
   for (const b of document.querySelectorAll('#viewProfile > .tabs button')){ const on = b.dataset.tab === tab; b.setAttribute('aria-selected', String(on)); $(PANEL[b.dataset.tab]).hidden = !on; }
   if (tab === 'activity') paintActivity();
   if (tab === 'watchlist') paintWatchTab();
+  if (tab === 'shelves') paintShelvesTab();
+  if (tab === 'recs') paintRecs(net);
   if (tab === 'network'){
-    for (const b of document.querySelectorAll('.tabs.sub button')) b.setAttribute('aria-selected', String(b.dataset.net === net));
+    for (const b of document.querySelectorAll('#panelN .tabs.sub button')) b.setAttribute('aria-selected', String(b.dataset.net === net));
     if (netShown !== net){ netShown = net; netList.open(net); }
   }
 }
 function goTab(hash){ history.replaceState(null, '', location.pathname + location.search + hash); paintTabs(); }
 document.querySelector('#viewProfile > .tabs').addEventListener('click', e => {
-  const b = e.target.closest('[data-tab]'); if (b) goTab({profile: '', activity: '#activity', watchlist: '#watchlist', network: '#network'}[b.dataset.tab]);
+  const b = e.target.closest('[data-tab]'); if (b) goTab({profile: '', activity: '#activity', watchlist: '#upnext', recs: '#recs', shelves: '#shelves', network: '#network'}[b.dataset.tab]);
 });
-document.querySelector('.tabs.sub').addEventListener('click', e => { const b = e.target.closest('[data-net]'); if (b) goTab(b.dataset.net === 'followers' ? '#followers' : '#network'); });
+document.querySelector('#panelN .tabs.sub').addEventListener('click', e => { const b = e.target.closest('[data-net]'); if (b) goTab(b.dataset.net === 'followers' ? '#followers' : '#network'); });
+document.querySelector('#panelR .tabs.sub').addEventListener('click', e => { const b = e.target.closest('[data-rbox]'); if (b) goTab(b.dataset.rbox === 'sent' ? '#sent' : '#recs'); });
 // ← → move between the tabs of a row
 for (const row of document.querySelectorAll('#viewProfile .tabs')) row.addEventListener('keydown', e => {
-  const all = [...row.querySelectorAll('button')], i = all.indexOf(document.activeElement); if (i < 0 || (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft')) return;
+  const all = [...row.querySelectorAll('button:not([hidden])')], i = all.indexOf(document.activeElement);   // not a tab that isn't there (Up next private, Recs before 0010) if (i < 0 || (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft')) return;
   const next = all[(i + (e.key === 'ArrowRight' ? 1 : all.length - 1)) % all.length]; next.focus(); next.click();
 });
 // a link to another tab of this same page (the account menu's Activity and Network on your own profile)

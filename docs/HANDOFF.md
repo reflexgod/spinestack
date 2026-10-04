@@ -6,10 +6,74 @@ session"), again after the launch pass (see "Done in the second cloud session"),
 the design review was applied (see "Done in the third session"). Read this first, then `README.md`, which says what
 every file is and how the Worker, the accounts and the tests are set up.
 
+## Done on 5 October 2026 (phase 6: material wear)
+
+- `wear.js` draws a logged film as a DVD keep case and a logged book as a paperback (see README); every caller passes
+  the log's kind (no kind: a paperback). This was the one planned change to wear drawing; shelf.js and the spines are
+  untouched. `specs/wear.spec.js` is rewritten for both. No SQL, nothing for the Worker.
+- **Tested:** `cd tests && npm run test:all` after Phase 6: html-validate clean, then Playwright 830 passed, 24
+  skipped, none failed; `cd worker && npm test`: 38 checks.
+- **My calls:** the pencilled price is £ or $ with a made-up amount, in Gochi Hand where the page has it (a cursive
+  otherwise), at the top left (the dog-ear is top right); on a dark cover it's faint, as pencil is. The crack is at
+  one of the four corners, the chip taken out of the plastic (see-through there).
+
+## Done on 5 October 2026 (phase 5: the title page)
+
+- **Worker, not deployed:** `/identify` gives each film its TMDB id and each book its Open Library work id (its cache
+  key is `id8` now, so answers are asked for again once), and `GET /title` (details for the page, its archived spine;
+  edge-cached a week, no KV write). `cd worker && npm test`: 38 checks pass. Until it's deployed the title page shows
+  what a link says (title, year) and everything people did with it, without the director, runtime, genres, overview or
+  spine. To deploy: `cd worker && npx wrangler deploy`.
+- **The page:** `/t/` (`t/index.html`), linked from every title (`Nav.titleUrl()`): see README. No SQL: it reads the
+  logs and spines with the same kind, title and year (what RLS lets you see), so a title spelled differently in two
+  logs counts as two.
+- **Tested:** `cd tests && npm run test:all` after Phase 5: html-validate clean, then Playwright 826 passed, 24
+  skipped, none failed.
+- **My calls:** "Your review" rates and then posts in one go (a log can't be edited after, with no update policy on
+  logs); the reviews are logs with a rating or something said, 20 a tab; Up next isn't offered once you've logged it.
+
+## Done on 5 October 2026 (phase 4: recs)
+
+- **SQL, run:** the owner ran `supabase/migrations/0010_recs.sql` and its test `supabase/tests/rls_phase7.sql` in the
+  SQL Editor (`ALL 0010 CHECKS PASSED`); both moved from `docs/proposed-*` with only their headers changed. Nothing
+  for the Worker.
+- **The pages (shown only once 0010 answers, `Nav.loadRecs()`):** `recs.js`, the Recommend sheet (the people you both
+  follow, a note of 140, Show in feed, Send, Share to WhatsApp), on a post's share menu, + ADD's fourth choice, a
+  shelf's spines, Up next and From friends; the profile's Recs tab (counts for anyone; For you and Sent on your own,
+  with Keep, Mark watched, Dismiss and a private thread); the feed reads `timeline()` (recs in it, never the note) and
+  a log from a rec says "recommended by @a"; notifications for a rec, a rec watched and a thread reply.
+- **Share to WhatsApp:** posts' share menu, the Recommend sheet and a shelf's Share (works without 0010).
+- **Tested:** `cd tests && npm run test:all` after Phase 4: html-validate clean, then Playwright 785 passed, 23
+  skipped, none failed.
+- **My calls:** a rec the receiver let go shows "Passed" in the sender's Sent; Share to WhatsApp on a rec is the
+  sheet's (a rec itself is private); a rec in the feed has no page of its own yet (the title page is Phase 5).
+
+## Done on 5 October 2026 (phase 3 of the owner's plan, and 3a before it)
+
+No new SQL, nothing for the Worker. Each item its own commit on `letterboxd-flow`.
+
+- **3a, the feed redesign.** One 600px timeline, sticky Friends · Everyone, a tweet-box composer, posts like tweets
+  (photo, name @user · 2h, the title in bold, a spine rating, the worn cover 72px at the right, reply · Same · like ·
+  share), shelf saves as compact posts with a strip of the new spines, ratings as 1 to 5 spines in the logo colours,
+  our own words (Up next, People, Same, Friends · Everyone; old addresses still work), People to follow on an empty
+  Friends tab.
+- **More than one shelf again.** The profile shows the main one (pinned, otherwise the oldest); a Shelves (N) tab lists
+  them all; New shelf in the builder; + ADD asks which shelf; Make main, Rename and Delete on your shelf's page; the
+  feed names the shelf. No SQL: `profiles.pinned_shelf_id` (0002) is the main one.
+- **Phase 3.** Two button looks (solid black, or grey text that's black on hover; Following grey, Unfollow on hover);
+  Delete, Remove and Clear ask first on the page's own sheet; actions start with a verb (Go home, See all, Show
+  spoilers, Add to Up next, Add to my shelf, Add a photo, Edit your shelf); one icon set (Lucide, stroke 2, 16 or
+  20px; no glyph or emoji for one); one 8px spacing scale (the 12px step is 16 now; buttons 8px 16px); the welcome
+  line 22px, 20px on a phone; one section label (h2, and `.seclabel`); no boxed cards round shelves (spines on a thin
+  line, `Bare.tile` and `Bare.lines`; `cards.js` is gone); covers with a 1px outline, black on hover; Just shelved
+  with fewer than three shelves puts each across the column on one long line. Phase 3 item 12 wasn't in the plan.
+- **Tested:** `cd tests && npm run test:all` after Phase 3: html-validate clean, then Playwright 749 passed, 23
+  skipped, none failed.
+
 ## Done on 4 October 2026 (phases 0 to 2 of the owner's plan)
 
 Live data had 4 people with shelves (all films, no books) and no logs. The plan: the logo, book spines, then the feed
-as posts. Each item is its own commit on `letterboxd-flow`; nothing is merged into `main`. Phase 3 hasn't started.
+as posts. Each item is its own commit on `letterboxd-flow`; nothing is merged into `main`.
 
 - **Phase 0, the logo.** `assets/logo-hedgehog.svg` is the favicon (SVG, 32px, 180px on #14181C), the bar's mark
   (28px left of SHELFSTACKD) and `og.jpg` (the logo in the middle of #14181C). The bar's ⚡ is the word FEED.
@@ -112,10 +176,12 @@ In the order it was built (`git log main..letterboxd-flow` has each step):
   to date.
 - **Profiles:** tabs Profile · Shelves · Activity · Network; "Follows you" and "Followed by @a, @b and N others"; your
   shelf cards open the shelf's page, with one ··· menu.
-- **A shelf's own page:** its heading, Share (Share to story, Download image, Copy link), On this shelf with + Add to my
+- **A shelf's own page:** its heading, Share (Share to story, Download image, Copy link), On this shelf with Add to my
   shelf, and for its owner Edit, Make main, Make private or public, Delete.
-- **Shelf cards** (`cards.js`) cut 2:3 round the books in the picture, on home, the feed and profiles. Hovering a spine
-  on a shelf's picture names it (`spinetip.js`).
+- **Shelves listed** (home's Just shelved, Shelves): no card and no box; each is its first spines standing on a thin
+  line (`bare.js`, Bare.tile and Bare.lines), its name and @username under. `cards.js` (2:3 cards cut from the story
+  picture) is gone. Covers have a 1px outline, black on hover. Hovering a spine on a shelf's picture names it
+  (`spinetip.js`).
 - **Every page:** a favicon, a share picture, its own title and description; an empty site says so in a line.
 - **The Worker:** `/identify` drops Open Library's government reports and books that don't have what was typed
   (cache key `id4`), and takes `suggest=1` for half-typed titles. `/scans` looks with Serper, then SerpApi, then Brave,

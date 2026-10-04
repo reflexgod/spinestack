@@ -15,7 +15,7 @@ for (const at of ['/nope', '/shelves/nothing/here/', '/u/mira/shelf.html']) {
     await expect(page.locator('main > p:not(.ways)')).toHaveCount(0);   // the heading says it; no second line saying it again
     // the shared stylesheet reached it from this depth: our type, and the button
     expect(await page.locator('body').evaluate(el => getComputedStyle(el).fontSize)).toBe('13px');
-    const home = page.locator('main').getByRole('link', { name: 'Back home' });
+    const home = page.locator('main').getByRole('link', { name: 'Go home' });
     expect(await home.evaluate(el => getComputedStyle(el).textTransform)).toBe('none');   // in its own case
     expect(bad, 'everything the page asks for is there').toEqual([]);
     const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -28,9 +28,9 @@ for (const at of ['/nope', '/shelves/nothing/here/', '/u/mira/shelf.html']) {
   });
 }
 
-test('the not-found page\'s other links: the logo, Shelves, Members, and the footer every page has', async ({ page }) => {
+test('the not-found page\'s other links: the logo, Shelves, People, and the footer every page has', async ({ page }) => {
   await mockNetwork(page);
   await page.goto('/a/b/c');
   const hrefs = await page.locator('a').evaluateAll(as => as.map(a => a.getAttribute('href')));
-  expect(hrefs).toEqual(['/', '/shelves/', '/members/', '/', '/shelves/', '/privacy.html#credits', '/privacy.html', 'mailto:hello@shelfstackd.com']);
+  expect(hrefs).toEqual(['/', '/shelves/', '/people/', '/', '/shelves/', '/privacy.html#credits', '/privacy.html', 'mailto:hello@shelfstackd.com']);
 });

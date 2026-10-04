@@ -42,7 +42,7 @@
 .navmenu a:hover,.navmenu button:hover,.navmenu a:focus-visible,.navmenu button:focus-visible{background:var(--wash,#F3F3F3);outline:0}
 .navmenu a[aria-current]{font-weight:700}
 .navmenu hr{border:0;border-top:1px solid var(--hair,#D9D9D9);margin:var(--s1,4px) 0}
-@media (pointer:coarse){ .navmenu a,.navmenu button{padding-top:14px;padding-bottom:14px} }   /* 44px rows to press on a touch screen */`;
+@media (pointer:coarse){ .navmenu a,.navmenu button{padding-top:var(--s4,16px);padding-bottom:var(--s4,16px)} }   /* 44px rows to press on a touch screen */`;
   document.head.appendChild(css);
 
   /* ---------- the menus ---------- */
@@ -143,7 +143,7 @@
     state = {sb: (s && s.sb) || null, user: (s && s.user) || null, profile: (s && s.profile) || null};
     if (state.sb && state.user) markKept();
     const p = state.profile;
-    acctBtn.hidden = !p; signBtn.hidden = !!p || !!(s && s.unreachable); moreBtn.hidden = !p;   // the places (Feed · Shelves · Members · search) stay as they are, in one order, whoever you are
+    acctBtn.hidden = !p; signBtn.hidden = !!p || !!(s && s.unreachable); moreBtn.hidden = !p;   // the places (Feed · Shelves · People · search) stay as they are, in one order, whoever you are
     addWrap.classList.toggle('split', !!p);
     if (!p){
       for (const m of menus) m.hide(false);
@@ -215,12 +215,40 @@
     if (window.Add) return Promise.resolve(true);
     if (!window.Shelf) return Promise.resolve(false);
     return adding = adding || new Promise(res => {
-      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261012a';
+      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261016a';
       s.onload = () => res(!!window.Add); s.onerror = () => { adding = null; s.remove(); res(false); };
       document.head.appendChild(s);
     });
   }
   function openAdd(opt){ return loadAdd().then(ok => { if (ok) window.Add.open(opt); return ok; }); }
+  // recs.js, loaded once: true when it's there and migration 0010 is in the database (Recommend, the Recs tab, recs in
+  // the feed); false until then
+  let recsP = null;
+  function loadRecs(){
+    if (window.Recs) return window.Recs.ready();
+    return recsP = recsP || new Promise(res => {
+      const s = document.createElement('script'); s.src = ROOT + 'recs.js?v=20261013a';
+      s.onload = () => res(window.Recs ? window.Recs.ready() : false); s.onerror = () => { recsP = null; s.remove(); res(false); };
+      document.head.appendChild(s);
+    });
+  }
+  // a title's page (/t/): by its TMDB or Open Library id when there is one (a search result has it), otherwise by its
+  // kind, title and year, as a log or a spine keeps it (the page finds the id and takes that address)
+  function titleUrl(m){
+    const kind = m && m.kind === 'movie' ? 'movie' : 'book';
+    if (kind === 'movie' && /^\d{1,9}$/.test(String(m.tmdb || ''))) return ROOT + 't/?film=' + m.tmdb;
+    if (kind === 'book' && /^OL\d{1,10}W$/.test(String(m.ol || ''))) return ROOT + 't/?book=' + m.ol;
+    const q = new URLSearchParams({kind, title: String((m && m.title) || '').trim()});
+    if (m && /^\d{4}$/.test(String(m.year || ''))) q.set('year', String(m.year));
+    return ROOT + 't/?' + q;
+  }
+  // Share to WhatsApp: a wa.me link that opens WhatsApp with the text and the address
+  const whatsapp = (text, url) => `https://wa.me/?text=${encodeURIComponent([text, url].filter(Boolean).join(' '))}`;
+  // Recommend: signed in, the sheet; signed out, sign in first
+  function recommend(item){
+    if (visitor()){ needAccount('rec', item); return; }
+    loadRecs().then(ok => { if (ok) window.Recs.open(item); });
+  }
   addLink.addEventListener('click', e => {
     if (visitor()){ e.preventDefault(); needAccount('add'); return; }   // signed out: nothing is added, or searched for
     if (e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;   // a new tab or window still gets the builder
@@ -253,20 +281,23 @@
     if (g.go === 'build' && !/\/build\/$/.test(location.pathname)) location.href = ROOT + 'build/';
     else if (g.go === 'add') openAdd();
     else if (g.go === 'watch' && g.item) loadAdd().then(ok => { if (ok) window.Add.watch(g.item); });
+    else if (g.go === 'rec' && g.item) recommend(g.item);
   }
 
   /* ---------- a watchlist button on a cover or a spine ----------
      Nav.watchable(host, item, {from, label}): a small bookmark on the host (a cover, a spine), shown on hover or focus
      with a mouse; on a touch screen a ••• beside it with one item, Add to watchlist. One press puts the title on your
-     watchlist (add.js), then it says In watchlist. Signed out it's the sign-in sheet, and the title goes on once you're
+     watchlist (add.js), then it says In Up next. Signed out it's the sign-in sheet, and the title goes on once you're
      signed in. item: {kind, title, year, creator, cover}; from: whose log it came from (From friends). */
+  const ICON_MORE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>';   // Lucide ellipsis
   const ICON_ADD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><line x1="12" x2="12" y1="7" y2="13"/><line x1="15" x2="9" y1="10" y2="10"/></svg>';   // Lucide bookmark-plus
   const wcss = document.createElement('style');
   wcss.textContent = `
 .wable{position:relative}
 .wbtn{position:absolute;top:var(--s1,4px);left:var(--s1,4px);z-index:2;display:grid;place-items:center;width:26px;height:26px;padding:0;border:1px solid var(--ink,#000);border-radius:var(--radius,3px);
   background:var(--paper,#fff);color:var(--ink,#000);cursor:pointer;opacity:0;transition:opacity .12s}
-.wbtn svg{width:14px;height:14px;display:block}
+.wbtn svg{width:16px;height:16px;display:block}
+.wmore svg{width:20px;height:20px;display:block}
 .wable:hover .wbtn,.wbtn:focus-visible{opacity:1}
 .win{display:inline-block;font-size:var(--fs-small,11px);color:var(--grey,#6B6B6B);white-space:nowrap}
 .wmorewrap{display:none}
@@ -283,7 +314,7 @@
     if (visitor()){ needAccount('watch', item); return false; }
     if (!(await loadAdd())) return false;
     const r = await window.Add.watch(item, {from});
-    if (r.error) say(r.error);   // already on it (then it's In watchlist too), full, or it didn't save
+    if (r.error) say(r.error);   // already on it (then it's In Up next too), full, or it didn't save
     return r.ok;
   }
   // the page's own toast, when add.js isn't the one saying it
@@ -303,13 +334,13 @@
     const name = item.title + (item.year ? ` (${item.year})` : '');
     host.classList.add('wable');
     const b = document.createElement('button');
-    b.type = 'button'; b.className = 'wbtn'; b.innerHTML = ICON_ADD; b.setAttribute('aria-label', `Add ${name} to watchlist`); b.title = 'Add to watchlist';
+    b.type = 'button'; b.className = 'wbtn'; b.innerHTML = ICON_ADD; b.setAttribute('aria-label', `Add ${name} to Up next`); b.title = 'Add to Up next';
     const more = document.createElement('button');
-    more.type = 'button'; more.className = 'wmore'; more.textContent = '•••'; more.setAttribute('aria-label', `More for ${name}`); more.setAttribute('aria-haspopup', 'menu'); more.setAttribute('aria-expanded', 'false');
+    more.type = 'button'; more.className = 'wmore'; more.innerHTML = ICON_MORE; more.setAttribute('aria-label', `More for ${name}`); more.setAttribute('aria-haspopup', 'menu'); more.setAttribute('aria-expanded', 'false');
     const menu = document.createElement('div'); menu.className = 'wmenu'; menu.setAttribute('role', 'menu'); menu.hidden = true;
-    const mi = document.createElement('button'); mi.type = 'button'; mi.setAttribute('role', 'menuitem'); mi.textContent = 'Add to watchlist'; menu.append(mi);
+    const mi = document.createElement('button'); mi.type = 'button'; mi.setAttribute('role', 'menuitem'); mi.textContent = 'Add to Up next'; menu.append(mi);
     // on your watchlist: a grey "In watchlist" where the ••• was, and no button
-    const state1 = document.createElement('span'); state1.className = 'win'; state1.textContent = 'In watchlist'; state1.hidden = true;
+    const state1 = document.createElement('span'); state1.className = 'win'; state1.textContent = 'In Up next'; state1.hidden = true;
     const done = () => { b.remove(); wrap.remove(); if (!state1.isConnected) (opt.moreIn ? opt.moreIn.append(state1) : host.after(state1)); state1.hidden = false; };
     const go = async e => { e.preventDefault(); e.stopPropagation(); menu.hidden = true; more.setAttribute('aria-expanded', 'false'); if (b.disabled) return; b.disabled = mi.disabled = true; const ok = await addToWatchlist(item, opt.from); if (ok) done(); else { b.disabled = mi.disabled = false; } };
     b.addEventListener('click', go); mi.addEventListener('click', go);
@@ -338,5 +369,5 @@
     else if (on.finish) on.finish(); else location.href = ROOT + 'build/';
   }
 
-  window.Nav = {paint, add: openAdd, loadAdd, watchable, account, signIn, needAccount, visitor, onSignIn: fn => { on.signIn = fn; }, onFinish: fn => { on.finish = fn; }, onSignOut: fn => { on.signOut = fn; }, onUpload: fn => { on.upload = fn; }};
+  window.Nav = {paint, add: openAdd, loadAdd, loadRecs, recommend, whatsapp, titleUrl, watchable, account, signIn, needAccount, visitor, onSignIn: fn => { on.signIn = fn; }, onFinish: fn => { on.finish = fn; }, onSignOut: fn => { on.signOut = fn; }, onUpload: fn => { on.upload = fn; }};
 })();

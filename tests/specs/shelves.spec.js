@@ -1,8 +1,9 @@
-// Shelves (/shelves/): Make a shelf (Your shelf, signed in), then every public shelf as a card, 24 at a time, Load more.
+// Shelves (/shelves/): Make a shelf (Edit your shelf, signed in), then every public shelf as its spines on a line, 24 at a
+// time, Load more.
 const { test, expect } = require('@playwright/test');
 const { SHELVES, SB_URL, CORS, feedRow, mockNetwork, watchErrors, open, putAside } = require('../site');
 
-test('Shelves, signed out: the title, Make a shelf, and every public shelf as a card cut round its books', async ({ page }) => {
+test('Shelves, signed out: the title, Make a shelf, and every public shelf as its spines on a thin line, no card', async ({ page }) => {
   const errors = watchErrors(page), net = await mockNetwork(page);
   await open(page, '/shelves/');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Shelves');
@@ -16,9 +17,13 @@ test('Shelves, signed out: the title, Make a shelf, and every public shelf as a 
   await expect(first.locator('a')).toHaveAttribute('href', `../u/?tester&shelf=${SHELVES[0].id}`);
   await expect(first.locator('.cap')).toHaveText('a much longer shelf name that has to be cut short');
   await expect(first.locator('.by')).toHaveText('@tester');
-  await expect.poll(() => first.locator('.pic img').evaluate(im => im.style.width)).not.toBe('');   // cards.js has cut it
-  const box = await first.locator('.pic').boundingBox();
-  expect(box.height / box.width).toBeCloseTo(1.5, 1);
+  // its spines (bare.js), standing on a 1px black line 96px under their tops; no picture, no panel, no box
+  const line = first.locator('.sl');
+  await expect(line.locator('canvas').first()).toBeVisible();
+  await expect(first.locator('img')).toHaveCount(0);
+  expect(await line.evaluate(el => { const s = getComputedStyle(el); return [Math.round(el.getBoundingClientRect().height), s.borderBottomWidth, s.borderBottomColor, s.backgroundColor].join(' '); }))
+    .toBe('96 1px rgb(0, 0, 0) rgba(0, 0, 0, 0)');   // the line inside the 96px
+  expect(await first.locator('a').evaluate(el => getComputedStyle(el).borderTopWidth)).toBe('0px');
   await start.click();
   await expect(page.locator('#signSheet')).toBeVisible();   // signed out: sign in first (the site is read only)
   await expect(page.locator('#signSheet .sheetbox p:not(.note)').first()).toHaveText('Sign in to start your shelf.');
@@ -28,25 +33,25 @@ test('Shelves, signed out: the title, Make a shelf, and every public shelf as a 
 });
 
 // Signed out, nothing here says "your": the button is Make a shelf, black as on home, and the bar's + is outlined.
-// Signed in, it's Your shelf, outlined, and + ADD is the black one
+// Signed in, it's Edit your shelf, plain grey text, and + ADD is solid black
 const bg = el => getComputedStyle(el).backgroundColor;
-test('Shelves: signed out, Make a shelf in black, and no "Your shelf"', async ({ page }) => {
+test('Shelves: signed out, Make a shelf in black, and no "Edit your shelf"', async ({ page }) => {
   await mockNetwork(page);
   await open(page, '/shelves/');
   const main = page.locator('main');
   await expect(main.getByRole('link', { name: 'Make a shelf' })).toBeVisible();
   await expect(main.getByText(/your shelf/i)).toHaveCount(0);
   expect(await main.getByRole('link', { name: 'Make a shelf' }).evaluate(bg)).toBe('rgb(0, 0, 0)');
-  expect(await page.locator('header.top .add').evaluate(bg)).toBe('rgb(255, 255, 255)');   // one black button a screen
-  expect(await page.locator('.btn:visible').evaluateAll(els => els.filter(e => getComputedStyle(e).backgroundColor === 'rgb(0, 0, 0)').length)).toBe(1);
+  expect(await page.locator('header.top .add').evaluate(bg)).toBe('rgb(0, 0, 0)');   // solid black too: two looks, solid or plain text
 });
-test('Shelves: signed in, Your shelf, outlined, and + ADD is the black button', async ({ page }) => {
+test('Shelves: signed in, Edit your shelf is plain grey text, and + ADD is solid black', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/shelves/');
-  const mine = page.locator('main').getByRole('link', { name: 'Your shelf' });
+  const mine = page.locator('main').getByRole('link', { name: 'Edit your shelf' });
   await expect(mine).toHaveAttribute('href', '../build/');
   await expect(page.locator('main').getByRole('link', { name: 'Make a shelf' })).toHaveCount(0);
-  expect(await mine.evaluate(bg)).toBe('rgb(255, 255, 255)');
+  expect(await mine.evaluate(bg)).toBe('rgba(0, 0, 0, 0)');
+  expect(await mine.evaluate(el => getComputedStyle(el).color)).toBe('rgb(107, 107, 107)');
   expect(await page.locator('header.top .add').evaluate(bg)).toBe('rgb(0, 0, 0)');
 });
 

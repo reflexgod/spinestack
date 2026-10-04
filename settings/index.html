@@ -31,17 +31,17 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261012a">
+<link rel="stylesheet" href="../site.css?v=20261014a">
 <style>
 /* settings: three tabs, each a short form in a narrow column (site.css has the tabs, the fields, the buttons and the
    rest) */
 .set{min-height:60vh}
-.gate{display:grid;justify-items:start;gap:var(--s3)}
+.gate{display:grid;justify-items:start;gap:var(--s4)}
 .gate p{margin:0}
 .panel{max-width:420px;margin-top:var(--s5)}
 .panel,.panel form,#cropWrap{display:grid;gap:var(--s4)}
 .panel p{margin:0}
-.row{display:flex;gap:var(--s3) var(--s4);align-items:center;flex-wrap:wrap}
+.row{display:flex;gap:var(--s4) var(--s4);align-items:center;flex-wrap:wrap}
 /* the photo as it is now, round as it's shown everywhere */
 .photo-row{display:flex;gap:var(--s4);align-items:center}
 .photo-row .ava{width:96px;height:96px;flex:none;border-radius:50%;border:1px solid var(--ink);background:var(--wash);display:grid;place-items:center;overflow:hidden;font:400 36px var(--mono);text-transform:uppercase}
@@ -52,9 +52,10 @@
 .cropbox img{display:block;max-width:100%}
 .cropbox .cropper-view-box,.cropbox .cropper-face{border-radius:50%}
 .cropbox .cropper-view-box{outline:1px solid #FFFFFF}
-.btn.zoom{min-width:32px;padding:var(--s1) var(--s2);font-size:var(--fs-body)}
+.btn.zoom{min-width:32px;padding:var(--s1) var(--s2);line-height:0}
+.btn.zoom svg{width:16px;height:16px;display:block;margin:auto}
 /* a switch: a checkbox drawn as one */
-.switch{display:flex;gap:var(--s3);align-items:center;cursor:pointer;justify-self:start}
+.switch{display:flex;gap:var(--s4);align-items:center;cursor:pointer;justify-self:start}
 .switch input{appearance:none;-webkit-appearance:none;flex:none;width:36px;height:20px;margin:0;border:1px solid var(--ink);border-radius:10px;background:var(--paper);position:relative;cursor:pointer}
 .switch input::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--ink);transition:transform .15s}
 .switch input:checked{background:var(--ink)}
@@ -71,8 +72,8 @@
   <button class="acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false" hidden><span class="ava" aria-hidden="true"></span><span class="who"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
   <nav class="links" aria-label="shelfstackd">
     <a href="../feed/">Feed</a>
-    <a href="../shelves/">Shelves</a><a href="../members/">Members</a>
-    <a class="find" href="../members/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
+    <a href="../shelves/">Shelves</a><a href="../people/">People</a>
+    <a class="find" href="../people/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
     <a class="bell" id="bell" href="../notifications/" aria-label="Notifications" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="dot" hidden></span></a>
   </nav>
   <a class="signin" id="signInBtn" href="#" hidden>Sign in</a>
@@ -85,8 +86,8 @@
   <!-- signed out, or signed in with no username yet -->
   <div class="gate" id="gate" hidden>
     <p id="gateText" hidden></p>
-    <button class="btn" id="gateBtn" type="button">Sign in</button>
-    <a class="btn" id="gateLink" href="../build/" hidden>Finish sign-up</a>
+    <button class="btn primary" id="gateBtn" type="button">Sign in</button>
+    <a class="btn primary" id="gateLink" href="../build/" hidden>Finish sign-up</a>
   </div>
   <div id="page" hidden>
     <nav class="tabs" role="tablist" aria-label="Settings">
@@ -100,7 +101,7 @@
         <label class="field"><span class="lbl">Display name</span><input type="text" id="nameIn" maxlength="40" autocomplete="name"></label>
         <label class="field"><span class="lbl">Bio</span><textarea id="bioIn" maxlength="160" rows="3"></textarea><span class="note" id="bioCount"></span></label>
         <p class="field"><span class="lbl">Username</span><b id="unameRO"></b></p>
-        <div class="row"><button class="btn" id="saveBtn" type="submit">Save</button><a class="dash sm" id="viewLink" href="../u/">View profile</a></div>
+        <div class="row"><button class="btn primary" id="saveBtn" type="submit">Save</button><a class="dash sm" id="viewLink" href="../u/">View profile</a></div>
         <p class="note" id="editNote" role="status"></p>
       </form>
     </div>
@@ -115,10 +116,10 @@
       <div id="cropWrap" hidden>
         <div class="cropbox" id="cropBox" tabindex="0" role="group" aria-label="Your new photo. Arrow keys move it, plus and minus zoom."></div>
         <div class="row">
-          <button class="btn zoom" id="zoomOut" type="button" aria-label="Zoom out">−</button>
-          <button class="btn zoom" id="zoomIn" type="button" aria-label="Zoom in">+</button>
+          <button class="btn zoom" id="zoomOut" type="button" aria-label="Zoom out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+          <button class="btn zoom" id="zoomIn" type="button" aria-label="Zoom in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>
         </div>
-        <div class="row"><button class="btn" id="photoSave" type="button">Save photo</button><button class="dash sm" id="photoCancel" type="button">Cancel</button></div>
+        <div class="row"><button class="btn primary" id="photoSave" type="button">Save photo</button><button class="dash sm" id="photoCancel" type="button">Cancel</button></div>
       </div>
       <p class="note" id="photoNote" role="status"></p>
     </div>
@@ -134,7 +135,7 @@
 
 <div class="sheet" id="signSheet" hidden role="dialog" aria-modal="true" aria-label="Sign in">
   <div class="sheetbox">
-    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <button class="x" data-close type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     <div>
       <h2>Sign in</h2>
       <p></p>
@@ -147,11 +148,21 @@
 <footer>
   <p class="fnav"><a href="../privacy.html#credits">About</a><span aria-hidden="true">·</span><a href="../privacy.html">Privacy</a><span aria-hidden="true">·</span><a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a></p>
 </footer>
+<div class="sheet" id="confirmSheet" hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div class="sheetbox">
+    <button class="x" data-close type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+    <div>
+      <h2 id="confirmTitle">Remove your photo?</h2>
+      <p id="confirmText"></p>
+      <div class="row"><button class="btn primary" id="confirmYes" type="button">Remove</button><button class="dash sm" data-close type="button">Cancel</button></div>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast" hidden></div>
 
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
-<script src="../nav.js?v=20261012a"></script>
+<script src="../nav.js?v=20261016a"></script>
 <script>
 (() => {
 /* Settings: /settings/ (#photo and #account pick the tab). Yours only: signed out, it asks you to sign in.
@@ -372,11 +383,22 @@ $('#photoSave').addEventListener('click', async () => {
     note.textContent = friendly(err);
   } finally { btn.disabled = false; }
 });
-// Remove: a second press does it
+// Remove: it asks first, on this page's sheet (true only when its own button is pressed)
+function sure(){
+  const sh = $('#confirmSheet'), from = document.activeElement;
+  $('#confirmText').textContent = 'People see your first letter where it was.';
+  sh.hidden = false; $('#confirmYes').focus();
+  return new Promise(res => {
+    const done = v => { sh.hidden = true; sh.removeEventListener('click', onClick); document.removeEventListener('keydown', onKey); if (from && from.focus) from.focus(); res(v); };
+    const onClick = e => { if (e.target.closest('#confirmYes')) done(true); else if (e.target === sh || e.target.closest('[data-close]')) done(false); };
+    const onKey = e => { if (e.key === 'Escape') done(false); };
+    sh.addEventListener('click', onClick); document.addEventListener('keydown', onKey);
+  });
+}
 $('#photoRemove').addEventListener('click', async () => {
   const b = $('#photoRemove'), note = $('#photoNote'), old = me.profile.avatar_key; if (!old) return;
-  if (!b.dataset.sure){ b.dataset.sure = '1'; b.textContent = 'Sure? Remove'; setTimeout(() => { delete b.dataset.sure; b.textContent = 'Remove'; }, 4000); return; }
-  delete b.dataset.sure; b.textContent = 'Remove'; b.disabled = true; note.textContent = 'Saving…';
+  if (!(await sure())) return;
+  b.disabled = true; note.textContent = 'Saving…';
   try {
     await patchProfile({avatar_key: null});
     workerPost('/m/delete?k=' + encodeURIComponent(old)).catch(() => {});

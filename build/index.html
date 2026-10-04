@@ -59,18 +59,21 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Geist+Mono:wght@400;500&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261012a">
+<link rel="stylesheet" href="../site.css?v=20261014a">
 <style>
 /* the builder, laid out like a new-list page: Add, the spines as a list, Style, and the live preview beside them.
    The bottom area stays in view: the shelf's name and who can view it, with Cancel and Save (beside them
    on a wide window, under them on a phone). site.css has everything shared */
+/* the title, and New shelf beside it once you have a shelf */
+.mkhead{display:flex;align-items:baseline;gap:var(--s2) var(--s4);flex-wrap:wrap}
+.mkhead h1{margin-right:auto}
 .mkgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:var(--s5) var(--s6);align-items:start}
 .mkform{display:grid;gap:var(--s5);min-width:0}
 .field legend{padding:0;margin-bottom:var(--s1)}
 /* who can view: two halves of one outlined button, the picked one underlined (the black button here is Save) */
 .who{margin-right:auto}
 .who .seg2{display:flex;border:1px solid var(--ink);border-radius:var(--radius);overflow:hidden}
-.who label{font:600 var(--fs-btn)/1.35 var(--mono);padding:var(--s2) var(--s3);cursor:pointer;color:var(--grey)}
+.who label{font:600 var(--fs-btn)/1.35 var(--mono);padding:var(--s2) var(--s4);cursor:pointer;color:var(--grey)}
 .who label + label{border-left:1px solid var(--ink)}
 .who label:has(input:checked){color:var(--ink);background:var(--wash);box-shadow:inset 0 -2px 0 var(--ink)}
 .who label:has(input:focus-visible){outline:2px solid var(--ink);outline-offset:2px}
@@ -97,15 +100,15 @@ ol.books .book{border-bottom:1px solid var(--hair);background:var(--paper)}
 .bhead{display:flex;align-items:center;gap:var(--s2)}
 .grip{flex:none;width:14px;height:22px;cursor:grab;touch-action:none;background:radial-gradient(circle,var(--ink) 1.3px,transparent 1.7px) 0 0/7px 7px;display:none}
 .sortable .grip{display:block}
-.bopen{flex:1;min-width:0;display:grid;grid-template-columns:32px minmax(0,1fr) 12px;gap:var(--s3);align-items:center;background:none;border:0;padding:var(--s2) 0;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.bopen{flex:1;min-width:0;display:grid;grid-template-columns:32px minmax(0,1fr) 12px;gap:var(--s4);align-items:center;background:none;border:0;padding:var(--s2) 0;font:inherit;color:inherit;text-align:left;cursor:pointer}
 .thumb{width:32px;height:48px;object-fit:cover;background:var(--wash);display:block}
 .bwho{display:grid;min-width:0}
 .bt{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bby{color:var(--grey);font-size:var(--fs-small);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bopen svg{width:12px;height:12px}
+.bopen svg{width:16px;height:16px}
 .book.open .bopen svg{transform:rotate(180deg)}
-.bbody{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--s3);padding:0 0 var(--s3)}
-.sortable .bbody{padding-left:22px}
+.bbody{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--s4);padding:0 0 var(--s4)}
+.sortable .bbody{padding-left:var(--s5)}
 .sortable-ghost{opacity:.35}
 .fields{display:grid;gap:var(--s2);min-width:0}
 .row2{display:grid;grid-template-columns:1.3fr 1fr;gap:var(--s2)}
@@ -120,8 +123,9 @@ input[type=color]::-webkit-color-swatch{border:0;border-radius:2px}
 .acts{display:flex;flex-direction:column;gap:var(--s1)}
 .ib{width:24px;height:24px;border:1px solid var(--ink);border-radius:var(--radius);background:var(--paper);color:var(--ink);cursor:pointer;font:500 var(--fs-card) var(--mono);padding:0}
 .ib:hover{background:var(--wash)}
+.ib svg,.pngx svg{width:16px;height:16px;display:block;margin:auto}
 .ib:disabled{opacity:.25;cursor:default;background:var(--paper)}
-.empty{padding:var(--s4) 0;color:var(--grey);display:grid;gap:var(--s3)}
+.empty{padding:var(--s4) 0;color:var(--grey);display:grid;gap:var(--s4)}
 .empty p{margin:0}
 /* Try: three titles to press, each a search in the Add dialog */
 .try{display:flex;gap:var(--s2);align-items:center;flex-wrap:wrap}
@@ -129,21 +133,20 @@ input[type=color]::-webkit-color-swatch{border:0;border-radius:2px}
 .chip:hover{background:var(--wash)}
 /* Clear, at the right of the Spines heading: grey and dashed, as the things that lose something are, and it asks first */
 #clear{margin-left:auto}
-.asks{display:flex;gap:var(--s3) var(--s4);align-items:center;flex-wrap:wrap}
+.asks{display:flex;gap:var(--s4) var(--s4);align-items:center;flex-wrap:wrap}
 
 /* Style: every look of the shelf in one panel, shut until asked for, with what's picked on its one line */
-details.style summary{display:flex;gap:var(--s3);align-items:baseline;padding-bottom:var(--s1);border-bottom:1px solid var(--hair);cursor:pointer;list-style:none}
+details.style summary{margin:0;cursor:pointer;list-style:none}   /* site.css's .seclabel, as every section's label */
 details.style summary::-webkit-details-marker{display:none}
-.sname{font-size:var(--fs-section);line-height:1.5;text-transform:uppercase;letter-spacing:var(--track);color:var(--grey)}
-.sline{flex:1;min-width:0;font-size:var(--fs-card);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-details.style summary svg{width:12px;height:12px;flex:none;align-self:center}
+.sline{flex:1;min-width:0;font-size:var(--fs-card);color:var(--ink);text-transform:none;letter-spacing:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+details.style summary svg{width:16px;height:16px;flex:none;align-self:center}
 details.style[open] summary svg{transform:rotate(180deg)}
-.stylebox{display:grid;gap:var(--s4);padding:var(--s3) 0 var(--s2)}
+.stylebox{display:grid;gap:var(--s4);padding:var(--s4) 0 var(--s2)}
 .ctl{display:grid;gap:var(--s1)}
 .seg{display:flex;gap:var(--s4);flex-wrap:wrap}
 .seg button{font:400 var(--fs-body) var(--mono);background:none;border:0;padding:0 0 var(--s1);color:var(--grey);cursor:pointer;border-bottom:1px solid transparent}
 .seg button[aria-pressed="true"]{color:var(--ink);border-bottom-color:var(--ink)}
-.filters{display:flex;gap:var(--s2);overflow-x:auto;padding:2px 2px var(--s1)}
+.filters{display:flex;gap:var(--s2);overflow-x:auto;padding:var(--s1)}
 .flt{flex:none;display:grid;gap:var(--s1);background:none;border:0;padding:0;cursor:pointer;font:400 var(--fs-label) var(--mono);text-transform:uppercase;letter-spacing:.04em;color:var(--grey);text-align:left}
 .flt canvas{width:54px;height:96px;display:block;border:1px solid var(--hair)}
 .flt[aria-pressed="true"]{color:var(--ink)}
@@ -179,12 +182,12 @@ em.pro{margin:0 var(--s1)}
 .pngbox{position:absolute;border:1px dashed var(--ink);box-shadow:0 0 0 1px rgba(255,255,255,.85);pointer-events:none}
 .pngx{pointer-events:auto;position:absolute;top:-12px;right:-12px;width:24px;height:24px;border-radius:50%;border:1px solid var(--ink);background:var(--paper);color:var(--ink);font:500 12px var(--mono);cursor:pointer;padding:0;line-height:1;touch-action:none}
 .pngh{pointer-events:auto;position:absolute;right:-7px;bottom:-7px;width:14px;height:14px;background:var(--paper);border:1px solid var(--ink);cursor:nwse-resize;touch-action:none}
-.pngr{pointer-events:auto;position:absolute;left:50%;top:-34px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:var(--paper);border:1px solid var(--ink);cursor:grab;touch-action:none}
+.pngr{pointer-events:auto;position:absolute;left:50%;top:-34px;width:14px;height:14px;translate:-50% 0;border-radius:50%;background:var(--paper);border:1px solid var(--ink);cursor:grab;touch-action:none}
 .pngr::after{content:"";position:absolute;left:6px;top:13px;width:1px;height:20px;background:var(--ink)}
 
 /* the bottom area: Name and Who can view, then Cancel and Save; always at the bottom of the window. (Sharing the story is on the saved shelf's own page.) */
 .mkbar{position:sticky;bottom:0;z-index:4;display:flex;flex-wrap:wrap;gap:var(--s2) var(--s4);align-items:flex-end;justify-content:flex-end;background:var(--paper);border-top:1px solid var(--hair);
-  margin-top:var(--s6);padding:var(--s3) 0 calc(var(--s3) + env(safe-area-inset-bottom,0px))}
+  margin-top:var(--s6);padding:var(--s4) 0 calc(var(--s4) + env(safe-area-inset-bottom,0px))}
 .barname{flex:0 1 300px;min-width:150px}
 .barname input[type=text]{height:32px;padding-block:0}
 .barleft{flex:1 1 0;display:flex;flex-wrap:wrap;gap:var(--s1) var(--s4);align-items:baseline;justify-content:flex-end;min-width:0;padding-bottom:var(--s1)}   /* a note takes the room that's left, and wraps in it */
@@ -192,7 +195,7 @@ em.pro{margin:0 var(--s1)}
 .baracts{flex:none;display:flex;gap:var(--s4);align-items:flex-end}   /* Cancel and Save stay side by side: one never goes to the row above the other */
 .mkbar .note{margin:0}
 footer{margin-top:0}
-.uname{display:flex;align-items:center;gap:var(--s1);border:1px solid var(--ink);border-radius:var(--radius);padding:0 0 0 var(--s3)}
+.uname{display:flex;align-items:center;gap:var(--s1);border:1px solid var(--ink);border-radius:var(--radius);padding:0 0 0 var(--s4)}
 .uname input[type=text]{border:0;padding-left:0}
 .uname input[type=text]:focus{outline:none}
 .uname:focus-within{outline:2px solid var(--ink);outline-offset:2px}
@@ -221,18 +224,18 @@ footer{margin-top:0}
   .who label:first-child{border-radius:2px 0 0 2px} .who label:last-child{border-radius:0 2px 2px 0}
   .ib{width:32px;height:32px}
   .swatch{width:32px;height:32px}
-  .swatches{gap:var(--s3)}
+  .swatches{gap:var(--s4)}
   .range input{min-height:44px}
   .colours input[type=text]{font-size:16px}
   .check{min-height:40px}   /* ticks, rows of choices and the row's arrows sit a press apart */
-  .seg{row-gap:26px}
+  .seg{row-gap:calc(2 * var(--s4))}   /* 32px: two rows of 44px press areas stay apart */
   .pngadd{margin-top:24px}
-  .acts{gap:12px}
-  .mkbar{row-gap:14px}
+  .acts{gap:var(--s4)}
+  .mkbar{row-gap:var(--s4)}
 }
 /* signed out: the builder is closed, and the page is a line and the Google button */
 .gate{display:none}
-.gated .gate{display:grid;justify-items:start;gap:var(--s3)}
+.gated .gate{display:grid;justify-items:start;gap:var(--s4)}
 .gated .gate .note{margin:0}
 .gated .mkgrid,.gated .mkbar{display:none}
 </style>
@@ -244,16 +247,16 @@ footer{margin-top:0}
   <button class="acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false" hidden><span class="ava" aria-hidden="true"></span><span class="who"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
   <nav class="links" aria-label="shelfstackd">
     <a href="../feed/">Feed</a>
-    <a href="../shelves/">Shelves</a><a href="../members/">Members</a>
-    <a class="find" href="../members/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
+    <a href="../shelves/">Shelves</a><a href="../people/">People</a>
+    <a class="find" href="../people/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
     <a class="bell" id="bell" href="../notifications/" aria-label="Notifications" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="dot" hidden></span></a>
   </nav>
   <a class="signin" id="signInBtn" href="#" hidden>Sign in</a>
-  <span class="addwrap"><a class="btn add" href="#search" aria-current="page" aria-label="Add a film or a book"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Add</span></a><button class="btn addmore" id="addMore" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More ways to add" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></span>
+  <span class="addwrap"><a class="btn primary add" href="#search" aria-current="page" aria-label="Add a film or a book"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Add</span></a><button class="btn addmore" id="addMore" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More ways to add" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></span>
 </header>
 
 <main class="mk">
-  <h1 id="pageTitle">Your shelf</h1>
+  <div class="mkhead"><h1 id="pageTitle">Your shelf</h1><a class="dash sm" id="newShelf" href="./?new" hidden>New shelf</a></div>
   <div class="gate" id="gate">
     <button class="btn primary" id="gateGo" type="button">Continue with Google</button>
     <p class="note">Accounts are for people 18 or older. <a href="../privacy.html">Privacy</a></p>
@@ -277,7 +280,7 @@ footer{margin-top:0}
       </section>
 
       <details class="style" id="stylePanel">
-        <summary><span class="sname">Style</span><span class="sline" id="styleLine"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <summary class="seclabel"><span class="sname">Style</span><span class="sline" id="styleLine"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
         <div class="stylebox">
           <div class="ctl"><span class="lbl">Layout</span>
             <div class="seg" id="layout" role="group" aria-label="Layout"><button type="button" data-v="row">Spines</button><button type="button" data-v="stack">Stacked</button><button type="button" data-v="covers">Covers</button></div></div>
@@ -294,7 +297,7 @@ footer{margin-top:0}
               <p class="note warn" id="wallWarn"></p>
             </div>
             <input type="file" id="wallFile" accept="image/png,image/jpeg,image/webp" hidden>
-            <div class="pngadd"><button class="dash sm" id="pngAdd" type="button">+ Add PNG<em class="pro">PRO</em></button>
+            <div class="pngadd"><button class="dash sm" id="pngAdd" type="button">Add a PNG<em class="pro">PRO</em></button>
               <p class="note">PNG, JPG or WEBP, up to 5 MB each.</p>
               <p class="note" id="pngNote"></p>
               <label class="range" id="pngOpWrap" hidden><span class="lbl">Opacity</span><input type="range" id="pngOp" min="10" max="100" value="100" aria-label="Opacity of the picked PNG"><span class="lbl" id="pngOpV">100%</span></label>
@@ -318,7 +321,7 @@ footer{margin-top:0}
     <div class="mkside">
       <div class="phone"><div class="stage" id="stage"><canvas id="story" width="1080" height="1920" role="img" aria-label="Story preview"></canvas>
         <div class="spinebox" id="spineBox" hidden></div>
-        <div class="pngbox" id="pngBox" hidden><button class="pngx" id="pngX" type="button" aria-label="Remove this PNG">✕</button><span class="pngh" id="pngH" aria-hidden="true"></span><span class="pngr" id="pngR" aria-hidden="true"></span></div></div></div>
+        <div class="pngbox" id="pngBox" hidden><button class="pngx" id="pngX" type="button" aria-label="Remove this PNG"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button><span class="pngh" id="pngH" aria-hidden="true"></span><span class="pngr" id="pngR" aria-hidden="true"></span></div></div></div>
     </div>
   </div>
 
@@ -338,18 +341,18 @@ footer{margin-top:0}
 
 <div class="sheet" id="confirmSheet" hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
   <div class="sheetbox">
-    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <button class="x" data-close type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     <div>
       <h2 id="confirmTitle">Clear your shelf?</h2>
       <p id="confirmText"></p>
-      <div class="asks"><button class="btn" id="confirmYes" type="button">Clear</button><button class="dash sm" data-close type="button">Cancel</button></div>
+      <div class="asks"><button class="btn primary" id="confirmYes" type="button">Clear</button><button class="dash sm" data-close type="button">Cancel</button></div>
     </div>
   </div>
 </div>
 
 <div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-label="Account">
   <div class="sheetbox">
-    <button class="x" id="sheetClose" type="button" aria-label="Close">×</button>
+    <button class="x" id="sheetClose" type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     <div id="signinPane">
       <h2>Sign in</h2>
       <p></p>
@@ -381,8 +384,8 @@ footer{margin-top:0}
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../spinetip.js?v=20261004a"></script>
-<script src="../nav.js?v=20261012a"></script>
-<script src="../add.js?v=20261012a"></script>
+<script src="../nav.js?v=20261016a"></script>
+<script src="../add.js?v=20261016a"></script>
 <script>
 (() => {
 const $ = s => document.querySelector(s);
@@ -392,8 +395,8 @@ const W = 1080, H = 1920;
 const {FONTS, STYLES, crop, loadImg, isReal, TEX, texture, isDark, posterTitle, DEFAULT_CAPTION} = Shelf;
 // the colour picking and the spine finder live in add.js (the + ADD dialog uses them on every page)
 const {extractPalette, findSpine, findSoloSpine} = Add;
-// ?new: an old link from when there were many shelves (+ new shelf). There's one shelf each now, so it's your shelf
-// like any other visit; the address is only tidied
+// ?new: a new shelf, empty, saved as one more of yours (New shelf, here and on your Shelves tab). Without it, the
+// builder opens your main shelf
 const FRESH = new URLSearchParams(location.search).has('new');
 // ?sample: the page opens with the sample shelf on it. Nobody is sent here: it's for the tests, and for tests/art.js,
 // which makes the picture of a shelf that home shows when the site is empty.
@@ -545,9 +548,9 @@ function renderList(){
         <div class="note" id="${b.id}-note"></div>
       </div>
       <div class="acts">
-        <button class="ib" type="button" data-a="up" aria-label="Move up"${i===0?' disabled':''}>↑</button>
-        <button class="ib" type="button" data-a="down" aria-label="Move down"${i===books.length-1?' disabled':''}>↓</button>
-        <button class="ib" type="button" data-a="del" aria-label="Remove ${esc(b.title || 'item')}">✕</button>
+        <button class="ib" type="button" data-a="up" aria-label="Move up"${i===0?' disabled':''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
+        <button class="ib" type="button" data-a="down" aria-label="Move down"${i===books.length-1?' disabled':''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
+        <button class="ib" type="button" data-a="del" aria-label="Remove ${esc(b.title || 'item')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
       </div>
     </div>
   </li>`; }).join('');
@@ -636,24 +639,43 @@ $('#books').addEventListener('click', e => {
   const btn = e.target.closest('[data-a]'); if (!btn) return;
   const i = books.findIndex(b => b.id === btn.closest('.book').dataset.id), a = btn.dataset.a;
   if (a === 'archive'){ btn.disabled = true; archiveSpine(books[i]); return; }
-  if (a === 'del') books.splice(i,1);
+  if (a === 'del'){
+    const b = books[i];
+    sure(`Take ${b.title ? '“' + b.title + '”' : 'this spine'} off?`, acct.shelfId ? 'Your saved shelf stays as it was until you press Save.' : 'It comes off the list.', 'Remove')
+      .then(ok => { if (!ok) return; const at = books.indexOf(b); if (at >= 0){ books.splice(at, 1); renderList(); } });
+    return;
+  }
   if (a === 'up' && i > 0) [books[i-1], books[i]] = [books[i], books[i-1]];
   if (a === 'down' && i < books.length-1) [books[i+1], books[i]] = [books[i], books[i+1]];
   renderList();
 });
-// Clear: every spine off the list, after a yes (as Delete asks on a shelf's page). The sample shelf isn't yours to
-// lose, so that one just goes.
-const clearShelf = () => { books = []; isSample = false; renderList(); };
-const closeConfirm = () => { if ($('#confirmSheet').hidden) return; $('#confirmSheet').hidden = true; if ($('#clear').isConnected && !$('#clear').hidden) $('#clear').focus(); };
-$('#clear').addEventListener('click', () => {
-  if (isSample){ clearShelf(); return; }
-  const n = books.length;
-  $('#confirmText').textContent = (n === 1 ? 'The spine comes off the list. ' : `All ${n} spines come off the list. `) + (acct.shelfId ? 'Your saved shelf stays as it was until you press Save.' : 'This can’t be undone.');
+/* Anything that loses something asks first, on this page's own sheet: sure(title, text, yes) is true only when its
+   button is pressed (Cancel, Esc and a press outside are no). Clear (every spine off the list), a spine's ✕, a PNG's ✕
+   and the wall's Remove. The sample shelf isn't yours to lose, so Clear just clears it. */
+let asking = null, askFrom = null;
+function sure(title, text, yes){
+  if (asking) asking(false);
+  askFrom = document.activeElement;
+  $('#confirmTitle').textContent = title; $('#confirmText').textContent = text; $('#confirmYes').textContent = yes;
   $('#confirmSheet').hidden = false; $('#confirmYes').focus();
+  return new Promise(res => { asking = res; });
+}
+const closeConfirm = yes => {
+  if ($('#confirmSheet').hidden) return;
+  $('#confirmSheet').hidden = true;
+  const r = asking; asking = null; if (r) r(!!yes);
+  if (askFrom && askFrom.isConnected && askFrom.focus) askFrom.focus();
+};
+$('#confirmYes').addEventListener('click', () => closeConfirm(true));
+$('#confirmSheet').addEventListener('click', e => { if (e.target.id === 'confirmSheet' || e.target.closest('[data-close]')) closeConfirm(false); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeConfirm(false); });
+const clearShelf = () => { books = []; isSample = false; renderList(); };
+$('#clear').addEventListener('click', async () => {
+  if (isSample){ clearShelf(); return; }
+  const n = books.length, mine = !!acct.profile;
+  const ok = await sure(mine ? 'Clear your shelf?' : 'Clear this shelf?', (n === 1 ? 'The spine comes off the list. ' : `All ${n} spines come off the list. `) + (acct.shelfId ? 'Your saved shelf stays as it was until you press Save.' : 'This can’t be undone.'), 'Clear');
+  if (ok) clearShelf();
 });
-$('#confirmYes').addEventListener('click', () => { clearShelf(); closeConfirm(); });
-$('#confirmSheet').addEventListener('click', e => { if (e.target.id === 'confirmSheet' || e.target.closest('[data-close]')) closeConfirm(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeConfirm(); });
 function shelve(b){
   if (isSample){ books = []; isSample = false; }
   if (books.length >= spineMax()){ if (isPro()) toast('A shelf holds up to 20 spines. Remove one first.'); else proToast('Free shelves hold 6 spines. Pro holds 20.'); return false; }
@@ -832,7 +854,10 @@ $('#wallFile').addEventListener('change', async e => {
   catch (err){ $('#themeNote').textContent = err.message; }
   syncTheme(); paintWall(); redraw();
 });
-$('#wallRemove').addEventListener('click', () => { media.wall = null; settings.theme = 'paper'; wallPicking = false; syncTheme(); paintWall(); redraw(); });
+$('#wallRemove').addEventListener('click', async () => {
+  if (!(await sure('Remove the wall?', 'The shelf goes back on Paper.', 'Remove'))) return;
+  media.wall = null; settings.theme = 'paper'; wallPicking = false; syncTheme(); paintWall(); redraw();
+});
 
 /* ---------- PNGs on the wall (Pro): as many as you like, always behind the books ---------- */
 // a new PNG goes on the open wall between the caption and the books, as big as fits there (up to 45 % of the width),
@@ -920,7 +945,7 @@ stage.addEventListener('pointermove', e => {
 const letGo = e => { pointers.delete(e.pointerId); if (!pointers.size || (grab && grab.mode === 'pinch')) grab = null; };
 stage.addEventListener('pointerup', letGo); stage.addEventListener('pointercancel', letGo);
 function dropPng(){ if (sel < 0) return; media.pngs.splice(sel, 1); sel = -1; $('#pngNote').textContent = ''; paintPngs(); redraw(); }
-$('#pngX').addEventListener('click', dropPng);
+$('#pngX').addEventListener('click', async () => { if (await sure('Remove this PNG?', 'It comes off the wall.', 'Remove')) dropPng(); });
 $('#pngOp').addEventListener('input', e => { const p = media.pngs[sel]; if (!p) return; p.opacity = clamp(+e.target.value/100, .1, 1); $('#pngOpV').textContent = e.target.value + '%'; redraw(); });
 // Delete or Backspace removes the picked PNG and Escape lets go of it, never while typing in a box
 const typing = t => t.isContentEditable || /^(TEXTAREA|SELECT)$/.test(t.tagName) || (t.tagName === 'INPUT' && !/^(range|checkbox|radio|button|submit|reset|file|color)$/.test(t.type));
@@ -1087,7 +1112,9 @@ async function startAccounts(){
   const openId = new URLSearchParams(location.search).get('open');
   let draft = takeDraft();
   if (draft && !returning() && openId && draft.shelfId !== openId){ dropDraft(); draft = null; }
-  acct.openAsked = openId && !draft ? openId : null;   // then that one opens, not yours
+  if (draft && !returning() && FRESH && draft.shelfId){ dropDraft(); draft = null; }   // New shelf: not the one that was being changed
+  // then that one opens, not your main one: ?open=<id>, a new shelf, or the shelf the draft is
+  acct.openAsked = openId && !draft ? openId : FRESH && !draft ? 'new' : draft ? 'draft' : null;
   if (draft) await restoreDraft(draft);
   if (FRESH) history.replaceState(null, '', here() + location.hash);
   try {
@@ -1221,8 +1248,10 @@ Nav.onSignOut(signOut);
 /* a shelf as rows: each spine points at its images (a:archive id, u:saved image, url:TMDB / Open Library cover) */
 const COVER_HOSTS = /^https:\/\/(image\.tmdb\.org|covers\.openlibrary\.org)\/\S+$/;
 async function itemFor(b, put){
+  // at: when the spine was first saved (seconds), kept as it was ever after, so the feed can say what a save added
+  if (!b.at) b.at = Math.floor(Date.now() / 1000);
   const look = clean0({style:b.style, font:b.font, bg:b.bg, fg:b.fg, accent:b.accent, wf:+(+b.wf).toFixed(3), hf:+(+b.hf).toFixed(3), jit:+(+b.jit).toFixed(3),
-    studio:b.studio || undefined, cat:b.cat || undefined, pt:b.titleImg ? 1 : undefined});
+    studio:b.studio || undefined, cat:b.cat || undefined, pt:b.titleImg ? 1 : undefined, at:b.at});
   const rec = {item_id:b.id, kind:b.kind === 'movie' ? 'movie' : 'book', title:String(b.title || '').slice(0, 200), author:String(b.author || '').slice(0, 200),
     year:/^\d{4}$/.test(String(b.year || '')) ? String(b.year) : null, look};
   if (isReal(b)) rec.spine_src = b.archiveId ? 'a:' + b.archiveId : await put(b.spineImg, 'spine');
@@ -1332,8 +1361,8 @@ $('#cancelBtn').addEventListener('click', e => {
   location.href = acct.profile ? '../u/?' + acct.profile.username : '../';
 });
 
-/* your saved shelf: one each. Accounts from before keep any others they made; yours is the main one (pinned) if it's
-   set, otherwise the one saved last, as on your profile. An old link (?open=<id>) can still open one of the others. */
+/* your saved shelves. The builder opens your main one: the one you made main (profiles.pinned_shelf_id), otherwise
+   your oldest, as your profile's hero has it. ?open=<id> opens another; ?new makes a new one. */
 const SHELF_COLS = 'id,caption,name,filter,intensity,background,wood,layout,varied,is_public,preview_key,pro,created_at,updated_at,saved_at,shelf_items(count)';
 async function loadMine(){
   if (!acct.profile) return;
@@ -1342,7 +1371,16 @@ async function loadMine(){
   if (error){ toast('Couldn’t load your shelves. Try again in a moment.'); return; }
   acct.shelves = data || [];
 }
-const yourShelf = () => acct.shelves.find(s => s.id === (acct.profile || {}).pinned_shelf_id) || acct.shelves.slice().sort((a, b) => new Date(b.saved_at || b.updated_at) - new Date(a.saved_at || a.updated_at))[0] || null;
+const yourShelf = () => acct.shelves.find(s => s.id === (acct.profile || {}).pinned_shelf_id) || acct.shelves.slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at))[0] || null;
+// the page's title: Your shelf (your main one), the shelf's name (another of yours), or New shelf; and New shelf to
+// press once you have one
+function paintTitle(){
+  if (!acct.profile) return;
+  const main = yourShelf(), s = acct.shelfId && acct.shelves.find(x => x.id === acct.shelfId);
+  const t = !acct.shelfId ? (acct.shelves.length ? 'New shelf' : 'Your shelf') : !main || s === main || !s ? 'Your shelf' : (s.name || (s.caption && s.caption !== DEFAULT_CAPTION ? s.caption : 'Untitled shelf'));
+  $('#pageTitle').textContent = t; document.title = t + ' · shelfstackd';
+  $('#newShelf').hidden = !acct.shelves.length || !acct.shelfId;
+}
 // signed in, and not already on a saved shelf: yours opens
 async function openYours(){
   if (!acct.profile || acct.shelfId || acct.openAsked) return;
@@ -1362,6 +1400,7 @@ async function rebuild(r){
     bg: look.bg, fg: look.fg, accent: look.accent, wf: look.wf, hf: look.hf, jit: look.jit, studio: look.studio, cat: look.cat, img, spineImg: spine || undefined,
     titleImg: t ? t.img : undefined, thumb: img && img.src, archiveId: r.spine_src && r.spine_src.startsWith('a:') ? r.spine_src.slice(2) : undefined,
     coverUrl: r.cover_src && r.cover_src.startsWith('url:') ? r.cover_src.slice(4) : undefined,
+    at: 'at' in look ? look.at : 1,   // saved before spines were marked: long ago (1), never new; a row brought over from another shelf has none: new
     source: style === 'real' ? (r.spine_src.startsWith('a:') ? 'the archive' : 'your saved shelf') : undefined}));
 }
 function applySettings(s){
@@ -1410,7 +1449,7 @@ async function openShelf(id){
   // its name (while it has none of its own, its caption) and who can view it
   const named = s.name != null, shown = named ? s.name : s.caption && s.caption !== DEFAULT_CAPTION ? s.caption : '';
   $('#shelfName').value = shown; nameIt(); redraw(); setVisible(s.is_public);   // the preview's caption is that name, whatever caption it was saved with
-  acct.shelfId = id; paintAcct(); $('#saveNote').textContent = '';
+  acct.shelfId = id; paintAcct(); paintTitle(); $('#saveNote').textContent = '';
 }
 
 /* The shelf being made waits in this tab: while Google signs you in (the page leaves and comes back), and while
@@ -1466,18 +1505,21 @@ function takeRow(){
   boot();
   if (await startAccounts() === false) return;   // signed out: the builder is closed
   const p = Add.takePending();
+  // + ADD on another page picked one of your shelves (Put on shelf asks which when you have more than one)
+  if (p && p.shelfId && p.shelfId !== acct.shelfId && acct.shelves.some(x => x.id === p.shelfId)) await openShelf(p.shelfId);
+  paintTitle();
   if (p){
     $('#saveNote').textContent = 'Adding ' + p.m.title + '…';
     let f = null; try { f = await Add.resolve(p); } catch {}
     $('#saveNote').textContent = ''; paintAcct();
-    if (f){ if (shelve(newBook(f))) toast(p.m.title + ' added to your shelf.'); }
+    if (f){ if (shelve(newBook(f))) toast(p.m.title + ' added to ' + (acct.shelfId && acct.shelfId !== (yourShelf() || {}).id ? $('#pageTitle').textContent : 'your shelf') + '.'); }
     else { toast('Couldn’t add ' + p.m.title + '. Search for it again.'); Add.open({query: p.m.title}); }
   }
   const row = takeRow();
   if (row){
     const name = row.title || 'That spine';
     $('#saveNote').textContent = 'Adding ' + name + '…';
-    let b = null; try { b = await rebuild({...row, item_id: undefined}); } catch {}   // a book of its own here, with a new id
+    let b = null; try { b = await rebuild({...row, item_id: undefined, look: {...(row.look || {}), at: undefined}}); } catch {}   // a book of its own here, with a new id, and new on this shelf
     $('#saveNote').textContent = '';
     if (!b) toast('Couldn’t add ' + name + '. Its picture didn’t load.');
     else { if (b.source === 'your saved shelf') b.source = 'a saved shelf'; if (shelve(b)) toast(name + ' added to your shelf.'); }
