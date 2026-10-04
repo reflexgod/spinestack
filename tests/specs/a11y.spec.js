@@ -143,3 +143,20 @@ test('axe: a shelf\'s page with Share open', async ({ page }) => {
   await clean(page);
 });
 
+
+// recs (0010): your Recs tab with a thread open, Sent, and the Recommend sheet
+test('axe: your Recs tab, a thread open, then Sent, then the Recommend sheet', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, social: true, recs: true });
+  await open(page, '/u/?tester#recs');
+  const paris = page.locator('#rList > li').filter({ hasText: 'Paris, Texas' });
+  await paris.getByRole('button', { name: /^Reply/ }).click();
+  await expect(paris.locator('.rmsgs li')).toHaveCount(1);
+  await clean(page);
+  await page.getByRole('tab', { name: 'Sent' }).click();
+  await expect(page.locator('#rList .rstate').first()).toBeVisible();
+  await clean(page);
+  await page.getByRole('tab', { name: 'Up next' }).click();
+  await page.locator('#wGrid li').filter({ has: page.getByRole('button', { name: 'Recommend' }) }).first().getByRole('button', { name: 'Recommend' }).click();
+  await expect(page.locator('.recsheet .rwho li')).toHaveCount(2);
+  await clean(page);
+});

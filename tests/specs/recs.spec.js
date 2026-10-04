@@ -2,7 +2,7 @@
 // one with 6 waiting can't be picked), a note of 140, Show in feed (on), Send; and Share to WhatsApp for anyone. It's
 // on a post's share menu and a fourth choice in + ADD. Without 0010 there's no Recommend anywhere.
 const { test, expect } = require('@playwright/test');
-const { SB_URL, CORS, MUTUALS, SHELVES, FROM_FRIENDS, WATCHLIST, ME, mockNetwork, watchErrors, open } = require('../site');
+const { SB_URL, CORS, MUTUALS, SHELVES, FROM_FRIENDS, WATCHLIST, ME, RECS_FOR, recId, mockNetwork, watchErrors, open } = require('../site');
 
 const post = (page, text) => page.locator('#items .post').filter({ hasText: text }).first();
 const sheet = page => page.locator('.recsheet');
@@ -161,4 +161,91 @@ test('without 0010, the profile has no Recommend', async ({ page }) => {
   await open(page, `/u/?mira&shelf=${SHELVES[1].id}`);
   await expect(page.locator('#oneItems li').first()).toBeVisible();
   await expect(page.getByRole('button', { name: 'Recommend' })).toHaveCount(0);
+});
+
+/* ---------- the profile's Recs tab ---------- */
+const recRow = (page, title) => page.locator('#rList > li').filter({ hasText: title });
+test('your Recs tab: the counts, For you (Keep, Mark watched, Dismiss, Reply) and Sent (how each stands)', async ({ page }) => {
+  const errors = watchErrors(page);
+  await mockNetwork(page, { signedIn: true, social: true, recs: true });
+  await open(page, '/u/?tester');
+  const tab = page.getByRole('tab', { name: 'Recs' });
+  await tab.click();
+  await expect(page).toHaveURL(/#recs$/);
+  await expect(page.locator('#rStats')).toHaveText('4 sent · 1 watched');
+  await expect(page.getByRole('tab', { name: 'For you (2)' })).toHaveAttribute('aria-selected', 'true');
+  const paris = recRow(page, 'Paris, Texas');
+  await expect(paris.locator('.tt > span')).toHaveText(/^from @mira · /);
+  await expect(paris.locator('.rnote')).toHaveText('Watch it on a big screen.');
+  await expect(paris.locator('.tacts > :visible')).toHaveText(['Keep', 'Mark watched', 'Dismiss', 'Reply (1)']);
+  // a kept one says so, in grey
+  const orlando = recRow(page, 'Orlando');
+  await expect(orlando.locator('.tacts > :visible')).toHaveText(['Kept', 'Mark read', 'Dismiss', 'Reply']);
+  expect(await orlando.locator('.rstate').evaluate(e => getComputedStyle(e).color)).toBe('rgb(107, 107, 107)');
+  // Keep: onto Up next
+  const kept = page.waitForRequest(r => r.url().endsWith('/rest/v1/rpc/rec_keep'));
+  await paris.getByRole('button', { name: 'Keep' }).click();
+  expect((await kept).postDataJSON()).toEqual({ rid: recId(1) });
+  await expect(page.locator('#toast')).toHaveText('Paris, Texas is on Up next.');
+  // Dismiss asks first
+  await recRow(page, 'Orlando').getByRole('button', { name: 'Dismiss' }).click();
+  await expect(page.locator('#confirmSheet')).toBeVisible();
+  await expect(page.locator('#confirmTitle')).toHaveText('Dismiss “Orlando”?');
+  const gone = page.waitForRequest(r => r.method() === 'PATCH' && new URL(r.url()).pathname === '/rest/v1/recs');
+  await page.locator('#confirmYes').click();
+  const req = await gone;
+  expect(new URL(req.url()).searchParams.get('id')).toBe(`eq.${RECS_FOR[1].id}`);
+  expect(req.postDataJSON()).toEqual({ status: 'dismissed' });
+  // Sent: waiting, watched (with a tick), kept, passed
+  await page.getByRole('tab', { name: 'Sent' }).click();
+  await expect(page).toHaveURL(/#sent$/);
+  await expect(page.locator('#rList .rstate')).toHaveText(['Waiting', 'Read', 'Kept', 'Passed']);
+  await expect(page.locator('#rList .rstate svg')).toHaveCount(1);
+  await expect(recRow(page, 'Stalker').locator('.tt > span')).toHaveText(/^to @mira · /);
+  await expect(recRow(page, 'Stalker').getByRole('button', { name: 'Keep' })).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('Mark watched on a rec: + ADD\'s Log it says who recommended it, and the log goes with the rec', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, social: true, recs: true });
+  await open(page, '/u/?tester#recs');
+  await recRow(page, 'Paris, Texas').getByRole('button', { name: 'Mark watched' }).click();
+  const d = page.locator('#addDialog');
+  await expect(d.locator('#addFeedLine')).toHaveText(/watched Paris, Texas · recommended by @mira · today$/);
+  const req = page.waitForRequest(r => r.method() === 'POST' && new URL(r.url()).pathname === '/rest/v1/logs');
+  await d.getByRole('button', { name: 'Post' }).click();
+  expect((await req).postDataJSON()).toMatchObject({ kind: 'movie', title: 'Paris, Texas', rec: recId(1) });
+});
+
+test('a rec\'s thread: Reply opens it, with what was said, and sends one more', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, social: true, recs: true });
+  await open(page, '/u/?tester#recs');
+  const paris = recRow(page, 'Paris, Texas'), reply = paris.getByRole('button', { name: 'Reply (1)' });
+  await reply.click();
+  await expect(reply).toHaveAttribute('aria-expanded', 'true');
+  await expect(paris.locator('.rmsgs li')).toHaveText([/^@tester Saving it for Sunday\./]);
+  const box = paris.getByRole('textbox', { name: 'Reply to @mira' });
+  await expect(box).toBeFocused();
+  await expect(box).toHaveAttribute('maxlength', '280');
+  await box.fill('  Loved it.  ');
+  const req = page.waitForRequest(r => r.method() === 'POST' && new URL(r.url()).pathname === '/rest/v1/rec_replies');
+  await paris.getByRole('button', { name: 'Send' }).click();
+  expect((await req).postDataJSON()).toEqual({ rec: recId(1), text: 'Loved it.' });
+  await expect(paris.locator('.rmsgs li')).toHaveCount(2);
+  await expect(paris.getByRole('button', { name: 'Reply (2)' })).toBeVisible();
+  await expect(box).toHaveValue('');
+});
+
+test('someone else\'s Recs tab is only the counts; without 0010 there is no Recs tab', async ({ page }) => {
+  await mockNetwork(page, { recs: true });
+  await open(page, '/u/?mira#recs');
+  await expect(page.getByRole('tab', { name: 'Recs' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#rStats')).toHaveText('12 sent · 7 watched');
+  await expect(page.locator('#rMine')).toBeHidden();
+});
+test('without 0010 there is no Recs tab, and #recs is Profile', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/u/?tester#recs');
+  await expect(page.getByRole('tab', { name: 'Profile' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: 'Recs' })).toBeHidden();
 });

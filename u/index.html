@@ -151,6 +151,23 @@ html:not(.recs-on) .recbtn{display:none}   /* Recommend: only once 0010 is there
 .titles .tt a{color:var(--ink);font-weight:500;text-decoration:none}
 .titles .tt a:hover,.titles .tt a:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .tacts{display:flex;gap:var(--s2) var(--s4);align-items:center;flex-wrap:wrap;justify-content:flex-end}
+/* Recs: "12 sent · 7 watched", then (your own) For you · Sent, a row each as Up next has them, the note under the
+   title, and the thread under the row when it's open */
+#panelR{margin-top:var(--s5)}
+.rstats{margin:0 0 var(--s4);color:var(--grey)}
+.recs li{grid-template-columns:40px minmax(0,1fr)}
+.recs .tacts{grid-column:2;justify-content:flex-start}
+.recs .rnote{margin:var(--s1) 0 0;overflow-wrap:anywhere}
+.recs .rstate{display:inline-flex;align-items:center;gap:var(--s1);color:var(--grey);font-size:var(--fs-btn);font-weight:600}
+.recs .rstate svg{width:16px;height:16px}
+.recs .rthread{grid-column:2;display:grid;gap:var(--s2)}
+.recs .rthread[hidden]{display:none}
+.recs .rmsgs{list-style:none;margin:0;padding:0;display:grid;gap:var(--s2)}
+.recs .rmsgs li{display:block;padding:0;border:0;overflow-wrap:anywhere}
+.recs .rmsgs b{font-weight:500}
+.recs .rmsgs time{color:var(--grey);font-size:var(--fs-small)}
+.recs .rform{display:flex;gap:var(--s2);align-items:flex-end}
+.recs .rform textarea{flex:1;min-width:0;resize:vertical}
 .pmain .grey{margin:0}
 #panelA,#panelN,#viewShelf{margin-top:var(--s5)}
 /* Activity: this person's lines (site.css draws them). Network: Following · Followers under the tabs, then the
@@ -314,6 +331,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
         <button type="button" role="tab" id="tabP" data-tab="profile" aria-selected="true" aria-controls="panelP">Profile</button>
         <button type="button" role="tab" id="tabA" data-tab="activity" aria-selected="false" aria-controls="panelA">Activity</button>
         <button type="button" role="tab" id="tabW" data-tab="watchlist" aria-selected="false" aria-controls="panelW">Up next</button>
+        <button type="button" role="tab" id="tabR" data-tab="recs" aria-selected="false" aria-controls="panelR" hidden>Recs</button>
         <button type="button" role="tab" id="tabS" data-tab="shelves" aria-selected="false" aria-controls="panelS">Shelves</button>
         <button type="button" role="tab" id="tabN" data-tab="network" aria-selected="false" aria-controls="panelN">Network</button>
       </nav>
@@ -360,6 +378,19 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
         </div>
         <ol class="wgrid" id="wGrid"></ol>
         <p class="grey" id="wNone" hidden>Nothing up next.</p>
+      </div>
+      <div id="panelR" role="tabpanel" aria-labelledby="tabR" hidden>
+        <p class="rstats" id="rStats"></p>
+        <div id="rMine" hidden>
+          <nav class="tabs sub" role="tablist" aria-label="Recs">
+            <button type="button" role="tab" id="tabRf" data-rbox="for" aria-selected="true" aria-controls="rPanel">For you</button>
+            <button type="button" role="tab" id="tabRs" data-rbox="sent" aria-selected="false" aria-controls="rPanel">Sent</button>
+          </nav>
+          <div id="rPanel" role="tabpanel" aria-label="Recs">
+            <ol class="titles recs" id="rList"></ol>
+            <p class="grey" id="rNone" hidden></p>
+          </div>
+        </div>
       </div>
       <div id="panelS" role="tabpanel" aria-labelledby="tabS" hidden>
         <ol class="slist" id="sList"></ol>
@@ -709,7 +740,11 @@ async function load(){
   await startSession();
   paintAcct();
   // Recommend, on a spine, a cover in Up next and From friends: signed in, once 0010 is there (recs.js)
-  if (me.user && me.profile) Nav.loadRecs().then(ok => document.documentElement.classList.toggle('recs-on', !!ok));
+  Nav.loadRecs().then(ok => {
+    view.recs = !!ok; $('#tabR').hidden = !ok;
+    document.documentElement.classList.toggle('recs-on', !!ok && !!(me.user && me.profile));
+    if (ok && /^#(recs|sent)$/.test(location.hash) && view.profile) paintTabs();   // landed on it before 0010 was known to be there
+  });
   if (!NAME){
     if (me.profile){ location.replace(pageUrl(me.profile.username)); return; }
     $('#state').innerHTML = 'Whose shelf? <a href="../build/">Make your own</a>.'; return;
@@ -799,6 +834,78 @@ async function paintShelvesTab(){
     if (mine.length) li.querySelector('.sline').replaceChildren(...smallSpines(mine, 64).map(c => { c.setAttribute('aria-hidden', 'true'); return c; }));
   }
 }
+
+/* ---------- Recs (0010): "12 sent · 7 watched" for anyone who can see the profile; on your own, For you (what's
+   been recommended to you, waiting or kept: Keep puts it on Up next, Mark watched logs it, saying who recommended it,
+   Dismiss asks first) and Sent (waiting, kept, watched, or passed when they let it go). Each has its thread with the
+   other person: Reply opens it. ---------- */
+let recRun = 0, recBox = 'for', recRows = [];
+const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+async function paintRecs(box){
+  const run = ++recRun, mine = view.mine; recBox = box === 'sent' ? 'sent' : 'for';
+  try { const st = await Recs.stats(view.profile.id); if (run === recRun) $('#rStats').textContent = `${st.sent} sent · ${st.watched} watched`; } catch {}
+  $('#rMine').hidden = !mine;
+  if (!mine) return;
+  for (const b of document.querySelectorAll('#panelR .tabs.sub button')) b.setAttribute('aria-selected', String(b.dataset.rbox === recBox));
+  let rows;
+  try { rows = await Recs.list(recBox); } catch (e){ if (run === recRun){ $('#rList').replaceChildren(); $('#rNone').textContent = friendly(e); $('#rNone').hidden = false; } return; }
+  if (run !== recRun) return;
+  recRows = rows || [];
+  if (recBox === 'for') $('#tabRf').textContent = `For you (${recRows.length})`;
+  $('#rNone').textContent = recBox === 'for' ? 'Nothing recommended to you right now.' : 'You haven’t recommended anything yet.';
+  $('#rNone').hidden = !!recRows.length;
+  $('#rList').replaceChildren(...recRows.map((r, i) => recRow(r, i)));
+}
+const STATE = {open: 'Waiting', kept: 'Kept', watched: '', dismissed: 'Passed'};
+function recRow(r, i){
+  const li = document.createElement('li'); li.dataset.i = i;
+  const sent = recBox === 'sent', who = `<a href="${esc(pageUrl(r.username))}">@${esc(r.username)}</a>`, done = r.kind === 'movie' ? 'Watched' : 'Read';
+  const state = sent ? `<span class="rstate">${r.status === 'watched' ? `${done} ${CHECK}` : esc(STATE[r.status] || '')}</span>`
+    : (r.status === 'open' ? '<button class="dash sm" type="button" data-r="keep">Keep</button>' : '<span class="rstate">Kept</span>')
+      + `<button class="dash sm" type="button" data-r="log">${didIt(r)}</button><button class="dash sm" type="button" data-r="dismiss">Dismiss</button>`;
+  li.innerHTML = `<span class="tc">${r.cover_src ? `<img src="${esc(coverOf(r.cover_src))}" alt="" loading="lazy">` : ''}</span>
+    <span class="tt"><b>${esc(r.title)}${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${sent ? 'to' : 'from'} ${who} · ${esc(ago(r.created_at))}</span>${r.note ? `<p class="rnote">${esc(r.note)}</p>` : ''}</span>
+    <span class="tacts">${state}<button class="dash sm" type="button" data-r="thread" aria-expanded="false">Reply${r.replies ? ` (${r.replies})` : ''}</button></span>
+    <div class="rthread" hidden><ol class="rmsgs"></ol><form class="rform"><textarea maxlength="280" rows="1" aria-label="Reply to @${esc(r.username)}" placeholder="Reply to @${esc(r.username)}"></textarea><button class="btn primary sm" type="submit">Send</button></form></div>`;
+  return li;
+}
+function paintThread(li, list){
+  li.querySelector('.rmsgs').replaceChildren(...list.map(m => { const x = document.createElement('li');
+    x.innerHTML = `<b>@${esc(m.username)}</b> ${esc(m.text)} <time datetime="${esc(m.created_at)}">${esc(ago(m.created_at))}</time>`; return x; }));
+}
+$('#rList').addEventListener('click', async e => {
+  const b = e.target.closest('[data-r]'), li = b && b.closest('li[data-i]'), r = li && recRows[+li.dataset.i]; if (!r) return;
+  const act = b.dataset.r, item = asItem(r);
+  if (act === 'log'){ Nav.add({mode: 'log', item, rec: {id: r.id, by: r.username}}); return; }
+  if (act === 'thread'){
+    const box = li.querySelector('.rthread'), open = box.hidden;
+    box.hidden = !open; b.setAttribute('aria-expanded', String(open));
+    if (!open) return;
+    li.querySelector('textarea').focus();
+    try { paintThread(li, await Recs.thread(r.id)); } catch (err){ toast(friendly(err)); }
+    return;
+  }
+  if (act === 'dismiss' && !(await sure(`Dismiss “${r.title}”?`, `It goes from For you. @${r.username} isn’t told.`, 'Dismiss'))) return;
+  b.disabled = true;
+  try {
+    if (act === 'keep'){ await Recs.keep(r.id); toast(`${r.title} is on Up next.`); paintLists(); }
+    else { await Recs.dismiss(r.id); toast('Dismissed.'); }
+    paintRecs(recBox);
+  } catch (err){ toast(Recs.friendly(err)); if (b.isConnected) b.disabled = false; }
+});
+$('#rList').addEventListener('submit', async e => {
+  e.preventDefault();
+  const form = e.target, li = form.closest('li[data-i]'), r = li && recRows[+li.dataset.i], ta = form.querySelector('textarea'), text = ta.value.trim();
+  if (!r || !text) return;
+  const go = form.querySelector('button'); go.disabled = true;
+  try {
+    const m = await Recs.reply(r.id, text);
+    ta.value = ''; r.replies = (r.replies || 0) + 1;
+    li.querySelector('[data-r=thread]').textContent = `Reply (${r.replies})`;
+    li.querySelector('.rmsgs').append(Object.assign(document.createElement('li'), {innerHTML: `<b>@${esc(me.profile.username)}</b> ${esc(m.text || text)} <time datetime="${esc(m.created_at)}">${esc(ago(m.created_at))}</time>`}));
+  } catch (err){ toast(Recs.friendly(err)); }
+  go.disabled = false;
+});
 
 /* the hero: their shelf, big, across the column, the way the builder draws it (shelf.js), cut down to the books.
    Pressing it opens the shelf's page. Its name under it (yours: press it to rename it), and Edit on your own. */
@@ -994,6 +1101,7 @@ $('#friends').addEventListener('click', async e => {
 document.addEventListener('shelfstackd:added', () => {
   if (!view.mine || ONE) return;
   paintLists();
+  if (!$('#panelR').hidden) paintRecs(recBox);
   if (!$('#panelA').hidden) paintActivity();
 });
 /* ---------- one shelf on its own page: its name, who made it and when, what can be done with it, the shelf itself
@@ -1481,28 +1589,31 @@ $('#acts').addEventListener('click', async e => {
 /* ---------- tabs: Profile · Activity (#activity) · Up next (#upnext; #watchlist, its old name, too) · Shelves (#shelves) · Network (#network is Following, #followers is Followers). The
    address has the tab, so a reload lands on it, and so do the account menu's links. #shelves, from when there was a
    Shelves tab, is Profile. ---------- */
-const HASH = {'': ['profile'], '#shelves': ['shelves'], '#activity': ['activity'], '#upnext': ['watchlist'], '#watchlist': ['watchlist'], '#network': ['network', 'following'], '#following': ['network', 'following'], '#followers': ['network', 'followers']};
-const PANEL = {profile: '#panelP', activity: '#panelA', watchlist: '#panelW', shelves: '#panelS', network: '#panelN'};
+const HASH = {'': ['profile'], '#recs': ['recs', 'for'], '#sent': ['recs', 'sent'], '#shelves': ['shelves'], '#activity': ['activity'], '#upnext': ['watchlist'], '#watchlist': ['watchlist'], '#network': ['network', 'following'], '#following': ['network', 'following'], '#followers': ['network', 'followers']};
+const PANEL = {profile: '#panelP', activity: '#panelA', watchlist: '#panelW', recs: '#panelR', shelves: '#panelS', network: '#panelN'};
 function paintTabs(){
   let [tab, net] = HASH[location.hash] || HASH[''];
   if (tab === 'watchlist' && $('#tabW').hidden) tab = 'profile';   // a watchlist that isn't shown (private, or no database for it)
+  if (tab === 'recs' && $('#tabR').hidden) tab = 'profile';        // no recs in the database yet
   for (const b of document.querySelectorAll('#viewProfile > .tabs button')){ const on = b.dataset.tab === tab; b.setAttribute('aria-selected', String(on)); $(PANEL[b.dataset.tab]).hidden = !on; }
   if (tab === 'activity') paintActivity();
   if (tab === 'watchlist') paintWatchTab();
   if (tab === 'shelves') paintShelvesTab();
+  if (tab === 'recs') paintRecs(net);
   if (tab === 'network'){
-    for (const b of document.querySelectorAll('.tabs.sub button')) b.setAttribute('aria-selected', String(b.dataset.net === net));
+    for (const b of document.querySelectorAll('#panelN .tabs.sub button')) b.setAttribute('aria-selected', String(b.dataset.net === net));
     if (netShown !== net){ netShown = net; netList.open(net); }
   }
 }
 function goTab(hash){ history.replaceState(null, '', location.pathname + location.search + hash); paintTabs(); }
 document.querySelector('#viewProfile > .tabs').addEventListener('click', e => {
-  const b = e.target.closest('[data-tab]'); if (b) goTab({profile: '', activity: '#activity', watchlist: '#upnext', shelves: '#shelves', network: '#network'}[b.dataset.tab]);
+  const b = e.target.closest('[data-tab]'); if (b) goTab({profile: '', activity: '#activity', watchlist: '#upnext', recs: '#recs', shelves: '#shelves', network: '#network'}[b.dataset.tab]);
 });
-document.querySelector('.tabs.sub').addEventListener('click', e => { const b = e.target.closest('[data-net]'); if (b) goTab(b.dataset.net === 'followers' ? '#followers' : '#network'); });
+document.querySelector('#panelN .tabs.sub').addEventListener('click', e => { const b = e.target.closest('[data-net]'); if (b) goTab(b.dataset.net === 'followers' ? '#followers' : '#network'); });
+document.querySelector('#panelR .tabs.sub').addEventListener('click', e => { const b = e.target.closest('[data-rbox]'); if (b) goTab(b.dataset.rbox === 'sent' ? '#sent' : '#recs'); });
 // ← → move between the tabs of a row
 for (const row of document.querySelectorAll('#viewProfile .tabs')) row.addEventListener('keydown', e => {
-  const all = [...row.querySelectorAll('button')], i = all.indexOf(document.activeElement); if (i < 0 || (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft')) return;
+  const all = [...row.querySelectorAll('button:not([hidden])')], i = all.indexOf(document.activeElement);   // not a tab that isn't there (Up next private, Recs before 0010) if (i < 0 || (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft')) return;
   const next = all[(i + (e.key === 'ArrowRight' ? 1 : all.length - 1)) % all.length]; next.focus(); next.click();
 });
 // a link to another tab of this same page (the account menu's Activity and Network on your own profile)
