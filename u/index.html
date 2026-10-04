@@ -206,6 +206,7 @@ html:not(.recs-on) .recbtn{display:none}   /* Recommend: only once 0010 is there
 .spines{list-style:none;margin:0;padding:0}
 .sact{display:flex;align-items:center;gap:var(--s1) var(--s4)}
 /* the Shelves tab: each shelf's spines standing on a shelf line, its name under it */
+.snew{margin:var(--s5) 0 0}
 .slist{list-style:none;margin:var(--s5) 0 0;padding:0;display:grid;gap:var(--s5)}
 .slist a{display:block;text-decoration:none;color:var(--ink)}
 .slist .sline{display:flex;align-items:flex-end;gap:2px;height:64px;border-bottom:1px solid var(--ink);overflow:hidden}
@@ -395,6 +396,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
         </div>
       </div>
       <div id="panelS" role="tabpanel" aria-labelledby="tabS" hidden>
+        <p class="snew" id="sNewRow" hidden><a class="dash" href="../build/?new">New shelf</a></p>
         <ol class="slist" id="sList"></ol>
         <p class="grey" id="sNone" hidden>No shelves yet.</p>
       </div>
@@ -820,6 +822,7 @@ let shelvesRun = 0;
 async function paintShelvesTab(){
   const run = ++shelvesRun, list = view.shelves.slice().sort((a, b) => new Date(savedAt(b)) - new Date(savedAt(a))), main = theShelf();
   $('#sNone').hidden = !!list.length;
+  $('#sNewRow').hidden = !view.mine;   // your own: a new one, at the top
   $('#sList').replaceChildren(...list.map(s => {
     const li = document.createElement('li'); li.dataset.id = s.id;
     li.innerHTML = `<a href="${esc(pageUrl(view.profile.username, s.id))}"><span class="sline" aria-hidden="true"></span>

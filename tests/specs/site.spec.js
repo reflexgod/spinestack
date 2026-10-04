@@ -182,14 +182,14 @@ test('every sign-out is for this device only', () => {
   }
 });
 
-test('the ▾ next to + ADD has one item: Upload a scan', async ({ page }) => {
+test('the ▾ next to + ADD has New shelf and Upload a scan', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/feed/?everyone');
   const menu = page.getByRole('menu', { name: 'More ways to add' });
   await page.locator('#addMore').click();
   await expect(menu).toBeVisible();
-  await expect(menu.getByRole('menuitem')).toHaveText(['Upload a scan']);
-  expect(await menu.getByRole('menuitem').evaluate(a => new URL(a.href).pathname + new URL(a.href).hash)).toBe('/build/#upload');
+  await expect(menu.getByRole('menuitem')).toHaveText(['New shelf', 'Upload a scan']);
+  expect(await menu.getByRole('menuitem').evaluateAll(as => as.map(a => new URL(a.href).pathname + new URL(a.href).search + new URL(a.href).hash))).toEqual(['/build/?new', '/build/#upload']);
   await page.keyboard.press('Escape');
   await expect(menu).toBeHidden();
 });
