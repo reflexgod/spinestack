@@ -1,11 +1,13 @@
 /* The site's own pictures, made from the site itself: node art.js (npm run art). They're kept in the repo, at its root:
      sample-shelf.jpg       the builder's sample shelf (its four drawn books, on white). Home shows it when there are
                             no public shelves yet.
-     og.jpg                 1200 x 630: the logo, the line from home and that shelf, for links shared elsewhere
+     og.jpg                 1200 x 630: the hedgehog (assets/logo-hedgehog.svg) in the middle of #14181C, for links
+                            shared elsewhere
+     favicon.svg            a copy of assets/logo-hedgehog.svg
      favicon-32.png         favicon.svg at 32px
-     apple-touch-icon.png   the same mark at 180px, square to the edges (a phone rounds it itself)
+     apple-touch-icon.png   the same mark at 180px, square to the edges on #14181C (a phone rounds it itself)
      favicon.ico            the 32px PNG in an .ico, for browsers that ask for /favicon.ico whatever a page says
-   Run it again when the sample shelf or favicon.svg changes. */
+   Run it again when the sample shelf or the logo changes. node art.js icons makes only favicon.svg, the icons and og.jpg. */
 const { chromium } = require('@playwright/test');
 const { spawn } = require('child_process');
 const path = require('path'), fs = require('fs');
@@ -20,6 +22,8 @@ const bytes = dataUrl => Buffer.from(dataUrl.split(',')[1], 'base64');
   await new Promise(r => setTimeout(r, 700));
   const browser = await chromium.launch();
   try {
+    const ONLY_ICONS = process.argv[2] === 'icons';
+    if (!ONLY_ICONS) {
     /* the sample shelf: the builder with its sample on, the story cut down to the books and their shadow */
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     await mockNetwork(page, { realFonts: true });
@@ -43,33 +47,24 @@ const bytes = dataUrl => Buffer.from(dataUrl.split(',')[1], 'base64');
     console.log(`sample-shelf.jpg is ${shelf.w} x ${shelf.h}`);
     await page.close();
 
-    /* the share picture: the logo and the line from home on the left, the shelf on the right */
+    }
+
+    /* the share picture: the hedgehog in the middle of the logo's own dark grey */
+    const logo = fs.readFileSync(path.join(ROOT, 'assets', 'logo-hedgehog.svg'), 'utf8');
+    fs.writeFileSync(path.join(ROOT, 'favicon.svg'), logo); console.log('favicon.svg', logo.length, 'bytes');
     const og = await browser.newPage({ viewport: { width: 1200, height: 630 } });
-    await og.setContent(`<!doctype html><html><head><meta charset="utf-8">
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;800&display=swap">
-      <style>
-        html,body{margin:0;width:1200px;height:630px;background:#fff;color:#000;font-family:"Geist Mono",monospace}
-        .l{position:absolute;left:80px;top:0;bottom:0;width:640px;display:flex;flex-direction:column;justify-content:center;gap:28px}
-        .mark{font-weight:800;font-size:54px;letter-spacing:.18em;line-height:1}
-        .line{font-size:30px;line-height:1.35}
-        .at{font-size:20px;color:#6B6B6B;letter-spacing:1px}
-        img{position:absolute;right:110px;top:50%;height:540px;transform:translateY(-50%)}
-      </style></head><body>
-      <div class="l"><div class="mark">SHELFSTACKD</div><div class="line">Your shelf, but the real spines.</div><div class="at">shelfstackd.com</div></div>
-      <img src="${shelf.full}" alt=""></body></html>`);
-    await og.waitForLoadState('networkidle');
-    await og.evaluate(() => Promise.all([document.fonts.load('800 54px "Geist Mono"'), document.fonts.load('400 30px "Geist Mono"'), document.fonts.ready]));
-    await og.waitForTimeout(300);
+    await og.setContent(`<!doctype html><html><body style="margin:0;width:1200px;height:630px;background:#14181C;display:grid;place-items:center">${logo}</body></html>`);
+    await og.addStyleTag({ content: 'svg{display:block;width:420px;height:420px}' });
     save('og.jpg', await og.screenshot({ type: 'jpeg', quality: 90 }));
     await og.close();
 
     /* the icons, from favicon.svg */
-    const svg = fs.readFileSync(path.join(ROOT, 'favicon.svg'), 'utf8');
+    const svg = logo;
     const icon = async (size, square) => {
       const p = await browser.newPage({ viewport: { width: size, height: size } });
-      await p.setContent(`<!doctype html><html><body style="margin:0;background:transparent">${square ? svg.replace('rx="6"', 'rx="0"') : svg}</body></html>`);
+      await p.setContent(`<!doctype html><html><body style="margin:0;background:${square ? '#14181C' : 'transparent'}">${svg}</body></html>`);
       await p.addStyleTag({ content: `svg{display:block;width:${size}px;height:${size}px}` });
-      const buf = await p.screenshot({ type: 'png', omitBackground: true });
+      const buf = await p.screenshot({ type: 'png', omitBackground: !square });
       await p.close();
       return buf;
     };

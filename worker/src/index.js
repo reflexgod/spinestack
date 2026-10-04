@@ -4,7 +4,7 @@
 
    GET  /identify?q=&want=all|movie|book[&suggest=1]  -> {results:[{kind,title,year,creator,cover}]}
         suggest=1 is a half-typed title (the page suggests as you type): answered the same, but not kept in KV.
-   GET  /scans?title=&year=&kind=movie|book&creator=&round=0-3[&cacheonly=1]
+   GET  /scans?title=&year=&kind=movie|book&creator=&round=0-3 (a book 0-2)[&cacheonly=1]
         -> {results:[{img,source,title,width,height, archive?,id?}], round, more, capped?, cached? (with cacheonly)}
         One query per round, so the page asks for the next round only when it still needs spines.
         Round 0 starts with approved spines from the archive. What isn't already kept is looked for with Serper, then
@@ -43,7 +43,7 @@ import {DurableObject} from 'cloudflare:workers';
 
 const ORIGINS = ['https://reflexgod.github.io', 'https://shelfstackd.com', 'https://www.shelfstackd.com', 'http://localhost:8080'];
 const DAY = 86400, MONTH = 30 * DAY;
-const MAX_IMG = 8 * 1024 * 1024, MAX_UPLOAD = 300 * 1024, UPLOADS_PER_DAY = 10, REPORTS_TO_HIDE = 3, ROUNDS = 4;
+const MAX_IMG = 8 * 1024 * 1024, MAX_UPLOAD = 300 * 1024, UPLOADS_PER_DAY = 10, REPORTS_TO_HIDE = 3;
 const UA = 'Spinestack/1.0 (+https://reflexgod.github.io/spinestack/)';
 
 export default {
@@ -132,6 +132,22 @@ async function getJSON(url, init) {
   if (!r.ok) throw new Error(`${new URL(url).hostname} answered ${r.status}`);
   return r.json();
 }
+/* How close a title is to what was typed: 0 the same, 1 starting with it, 2 having it, 3 neither. A leading "the",
+   "a" or "an" doesn't count, nor does a year typed after the title, and a year in figures is also its words (1984 is
+   Nineteen Eighty-Four, just after a title that is 1984). The page's rank() in add.js does the same: keep them in step. */
+const ONES = 'zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen'.split(' ');
+const TENS = 'x x twenty thirty forty fifty sixty seventy eighty ninety'.split(' ');
+const under100 = n => n < 20 ? ONES[n] : TENS[Math.floor(n / 10)] + (n % 10 ? ' ' + ONES[n % 10] : '');
+const yearWords = y => y >= 2000 && y < 2010 ? 'two thousand' + (y % 10 ? ' ' + ONES[y % 10] : '') : under100(Math.floor(y / 100)) + ' ' + (y % 100 === 0 ? 'hundred' : y % 100 < 10 ? 'oh ' + ONES[y % 100] : under100(y % 100));
+const spelled = s => s.replace(/\b(1[0-9]|20)\d\d\b/g, y => yearWords(+y));
+const bare = s => words(s).join(' ').replace(/^(the|a|an) /, '');
+function closeness(title, q) {
+  const t = bare(title), typed = bare(String(q).replace(/[\s,(]+(?:19|20)\d\d\)?$/, ''));
+  if (!typed) return 3;
+  const how = w => t === w ? 0 : t.startsWith(w) ? 1 : (' ' + t + ' ').includes(' ' + w + ' ') || t.includes(w) ? 2 : 3;
+  const say = spelled(typed);   // written out, it comes just after the same in figures
+  return say === typed ? how(typed) : Math.min(how(typed), how(say) + .5);
+}
 async function tmdbFilms(q, token) {
   if (!token) return [];
   const bearer = token.length > 40, init = {headers: bearer ? {Authorization: 'Bearer ' + token, 'User-Agent': UA} : {'User-Agent': UA}};
@@ -140,7 +156,10 @@ async function tmdbFilms(q, token) {
   const yq = q.match(/^(.+?)[\s,(]+((?:19|20)\d\d)\)?$/);   // "kids 1995": TMDB finds nothing when the year is in the query
   let r = yq ? await find(yq[1], yq[2]) : await find(q);
   if (yq && !(r.results || []).length) r = await find(yq[1]);
-  return Promise.all((r.results || []).slice(0, 5).map(async (m, i) => {
+  // the whole page TMDB gives (20), closest title first, then most voted for, before five are kept: "gumm" had Gummo
+  // seventh, so it was never shown
+  const films = (r.results || []).map((m, i) => ({m, i, c: closeness(m.title || '', q)})).sort((a, b) => a.c - b.c || (b.m.vote_count || 0) - (a.m.vote_count || 0) || a.i - b.i).map(x => x.m);
+  return Promise.all(films.slice(0, 5).map(async (m, i) => {
     let creator = '';
     if (i < 3) try { const c = await getJSON(`https://api.themoviedb.org/3/movie/${m.id}/credits?` + key.slice(1), init); creator = ((c.crew || []).find(p => p.job === 'Director') || {}).name || ''; } catch {}
     return {kind: 'movie', title: m.title || '', year: (m.release_date || '').slice(0, 4), creator, cover: m.poster_path ? 'https://image.tmdb.org/t/p/w500' + m.poster_path : ''};
@@ -156,25 +175,43 @@ const ORG_AUTHOR = /\b(congress|committee|department|office|list|directory)\b/i;
 const notABook = d => !d.cover_i && (ORG_AUTHOR.test((d.author_name || []).join(' ')) || ((d.edition_count || 0) <= 1 && !d.readinglog_count));
 /* An author's name in Latin letters. Open Library sometimes gives the name as written in its own script (村上春樹 for
    Norwegian Wood): then the first Latin-script name in author_alternative_name is used, or, when there's none there,
-   the first in the author record's alternate_names. With neither, the name stays as it came. */
+   the first in the author record's alternate_names. With neither, the name stays as it came. The name is then put the
+   way the person writes it (personName). */
 const LATIN = /^[\p{Script=Latin}\p{M}\p{N}\s.,'’()&-]+$/u, latin = n => !!n && LATIN.test(n) && /\p{Script=Latin}/u.test(n);
+/* A person's name as they'd write it, from the Latin-script names Open Library has for them: "MURAKAMI HARUKI",
+   "Murakami Haruki" and "Haruki MURAKAMI" are Haruki Murakami. A word in capitals (three letters or more, not an
+   initial) is put in ordinary case. The family name is the word a library writes in capitals beside a given name in
+   ordinary case ("Haruki MURAKAMI"); it goes last. A name already in ordinary case is kept as it is. */
+const CAPS = w => (w.match(/\p{L}/gu) || []).length >= 3 && !w.includes('.') && w === w.toUpperCase();
+const cased = w => CAPS(w) ? w.toLowerCase().replace(/(^|[-'’])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()) : w;
+function personName(names){
+  const list = names.filter(Boolean).map(n => String(n).trim().replace(/\s+/g, ' ')).filter(n => n && n.split(' ').length <= 4);
+  if (!list.length) return '';
+  let family = '', marked = '';
+  for (const n of list){ const ws = n.split(' '), caps = ws.filter(CAPS); if (ws.length >= 2 && caps.length === 1){ family = caps[0].toLowerCase(); marked = n; break; } }
+  const ordinary = n => !n.split(' ').some(CAPS);
+  const best = list.find(n => ordinary(n) && (!family || n.split(' ').slice(-1)[0].toLowerCase() === family)) || marked || list.find(ordinary) || list[0];
+  let ws = best.split(' ').map(cased);
+  if (family && ws.length === 2 && ws[0].toLowerCase() === family) ws = [ws[1], ws[0]];
+  return ws.join(' ');
+}
 async function authorName(d) {
   const name = (d.author_name || [''])[0];
-  if (!name || latin(name)) return name;
-  const alt = (d.author_alternative_name || []).find(latin);
-  if (alt) return alt;
+  if (!name || latin(name) && !name.split(/\s+/).some(CAPS)) return name;
+  const alts = [...(latin(name) ? [name] : []), ...(d.author_alternative_name || []).filter(latin)];
+  if (alts.length) return personName(alts) || name;
   const key = (d.author_key || [])[0];
   if (!key) return name;
-  try { const a = await getJSON(`https://openlibrary.org/authors/${encodeURIComponent(key)}.json`, {headers: {'User-Agent': UA}}); return (a.alternate_names || []).find(latin) || name; }
+  try { const a = await getJSON(`https://openlibrary.org/authors/${encodeURIComponent(key)}.json`, {headers: {'User-Agent': UA}}); return personName((a.alternate_names || []).filter(latin)) || name; }
   catch { return name; }
 }
 async function olBooks(q) {
   const r = await getJSON('https://openlibrary.org/search.json?limit=50&fields=title,author_name,author_alternative_name,author_key,first_publish_year,publish_year,cover_i,edition_count,readinglog_count&q=' + encodeURIComponent(q), {headers: {'User-Agent': UA}});
-  const want = words(q.replace(/[\s,(]+(?:19|20)\d\d\)?$/, ''));
-  const says = d => { const hay = words([d.title, ...(d.author_name || [])].join(' ')).join(' '); return want.length > 0 && want.every(w => hay.includes(w)); };
+  const typed = q.replace(/[\s,(]+(?:19|20)\d\d\)?$/, ''), wants = [words(typed), words(spelled(words(typed).join(' ')))];   // 1984 is also nineteen eighty four
+  const says = d => { const hay = words([d.title, ...(d.author_name || [])].join(' ')).join(' '); return wants.some(want => want.length > 0 && want.every(w => hay.includes(w))); };
   const seen = new Set(), once = d => { const k = words(d.title).join(' ').replace(/^(the|a|an) /, '') + '|' + words((d.author_name || [''])[0]).join(' '); return !seen.has(k) && !!seen.add(k); };
   const docs = (r.docs || []).filter(d => !notABook(d) && says(d))
-    .sort((a, b) => (b.readinglog_count || 0) - (a.readinglog_count || 0) || (b.edition_count || 0) - (a.edition_count || 0)).filter(once).slice(0, 5);
+    .sort((a, b) => closeness(a.title || '', q) - closeness(b.title || '', q) || (b.readinglog_count || 0) - (a.readinglog_count || 0) || (b.edition_count || 0) - (a.edition_count || 0)).filter(once).slice(0, 5);
   // Open Library's first year is sometimes a stray record (It Ends With Us: 2012, The Bell Jar: 1948).
   // Wikidata's publication date is right for known books; without it, a lone early year with a gap after it is dropped.
   const [years, authors] = await Promise.all([Promise.all(docs.map(d => wikidataYear(d.title, (d.author_name || [''])[0]).then(y => y ? String(y) : olYear(d)))), Promise.all(docs.map(authorName))]);
@@ -202,9 +239,10 @@ async function wikidataYear(title, author) {
 async function identify(p, env, cors, ctx) {
   const q = clean(p.get('q'), 120), want = ['movie', 'book'].includes(p.get('want')) ? p.get('want') : 'all';
   if (!q) return json({error: 'Type a title to search.'}, 400, cors);
-  // id5: a book's author in Latin letters when Open Library has them (id4 answers could have 村上春樹); id4: books only
+  // id7: the closest titles first, ranked before five are kept, and 1984 finding Nineteen Eighty-Four;
+  // id6: an author's name as they write it ("Haruki Murakami", not "MURAKAMI HARUKI"); id5: a book's author in Latin letters when Open Library has them (id4 answers could have 村上春樹); id4: books only
   // when the title or author has what was typed, each once (id3 answers had the rest; id2 the reports)
-  const key = `id5:${want}:${q.toLowerCase()}`, make = async () => {
+  const key = `id7:${want}:${q.toLowerCase()}`, make = async () => {
     const [f, b] = await Promise.allSettled([want !== 'book' ? tmdbFilms(q, env.TMDB_TOKEN) : [], want !== 'movie' ? olBooks(q) : []]);
     if (f.status === 'rejected' && b.status === 'rejected') throw new Error('TMDB and Open Library did not answer');
     return {results: [...(f.value || []), ...(b.value || [])]};
@@ -243,12 +281,18 @@ function edition(r, img, text) {
   const foreign = text.split(' ').some(w => FOREIGN_WORDS.has(w)) || / region [2-6] /.test(text) || FOREIGN_SCRIPT.test(r.title || '') || hosts.some(h => FOREIGN_TLD.test(h));
   return {en: !foreign, vhs: / vhs | videocassette /.test(text), hint: ENGLISH_HINTS.some(x => text.includes(x))};
 }
+/* A film has four rounds. A book has three: when round 0 finds no clean spine, a search for the spine itself, then for
+   the dust jacket laid flat (one paid search each, and the page asks for the next only while it still has nothing).
+   Image search mostly finds photos of a book on a table, which have no spine to cut (docs/BOOK-SPINES.md). */
+const roundsFor = kind => kind === 'book' ? 3 : 4;
 function queryFor(kind, round, title, year, creator) {
   const q = kind === 'movie'
     ? [`"${title}" ${year} dvd cover`, `"${title}" ${year} dvd cover english`, `"${title}" dvd cover scan`, `"${title}" criterion dvd`]
-    : [`"${title}" ${creator} book cover spine`, `"${title}" ${creator} book spine`, `"${title}" spine`, `${title} ${creator} full cover wrap`];
+    : [`"${title}" ${creator} book cover spine`, `"${title}" ${creator} book spine`, `"${title}" ${creator} dust jacket full wrap`];
   return q[round].replace(/\s+/g, ' ').trim();
 }
+// what a round is kept under: a book's round 2 asks something new (it was "<title>" spine), so it has a key of its own
+const roundKey = (kind, round) => kind === 'book' && round === 2 ? '2j' : String(round);
 /* Where a round's pictures are looked for, in this order, stopping at the first that gives a usable scan (one that
    passes the wrap and spine filters in pick() below):
      1. what's already kept in KV (and, on round 0, approved spines from the archive, which scans() adds)
@@ -367,12 +411,12 @@ const slim = list => list.map(r => ({title: r.title || '', url: r.url || '',
   thumbnail: r.thumbnail ? {width: +r.thumbnail.width || 0, height: +r.thumbnail.height || 0} : null}));
 async function rawScans(env, ctx, kind, title, year, creator, round, cacheOnly) {
   // book searches don't use the year (and book years get corrected), so a book's key has none
-  const ckey = `raw1:${kind}:${words(title).join(' ')}:${kind === 'book' ? '' : year}:${round}`, keep = n => ({expirationTtl: n ? 365 * DAY : 7 * DAY});
+  const ckey = `raw1:${kind}:${words(title).join(' ')}:${kind === 'book' ? '' : year}:${roundKey(kind, round)}`, keep = n => ({expirationTtl: n ? 365 * DAY : 7 * DAY});
   const hit = await env.SPINE_CACHE.get(ckey, 'json');
   if (hit) return {list: hit, from: 'raw'};
   // before raw1, only the filtered results were kept (sc6-sc11). They still carry everything the filters read,
   // so they stand in for the raw answer instead of a new search, and are copied to raw1 for next time.
-  for (const v of LEGACY) {
+  for (const v of kind === 'book' && round === 2 ? [] : LEGACY) {
     let old = await env.SPINE_CACHE.get(`${v}:${kind}:${title.toLowerCase()}:${year}:${creator.toLowerCase()}:${round}`, 'json');
     if (!old && kind === 'book') {   // stored under whatever year the book had then
       const k = (await env.SPINE_CACHE.list({prefix: `${v}:book:${title.toLowerCase()}:`, limit: 50})).keys.find(x => x.name.endsWith(':' + round));
@@ -450,7 +494,7 @@ function pick(found, kind, title, year, creator) {
 }
 async function scans(p, env, cors, ctx) {
   const title = clean(p.get('title'), 120), year = clean(p.get('year'), 4).replace(/\D/g, ''), creator = clean(p.get('creator'), 80);
-  const kind = p.get('kind') === 'book' ? 'book' : 'movie', round = Math.max(0, Math.min(ROUNDS - 1, parseInt(p.get('round'), 10) || 0));
+  const kind = p.get('kind') === 'book' ? 'book' : 'movie', rounds = roundsFor(kind), round = Math.max(0, Math.min(rounds - 1, parseInt(p.get('round'), 10) || 0));
   if (!title) return json({error: 'A title is needed.'}, 400, cors);
   const archived = round === 0 ? await archiveFor(env, kind, title, year, creator) : [];
   // cacheonly=1: never search, answer from what's stored. The page asks this for the later rounds while the first is
@@ -458,7 +502,7 @@ async function scans(p, env, cors, ctx) {
   const cacheOnly = p.get('cacheonly') === '1';
   const {list: found, from} = await rawScans(env, ctx, kind, title, year, creator, round, cacheOnly);
   // capped: nothing usable was found and a provider was at its cap or out for the day; the page makes a spine from the cover
-  return json({results: [...archived, ...pick(found, kind, title, year, creator)], round, more: round < ROUNDS - 1, ...(from === 'capped' ? {capped: true} : {}),
+  return json({results: [...archived, ...pick(found, kind, title, year, creator)], round, more: round < rounds - 1, ...(from === 'capped' ? {capped: true} : {}),
     ...(cacheOnly ? {cached: from !== 'miss'} : {})}, 200, cors, {'X-Cache': from});
 }
 /* ---------- admin: today's searches, and one provider's raw answer ---------- */

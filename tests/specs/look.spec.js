@@ -122,7 +122,7 @@ test('every page sets its type in Courier Prime, loaded from Google Fonts at 400
     const html = fs.readFileSync(path.join(ROOT, f), 'utf8'), link = (html.match(/https:\/\/fonts\.googleapis\.com\/css2\?[^"]+/) || [''])[0];
     expect(link, f).toContain('family=Courier+Prime:ital,wght@0,400;0,700;1,400');
     expect(link, f).toContain('display=swap');
-    if (!['index.html', 'build/index.html', 'u/index.html'].includes(f)) expect(link, f).not.toContain('Geist');
+    if (!['index.html', 'build/index.html', 'u/index.html', 'feed/index.html'].includes(f)) expect(link, f).not.toContain('Geist');   // pages that draw spines (the feed: People to follow)
   }
   expect(fs.readFileSync(path.join(ROOT, 'site.css'), 'utf8')).toMatch(/--mono:"Courier Prime",/);
 });

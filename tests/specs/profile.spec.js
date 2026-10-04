@@ -87,10 +87,10 @@ test('Activity: a line for each shelf saved and each film or book logged, newest
   const lines = page.locator('#acts .line');
   await expect(lines).toHaveCount(8);
   const text = (await lines.allTextContents()).map(t => t.replace(/\s+/g, ' ').trim());
-  expect(text[0]).toBe('@mira watched Gummo · today');
+  expect(text[0]).toBe('@mira watched Gummo · today Log');   // Log: the same title, in + ADD's Log it
   expect(text[1]).toBe('@mira shelved shelf number 1 · 1d');
   expect(text[2]).toBe('@mira updated untitled shelf · 4d');   // saved again later than it was made
-  expect(text[3]).toBe('@mira read The Waves · 1w');
+  expect(text[3]).toBe('@mira read The Waves · 1w Log');
   expect(text[4]).toBe('@mira shelved shelf number 7 · 1w');
   expect(text[7]).toBe('@mira updated untitled shelf · 2w');
   await expect(page.locator('#acts .fa')).toHaveCount(0);
@@ -222,7 +222,7 @@ test('your watchlist: a strip on Profile; on its tab each cover has Remove and �
   await expect(page.locator('#toast')).toHaveText('Orlando is off your watchlist.');
   // ✓ Mark watched: + ADD's Log it, on that title; Post logs it, and the lists are read again
   await row(page, 'wGrid', 'Paris, Texas').getByRole('button', { name: 'Mark watched' }).click();
-  const d = page.getByRole('dialog', { name: /log a film or book/i });
+  const d = page.getByRole('dialog', { name: 'What did you watch or read?' });
   await expect(d).toBeVisible();
   await expect(d.getByRole('radio', { name: 'Log it' })).toBeChecked();
   await expect(d.locator('#addPostTitle')).toHaveText('Paris, Texas (1984)');

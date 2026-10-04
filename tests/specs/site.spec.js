@@ -19,30 +19,31 @@ for (const signedIn of [false, true]) {
         const logo = bar.getByRole('link', { name: 'shelfstackd, home' });
         await expect(logo).toBeVisible();
         expect(await pathOf(logo)).toBe('/');
-        for (const [name, to] of [['Shelves', '/shelves/'], ['Members', '/members/'], ['Activity', '/feed/']]) {
+        for (const [name, to] of [['Shelves', '/shelves/'], ['Members', '/members/'], ['Feed', '/feed/']]) {
           const link = bar.locator('.links').getByRole('link', { name, exact: true });
           await expect(link).toBeVisible();
           expect(await pathOf(link)).toBe(to);
         }
         await expect(bar.getByRole('link', { name: 'Add a film or a book' })).toBeVisible();
         if (!isPhone()) await expect(bar.locator('.add')).toHaveText('Add');   // + ADD (a phone shows just the +)
-        // the places are in one order, signed in or out: ⚡ · SHELVES · MEMBERS · search (they used to change places)
-        const places = await bar.locator('.links a').evaluateAll(as => as.map(a => ({ name: a.getAttribute('aria-label') || a.textContent.trim(), left: a.getBoundingClientRect().left, shown: a.getBoundingClientRect().width > 0 })));
-        expect(places.map(p => p.name)).toEqual(['Activity', 'Shelves', 'Members', 'Search']);
+        // the places are in one order, signed in or out: FEED · SHELVES · MEMBERS · search (they used to change places)
+        const places = await bar.locator('.links a:not([hidden])').evaluateAll(as => as.map(a => ({ name: a.getAttribute('aria-label') || a.textContent.trim(), left: a.getBoundingClientRect().left, shown: a.getBoundingClientRect().width > 0 })));
+        expect(places.map(p => p.name)).toEqual(['Feed', 'Shelves', 'Members', 'Search']);
+        await expect(bar.locator('.links a', { hasText: 'Feed' })).toHaveCSS('text-transform', 'uppercase');   // a word in capitals, no ⚡
         expect(places.every(p => p.shown)).toBe(true);
         expect(places.map(p => p.left)).toEqual(places.map(p => p.left).sort((a, b) => a - b));
         const search = bar.getByRole('link', { name: 'Search' });
         await expect(search).toBeVisible();
         expect(await pathOf(search)).toBe('/members/');
         if (signedIn) {
-          // logo · you ▾ · ⚡ · SHELVES · MEMBERS · search · + ADD ▾
+          // logo · you ▾ · FEED · SHELVES · MEMBERS · search · + ADD ▾
           await expect(bar.locator('#acctBtn')).toBeVisible();
           await expect(bar.locator('#acctBtn')).toHaveAccessibleName('@tester, your account');
           if (isPhone()) await expect(bar.locator('#acctBtn .who')).toBeHidden(); else await expect(bar.locator('#acctBtn .who')).toHaveText('@tester');   // a phone shows just the photo
           await expect(bar.locator('#signInBtn')).toBeHidden();
           await expect(bar.locator('#addMore')).toBeVisible();
         } else {
-          // logo · ⚡ · SHELVES · MEMBERS · search · SIGN IN · + ADD
+          // logo · FEED · SHELVES · MEMBERS · search · SIGN IN · + ADD
           await expect(bar.locator('#signInBtn')).toHaveText(/sign in/i);
           await expect(bar.locator('#acctBtn')).toBeHidden();
           await expect(bar.locator('#addMore')).toBeHidden();
@@ -337,10 +338,10 @@ test('signed out, + ADD asks to sign in, and once signed in the Add dialog opens
   await page.locator('header.top .add').click();
   await expect(page.locator('#signSheet')).toBeVisible();
   await signBack(); await page.reload();
-  await expect(page.getByRole('dialog', { name: 'Add to your shelf' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'What did you watch or read?' })).toBeVisible();
   await expect(page).toHaveURL(/\/feed\//);
   await page.keyboard.press('Escape'); await page.reload();
-  await expect(page.getByRole('dialog', { name: 'Add to your shelf' })).toBeHidden();   // once, not every time
+  await expect(page.getByRole('dialog', { name: 'What did you watch or read?' })).toBeHidden();   // once, not every time
 });
 
 test('signed-in home: a welcome by name, the row from people you follow with All activity, then Just shelved', async ({ page }) => {
@@ -352,7 +353,7 @@ test('signed-in home: a welcome by name, the row from people you follow with All
   await expect(page.locator('#in h2')).toHaveText([/^New from people you follow/, /^Just shelved/]);
   const all = page.locator('#in').getByRole('link', { name: 'All activity' });
   await expect(all).toHaveAttribute('href', 'feed/?following');
-  await expect(all.locator('svg')).toHaveCount(1);   // ⚡
+  await expect(all.locator('svg')).toHaveCount(0);   // no ⚡: it's Letterboxd's
   const h2 = await page.locator('#in h2').first().boundingBox(), link = await all.boundingBox();
   expect(Math.abs(h2.x + h2.width - (link.x + link.width))).toBeLessThanOrEqual(1);   // at the right of the heading
   await expect(page.locator('#folRow li')).toHaveCount(1);   // the made-up account follows only @mira: one card, her newest

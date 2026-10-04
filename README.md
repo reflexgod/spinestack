@@ -5,9 +5,10 @@ Live at https://shelfstackd.com (this repository and its folders keep the old wo
 Type a film or a book, get its real spine, put it on your shelf (one each), save it to your profile. From its page the shelf can be shared as an Instagram story. You can also log a film or a book you watched or read, which goes on the feed with its cover, and keep a watchlist.
 
 ```
-index.html            the home page (GitHub Pages serves this). Signed out: the spine wall (one strip of the newest spines from different public shelves, a few from each person, up to 24, standing on a thin shelf line, each shelf's spines a link to it; 280px tall at most, 200px on a phone, where the rest scroll sideways; the sample shelf while there are none), then one line about the site and Make a shelf (the black button on that screen), and nothing else before the newest shelves (Just shelved); signed in: a welcome by name and nothing else on its line (the headings under it say what they are; nothing on a screen is said twice), New from people you follow (⚡ All activity: a row of cards, one for each person you follow with the newest thing they shelved or logged, a log's worn cover or a shelf's spines on the grey panel, their photo and @username in a thin bar under it, and under the card watched, read or shelved and the date; six across, three on a phone and the rest sideways), then Just shelved. Links to the old builder here (/?open=, /#shelf) go on to build/
+index.html            the home page (GitHub Pages serves this). Signed out: the spine wall (one strip of the newest spines from different public shelves, a few from each person, up to 24, standing on a thin shelf line, each shelf's spines a link to it; 280px tall at most, 200px on a phone, where the rest scroll sideways; the sample shelf while there are none), then one line about the site and Make a shelf (the black button on that screen), and nothing else before the newest shelves (Just shelved); signed in: a welcome by name and nothing else on its line (the headings under it say what they are; nothing on a screen is said twice), New from people you follow (All activity: a row of cards, one for each person you follow with the newest thing they shelved or logged, a log's worn cover or a shelf's spines on the grey panel, their photo and @username in a thin bar under it, and under the card watched, read or shelved and the date; six across, three on a phone and the rest sideways), then Just shelved. Links to the old builder here (/?open=, /#shelf) go on to build/
 build/index.html      the shelf builder (its Add box is the + ADD dialog's search: typing in it opens the dialog and suggests as you type) (Your shelf: there's one shelf each, and signed in it opens yours; signed out it's New shelf and says "the shelf", not "your shelf"): Add, the spines as a list (drag one there or on the preview to move it), Style, the preview; at the bottom its name (one name: it's the caption on the story too), who can view it, Cancel · Save. Clear asks first
-add.js                + ADD on every page: the Add dialog (for someone signed in: signed out, + ADD is the sign-in sheet). Also Add.watch() (a title onto the watchlist, from anywhere), Add.attachSearch() (its title search in a page's own box: the Watchlist tab's) and Add.WATCH_CAP (6: the watchlist's size, the same number as in 0007's trigger). Titles are suggested 250 ms after the last key, a newer search cancelling the one before. Picking one shows the spine made from the poster or cover and the Cover at once (Add to shelf works then), each real spine as soon as it's cut; rounds the Worker already keeps come at once, and a round that has to search is still asked only when the ones before weren't enough (LIVE in add.js lets more search at once). Three choices at the top: Put on shelf (suggestions as you type, then the spine choices and Add to shelf; the spine finder lives here), Log it (the cover as the feed will show it, a caption if you want one, Post) and Watchlist (Add to watchlist)
+add.js                + ADD on every page: the Add dialog (for someone signed in: signed out, + ADD is the sign-in sheet), with Log it · Put on shelf · Watchlist, opening on Log it (on the builder, on Put on shelf); Log it has post.js's fields. Also Add.watch() (a title onto the watchlist, from anywhere), Add.attachSearch() (its title search in a page's own box: the Watchlist tab's) and Add.WATCH_CAP (6: the watchlist's size, the same number as in 0007's trigger). Titles are suggested 250 ms after the last key, a newer search cancelling the one before. Picking one shows the spine made from the poster or cover and the Cover at once (Add to shelf works then), each real spine as soon as it's cut; rounds the Worker already keeps come at once, and a round that has to search is still asked only when the ones before weren't enough (LIVE in add.js lets more search at once). Three choices at the top: Put on shelf (suggestions as you type, then the spine choices and Add to shelf; the spine finder lives here), Log it (the cover as the feed will show it, a caption if you want one, Post) and Watchlist (Add to watchlist)
+post.js               a log is a post: the composer ("What did you watch or read?": + ADD's title search, the picked title with its cover as the feed will show it, then the fields and Post; on the feed and in + ADD's Log it), the fields (with migration 0009: half stars, a review of 2,000, Spoilers, Rewatch or Reread, the day; without it a caption of 280, as before), posting, and a post with its row of actions. Posts.ready() asks once whether 0009 is in the database (the likes table: an empty list, or 404, which is then kept for 10 minutes); nothing 0009 adds shows until it is
 bare.js               saved shelves drawn small from their rows in shelf_items: each row back into a book (its pictures through the Worker), then the shelf cut out of a bare story, as the profile's hero draws it (home's cards), or its spines one by one, all at one scale (home's spine wall). The same as u/'s own: keep them in step
 wear.js               a log's cover, worn: one corner dog-eared (a hairline round the fold and a soft shadow under it, so it reads on a white poster), fine scratches, rubbed edges and a little fade, drawn on a canvas from how long ago it was logged (lightly worn that day, with two or three scratches to see; faded after a week, worn after a month). No stamp and nothing written on it
 shelf.js              draws the spines and the story (and says where it drew each book); build/ and u/ both use it, so a shelf looks the same everywhere
@@ -15,19 +16,22 @@ u/index.html          profiles: /u/?username, the bio in the header under @usern
 shelves/index.html    every public shelf as a card, newest first, 24 at a time (Load more); Your shelf, or signed out Make a shelf in black (the bar's + outlined, as on home), which asks to sign in
 members/index.html    Find @username (people by the start of a username or name, each with FOLLOW), and Recently active: the people behind the newest shelves
 settings/index.html   your settings (signed in only; signed out, just Sign in under the heading): PROFILE (display name, bio), PHOTO (cut square, made small, sent to the Worker), ACCOUNT (private profile). A profile's Edit profile comes here
-feed/index.html       the feed: /feed/, FOLLOWING · YOU · EVERYONE, a line for each shelf saved ("@abc shelved my films · 2h") with its card, and for each film or book logged ("@abc watched Gummo · today") with its worn cover, small (72 x 108px), and the caption beside it, newest first
+feed/index.html       the feed: /feed/, signed in "What did you watch or read?" at the top (post.js), then FOLLOWING · EVERYONE (?you, from the old You tab, is Following), the next 20 coming as the end of the list nears; every minute it asks for the newest and says "3 new posts" at the top when there are newer ones (pressing it shows them; nothing moves by itself); an empty Following has People to follow (the people behind the newest public shelves and posts, not you or anyone you follow: photo, @name, their shelf's first five spines (bare.js) and Follow); each log is a post (post.js): photo, @name, watched or read <Title> (a link to its page, /p/), with 0009 its stars and rewatch, the worn cover, the review (blurred until pressed when it has spoilers), how long ago, then like, reply and me too with their counts (0009; they change at once and go back if the database says no), + Watchlist or In watchlist (kept with whose post it was), Share (the post's address), and ··· with Report (0009) or Delete (yours, after a yes); a line for each shelf saved ("@abc shelved my films · 2h") with its card, and for each film or book logged ("@abc watched Gummo · today") with its worn cover, small (72 x 108px), and the caption beside it, newest first
+p/index.html          a post's own page: /p/?<log id>, the post as the feed has it with its review in full and a larger cover, then (0009) its replies, oldest first, and a box to reply in (280); Delete on your own reply or any reply to your post (after a yes), Report on someone else's; #reply puts the caret in the box (a post's reply count links there). A post you can't see says it isn't here
+notifications/index.html  /notifications/, yours only (migration 0009): likes, replies, me-toos and new followers, newest first, 30 at a time; ones in a row about the same thing are one line ("@a and 2 others liked your log of Gummo"), a reply with what was said; each goes to the post or, for a follower, their profile. Opening it marks them all read (the bell's dot goes); what was unread is in bold
 worker-address.js     sends Worker requests to its workers.dev address on networks that block api.shelfstackd.com
-favicon.svg           the mark: three spines on a shelf. favicon-32.png, favicon.ico and apple-touch-icon.png are made from it (tests/art.js); every page links them
+assets/logo-hedgehog.svg   the logo: a white hedgehog with four coloured quills on #14181C. The bar shows it at 28px left of SHELFSTACKD; its colours are the only colour on the site
+favicon.svg           a copy of the logo. favicon-32.png, favicon.ico and apple-touch-icon.png are made from it (tests/art.js); every page links them
 favicon.ico           the same mark for a browser that asks for /favicon.ico whatever the page says (without it, that request is a 404 on every page)
 tmdb.svg              TMDB's logo, their own file as it comes (the "primary short" one from themoviedb.org/about/logos-attribution), shown small in privacy.html's Credits: their terms ask for it beside their line
 privacy.html          what the site keeps and who sees it; at its end, Credits (#credits, where About in every footer goes): TMDB's logo and line, Open Library, Search by Brave
 .well-known/appspecific/com.chrome.devtools.json   an empty answer for Chrome, which asks every localhost site for this file while its DevTools are open (the other 404 in the network panel). Nothing reads it
-og.jpg                the picture a shared link shows (1200 x 630: the logo and a shelf); every page names it in its og: and twitter: tags
+og.jpg                the picture a shared link shows (1200 x 630: the logo in the middle of #14181C); every page names it in its og: and twitter: tags
 sample-shelf.jpg      the builder's sample shelf (it's only at build/?sample now: a new shelf starts empty) as a picture; home shows it ("a shelf, for example") while there are no public shelves. Made by tests/art.js
 spinetip.js           a shelf's picture: hovering a spine shows "Title (year) · creator", pressing it goes to its row in the list (a shelf's page, and the builder's preview). It uses the places shelf.js says it drew each book
 cards.js              shelf cards: finds the books in a shelf's preview picture and cuts the 2:3 card round them (home, the feed, profiles), keeping what it found per preview key
 site.css              the look every page shares: one :root block of variables (the 950px column, the type scale, the 4/8/12/16/24/40 spacing, the 3px radius) and what uses them everywhere (the top bar, headings, buttons, fields, shelf cards, tabs, sheets, the footer: one line, About · Privacy · hello@shelfstackd.com). A page's own <style> holds only what that page alone needs
-nav.js                the top bar on every page: who is signed in, the account menu (Home, Profile, Shelf, Activity, Network, Settings, Sign out), + ADD and the ▾ next to it. Also Nav.watchable(): a watchlist bookmark on a cover or a spine (on hover; ••• with Add to watchlist on a phone), on the feed, someone's shelf page and Activity, their watchlist and From friends. The places are in each page's markup, in one order signed in or out: ⚡ · Shelves · Members · search
+nav.js                the top bar on every page: who is signed in, the account menu (Home, Profile, Shelf, Activity, Network, Settings, Sign out), + ADD and the ▾ next to it, and, signed in once migration 0009 is there, the bell (the last of the places, with a dot while something is unread; it asks whether 0009 is there as post.js does, with the same keys). Also Nav.watchable(): a watchlist bookmark on a cover or a spine (on hover; ••• with Add to watchlist on a phone), on the feed, someone's shelf page and Activity, their watchlist and From friends. The places are in each page's markup, in one order signed in or out: Feed · Shelves · Members · search (and the bell)
 404.html              what GitHub Pages sends for an address that isn't there: its heading ("Nothing on this shelf.") and the way home, no second line saying it again. Its links start at the root (/), since it's served at any depth
 admin.html            approve or delete archive uploads (needs the admin token); read reports (Google sign-in, admins only)
 tests/                checks for the pages: Playwright, axe, html-validate (see Tests). The site never loads anything from here
@@ -77,7 +81,7 @@ come from), and passes scan images through with CORS so the page can cut the spi
 | Endpoint | What it returns |
 |---|---|
 | `/identify?q=&want=all\|movie\|book[&suggest=1]` | `{results:[{kind,title,year,creator,cover}]}`: up to 5 films (TMDB) and 5 books (Open Library: only those whose title or author has what was typed, each title once, most-read first, without the government reports it files as books). `suggest=1` is a half-typed title: answered the same, but not kept in KV |
-| `/scans?title=&year=&kind=movie\|book&creator=&round=0-3` | one query per round: up to 10 wrap-shaped (or single-spine) scans whose page names the title, plus approved archive spines first in round 0: `{results:[...], round, more}`, with `capped: true` when nothing usable was found and a provider was at its cap (see Where scans come from). With `&cacheonly=1` it never searches, answers from what's kept and says `cached: true` or `false`: the page asks that for rounds 1 to 3 while round 0 searches |
+| `/scans?title=&year=&kind=movie\|book&creator=&round=0-3` (a book 0-2) | one query per round: up to 10 wrap-shaped (or single-spine) scans whose page names the title, plus approved archive spines first in round 0: `{results:[...], round, more}`, with `capped: true` when nothing usable was found and a provider was at its cap (see Where scans come from). With `&cacheonly=1` it never searches, answers from what's kept and says `cached: true` or `false`: the page asks that for rounds 1 to 3 while round 0 searches |
 | `/img?url=` | the image, with CORS. http(s) and `image/*` only, 8 MB max, private addresses blocked, 3 redirects max |
 | `POST /archive?kind=&title=&year=&author=` | a PNG of one spine (300 KB max, at least 3 times taller than wide), re-encoded and kept as *pending* |
 | `/archive/img?id=` | an approved archive spine |
@@ -184,7 +188,7 @@ minute stale. Both fit the Workers Free plan and need no card.
 `cd worker && npx wrangler deploy`. Secrets and the KV cache stay as they are. To try a change first without deploying:
 `cd worker && npx wrangler dev` runs the Worker on this machine (`http://127.0.0.1:8787`, with its own empty KV and
 Durable Object; films need `TMDB_TOKEN` in `worker/.dev.vars`).
-If you change what `/identify` answers, bump its cache key prefix in `src/index.js` (`id5:` now: a book's author comes in Latin letters when Open Library has them, 村上春樹 as Haruki Murakami) so answers kept
+If you change what `/identify` answers, bump its cache key prefix in `src/index.js` (`id7:` now: the closest titles first, ranked before five are kept; a book's author comes in Latin letters when Open Library has them, the way they write it: 村上春樹 and MURAKAMI HARUKI as Haruki Murakami) so answers kept
 before the change aren't reused. `/scans` keeps what the providers said as it came (`raw1:`), and its filters run again on that.
 
 ### How a real spine is found
@@ -192,15 +196,22 @@ before the change aren't reused. `/scans` keeps what the providers said as it ca
 0. In the Add to your shelf dialog (`add.js`, opened by + ADD on any page and by the builder's Add box) a title is
    looked up as it's typed: a search starts 300 ms after the last key and replaces the one before it, Enter searches at
    once. Up to six results show, films and books together, the closest titles first (the same as what was typed, then
-   starting with it, then containing it); ↑ ↓ move through them and Enter picks one.
-1. The page asks the Worker for one round at a time, at most 4 per title, and stops once two good spines turn up, to save searches.
+   starting with it, then containing it; a leading The, A or An doesn't count, and a year in figures is also its words,
+   so 1984 finds Nineteen Eighty-Four just after a title that is 1984); ↑ ↓ move through them and Enter picks one. The
+   Worker ranks the same way (`closeness()`) over the whole answer TMDB and Open Library give, before it keeps five of
+   each: "gumm", half typed, used to leave Gummo out. Members' Find @username puts the username or name as typed first too.
+1. The page asks the Worker for one round at a time, to save searches. A film has at most 4 rounds and stops once two good spines turn up;
+   a book has at most 3 and stops at the first clean spine (each round after 0 is a paid search, and most books have no scan to find: `docs/BOOK-SPINES.md`).
    Films: `"<title>" <year> dvd cover`, `"<title>" <year> dvd cover english`, `"<title>" dvd cover scan`, `"<title>" criterion dvd`.
-   Books: `"<title>" <author> book cover spine`, `"<title>" <author> book spine`, `"<title>" spine`, `<title> <author> full cover wrap`.
+   Books: `"<title>" <author> book cover spine`, then `"<title>" <author> book spine`, then `"<title>" <author> dust jacket full wrap` (kept under its own key, `:2j`).
 2. It keeps images shaped like a wrap (1.3–1.9 wide for films, 1.2–2.4 for books) or like a single spine (4 times taller than wide), whose title or address contains the whole title; one-word titles also need the year or director.
 3. The page loads each scan through `/img`, and `findSpine()` looks for the strip between back and front: two clear edges near the middle, about 5 % wide for a DVD, lettering on it, an even colour down it. Photos of open cases and books on a table are turned down.
+   A book's spine must also have lettering down its length (`lettering()` in `add.js`: at least 10 % of its rows, in at least 3 of 12 parts), so a plain strip at the join of a design with no spine is turned down; and a picture of one spine alone, 1:6 or narrower and lettered, is the whole spine.
 4. Each cut gets a score from 0 to 100. A film's best cut is picked for you only at 75 or more (in tests right spines scored 76–97 and wrong ones up to 69) **and** when it looks like the English edition; books always let you pick, unless the spine comes from the archive. Cuts under 45 aren't shown, and each page gives one option at most.
    Editions: the Worker marks a scan as another edition when its page title, address or file name has another language or region (Polish, Deutsch, español, français, 日本, region 2, `.pl`/`.de`/… pages, `nl`/`ger`/… in file names) and marks VHS tapes. With **Edition: English** (the default) English DVDs and Blu-rays come first; VHS comes last either way. **Any** drops the language rule.
-5. With no good scan, or when the day's searches are used up, the pick is a spine made from the poster or cover.
+5. With no good scan, or when the day's searches are used up, the pick is a spine made from the poster or cover. For a book the
+   first choice then is "Have it? Photograph the spine": a picture of your own copy (one spine alone, a wrap, or the spine on a plain
+   background, cut as an upload on the builder is, at most 900px tall), which is picked, with Generated next.
    Add to shelf puts the picked one on the shelf.
 
 ## Profiles
@@ -274,6 +285,13 @@ watchlist read policies that ask it: the owner always sees theirs, anyone else o
 see the profile. Its test is `supabase/tests/rls_phase5.sql` (`ALL 0008 CHECKS PASSED`, on the live database and on a
 local Postgres 16). `rls_phase4.sql` now makes its private D's watchlist public, so it needs `0008` too.
 
+**`supabase/migrations/0009_social.sql` is in the live database too** (run by the owner; its test,
+`supabase/tests/rls_phase6.sql`, passed: `ALL 0009 CHECKS PASSED`). It makes a log a post: a rating, a review (the
+caption, kept as its first 280), spoiler, rewatch, watched_on and metoo_of; likes, replies and notifications (made by
+triggers), 300 likes and 100 replies a day under a per-person lock, reports on logs and replies, and `post_stats()`,
+`replies_of()`, `notifications_list()` and `notifications_read()` for the pages. The pages show what it adds only once
+the likes table answers (post.js and nav.js ask), so they still work on a database without it.
+
 The live pages are still `main`, which doesn't ask for any of this: logs and the watchlist reach the site when
 `letterboxd-flow` is merged. On a database without `0007` the pages do without: the feed asks for `activity()` once,
 and on "not found" uses `feed()` from `0006` (shelves only); a profile shows no Watchlist and no From friends, and
@@ -304,8 +322,8 @@ signed-out visitors never load the Supabase library.
   `[vars]`. Both are public; Row Level Security protects every table. The secret / service_role key isn't used
   anywhere and must never be added to the page, the repo or the Worker.
 - **Database:** run each file in `supabase/migrations/` once, in order, in the dashboard's SQL Editor (the live
-  database has them all, `0001` to `0008`; there is no `0003`). Then run the test for the newest one
-  (`supabase/tests/rls_phase5.sql` after `0008`, `rls_phase4.sql` after `0007` and `0008`, `rls_phase3.sql` after `0006`): it plays a few users and a signed-out visitor,
+  database has them all, `0001` to `0009`; there is no `0003`). Then run the test for the newest one
+  (`supabase/tests/rls_phase6.sql` after `0009`, `rls_phase5.sql` after `0008`, `rls_phase4.sql` after `0007` and `0008`, `rls_phase3.sql` after `0006`): it plays a few users and a signed-out visitor,
   undoes everything, and ends with `ALL ... CHECKS PASSED` (or stops at the first `FAIL:`). `rls_phase1.sql` is for a
   database with `0001` only.
 - **Pro:** two switches that must agree: `SHELFSTACKD_PRO_REQUIRED` in `build/index.html` (what the page offers) and
@@ -361,7 +379,7 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
 ```
 
 - **Playwright** (`specs/site.spec.js`) opens every page at 1280 px and at 390 px, signed out and signed in: the top
-  bar is there with its places in one order (⚡ · Shelves · Members · search, signed in or out), the page doesn't scroll
+  bar is there with its places in one order (Feed · Shelves · Members · search, signed in or out), the page doesn't scroll
   sideways, nothing is logged as an error, signed-out home loads its shelves, and
   old builder links at the root go on to `/build/`. The account menu: its seven items with Sign out last, open by tap,
   by mouse and by keyboard, closed by Esc and by a click outside, always inside the window; Sign out signs out.
@@ -378,6 +396,8 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   name: Style has no Caption, and a shelf that had a caption of its own is saved with its name as both. The bar has
   only Cancel and Save, side by side at 360 to 430px.  Clear asks first (Cancel and Esc leave the spines); the sample
   shelf just goes.
+- **Posts** (`specs/post.spec.js`, `specs/social.spec.js`, `specs/postpage.spec.js`, `specs/notifications.spec.js`): the feed's composer without 0009 (a caption) and with it (half stars by keys and by halves of a star, a review of 2,000, Spoilers, Rewatch or Reread, the day), + ADD opening on Log it but on the builder, Log on a shelf's titles and someone's Activity; a post's stars, rewatch and counts, like and unlike (and going back when it fails), me too, spoilers, Share, Report, Delete after a yes, nothing of 0009 without it, and signed out the sign-in sheet; a post's page with its replies, replying, Delete and Report on replies, #reply, and a post that isn't there; the bell (with 0009, signed in, a dot while unread, the last place, the bar's first row still one line on a phone) and /notifications/ (grouped, newest first, a reply's text, unread in bold, then all read).
+- **A book's real spine** (`specs/spines.spec.js`): with none found, "Have it? Photograph the spine" first and Generated next (a film doesn't ask), and a photo of it picked and on the shelf in the builder; a drawn stand-in for Animal Farm's design from jesskingblog (no spine, a 13px plain strip at the join) is cut where the real one was and turned down for having no lettering down it; one lettered spine alone (1:8) is the whole spine and a blank one isn't; a film is as it was.
 - **The dialog's search** (`specs/add.spec.js`; signed out, + ADD is the sign-in sheet on every page, in `specs/log.spec.js`): suggestions while typing with one search for a word typed quickly, a
   slower earlier answer dropped, six results in order of closeness, ↑ ↓ Enter Esc, Enter searching at once, the
   loading and nothing-found lines, at the right of the All · Films · Books row (nothing held open, nothing moving);
@@ -424,7 +444,7 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   1px line, 280px at most and fitting across the column, 200px on a phone and sideways, never stretched, in the middle
   when there are only a few), the
   one line under it from the left, Make a shelf as the one black button (the bar's + outlined there), How it works
-  in three steps, with no "lets you" tiles; signed in, the welcome and ⚡ All activity, and New from people you follow
+  in three steps, with no "lets you" tiles; signed in, the welcome and All activity, and New from people you follow
   as a row of cards (from `activity()`, one for each person, the newest thing from them: a log's worn cover, a shelf's
   spines on the grey panel, the thin bar with their photo and @username, watched, read or shelved and the date under
   it, no captions; 2:3, a 1px border, no shadow, six across or three on a phone and the rest sideways; shelves only,
@@ -489,7 +509,7 @@ choices, Log it, Watchlist), shelves, members, settings, privacy and the not-fou
   `PAGES` in `tests/site.js`.
 
 `npm run art` makes the site's own pictures again and saves them at the root: the sample shelf (`sample-shelf.jpg`), the
-share picture (`og.jpg`) and the icons (from `favicon.svg`). Run it when the builder's sample shelf or the mark changes.
+share picture (`og.jpg`) and the icons (from `assets/logo-hedgehog.svg`). Run it when the builder's sample shelf or the logo changes (`node art.js icons` makes only the icons and `og.jpg`).
 
 ## 2. Run the backend (optional, not used right now)
 

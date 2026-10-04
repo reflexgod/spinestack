@@ -6,6 +6,34 @@ session"), again after the launch pass (see "Done in the second cloud session"),
 the design review was applied (see "Done in the third session"). Read this first, then `README.md`, which says what
 every file is and how the Worker, the accounts and the tests are set up.
 
+## Done on 4 October 2026 (phases 0 to 2 of the owner's plan)
+
+Live data had 4 people with shelves (all films, no books) and no logs. The plan: the logo, book spines, then the feed
+as posts. Each item is its own commit on `letterboxd-flow`; nothing is merged into `main`. Phase 3 hasn't started.
+
+- **Phase 0, the logo.** `assets/logo-hedgehog.svg` is the favicon (SVG, 32px, 180px on #14181C), the bar's mark
+  (28px left of SHELFSTACKD) and `og.jpg` (the logo in the middle of #14181C). The bar's ⚡ is the word FEED.
+- **Phase 1, book spines.** `docs/BOOK-SPINES.md` is the diagnosis (six books through the live Worker and the page's
+  own cutter). Then: a book's rounds are round 0, `"<title>" <author> book spine`, `"<title>" <author> dust jacket full
+  wrap`, each only while there's still no clean spine; a book's cut must have lettering down its length (Animal Farm's
+  false strip is dropped); one spine alone at 1:6 or narrower is the whole spine; no real spine gives "Have it?
+  Photograph the spine" first, Generated next; authors as they write their name (Haruki Murakami); search ranks the
+  title as typed, then starting with it, then the rest, in the Worker over TMDB's and Open Library's whole answers
+  (Gummo when typing "gumm"; 1984 finds Nineteen Eighty-Four) and on the page and Members.
+- **Phase 2, the feed as posts.** `supabase/migrations/0009_social.sql` and its test `supabase/tests/rls_phase6.sql`
+  (run on the live database by the owner, the test passing): a log's rating, review, spoiler, rewatch, watched_on and
+  metoo_of; likes, replies, notifications, limits and reports. `post.js` (the composer and a post), the feed's composer and posts with their actions, + ADD
+  opening on Log it (Put on shelf on the builder), Log on every title, `/p/` (a post and its replies),
+  Following · Everyone with the next 20 as you scroll, "N new posts", People to follow, the bell and
+  `/notifications/`. Everything 0009 adds shows once the likes table answers, which it does now.
+- **Deployed and run.** The owner deployed the Worker with these changes (book rounds, `/identify` cache key `id7`:
+  authors and ranking) and ran 0009 in the SQL Editor, where its test passed (`ALL 0009 CHECKS PASSED`). The two SQL
+  files moved from `docs/proposed-*` to `supabase/`, with only their headers changed. Before that they were also run on
+  PGlite (Postgres 18.3 in WASM, after 0001 to 0008 with a stand-in for Supabase's `auth`), with 0006 to 0008's own
+  tests passing after them.
+- **Tested:** `cd tests && npm run test:all` on the laptop after Phase 2: html-validate clean, then Playwright 711
+  passed, 21 skipped, none failed. Nothing is merged into `main`: that's the owner's.
+
 ## Where things stand
 
 - **Branch:** `letterboxd-flow`, pushed to `origin` (github.com/reflexgod/spinestack). It has everything from the

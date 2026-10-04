@@ -307,7 +307,7 @@ test('your own shelf: nothing is offered beside its titles (they\'re on it)', as
   await open(page, '/u/?tester&shelf');
   await expect(rows(page)).toHaveCount(2);
   expect(await offered(page)).toEqual(['', '']);
-  await expect(page.locator('#oneItems').getByRole('button')).toHaveCount(0);
+  await expect(page.locator('#oneItems').getByRole('button')).toHaveText(['Log', 'Log']);   // logging one is all there is to do
   await expect(page.locator('#oneItems')).not.toContainText(/add to my shelf|on your shelf/i);
 });
 

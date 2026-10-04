@@ -1,5 +1,5 @@
-/* + ADD: the Add dialog, the same on every page. At the top, what to do with the title: Put on shelf (the default),
-   Log it, or Watchlist. Under that, a search box (All / Films / Books under it) that suggests titles as you type: up
+/* + ADD: the Add dialog, the same on every page. At the top, what to do with the title: Log it (the default: logging is
+   posting; on the builder it is Put on shelf), Put on shelf, or Watchlist. Under that, a search box (All / Films / Books under it) that suggests titles as you type: up
    to six, films and books together, the closest titles first; ↑ ↓ move through them and Enter picks.
    Put on shelf: picking a result goes to step 2, which finds that title's spines (the Worker finds DVD and book scans,
    the browser cuts the spine out of each) and shows the choices with an Add to shelf button. On the builder that puts
@@ -166,6 +166,24 @@ function findSoloSpine(img){
   const k = img.width/cw, ky = img.height/ch;
   return {x:L*k, y:T*ky, w:w*k, h:h*ky, score};
 }
+/* Lettering along a spine: a real one has its title, author and publisher down it; a false one (a plain strip at the
+   join of a design with no spine, docs/BOOK-SPINES.md) has next to nothing. The strip is drawn 300 rows tall; a row is
+   lettered when 6 to 90 % of its middle differs clearly from the strip's own colour. Returns {rows, parts}: the share
+   of rows lettered, and in how many of 12 equal parts down its length at least 15 % of rows are. */
+function lettering(img, x, y, w, h){
+  const H = 300, W = Math.max(8, Math.round(H*w/h));
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d', {willReadFrequently:true}); g.imageSmoothingQuality = 'high'; g.drawImage(img, x, y, w, h, 0, 0, W, H);
+  const d = g.getImageData(0, 0, W, H).data, px = (X, Y) => { const i = (Y*W+X)*4; return [d[i], d[i+1], d[i+2]]; };
+  const all = []; for (let Y = 0; Y < H; Y += 2) for (let X = 0; X < W; X++) all.push(px(X, Y));
+  const bg = [0,1,2].map(k => all.map(p => p[k]).sort((a,b) => a-b)[all.length >> 1]);
+  const x0 = Math.floor(W*.15), x1 = Math.max(x0 + 1, Math.ceil(W*.85)), lit = [];
+  for (let Y = 0; Y < H; Y++){ let n = 0; for (let X = x0; X < x1; X++) n += dist(px(X, Y), bg) > 60; const f = n/(x1 - x0); lit.push(f > .06 && f < .9); }
+  let parts = 0;
+  for (let p = 0; p < 12; p++){ const a = Math.floor(p*H/12), z = Math.floor((p+1)*H/12); if (lit.slice(a, z).filter(Boolean).length/(z - a) > .15) parts++; }
+  return {rows: lit.filter(Boolean).length/H, parts};
+}
+const lettered = (img, x, y, w, h) => { const l = lettering(img, x, y, w, h); return l.rows >= .1 && l.parts >= 3; };
 const API = String(window.SPINESTACK_API || '').replace(/\/+$/, '');
 let server = false;   // the old self-hosted backend (backend/): the builder looks for it and says so with Add.setServer()
 
@@ -219,6 +237,11 @@ css.textContent = `
 #addDialog .pick .lbl{font-size:var(--fs-label,10px);letter-spacing:0;text-transform:none;color:var(--grey,#6B6B6B);white-space:nowrap;width:var(--tw);text-align:center;overflow:hidden;text-overflow:ellipsis;align-self:center}
 #addDialog .pick .lbl a{color:inherit}
 #addDialog .addfound .rule{flex:none;width:1px;height:var(--th);background:var(--hair,#D9D9D9)}
+/* no real spine for a book: "Have it? Photograph the spine", first, opens a picture of your own copy */
+#addDialog .pick .snap{width:var(--tw);flex-direction:column;align-items:center;justify-content:center;gap:var(--s2,8px);border:1px solid var(--hair,#D9D9D9);border-radius:var(--radius,3px);
+  font:400 var(--fs-small,12px)/1.35 var(--mono,monospace);color:var(--ink,#000);text-align:center;padding:var(--s2,8px)}
+#addDialog .pick .snap:hover{border-color:var(--ink,#000)}
+#addDialog .pick .snap svg{width:20px;height:20px}
 #addDialog .addbar{display:flex;justify-content:flex-end;align-items:center;gap:var(--s3,12px);margin-top:var(--s4,16px)}
 /* under the spines a search found, at the left of the bar: "Search by Brave", small and grey (Brave asks for it where its results show) */
 #addDialog .addby{margin-right:auto;font-size:var(--fs-small,11px);color:var(--grey,#6B6B6B)}
@@ -263,8 +286,8 @@ dlg.innerHTML = `
   <button class="addx" id="addClose" type="button" aria-label="Close">${ICON('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>')}</button>
   <h2 id="addTitle">Add to your shelf</h2>
   <div class="addwhat" role="radiogroup" aria-label="What to do with it">
-    <label><input type="radio" name="addWhat" value="shelf" checked><span>Put on shelf</span></label>
-    <label><input type="radio" name="addWhat" value="log"><span>Log it</span></label>
+    <label><input type="radio" name="addWhat" value="log" checked><span>Log it</span></label>
+    <label><input type="radio" name="addWhat" value="shelf"><span>Put on shelf</span></label>
     <label><input type="radio" name="addWhat" value="watch"><span>Watchlist</span></label>
   </div>
   <p class="addneed" id="addNeed" hidden><span id="addNeedText"></span> <button class="dash sm" id="addNeedGo" type="button"></button></p>
@@ -290,7 +313,7 @@ dlg.innerHTML = `
     <h3><span id="addSpinesTitle">Spines</span> <small id="addSpinesBy"></small> <button class="dash sm" id="addChange" type="button">Change</button></h3>
     <p id="addDup" hidden><span id="addDupText"></span> <button class="dash sm" id="addDupAdd" type="button">Add again</button> <button class="dash sm" id="addDupCancel" type="button">Cancel</button></p>
     <div class="addfound" id="addFound" role="radiogroup" aria-label="Which spine"></div>
-    <p class="grey" id="addNoReal" hidden>No real spine found.</p>
+    <input type="file" id="addPhoto" accept="image/*" hidden>
     <p class="grey" id="addNote" hidden>Real DVD and book spines show up once the shelfstackd server is connected. Until then, upload a full DVD scan on the builder.</p>
     <div class="addbar"><a class="addby" id="addBy" href="https://search.brave.com/" target="_blank" rel="noopener">Search by Brave</a><button class="btn primary" id="addGo" type="button" disabled>Add to shelf</button></div>
   </div>
@@ -300,6 +323,7 @@ dlg.innerHTML = `
       <div class="addpostf">
         <h3><span id="addPostTitle"></span> <small id="addPostBy"></small> <button class="dash sm" id="addPostChange" type="button">Change</button></h3>
         <label class="addsay" id="addSayWrap"><span class="lbl">Caption <i>(optional)</i></span><textarea id="addSay" maxlength="280" rows="3"></textarea></label>
+        <div id="addFields" hidden></div>
         <p class="addfeedline" id="addFeedLine"></p>
       </div>
     </div>
@@ -330,7 +354,8 @@ async function tmdbFilms(q){
   const yq = q.match(/^(.+?)[\s,(]+((?:19|20)\d\d)\)?$/);   // "kids 1995": TMDB finds nothing when the year is in the query
   let r = yq ? await find(yq[1], yq[2]) : await find(q);
   if (yq && !(r.results || []).length) r = await find(yq[1]);
-  return Promise.all((r.results || []).slice(0,5).map(async (m,i) => {
+  const films = (r.results || []).map((m, i) => ({m, i, c: closeness(m.title || '', q)})).sort((a, b) => a.c - b.c || (b.m.vote_count || 0) - (a.m.vote_count || 0) || a.i - b.i).map(x => x.m);   // as the Worker ranks them
+  return Promise.all(films.slice(0,5).map(async (m,i) => {
     let creator = '';
     if (i < 3) try { const c = await getJSON(`https://api.themoviedb.org/3/movie/${m.id}/credits?` + key.slice(1), opt); creator = ((c.crew || []).find(p => p.job === 'Director') || {}).name || ''; } catch {}
     return {kind:'movie', title:m.title || '', year:(m.release_date || '').slice(0,4), creator, cover:m.poster_path ? 'https://image.tmdb.org/t/p/w500' + m.poster_path : ''};
@@ -344,12 +369,30 @@ async function olBooks(q){
 // the author in Latin letters, as the Worker's /identify gives it: a name in another script (村上春樹) gives way to the
 // first Latin-script name in author_alternative_name, then in the author record's alternate_names; else it stays
 const LATIN = /^[\p{Script=Latin}\p{M}\p{N}\s.,'’()&-]+$/u, isLatin = n => !!n && LATIN.test(n) && /\p{Script=Latin}/u.test(n);
+/* (the same as the Worker's) A person's name as they'd write it, from the Latin-script names Open Library has for them: "MURAKAMI HARUKI",
+   "Murakami Haruki" and "Haruki MURAKAMI" are Haruki Murakami. A word in capitals (three letters or more, not an
+   initial) is put in ordinary case. The family name is the word a library writes in capitals beside a given name in
+   ordinary case ("Haruki MURAKAMI"); it goes last. A name already in ordinary case is kept as it is. */
+const CAPS = w => (w.match(/\p{L}/gu) || []).length >= 3 && !w.includes('.') && w === w.toUpperCase();
+const cased = w => CAPS(w) ? w.toLowerCase().replace(/(^|[-'’])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()) : w;
+function personName(names){
+  const list = names.filter(Boolean).map(n => String(n).trim().replace(/\s+/g, ' ')).filter(n => n && n.split(' ').length <= 4);
+  if (!list.length) return '';
+  let family = '', marked = '';
+  for (const n of list){ const ws = n.split(' '), caps = ws.filter(CAPS); if (ws.length >= 2 && caps.length === 1){ family = caps[0].toLowerCase(); marked = n; break; } }
+  const ordinary = n => !n.split(' ').some(CAPS);
+  const best = list.find(n => ordinary(n) && (!family || n.split(' ').slice(-1)[0].toLowerCase() === family)) || marked || list.find(ordinary) || list[0];
+  let ws = best.split(' ').map(cased);
+  if (family && ws.length === 2 && ws[0].toLowerCase() === family) ws = [ws[1], ws[0]];
+  return ws.join(' ');
+}
 async function latinAuthor(d){
   const name = (d.author_name || [''])[0];
-  if (!name || isLatin(name)) return name;
-  const alt = (d.author_alternative_name || []).find(isLatin); if (alt) return alt;
+  if (!name || isLatin(name) && !name.split(/\s+/).some(CAPS)) return name;
+  const alts = [...(isLatin(name) ? [name] : []), ...(d.author_alternative_name || []).filter(isLatin)];
+  if (alts.length) return personName(alts) || name;
   const key = (d.author_key || [])[0]; if (!key) return name;
-  try { return ((await getJSON(`https://openlibrary.org/authors/${encodeURIComponent(key)}.json`)).alternate_names || []).find(isLatin) || name; } catch { return name; }
+  try { return personName(((await getJSON(`https://openlibrary.org/authors/${encodeURIComponent(key)}.json`)).alternate_names || []).filter(isLatin)) || name; } catch { return name; }
 }
 async function identifyDirect(q, want){
   const films = want !== 'book' && TMDB, books = want !== 'movie';
@@ -367,11 +410,21 @@ let typing = 0, run = 0, asking = null;
 const seen = new Map();          // answers already had in this dialog, so going back over a word asks nothing
 const wanted = () => ($('input[name=addKind]:checked') || {}).value || 'all';
 const plain = s => String(s || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
-// 0: the title is what was typed, 1: it starts with it, 2: it has it, 3: neither (a near miss the search still found)
+// 0: the title is what was typed, 1: it starts with it, 2: it has it, 3: neither (a near miss the search still found).
+// A leading "the", "a" or "an" doesn't count, and a year in figures is also its words (1984 is Nineteen Eighty-Four,
+// just after a title that is 1984). The same as closeness() in the Worker: keep them in step
+const ONES = 'zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen'.split(' ');
+const TENS = 'x x twenty thirty forty fifty sixty seventy eighty ninety'.split(' ');
+const under100 = n => n < 20 ? ONES[n] : TENS[Math.floor(n/10)] + (n % 10 ? ' ' + ONES[n % 10] : '');
+const yearWords = y => y >= 2000 && y < 2010 ? 'two thousand' + (y % 10 ? ' ' + ONES[y % 10] : '') : under100(Math.floor(y/100)) + ' ' + (y % 100 === 0 ? 'hundred' : y % 100 < 10 ? 'oh ' + ONES[y % 100] : under100(y % 100));
+const spelled = s => s.replace(/\b(1[0-9]|20)\d\d\b/g, y => yearWords(+y));
+const bare = s => plain(s).replace(/^(the|a|an) /, '');
 function closeness(title, q){
-  const t = plain(title), want = plain(q.replace(/[\s,(]+(?:19|20)\d\d\)?$/, ''));   // "kids 1995": the year isn't part of the title
+  const t = bare(title), want = bare(q.replace(/[\s,(]+(?:19|20)\d\d\)?$/, ''));   // "kids 1995": the year isn't part of the title
   if (!want) return 3;
-  return t === want ? 0 : t.startsWith(want + ' ') || t.startsWith(want) ? 1 : (' ' + t + ' ').includes(' ' + want + ' ') || t.includes(want) ? 2 : 3;
+  const how = w => t === w ? 0 : t.startsWith(w) ? 1 : (' ' + t + ' ').includes(' ' + w + ' ') || t.includes(w) ? 2 : 3;
+  const say = spelled(want);
+  return say === want ? how(want) : Math.min(how(want), how(say) + .5);
 }
 function rank(results, q){
   const nth = {movie: 0, book: 0};   // each kind keeps the order it came in; a film and a book as close as each other take turns
@@ -474,7 +527,7 @@ function bookFields(cur, choice){
   const m = cur.m, film = m.kind === 'movie', base = {title:m.title, author:m.creator || '', kind:m.kind, year:m.year || '', coverUrl:m.cover || '', font:'oswald', key:cur.key, choice};
   if (choice.startsWith('real:')){
     const r = cur.real[+choice.slice(5)], front = r.front || cur.img || r.spine, pal = extractPalette(front);
-    return Object.assign(base, {img:front, spineImg:r.spine, archiveId:r.archive ? r.id : undefined, source:r.archive ? 'the archive' : hostOf(r.source), bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real'}, front.src ? {thumb:front.src} : {});
+    return Object.assign(base, {img:front, spineImg:r.spine, archiveId:r.archive ? r.id : undefined, source:r.archive ? 'the archive' : r.photo ? 'your photo' : hostOf(r.source), bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real'}, front.src ? {thumb:front.src} : {});
   }
   const img = cur.img, pal = extractPalette(img), t = film ? cur.title : null;
   const bg = t ? t.bg : film ? '#111111' : pal.bg, fg = t ? (contrast('#F4F4F2', bg) >= contrast('#111111', bg) ? '#F4F4F2' : '#111111') : film ? '#F4F4F2' : pal.fg;
@@ -486,16 +539,18 @@ function showTiles(cur){
   const m = cur.m, noun = m.kind === 'movie' ? 'poster' : 'cover';
   // every option in one row at one height: the spine (press it to pick it), then one line saying where it's from
   const tile = (c, art, label, what) => `<div class="pick" data-c="${c}"><button type="button" class="art" role="radio" aria-checked="${cur.choice === c}" data-use="${c}" aria-label="${what}">${art}</button><span class="lbl">${label}</span></div>`;
-  const tiles = cur.real.map((r,i) => tile('real:' + i, '', r.archive
+  const tiles = cur.real.map((r,i) => tile('real:' + i, '', r.photo ? 'Your photo' : r.archive
     ? `From the archive · <a href="#" data-report="${esc(r.id)}">Report</a>`
-    : `<a class="src" href="${esc(r.source)}" target="_blank" rel="noopener">${esc(hostOf(r.source))}</a>`, 'A real spine from ' + esc(r.archive ? 'the archive' : hostOf(r.source))));
+    : `<a class="src" href="${esc(r.source)}" target="_blank" rel="noopener">${esc(hostOf(r.source))}</a>`, r.photo ? 'Your photo of the spine' : 'A real spine from ' + esc(r.archive ? 'the archive' : hostOf(r.source))));
+  // a book with no real spine found: photographing your own copy comes first, Generated next
+  if (!cur.busy && WORKER && !server && m.kind === 'book' && !cur.real.length)
+    tiles.unshift(`<div class="pick" data-c="photo"><button type="button" class="art snap" id="addSnap">${ICON('<path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/>')}Have it? Photograph the spine</button><span class="lbl">Your copy</span></div>`);
   if (cur.img){
     tiles.push(tile('spine', '', 'Generated', 'A spine made from the ' + noun));
     tiles.push('<span class="rule" aria-hidden="true"></span>');
     tiles.push(tile('cover', `<img class="cov" src="${esc(cur.img.src)}" crossorigin="anonymous" alt="">`, 'Cover', 'The ' + noun + ', face out'));
   }
   $('#addFound').innerHTML = tiles.join('') || (cur.busy ? '' : '<p class="grey">No scans and no ' + noun + ' found for this title. Upload a scan on the builder.</p>');
-  $('#addNoReal').hidden = cur.busy || !WORKER || server || cur.real.length > 0 || m.kind !== 'book';
   const H0 = parseFloat(getComputedStyle($('#addFound')).getPropertyValue('--th')) || 300;
   cur.real.forEach((r,i) => $(`#addFound [data-c="real:${i}"] .art`).append(tileCanvas({style:'real', spineImg:r.spine}, H0*r.spine.width/r.spine.height, H0)));
   const gen = $('#addFound [data-c="spine"] .art');
@@ -513,8 +568,11 @@ async function cutOne(s, kind){
     if (!canvasSafe(img)) return null;
     const base = {source:s.source, img:s.img, scan:img, archive:!!s.archive, id:s.id, front:null, en:s.en !== false, vhs:!!s.vhs};
     if (s.archive) return Object.assign(base, {spine:img, score:100});   // checked by hand before it was approved
-    if (img.height/img.width >= 4){ const c = findSoloSpine(img); return c && Object.assign(base, {spine:crop(img, c.x, c.y, c.w, c.h), score:c.score, solo:true}); }
-    const cut = findSpine(img, kind); if (!cut) return null;
+    // a book's spine must have lettering down it; a picture of one spine alone (1:6 or narrower) is the whole spine
+    const book = kind === 'book';
+    if (book && img.width/img.height <= 1/6) return lettered(img, 0, 0, img.width, img.height) ? Object.assign(base, {spine:img, score:80, solo:true}) : null;
+    if (img.height/img.width >= 4){ const c = findSoloSpine(img); return c && (!book || lettered(img, c.x, c.y, c.w, c.h)) ? Object.assign(base, {spine:crop(img, c.x, c.y, c.w, c.h), score:c.score, solo:true}) : null; }
+    const cut = findSpine(img, kind); if (!cut || (book && !lettered(img, cut.x, cut.y, cut.w, cut.h))) return null;
     return Object.assign(base, {spine:crop(img, cut.x, cut.y, cut.w, cut.h), front:crop(img, cut.frontX, cut.y, img.width - cut.frontX, cut.h), score:cut.score});
   } catch { return null; }
 }
@@ -524,9 +582,12 @@ async function cutOne(s, kind){
    search is still asked only when the ones before it weren't enough. LIVE rounds may search at the same time (1: one
    after another, as the search budget wants; more makes a slow title quicker and can spend searches that weren't
    needed). Each spine is passed to onCut as soon as it's cut. Returns the cuts, best first: the same ones, in the same
-   order, as asking one round after another. */
-const ROUNDS = 4, LIVE = 1;
+   order, as asking one round after another. A book has three rounds (round 0, then "<title>" <author> book spine,
+   then the dust jacket full wrap) and asks for the next only while it still has no clean spine to show: each one
+   after round 0 is a paid search, and most books have no scan to find (docs/BOOK-SPINES.md). */
+const LIVE = 1, roundsFor = kind => kind === 'book' ? 3 : 4;
 async function cutScans(cur, english, onCut){
+  const ROUNDS = roundsFor(cur.m.kind), book = cur.m.kind === 'book';
   const q = `${WORKER}/scans?kind=${cur.m.kind}&title=${encodeURIComponent(cur.m.title)}&year=${encodeURIComponent(cur.m.year || '')}&creator=${encodeURIComponent(cur.m.creator || '')}`;
   const get = (round, cacheOnly) => timeout(getJSON(q + '&round=' + round + (cacheOnly ? '&cacheonly=1' : '')), 20000);
   const kept = [Promise.resolve(null)];   // per round: what's kept, or null (a Worker from before cached= says nothing, so it's asked)
@@ -553,6 +614,7 @@ async function cutScans(cur, english, onCut){
     await Promise.all(fresh.map((s, i) => cutOne(s, cur.m.kind).then(c => { got[i] = c; if (c && onCut && cur === current) onCut(bestCuts(cur.m.kind, [...cuts, ...got.filter(Boolean)], english)); })));
     cuts.push(...got.filter(Boolean));
     if (cuts.filter(c => c.score >= AUTO_SCORE && (!english || isEnglish(c))).length >= 2 || !r.more) break;
+    if (book && bestCuts('book', cuts, english).length) break;   // a book: one clean spine is enough, no more searches
   }
   return {scans, rounds, busy, capped, cuts: bestCuts(cur.m.kind, cuts, english)};
 }
@@ -568,7 +630,7 @@ async function findSpines(m, again){
   const key = keyOf(m), cur = current = {m, key, real:[], res:{spines:[]}, img:null, busy:true, choice:null}, noun = m.kind === 'movie' ? 'poster' : 'cover';
   $('#addSpines').hidden = false; $('#addMatches').hidden = true; paintActive();
   $('#addSpinesTitle').textContent = m.title + (m.year ? ' (' + m.year + ')' : ''); $('#addSpinesBy').textContent = m.creator ? '· ' + m.creator : '';
-  $('#addNote').hidden = server || !!WORKER; $('#addFound').innerHTML = ''; $('#addNoReal').hidden = true; $('#addDup').hidden = true; paintGo();
+  $('#addNote').hidden = server || !!WORKER; $('#addFound').innerHTML = ''; $('#addDup').hidden = true; paintGo();
   $('#addBy').hidden = server || !WORKER;   // the Worker's scan search is the one that asks Brave
   if (!again && shelf && shelf.has(key)){
     // already on the shelf: ask before adding it a second time
@@ -640,10 +702,34 @@ $('#addFound').addEventListener('click', e => {
     flag.removeAttribute('data-report'); flag.removeAttribute('href'); flag.textContent = 'Reported'; toast('Reported. Thanks.');
     return;
   }
+  if (e.target.closest('#addSnap')){ $('#addPhoto').click(); return; }
   const u = e.target.closest('[data-use]'), cur = current; if (!u || !cur) return;
   cur.choice = u.dataset.use; cur.touched = true;
   for (const b of dlg.querySelectorAll('#addFound [data-use]')) b.setAttribute('aria-checked', String(b.dataset.use === cur.choice));
   paintGo();
+});
+/* a photo of your own copy's spine: cut out of the picture as an upload on the builder is (one spine alone, the strip
+   between back and front, or the spine with plain background round it), made at most 900px tall, and picked */
+function spineIn(img){
+  if (img.width/img.height <= 1/6) return {x:0, y:0, w:img.width, h:img.height};
+  return (img.height/img.width < 4 && findSpine(img, 'book')) || findSoloSpine(img);
+}
+function shrink(c, most){
+  if (c.height <= most) return c;
+  const k = most/c.height, o = document.createElement('canvas'); o.width = Math.max(1, Math.round(c.width*k)); o.height = most;
+  const x = o.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(c, 0, 0, o.width, o.height); return o;
+}
+$('#addPhoto').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0], cur = current; e.target.value = '';
+  if (!f || !cur) return;
+  let img; try { img = await loadImg(URL.createObjectURL(f)); } catch { sstatus('That picture couldn’t be read. Try another.', true); return; }
+  if (cur !== current) return;
+  const c = spineIn(img);
+  if (!c){ sstatus('No spine found in that photo. Crop it to the spine and try again.', true); return; }
+  const spine = shrink(crop(img, c.x, c.y, c.w, c.h), 900);
+  cur.real.unshift({spine, front:null, photo:true, source:'', score:100, en:true, vhs:false, img:spine.toDataURL('image/jpeg', .85)});
+  cur.choice = 'real:0'; cur.touched = true; sstatus('');
+  showTiles(cur);
 });
 $('#addDupAdd').addEventListener('click', () => { if (current) findSpines(current.m, true); });
 $('#addDupCancel').addEventListener('click', () => { $('#addDup').hidden = true; $('#addSpines').hidden = true; $('#addMatches').hidden = !matches.length; current = null; paintActive(); $('#addQ').focus(); });
@@ -662,7 +748,7 @@ $('#addGo').addEventListener('click', () => {
   const r = cur.choice.startsWith('real:') ? cur.real[+cur.choice.slice(5)] : null;
   try {
     sessionStorage.setItem(PENDING, JSON.stringify({at: Date.now(), m: cur.m, choice: r ? 'real' : cur.choice,
-      real: r ? {img: r.img, source: r.source, archive: r.archive, id: r.id, en: r.en, vhs: r.vhs} : undefined}));
+      real: r ? {img: r.img, source: r.source, archive: r.archive, id: r.id, en: r.en, vhs: r.vhs, photo: r.photo} : undefined}));
   } catch { sstatus('This browser won’t let the spine be carried over. Open the builder and add it there.', true); return; }
   $('#addGo').disabled = true; sstatus('Opening your shelf…');
   location.href = ROOT + 'build/';
@@ -675,7 +761,11 @@ function takePending(){
 async function resolve(p){
   const m = p.m, key = keyOf(m), cur = {m, key: shelf && shelf.has(key) ? key + '#' + (1 + shelf.count(key)) : key, real: [], img: null};
   const poster = m.cover ? timeout(loadImg(viaWorker(m.cover)), 15000).catch(() => null) : Promise.resolve(null);
-  if (p.choice === 'real' && p.real){ const c = await cutOne(p.real, m.kind); if (c) cur.real = [c]; }
+  if (p.choice === 'real' && p.real){
+    // a photo of your own copy travels as its picture; a scan is cut again from where it was found
+    const c = p.real.photo ? await loadImg(p.real.img).then(spine => ({spine, front:null, photo:true, source:'', score:100}), () => null) : await cutOne(p.real, m.kind);
+    if (c) cur.real = [c];
+  }
   const img = await poster;
   if (img && canvasSafe(img)){ cur.img = img; if (m.kind === 'movie') cur.title = posterTitle(img); }
   const choice = p.choice === 'real' ? (cur.real.length ? 'real:0' : 'spine') : p.choice;
@@ -687,9 +777,10 @@ async function resolve(p){
 /* The watchlist holds this many titles. The database holds the same number (watchlist_before_insert() in
    supabase/migrations/0007_logs_watchlist.sql): change both together. Pages read it as Add.WATCH_CAP. */
 const WATCH_CAP = 6, FULL = `Your watchlist is full (${WATCH_CAP}). Remove one to add another.`;
-const TITLES = {shelf: 'Add to your shelf', log: 'Log a film or book', watch: 'Add to your watchlist'};   // no ellipsis: on a title it reads as cut off
-
-const what = () => ($('input[name=addWhat]:checked') || {}).value || 'shelf';
+const TITLES = {shelf: 'Add to your shelf', log: 'What did you watch or read?', watch: 'Add to your watchlist'};   // no ellipsis: on a title it reads as cut off
+// Log it is the first choice and the one + ADD opens on (logging is posting), except on the builder, where it's the shelf
+const firstMode = () => shelf ? 'shelf' : 'log';
+const what = () => ($('input[name=addWhat]:checked') || {}).value || firstMode();
 // who is signed in, as the page's bar knows it (nav.js)
 const account = () => (window.Nav && Nav.account ? Nav.account() : {}) || {};
 // Log it and Watchlist need an account with a username: until there is one, the dialog says so instead of searching
@@ -719,11 +810,20 @@ function withWear(fn){
   wearing.then(() => { if (window.Wear) fn(); });
 }
 const verb = m => m.kind === 'movie' ? 'watched' : 'read';
+// post.js: the composer's fields (the stars, the review and, with migration 0009, spoilers, rewatch and the day), the
+// same as the feed's; loaded the first time Log it shows a title. Without it, the caption box is the one field
+let posting = null, postFields = null, focusFields = false;
+function withPosts(fn){
+  if (window.Posts){ fn(true); return; }
+  posting = posting || new Promise(res => { const sc = document.createElement('script'); sc.src = ROOT + 'post.js?v=20261012a'; sc.onload = () => res(!!window.Posts); sc.onerror = () => { posting = null; res(false); }; document.head.appendChild(sc); });
+  posting.then(fn);
+}
 function showPost(m){
   current = null; $('#addSpines').hidden = true; $('#addMatches').hidden = true; paintActive(); sstatus('');
   const log = what() === 'log', a = account(), cov = $('#addCov'), src = m.cover ? viaWorker(m.cover) : '', run = ++covRun;
   $('#addPostTitle').textContent = m.title + (m.year ? ' (' + m.year + ')' : ''); $('#addPostBy').textContent = m.creator ? '· ' + m.creator : '';
-  $('#addSayWrap').hidden = !log;
+  $('#addSayWrap').hidden = !log || !!(window.Posts || posting); $('#addFields').hidden = !log; postFields = null;
+  if (log) withPosts(async ok => { if (run !== covRun) return; $('#addSayWrap').hidden = ok; $('#addFields').hidden = !ok; if (!ok) return; const f = await Posts.fields($('#addFields'), m); if (run !== covRun) return; postFields = f; if (focusFields){ focusFields = false; f.focus(); } });
   $('#addPostGo').textContent = log ? 'Post' : 'Add to watchlist'; $('#addPostGo').disabled = false;
   $('#addFeedLine').textContent = log ? `On the feed: ${a.profile ? '@' + a.profile.username : 'you'} ${verb(m)} ${m.title} · today` : `It shows on your profile, under Watchlist, which holds ${WATCH_CAP}.`;
   if (log){ cov.replaceChildren(); withWear(() => { if (run === covRun) cov.replaceChildren(Wear.cover({src, seed: keyOf(m), at: new Date().toISOString(), label: `The cover of ${m.title}, as the feed shows it`, width: 120})); }); }
@@ -761,6 +861,11 @@ $('#addPostGo').addEventListener('click', async () => {
     if (!w.ok || w.already){ btn.disabled = false; sstatus(esc(w.error), true); return; }
     close(); return;
   }
+  if (postFields && window.Posts){   // post.js posts it, and says so on document ("shelfstackd:added", with the post)
+    const p = await Posts.save(m, postFields.values());
+    if (p.error){ btn.disabled = false; sstatus(esc(p.error), true); return; }
+    close(); pageToast(`Logged ${m.title}. It’s on the feed.`); return;
+  }
   try { r = await a.sb.from('logs').insert({...rowOf(m), caption: $('#addSay').value.trim().slice(0, 280)}); }
   catch (err){ r = {error: err}; }
   if (r.error){ btn.disabled = false; sstatus(esc(saveError(r.error, r.status, log)), true); return; }
@@ -783,12 +888,12 @@ function reset(){
 function open(opt){
   opt = opt || {};
   if (!dlg.open){ reset(); if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', ''); }
-  const mode = TITLES[opt.mode] ? opt.mode : 'shelf';
+  const mode = TITLES[opt.mode] ? opt.mode : firstMode();
   for (const r of dlg.querySelectorAll('input[name=addWhat]')) r.checked = r.value === mode;
   paintWhat(false);
   if (!$('#addFind').hidden && opt.item && opt.item.title){
     picked = opt.item;
-    if (mode === 'shelf') findSpines(picked); else { showPost(picked); ($('#addSayWrap').hidden ? $('#addPostGo') : $('#addSay')).focus(); return; }
+    if (mode === 'shelf') findSpines(picked); else { showPost(picked); ($('#addSayWrap').hidden ? $('#addPostGo') : $('#addSay')).focus(); if (mode === 'log'){ if (postFields) postFields.focus(); else focusFields = true; } return; }
   }
   const q = opt.query ? String(opt.query).trim() : '';
   if (q){ $('#addQ').value = q; if (opt.typed) $('#addQ').dispatchEvent(new Event('input')); else search(false); }
@@ -877,5 +982,5 @@ function attachSearch({input, list, onPick, say: tell = () => {}}){
 }
 
 window.Add = {open, close, watch, attachSearch, WATCH_CAP, isOpen: () => dlg.open, setShelf: s => { shelf = s; }, setToast: fn => { say = fn; }, setServer, takePending, resolve,
-  extractPalette, findSpine, findSoloSpine, EDITION};
+  extractPalette, findSpine, findSoloSpine, lettering, cutOne, personName, rank, EDITION};
 })();

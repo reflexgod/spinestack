@@ -16,7 +16,7 @@
 <meta property="og:image" content="https://shelfstackd.com/og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="shelfstackd. Your shelf, but the real spines. Four book spines stand side by side.">
+<meta property="og:image:alt" content="shelfstackd: a white hedgehog with four coloured quills, on dark grey.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://shelfstackd.com/og.jpg">
 <script>
@@ -29,7 +29,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Geist+Mono:wght@400;500&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261011d">
+<link rel="stylesheet" href="../site.css?v=20261012a">
 <style>
 /* the profile (site.css has the cards, the tabs, the sheets and everything shared) */
 .phead{display:grid;grid-template-columns:96px minmax(0,1fr) auto;grid-template-areas:"ava who stats";gap:0 var(--s5);align-items:center}
@@ -184,7 +184,8 @@
 .sacts{display:flex;gap:var(--s3) var(--s4);align-items:center;flex-wrap:wrap;margin-top:var(--s2)}
 .onshelf{max-width:680px;min-width:0}
 .spines{list-style:none;margin:0;padding:0}
-.sact{display:flex;align-items:center;gap:var(--s1)}
+.sact{display:flex;align-items:center;gap:var(--s1) var(--s3)}
+.sact [data-log]{margin-right:var(--s3)}   /* Log and + Add to my shelf: a press apart on a touch screen */
 .spines li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:var(--s3);align-items:center;padding:var(--s2) 0;border-bottom:1px solid var(--hair)}
 .spines .sthumb{display:grid;place-items:center;height:56px}
 .spines .sthumb canvas{display:block}
@@ -247,12 +248,13 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 <body>
 <header class="top" id="top">
   <!-- icons: Lucide 1.49.0 (ISC), pasted in -->
-  <a class="mark" href="../" aria-label="shelfstackd, home">SHELFSTACKD</a>
+  <a class="mark" href="../" aria-label="shelfstackd, home"><img src="../assets/logo-hedgehog.svg" width="28" height="28" alt="">SHELFSTACKD</a>
   <button class="acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false" hidden><span class="ava" aria-hidden="true"></span><span class="who"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
   <nav class="links" aria-label="shelfstackd">
-    <a class="zap" href="../feed/" aria-label="Activity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z"/></svg></a>
+    <a href="../feed/">Feed</a>
     <a href="../shelves/">Shelves</a><a href="../members/">Members</a>
     <a class="find" href="../members/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
+    <a class="bell" id="bell" href="../notifications/" aria-label="Notifications" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="dot" hidden></span></a>
   </nav>
   <a class="signin" id="signInBtn" href="#" hidden>Sign in</a>
   <span class="addwrap"><a class="btn primary add" href="../build/" aria-label="Add a film or a book"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Add</span></a><button class="btn primary addmore" id="addMore" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More ways to add" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></span>
@@ -445,7 +447,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 <script src="../cards.js?v=20261002a"></script>
 <script src="../spinetip.js?v=20261004a"></script>
 <script src="../wear.js?v=20261004a"></script>
-<script src="../nav.js?v=20261011c"></script>
+<script src="../nav.js?v=20261012a"></script>
 <script>
 (() => {
 /* A profile: /u/?username, and its shelf on its own page: /u/?username&shelf (one shelf each), or a shelf by its id,
@@ -1019,7 +1021,7 @@ function paintItems(){
     const li = document.createElement('li'); li.dataset.i = i;
     li.innerHTML = `<span class="sthumb"></span>
       <span class="st"><b>${esc(r.title || 'Untitled')}${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${esc([r.author, r.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · '))}</span></span>
-      <span class="sact">${!have(r) ? `<button class="dash sm" type="button" data-add="${i}">+ Add to my shelf</button>` : view.mine ? '' : '<span class="onmine">On your shelf</span>'}</span>`;
+      <span class="sact"><button class="dash sm" type="button" data-log="${i}">Log</button>${!have(r) ? `<button class="dash sm" type="button" data-add="${i}">+ Add to my shelf</button>` : view.mine ? '' : '<span class="onmine">On your shelf</span>'}</span>`;
     // someone else's shelf: each spine onto your watchlist too
     if (!view.mine) Nav.watchable(li.querySelector('.sthumb'), {kind: r.kind, title: r.title, year: r.year ? String(r.year) : '', creator: r.author || '', cover: /^url:/.test(r.cover_src || '') ? r.cover_src.slice(4) : ''}, {moreIn: li.querySelector('.sact')});
     return li;
@@ -1032,6 +1034,9 @@ function paintItems(){
 // puts it on your shelf there. Signed out, the sign-in sheet comes first, and the row waits in this tab until then
 const ADD_ROW = 'shelfstackd-add-row';
 $('#oneItems').addEventListener('click', e => {
+  // Log: this title in + ADD's Log it (signed out, the sign-in sheet first)
+  const lg = e.target.closest('[data-log]'), lr = lg && shown.rows[+lg.dataset.log];
+  if (lr){ if (Nav.visitor()) Nav.needAccount('add'); else Nav.add({mode: 'log', item: asItem(lr)}); return; }
   const b = e.target.closest('[data-add]'), r = b && shown.rows[+b.dataset.add]; if (!r) return;
   try { sessionStorage.setItem(ADD_ROW, JSON.stringify({at: Date.now(), row: {kind: r.kind, title: r.title, author: r.author, year: r.year, spine_src: r.spine_src, cover_src: r.cover_src, look: r.look}})); }
   catch { toast('Couldn’t take it to the builder. Try again.'); return; }
@@ -1360,7 +1365,7 @@ function actLine(x){
   if (x.log){
     const l = x.log, verb = l.kind === 'movie' ? 'watched' : 'read';
     li.classList.add('log');
-    li.innerHTML = `<p class="line">${who} ${verb} <b>${esc(l.title)}</b> ${when(l.created_at, day(l.created_at))}${view.mine ? ` <button class="dash sm grey" type="button" data-unlog="${esc(l.id)}">Delete</button>` : ''}</p>
+    li.innerHTML = `<p class="line">${who} ${verb} <a href="../p/?${esc(l.id)}"><b>${esc(l.title)}</b></a> ${when(l.created_at, day(l.created_at))}${view.mine ? ` <button class="dash sm grey" type="button" data-unlog="${esc(l.id)}">Delete</button>` : ` <button class="dash sm" type="button" data-relog="${esc(l.id)}">Log</button>`}</p>
       <div class="logbody"><span class="cover"></span>${l.caption ? `<p class="say">${esc(l.caption)}</p>` : ''}</div>`;
     li.querySelector('.cover').append(Wear.cover({src: coverOf(l.cover_src), seed: l.id, at: l.created_at, label: `${l.title}${l.year ? ` (${l.year})` : ''}, ${verb} by @${p.username}`, width: COVER}));
     if (!view.mine) Nav.watchable(li.querySelector('.cover'), asItem(l), {moreIn: li});   // someone else's log: onto your watchlist
@@ -1399,6 +1404,9 @@ async function paintActivity(more){
 $('#actsMore').addEventListener('click', () => paintActivity(true));
 // Delete on one of your logs: it comes off the feed and your profile, after a yes
 $('#acts').addEventListener('click', async e => {
+  // Log on someone else's: the same title, in + ADD's Log it (signed out, the sign-in sheet first)
+  const relog = e.target.closest('[data-relog]'), rl = relog && acts.logs.find(x => x.id === relog.dataset.relog);
+  if (rl){ if (Nav.visitor()) Nav.needAccount('add'); else Nav.add({mode: 'log', item: asItem(rl)}); return; }
   const b = e.target.closest('[data-unlog]'), l = b && acts.logs.find(x => x.id === b.dataset.unlog); if (!l) return;
   if (!(await sure('Delete this log?', `${l.title} comes off the feed and your profile. This can’t be undone.`, 'Delete'))) return;
   b.disabled = true;

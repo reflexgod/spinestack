@@ -18,6 +18,8 @@ const PAGES = [
   { name: 'settings', path: '/settings/' },
   { name: 'shelves', path: '/shelves/' },
   { name: 'members', path: '/members/' },
+  { name: 'post', path: '/p/?bbbbbbbb-bbbb-4bbb-8bbb-000000000000' },   // @mira's Gummo
+  { name: 'notifications', path: '/notifications/' },
 ];
 /* pages without it */
 const OTHER_PAGES = [
@@ -105,12 +107,56 @@ const logRow = l => { const p = [...PEOPLE, ...FRIENDS].find(x => x.id === l.own
     name: null, preview_key: null, created_at: l.created_at, updated_at: l.created_at, updated: false, is_public: true, kind: l.kind, title: l.title, author: l.author, year: l.year, cover_src: l.cover_src }; };
 // what PostgREST says for a table or a function that isn't in the database (one without 0007)
 const NOT_THERE = { __status: 404, body: { code: 'PGRST202', message: 'Could not find the function in the schema cache', details: null, hint: null } };
+const NO_TABLE = { __status: 404, body: { code: 'PGRST205', message: 'Could not find the table in the schema cache', details: null, hint: null } };
+
+/* migration 0009 (supabase/migrations/0009_social.sql), with mockNetwork's social: true: likes, replies, notifications, and
+   what post_stats() says for each log. Mira's Gummo has likes, replies and a me-too; the made-up account liked it */
+const NEW_LOG = 'ffffffff-ffff-4fff-8fff-000000000001';   // the id a log posted here gets
+const STATS = { [logId(0)]: { rating: 9, review: 'The bathtub scene. Still thinking about it.', spoiler: false, rewatch: true, watched_on: '2026-09-30', metoo_of: null, likes: 3, replies: 2, metoos: 1, liked: true, logged: false },
+  [logId(1)]: { rating: null, review: 'For the train.', spoiler: false, rewatch: false, watched_on: '2026-09-27', metoo_of: null, likes: 0, replies: 0, metoos: 0, liked: false, logged: false },
+  [logId(2)]: { rating: 7, review: 'The last page. Don’t read this before you get there.', spoiler: true, rewatch: false, watched_on: '2026-09-23', metoo_of: null, likes: 1, replies: 0, metoos: 0, liked: false, logged: true },
+  [logId(3)]: { rating: null, review: '', spoiler: false, rewatch: false, watched_on: '2026-08-31', metoo_of: null, likes: 0, replies: 0, metoos: 0, liked: false, logged: false } };
+const REPLIES = [
+  { id: 'abababab-abab-4bab-8bab-000000000001', log: logId(0), created_at: at(0, 2), text: 'The rabbit boy on the roof.', owner: PEOPLE[2].id },
+  { id: 'abababab-abab-4bab-8bab-000000000002', log: logId(0), created_at: at(0, 3), text: 'Seen it twice.', owner: ME.id },
+];
+const replyRow = r => { const p = PEOPLE.find(x => x.id === r.owner); return { id: r.id, created_at: r.created_at, text: r.text, owner: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key }; };
+const NOTES = [
+  { id: 'acacacac-acac-4cac-8cac-000000000001', kind: 'like', created_at: at(0, -1), read: false, actor: PEOPLE[1].id, log: logId(1) },
+  { id: 'acacacac-acac-4cac-8cac-000000000002', kind: 'like', created_at: at(0, -2), read: false, actor: PEOPLE[2].id, log: logId(1) },
+  { id: 'acacacac-acac-4cac-8cac-000000000003', kind: 'reply', created_at: at(0, -3), read: false, actor: PEOPLE[1].id, log: logId(1), reply_text: 'Which train?' },
+  { id: 'acacacac-acac-4cac-8cac-000000000004', kind: 'follow', created_at: at(1), read: true, actor: PEOPLE[2].id, log: null },
+  { id: 'acacacac-acac-4cac-8cac-000000000005', kind: 'metoo', created_at: at(2), read: true, actor: PEOPLE[1].id, log: logId(1) },
+];
+const noteRow = n => { const p = PEOPLE.find(x => x.id === n.actor), l = LOGS.find(x => x.id === n.log);
+  return { id: n.id, kind: n.kind, created_at: n.created_at, read: n.read, actor: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key,
+    log: n.log, log_kind: l ? l.kind : null, log_title: l ? l.title : null, reply_text: n.reply_text || null }; };
 
 /* ---------- Supabase's REST API, answered from the data above ---------- */
-function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, friends){
+function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, friends, social){
   if (fresh) ownShelf = false;
   const me = signedIn && !fresh;   // the made-up account as it is (follows @mira); fresh: nothing yet
   const what = url.pathname.replace(/^\/rest\/v1\//, ''), q = url.searchParams, eq = k => (q.get(k) || '').replace(/^eq\./, '');
+  // 0009: with social, its tables and functions; without, they aren't there
+  if (/^(likes|replies|notifications|act_counts)$/.test(what)){
+    if (!social) return NO_TABLE;
+    if (method === 'GET' && what === 'notifications') return signedIn ? NOTES.filter(n => !n.read).slice(0, +(q.get('limit') || 30)).map(n => ({ id: n.id })) : [];
+    if (method === 'POST' && what === 'replies') return [{ id: 'abababab-abab-4bab-8bab-000000000099', created_at: new Date().toISOString(), owner: ME.id, ...body }];
+    return method === 'GET' ? [] : method === 'DELETE' ? [] : null;
+  }
+  if (/^rpc\/(post_stats|replies_of|notifications_list|notifications_read)$/.test(what)){
+    if (!social) return NOT_THERE;
+    if (what === 'rpc/post_stats') return (body.ids || []).filter(id => STATS[id] || id === NEW_LOG).map(id => ({ id, ...(STATS[id] || STATS[logId(3)]), ...(signedIn ? {} : { liked: false, logged: false }) }));
+    if (what === 'rpc/replies_of') return REPLIES.filter(r => r.log === body.lid).map(replyRow);
+    if (what === 'rpc/notifications_list') return signedIn ? NOTES.map(noteRow) : [];
+    if (what === 'rpc/notifications_read') return NOTES.filter(n => !n.read).length;
+  }
+  // a log posted: the database's answer is the new row
+  if (what === 'logs' && method === 'POST') return logs ? [{ id: NEW_LOG, created_at: new Date().toISOString(), owner: ME.id, ...body }] : NOT_THERE;
+  if (what === 'logs' && method === 'GET' && q.get('id')){   // one log by its id (a post's own page)
+    const l = LOGS.find(x => x.id === eq('id'));
+    if (l) return [l];
+  }
   if (/^(rpc\/(activity|from_friends)|logs|watchlist|friend_hides)$/.test(what)){
     if (!logs) return NOT_THERE;
     if (what === 'rpc/activity'){
@@ -216,9 +262,10 @@ const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers
    empty: no one has shelved anything yet, so the feed has nothing in it; logs: false answers as a database does
    without migration 0007 (no logs, watchlist or From friends, and no activity()); ownShelf: false is the
    made-up account before it has saved its shelf; fresh: it has just picked its username, with nothing yet (no name,
-   bio, shelf, log, watchlist or follow); friends: it follows five more people (FRIENDS), for home's row of cards.
+   bio, shelf, log, watchlist or follow); friends: it follows five more people (FRIENDS), for home's row of cards;
+   social: the database has migration 0009 (likes, replies, notifications; supabase/migrations/0009_social.sql).
    Returns {unknown, asked}: requests nothing here could answer, and every search /identify was asked for. */
-async function mockNetwork(page, { signedIn = false, named = true, slow = 0, capped = false, realFonts = false, empty = false, logs = true, ownShelf = true, fresh = false, friends = false } = {}){
+async function mockNetwork(page, { signedIn = false, named = true, slow = 0, capped = false, realFonts = false, empty = false, logs = true, ownShelf = true, fresh = false, friends = false, social = false } = {}){
   const unknown = [], asked = [];
   if (signedIn){
     const exp = Math.floor(Date.now() / 1000) + 3600, b64 = o => Buffer.from(JSON.stringify(o)).toString('base64url');
@@ -234,7 +281,7 @@ async function mockNetwork(page, { signedIn = false, named = true, slow = 0, cap
     if (method === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
     if (url.origin === SB_URL && url.pathname.startsWith('/rest/v1/')){
       let body = {}; try { body = JSON.parse(req.postData() || '{}'); } catch {}
-      let data = rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, friends);
+      let data = rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, friends, social);
       if (data && data.__status) return route.fulfill({ status: data.__status, headers: CORS, contentType: 'application/json', body: JSON.stringify(data.body) });
       if (/vnd\.pgrst\.object/.test(req.headers().accept || '')) data = Array.isArray(data) ? data[0] || null : data;   // .single()
       return route.fulfill({ status: data === null ? 204 : 200, headers: CORS, contentType: 'application/json', body: data === null ? '' : JSON.stringify(data) });
@@ -277,7 +324,11 @@ async function mockNetwork(page, { signedIn = false, named = true, slow = 0, cap
 /* what a page says is wrong while it runs: console errors and uncaught exceptions */
 function watchErrors(page){
   const errors = [];
-  page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+  page.on('console', m => {
+    if (m.type() !== 'error') return;
+    if (/\/rest\/v1\/likes\?select=log&limit=1$/.test((m.location() || {}).url || '')) return;   // post.js asking whether 0009 is there: 404 until it is
+    errors.push(m.text());
+  });
   page.on('pageerror', e => errors.push(String(e && e.message || e)));
   return errors;
 }
@@ -296,4 +347,4 @@ async function open(page, pathname){
   await page.waitForLoadState('networkidle');
 }
 
-module.exports = { ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, LOGS, FRIENDS, FRIEND_SHELVES, FRIEND_LOGS, ITEMS_BY_SHELF, WATCHLIST, FROM_FRIENDS, PICTURE, STORY, CAPTION, MADE_WITH, CORS, WORKER, SB_URL, feedRow, storyPicture, mockNetwork, watchErrors, open, putAside };
+module.exports = { NEW_LOG, STATS, REPLIES, NOTES, ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, LOGS, FRIENDS, FRIEND_SHELVES, FRIEND_LOGS, ITEMS_BY_SHELF, WATCHLIST, FROM_FRIENDS, PICTURE, STORY, CAPTION, MADE_WITH, CORS, WORKER, SB_URL, feedRow, storyPicture, mockNetwork, watchErrors, open, putAside };

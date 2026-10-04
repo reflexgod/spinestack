@@ -5,7 +5,7 @@ const { test, expect } = require('@playwright/test');
 const { PAGES, mockNetwork, watchErrors, open } = require('../site');
 
 const isPhone = () => test.info().project.name.startsWith('phone');
-const dialog = page => page.getByRole('dialog', { name: /^add to (your|the) shelf$/i });   // "the" signed out
+const dialog = page => page.getByRole('dialog', { name: /^(add to (your|the) shelf|what did you watch or read\?)$/i });   // "the" signed out; + ADD opens on Log it, except on the builder
 const box = d => d.getByRole('combobox', { name: 'Film or book name' });
 const options = d => d.getByRole('option');
 const names = d => d.locator('#addRows .t').evaluateAll(els => els.map(e => e.firstChild.textContent.trim()));
@@ -15,6 +15,8 @@ async function openDialog(page, opt, path = '/') {
   await open(page, path);
   await page.locator('header.top .add').click();
   await expect(dialog(page)).toBeVisible();
+  await dialog(page).getByRole('radio', { name: 'Put on shelf' }).check();   // these are about the shelf's spines (+ ADD opens on Log it)
+  await dialog(page).getByRole('combobox', { name: 'Film or book name' }).focus();
   return net;
 }
 
@@ -63,13 +65,22 @@ test('at most six results, films and books together, the closest titles first', 
   const d = dialog(page);
   await box(d).fill('kids');
   await expect(options(d)).toHaveCount(6);   // nine titles have "kids" in them
-  // the same title (a book and a film), then one starting with it, then ones containing it
-  expect(await names(d)).toEqual(['Kids', 'Kids', 'Kids in America', 'Spy Kids', 'Just Kids', 'The Kids Are All Right']);
+  // the same title (a book and a film), then ones starting with it (a leading The doesn't count), then ones containing it
+  expect(await names(d)).toEqual(['Kids', 'Kids', 'Kids in America', 'The Kids Are All Right', 'Spy Kids', 'Just Kids']);
   await expect(options(d).first()).toContainText('Book');
   await expect(options(d).nth(1)).toContainText('Film');
   await d.getByRole('radio', { name: 'Films' }).check();
   await expect(options(d)).toHaveCount(5);
-  expect(await names(d)).toEqual(['Kids', 'Kids in America', 'Spy Kids', 'The Kids Are All Right', 'Honey, I Shrunk the Kids']);
+  expect(await names(d)).toEqual(['Kids', 'Kids in America', 'The Kids Are All Right', 'Spy Kids', 'Honey, I Shrunk the Kids']);
+});
+
+test('the closest first, as the Worker ranks them: 1984 is also Nineteen Eighty-Four, and a leading The doesn’t count', async ({ page }) => {
+  await openDialog(page);
+  const titles = (list, q) => page.evaluate(([list, q]) => Add.rank(list.map(([kind, title]) => ({ kind, title })), q).map(m => m.title), [list, q]);
+  expect(await titles([['movie', 'Wonder Woman 1984'], ['movie', '1984'], ['book', '1984 (adaptation)'], ['book', 'Nineteen Eighty-Four']], '1984'))
+    .toEqual(['1984', 'Nineteen Eighty-Four', '1984 (adaptation)', 'Wonder Woman 1984']);
+  expect(await titles([['book', 'The great Gatsby, by F. Scott Fitzgerald'], ['book', 'The Great Gatsby']], 'great gatsby')).toEqual(['The Great Gatsby', 'The great Gatsby, by F. Scott Fitzgerald']);
+  expect(await titles([['movie', 'Gummo'], ['movie', 'Gummo 2'], ['movie', 'My Favorite Scene from Gummo'], ['movie', "G'mor Evian!"]], 'gummo')).toEqual(['Gummo', 'Gummo 2', 'My Favorite Scene from Gummo', "G'mor Evian!"]);
 });
 
 test('the keyboard: ↑ ↓ move through the results, Enter picks the highlighted one, Esc closes', async ({ page }) => {
@@ -240,6 +251,16 @@ test('rounds that aren\'t kept are still searched one after another, each only w
   const live = asked.filter(a => !a.only);
   expect(live.map(a => a.round)).toEqual([0, 1, 2, 3]);
   for (let i = 1; i < live.length; i++) expect(live[i].at - live[i - 1].at).toBeGreaterThanOrEqual(250);   // after the one before answered
+});
+test('a book with no scan found has three rounds, not four: round 0, then the book spine, then the dust jacket', async ({ page }) => {
+  await openDialog(page, { signedIn: true });
+  const d = dialog(page), asked = slowScans(page, { kept: false });
+  await box(d).fill('the waves');
+  await d.getByRole('option', { name: /The Waves.*Book/ }).click();
+  await expect.poll(() => asked.filter(a => !a.only).length, { timeout: 8000 }).toBe(3);
+  await page.waitForTimeout(1000);
+  expect(asked.filter(a => !a.only).map(a => a.round)).toEqual([0, 1, 2]);
+  expect(asked.filter(a => a.only).map(a => a.round).sort()).toEqual([1, 2]);   // what's kept is asked for those two only
 });
 test('a title search starts 250 ms after the last key, not before', async ({ page }) => {
   const d = dialog(page);

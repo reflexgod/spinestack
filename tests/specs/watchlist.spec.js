@@ -165,22 +165,23 @@ async function addFrom(page, scope, name) {
     await scope.getByRole('button', { name: `Add ${name} to watchlist` }).click();
   }
 }
-test('the feed: someone\'s log cover goes onto your watchlist in one press, then says In watchlist', async ({ page }) => {
+test('the feed: + Watchlist on someone\'s post puts it on your watchlist in one press, then says In watchlist', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/feed/?everyone');
   const log = page.locator('#items .item.log').first();
-  await log.locator('.cover').hover();
+  await expect(log.locator('.wbtn, .wmore')).toHaveCount(0);   // a post's is in its row of actions, not on its cover
   const req = posted(page);
-  await addFrom(page, log, 'Gummo (1997)');
-  expect((await req).postDataJSON()).toEqual({ kind: 'movie', title: 'Gummo', author: 'Harmony Korine', year: 1997, cover_src: 'url:https://image.tmdb.org/t/p/w500/gummo.jpg' });
+  await log.getByRole('button', { name: 'Add Gummo to your watchlist' }).click();
+  // kept from @mira's post: whose it was goes with it, as From friends' Keep (the database keeps it only while you follow her)
+  expect((await req).postDataJSON()).toEqual({ kind: 'movie', title: 'Gummo', author: 'Harmony Korine', year: 1997, cover_src: 'url:https://image.tmdb.org/t/p/w500/gummo.jpg', from_user: '22222222-2222-4222-8222-222222222222' });
   await expect(page.locator('#toast')).toHaveText('Gummo is on your watchlist.');
   // then grey text, not a button
   await expect(log.locator('.win')).toHaveText('In watchlist');
   expect(await log.locator('.win').evaluate(el => [el.tagName, getComputedStyle(el).color])).toEqual(['SPAN', 'rgb(107, 107, 107)']);
-  await expect(log.locator('.wbtn, .wmore')).toHaveCount(0);
+  await expect(log.getByRole('button', { name: /watchlist/ })).toHaveCount(0);
   // your own logs have none
-  await expect(page.locator('#items .item.log').filter({ hasText: '@tester read Just Kids' }).locator('.wbtn, .wmore')).toHaveCount(0);
+  await expect(page.locator('#items .item.log').filter({ hasText: '@tester read Just Kids' }).getByRole('button', { name: /watchlist/ })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 test('someone\'s shelf page: each spine onto your watchlist; your own shelf has none', async ({ page }) => {
@@ -209,8 +210,7 @@ test('signed out, a cover\'s watchlist button is the sign-in sheet; once signed 
   let sent = 0; page.on('request', r => { if (r.method() === 'POST' && r.url().includes('/rest/v1/watchlist')) sent++; });
   await open(page, '/feed/?everyone');
   const log = page.locator('#items .item.log').first();
-  await log.locator('.cover').hover();
-  await addFrom(page, log, 'Gummo (1997)');
+  await log.getByRole('button', { name: 'Add Gummo to your watchlist' }).click();
   await expect(page.locator('#signSheet')).toBeVisible();
   await expect(page.locator('#signSheet .sheetbox p:not(.note)').first()).toHaveText('Sign in to start your shelf.');
   expect(sent).toBe(0);
@@ -228,7 +228,7 @@ test('a title already on your watchlist says In watchlist from the start, in gre
   await open(page, '/feed/?everyone');
   const gummo = page.locator('#items .item.log').filter({ hasText: 'watched Gummo' }).first(), waves = page.locator('#items .item.log').filter({ hasText: 'read The Waves' }).first();
   await expect(gummo.locator('.win')).toHaveText('In watchlist');
-  await expect(gummo.locator('.wbtn, .wmore')).toHaveCount(0);
+  await expect(gummo.getByRole('button', { name: /watchlist/ })).toHaveCount(0);
   await expect(waves.locator('.win')).toHaveCount(0);   // not on it: still offered
-  await expect(waves.locator('.wbtn')).toHaveCount(1);
+  await expect(waves.getByRole('button', { name: 'Add The Waves to your watchlist' })).toHaveCount(1);
 });
