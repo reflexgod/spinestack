@@ -136,10 +136,9 @@ input[type=color]::-webkit-color-swatch{border:0;border-radius:2px}
 .asks{display:flex;gap:var(--s4) var(--s4);align-items:center;flex-wrap:wrap}
 
 /* Style: every look of the shelf in one panel, shut until asked for, with what's picked on its one line */
-details.style summary{display:flex;gap:var(--s4);align-items:baseline;padding-bottom:var(--s1);border-bottom:1px solid var(--hair);cursor:pointer;list-style:none}
+details.style summary{margin:0;cursor:pointer;list-style:none}   /* site.css's .seclabel, as every section's label */
 details.style summary::-webkit-details-marker{display:none}
-.sname{font-size:var(--fs-section);line-height:1.5;text-transform:uppercase;letter-spacing:var(--track);color:var(--grey)}
-.sline{flex:1;min-width:0;font-size:var(--fs-card);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sline{flex:1;min-width:0;font-size:var(--fs-card);color:var(--ink);text-transform:none;letter-spacing:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 details.style summary svg{width:16px;height:16px;flex:none;align-self:center}
 details.style[open] summary svg{transform:rotate(180deg)}
 .stylebox{display:grid;gap:var(--s4);padding:var(--s4) 0 var(--s2)}
@@ -281,7 +280,7 @@ footer{margin-top:0}
       </section>
 
       <details class="style" id="stylePanel">
-        <summary><span class="sname">Style</span><span class="sline" id="styleLine"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <summary class="seclabel"><span class="sname">Style</span><span class="sline" id="styleLine"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
         <div class="stylebox">
           <div class="ctl"><span class="lbl">Layout</span>
             <div class="seg" id="layout" role="group" aria-label="Layout"><button type="button" data-v="row">Spines</button><button type="button" data-v="stack">Stacked</button><button type="button" data-v="covers">Covers</button></div></div>
