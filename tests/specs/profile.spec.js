@@ -201,8 +201,8 @@ test('your watchlist: a strip on Profile; on its tab each cover has Remove and M
   await expect(page.locator('#friendsSec h2')).toHaveText('From friends');
   await expect(page.locator('#friends li')).toHaveCount(2);
   await expect(row(page, 'friends', 'Gummo')).toContainText('from @mira');
-  await expect(row(page, 'friends', 'Gummo').locator('.tacts > button')).toHaveText(['Keep', 'Remove', 'Mark watched']);
-  await expect(row(page, 'friends', 'The Waves').locator('.tacts > button')).toHaveText(['Keep', 'Remove', 'Mark read']);
+  await expect(row(page, 'friends', 'Gummo').locator('.tacts > button:visible')).toHaveText(['Keep', 'Remove', 'Mark watched']);
+  await expect(row(page, 'friends', 'The Waves').locator('.tacts > button:visible')).toHaveText(['Keep', 'Remove', 'Mark read']);
   // Keep: on your watchlist, saying whose log it came from
   let req = sent(page, 'POST', 'watchlist');
   await row(page, 'friends', 'Gummo').getByRole('button', { name: 'Keep' }).click();

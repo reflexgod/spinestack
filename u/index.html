@@ -126,6 +126,7 @@
 .wcap{font-size:var(--fs-small);overflow-wrap:anywhere}
 .wcap b{font-weight:500}
 .wcap span{color:var(--grey)}
+html:not(.recs-on) .recbtn{display:none}   /* Recommend: only once 0010 is there, signed in */
 .wacts{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s2)}   /* one under the other: Mark watched doesn't fit beside Remove under a cover */
 @media (pointer:coarse){ .wacts{gap:calc(var(--s5) + var(--s1))} }   /* and a press apart (44px, middle to middle) */
 .wplus{display:grid;place-items:center;width:100%;aspect-ratio:2/3;border:1px dashed var(--ink);border-radius:var(--radius);background:var(--paper);color:var(--ink);font:400 32px var(--mono);cursor:pointer;padding:0}
@@ -707,6 +708,8 @@ Shelf.onTextureLoaded(() => redrawAll());
 async function load(){
   await startSession();
   paintAcct();
+  // Recommend, on a spine, a cover in Up next and From friends: signed in, once 0010 is there (recs.js)
+  if (me.user && me.profile) Nav.loadRecs().then(ok => document.documentElement.classList.toggle('recs-on', !!ok));
   if (!NAME){
     if (me.profile){ location.replace(pageUrl(me.profile.username)); return; }
     $('#state').innerHTML = 'Whose shelf? <a href="../build/">Make your own</a>.'; return;
@@ -907,7 +910,7 @@ function paintWatchTab(){
   if (mine) watchSearch();
   const tiles = rows.map((r, i) => {
     const li = document.createElement('li'); li.className = 'wt'; li.dataset.i = i;
-    li.innerHTML = `<span class="wc sealed"></span><span class="wcap"><b>${esc(r.title)}</b>${r.year ? ` <span>${esc(r.year)}</span>` : ''}</span>${mine ? `<span class="wacts"><button class="dash sm grey" type="button" data-w="remove">Remove</button><button class="dash sm" type="button" data-w="log">${didIt(r)}</button></span>` : ''}`;
+    li.innerHTML = `<span class="wc sealed"></span><span class="wcap"><b>${esc(r.title)}</b>${r.year ? ` <span>${esc(r.year)}</span>` : ''}</span>${mine ? `<span class="wacts"><button class="dash sm grey" type="button" data-w="remove">Remove</button><button class="dash sm" type="button" data-w="log">${didIt(r)}</button><button class="dash sm recbtn" type="button" data-w="rec">Recommend</button></span>` : ''}`;
     const wc = li.querySelector('.wc'); wc.append(cleanCover(r));
     if (!mine) Nav.watchable(wc, asItem(r), {moreIn: li});   // someone else's: on yours too
     return li;
@@ -951,7 +954,7 @@ async function paintFriends(){
   lists.friends = rows || [];
   $('#friendsSec').hidden = !rows;
   // Keep puts it on your watchlist, Remove takes it out of here for good, Mark watched (or read) logs it
-  $('#friends').replaceChildren(...lists.friends.map((r, i) => titleRow(r, i, `<button class="dash sm" type="button" data-f="keep">Keep</button><button class="dash sm grey" type="button" data-f="remove">Remove</button><button class="dash sm" type="button" data-f="log">${didIt(r)}</button>`, r.from_username)));
+  $('#friends').replaceChildren(...lists.friends.map((r, i) => titleRow(r, i, `<button class="dash sm" type="button" data-f="keep">Keep</button><button class="dash sm grey" type="button" data-f="remove">Remove</button><button class="dash sm" type="button" data-f="log">${didIt(r)}</button><button class="dash sm recbtn" type="button" data-f="rec">Recommend</button>`, r.from_username)));
   $('#friendsNone').hidden = !!lists.friends.length;
   // each cover: a watchlist button (kept from whose log it was), as Keep does
   lists.friends.forEach((r, i) => { const li = $('#friends').children[i]; if (li) Nav.watchable(li.querySelector('.tc'), asItem(r), {from: r.from_id, moreIn: li.querySelector('.tacts')}); });
@@ -961,6 +964,7 @@ const keptError = e => e && e.code === '23505' ? 'It’s already in Up next.' : 
 $('#wGrid').addEventListener('click', async e => {
   const b = e.target.closest('[data-w]'), r = b && lists.watch[+b.closest('li').dataset.i]; if (!r) return;
   if (b.dataset.w === 'log'){ Nav.add({mode: 'log', item: asItem(r)}); return; }
+  if (b.dataset.w === 'rec'){ Nav.recommend(asItem(r)); return; }
   if (!(await sure(`Remove “${r.title}” from Up next?`, 'It comes off your Up next. You can put it back any time.', 'Remove'))) return;
   b.disabled = true;
   try {
@@ -972,6 +976,7 @@ $('#wGrid').addEventListener('click', async e => {
 $('#friends').addEventListener('click', async e => {
   const b = e.target.closest('[data-f]'), r = b && lists.friends[+b.closest('li').dataset.i]; if (!r) return;
   if (b.dataset.f === 'log'){ Nav.add({mode: 'log', item: asItem(r)}); return; }
+  if (b.dataset.f === 'rec'){ Nav.recommend(asItem(r)); return; }
   if (b.dataset.f === 'remove' && !(await sure(`Remove “${r.title}”?`, 'It won’t come back here.', 'Remove'))) return;
   b.disabled = true;
   try {
@@ -1069,7 +1074,7 @@ function paintItems(){
     const li = document.createElement('li'); li.dataset.i = i;
     li.innerHTML = `<span class="sthumb"></span>
       <span class="st"><b>${esc(r.title || 'Untitled')}${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${esc([r.author, r.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · '))}</span></span>
-      <span class="sact"><button class="dash sm" type="button" data-log="${i}">Log</button>${!have(r) ? `<button class="dash sm" type="button" data-add="${i}">Add to my shelf</button>` : view.mine ? '' : '<span class="onmine">On your shelf</span>'}</span>`;
+      <span class="sact"><button class="dash sm" type="button" data-log="${i}">Log</button><button class="dash sm recbtn" type="button" data-rec="${i}">Recommend</button>${!have(r) ? `<button class="dash sm" type="button" data-add="${i}">Add to my shelf</button>` : view.mine ? '' : '<span class="onmine">On your shelf</span>'}</span>`;
     // someone else's shelf: each spine onto your watchlist too
     if (!view.mine) Nav.watchable(li.querySelector('.sthumb'), {kind: r.kind, title: r.title, year: r.year ? String(r.year) : '', creator: r.author || '', cover: /^url:/.test(r.cover_src || '') ? r.cover_src.slice(4) : ''}, {moreIn: li.querySelector('.sact')});
     return li;
@@ -1085,6 +1090,8 @@ $('#oneItems').addEventListener('click', e => {
   // Log: this title in + ADD's Log it (signed out, the sign-in sheet first)
   const lg = e.target.closest('[data-log]'), lr = lg && shown.rows[+lg.dataset.log];
   if (lr){ if (Nav.visitor()) Nav.needAccount('add'); else Nav.add({mode: 'log', item: asItem(lr)}); return; }
+  const rc = e.target.closest('[data-rec]'), rr = rc && shown.rows[+rc.dataset.rec];
+  if (rr){ Nav.recommend(asItem(rr)); return; }
   const b = e.target.closest('[data-add]'), r = b && shown.rows[+b.dataset.add]; if (!r) return;
   try { sessionStorage.setItem(ADD_ROW, JSON.stringify({at: Date.now(), row: {kind: r.kind, title: r.title, author: r.author, year: r.year, spine_src: r.spine_src, cover_src: r.cover_src, look: r.look}})); }
   catch { toast('Couldn’t take it to the builder. Try again.'); return; }

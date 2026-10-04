@@ -2,7 +2,7 @@
 // one with 6 waiting can't be picked), a note of 140, Show in feed (on), Send; and Share to WhatsApp for anyone. It's
 // on a post's share menu and a fourth choice in + ADD. Without 0010 there's no Recommend anywhere.
 const { test, expect } = require('@playwright/test');
-const { SB_URL, CORS, MUTUALS, mockNetwork, watchErrors, open } = require('../site');
+const { SB_URL, CORS, MUTUALS, SHELVES, FROM_FRIENDS, WATCHLIST, ME, mockNetwork, watchErrors, open } = require('../site');
 
 const post = (page, text) => page.locator('#items .post').filter({ hasText: text }).first();
 const sheet = page => page.locator('.recsheet');
@@ -126,4 +126,39 @@ test('signed out, Recommend isn\'t offered on a post', async ({ page }) => {
   const p = post(page, 'watched Gummo');
   await p.getByRole('button', { name: /^Share/ }).click();
   await expect(p.getByRole('menuitem', { name: 'Recommend' })).toHaveCount(0);
+});
+
+// on the profile: a shelf's spines, your Up next and From friends each have Recommend, signed in and with 0010
+test('Recommend on a shelf\'s spines, on your Up next and on From friends; none without 0010', async ({ page }) => {
+  const errors = watchErrors(page);
+  await mockNetwork(page, { signedIn: true, social: true, recs: true });
+  await open(page, `/u/?mira&shelf=${SHELVES[1].id}`);
+  const first = page.locator('#oneItems li').first();
+  await expect(first.getByRole('button', { name: 'Recommend' })).toBeVisible();
+  const title = await first.locator('.st b').evaluate(b => b.firstChild.textContent.trim());
+  await first.getByRole('button', { name: 'Recommend' }).click();
+  await expect(sheet(page).locator("h2")).toContainText(`Recommend ${title}`);
+  await page.keyboard.press('Escape');
+  // your own profile: From friends, then the Up next tab
+  await open(page, '/u/?tester');
+  const ff = page.locator('#friends li').filter({ hasText: FROM_FRIENDS[0].title });
+  await ff.getByRole('button', { name: 'Recommend' }).click();
+  await expect(sheet(page)).toHaveAccessibleName(new RegExp(`^Recommend ${FROM_FRIENDS[0].title}`));
+  await page.keyboard.press('Escape');
+  await page.getByRole('tab', { name: 'Up next' }).click();
+  const mine = WATCHLIST.find(w => w.owner === ME.id);
+  const tile = page.locator('#wGrid li').filter({ hasText: mine.title });
+  await tile.getByRole('button', { name: 'Recommend' }).click();
+  await expect(sheet(page)).toHaveAccessibleName(new RegExp(`^Recommend ${mine.title}`));
+  expect(errors).toEqual([]);
+});
+
+test('without 0010, the profile has no Recommend', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, social: true });
+  await open(page, '/u/?tester');
+  await expect(page.locator('#friends li').first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Recommend' })).toHaveCount(0);
+  await open(page, `/u/?mira&shelf=${SHELVES[1].id}`);
+  await expect(page.locator('#oneItems li').first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Recommend' })).toHaveCount(0);
 });
