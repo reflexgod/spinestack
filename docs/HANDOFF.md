@@ -6,6 +6,21 @@ session"), again after the launch pass (see "Done in the second cloud session"),
 the design review was applied (see "Done in the third session"). Read this first, then `README.md`, which says what
 every file is and how the Worker, the accounts and the tests are set up.
 
+## Done on 5 October 2026 (phase 5: the title page)
+
+- **Worker, not deployed:** `/identify` gives each film its TMDB id and each book its Open Library work id (its cache
+  key is `id8` now, so answers are asked for again once), and `GET /title` (details for the page, its archived spine;
+  edge-cached a week, no KV write). `cd worker && npm test`: 38 checks pass. Until it's deployed the title page shows
+  what a link says (title, year) and everything people did with it, without the director, runtime, genres, overview or
+  spine. To deploy: `cd worker && npx wrangler deploy`.
+- **The page:** `/t/` (`t/index.html`), linked from every title (`Nav.titleUrl()`): see README. No SQL: it reads the
+  logs and spines with the same kind, title and year (what RLS lets you see), so a title spelled differently in two
+  logs counts as two.
+- **Tested:** `cd tests && npm run test:all` after Phase 5: html-validate clean, then Playwright 826 passed, 24
+  skipped, none failed.
+- **My calls:** "Your review" rates and then posts in one go (a log can't be edited after, with no update policy on
+  logs); the reviews are logs with a rating or something said, 20 a tab; Up next isn't offered once you've logged it.
+
 ## Done on 5 October 2026 (phase 4: recs)
 
 - **SQL, run:** the owner ran `supabase/migrations/0010_recs.sql` and its test `supabase/tests/rls_phase7.sql` in the
