@@ -200,6 +200,7 @@ before the change aren't reused. `/scans` keeps what the providers said as it ca
    Books: `"<title>" <author> book cover spine`, then `"<title>" <author> book spine`, then `"<title>" <author> dust jacket full wrap` (kept under its own key, `:2j`).
 2. It keeps images shaped like a wrap (1.3–1.9 wide for films, 1.2–2.4 for books) or like a single spine (4 times taller than wide), whose title or address contains the whole title; one-word titles also need the year or director.
 3. The page loads each scan through `/img`, and `findSpine()` looks for the strip between back and front: two clear edges near the middle, about 5 % wide for a DVD, lettering on it, an even colour down it. Photos of open cases and books on a table are turned down.
+   A book's spine must also have lettering down its length (`lettering()` in `add.js`: at least 10 % of its rows, in at least 3 of 12 parts), so a plain strip at the join of a design with no spine is turned down; and a picture of one spine alone, 1:6 or narrower and lettered, is the whole spine.
 4. Each cut gets a score from 0 to 100. A film's best cut is picked for you only at 75 or more (in tests right spines scored 76–97 and wrong ones up to 69) **and** when it looks like the English edition; books always let you pick, unless the spine comes from the archive. Cuts under 45 aren't shown, and each page gives one option at most.
    Editions: the Worker marks a scan as another edition when its page title, address or file name has another language or region (Polish, Deutsch, español, français, 日本, region 2, `.pl`/`.de`/… pages, `nl`/`ger`/… in file names) and marks VHS tapes. With **Edition: English** (the default) English DVDs and Blu-rays come first; VHS comes last either way. **Any** drops the language rule.
 5. With no good scan, or when the day's searches are used up, the pick is a spine made from the poster or cover.
@@ -380,6 +381,7 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   name: Style has no Caption, and a shelf that had a caption of its own is saved with its name as both. The bar has
   only Cancel and Save, side by side at 360 to 430px.  Clear asks first (Cancel and Esc leave the spines); the sample
   shelf just goes.
+- **A book's real spine** (`specs/spines.spec.js`): a drawn stand-in for Animal Farm's design from jesskingblog (no spine, a 13px plain strip at the join) is cut where the real one was and turned down for having no lettering down it; one lettered spine alone (1:8) is the whole spine and a blank one isn't; a film is as it was.
 - **The dialog's search** (`specs/add.spec.js`; signed out, + ADD is the sign-in sheet on every page, in `specs/log.spec.js`): suggestions while typing with one search for a word typed quickly, a
   slower earlier answer dropped, six results in order of closeness, ↑ ↓ Enter Esc, Enter searching at once, the
   loading and nothing-found lines, at the right of the All · Films · Books row (nothing held open, nothing moving);

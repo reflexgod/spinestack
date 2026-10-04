@@ -166,6 +166,24 @@ function findSoloSpine(img){
   const k = img.width/cw, ky = img.height/ch;
   return {x:L*k, y:T*ky, w:w*k, h:h*ky, score};
 }
+/* Lettering along a spine: a real one has its title, author and publisher down it; a false one (a plain strip at the
+   join of a design with no spine, docs/BOOK-SPINES.md) has next to nothing. The strip is drawn 300 rows tall; a row is
+   lettered when 6 to 90 % of its middle differs clearly from the strip's own colour. Returns {rows, parts}: the share
+   of rows lettered, and in how many of 12 equal parts down its length at least 15 % of rows are. */
+function lettering(img, x, y, w, h){
+  const H = 300, W = Math.max(8, Math.round(H*w/h));
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d', {willReadFrequently:true}); g.imageSmoothingQuality = 'high'; g.drawImage(img, x, y, w, h, 0, 0, W, H);
+  const d = g.getImageData(0, 0, W, H).data, px = (X, Y) => { const i = (Y*W+X)*4; return [d[i], d[i+1], d[i+2]]; };
+  const all = []; for (let Y = 0; Y < H; Y += 2) for (let X = 0; X < W; X++) all.push(px(X, Y));
+  const bg = [0,1,2].map(k => all.map(p => p[k]).sort((a,b) => a-b)[all.length >> 1]);
+  const x0 = Math.floor(W*.15), x1 = Math.max(x0 + 1, Math.ceil(W*.85)), lit = [];
+  for (let Y = 0; Y < H; Y++){ let n = 0; for (let X = x0; X < x1; X++) n += dist(px(X, Y), bg) > 60; const f = n/(x1 - x0); lit.push(f > .06 && f < .9); }
+  let parts = 0;
+  for (let p = 0; p < 12; p++){ const a = Math.floor(p*H/12), z = Math.floor((p+1)*H/12); if (lit.slice(a, z).filter(Boolean).length/(z - a) > .15) parts++; }
+  return {rows: lit.filter(Boolean).length/H, parts};
+}
+const lettered = (img, x, y, w, h) => { const l = lettering(img, x, y, w, h); return l.rows >= .1 && l.parts >= 3; };
 const API = String(window.SPINESTACK_API || '').replace(/\/+$/, '');
 let server = false;   // the old self-hosted backend (backend/): the builder looks for it and says so with Add.setServer()
 
@@ -513,8 +531,11 @@ async function cutOne(s, kind){
     if (!canvasSafe(img)) return null;
     const base = {source:s.source, img:s.img, scan:img, archive:!!s.archive, id:s.id, front:null, en:s.en !== false, vhs:!!s.vhs};
     if (s.archive) return Object.assign(base, {spine:img, score:100});   // checked by hand before it was approved
-    if (img.height/img.width >= 4){ const c = findSoloSpine(img); return c && Object.assign(base, {spine:crop(img, c.x, c.y, c.w, c.h), score:c.score, solo:true}); }
-    const cut = findSpine(img, kind); if (!cut) return null;
+    // a book's spine must have lettering down it; a picture of one spine alone (1:6 or narrower) is the whole spine
+    const book = kind === 'book';
+    if (book && img.width/img.height <= 1/6) return lettered(img, 0, 0, img.width, img.height) ? Object.assign(base, {spine:img, score:80, solo:true}) : null;
+    if (img.height/img.width >= 4){ const c = findSoloSpine(img); return c && (!book || lettered(img, c.x, c.y, c.w, c.h)) ? Object.assign(base, {spine:crop(img, c.x, c.y, c.w, c.h), score:c.score, solo:true}) : null; }
+    const cut = findSpine(img, kind); if (!cut || (book && !lettered(img, cut.x, cut.y, cut.w, cut.h))) return null;
     return Object.assign(base, {spine:crop(img, cut.x, cut.y, cut.w, cut.h), front:crop(img, cut.frontX, cut.y, img.width - cut.frontX, cut.h), score:cut.score});
   } catch { return null; }
 }
@@ -881,5 +902,5 @@ function attachSearch({input, list, onPick, say: tell = () => {}}){
 }
 
 window.Add = {open, close, watch, attachSearch, WATCH_CAP, isOpen: () => dlg.open, setShelf: s => { shelf = s; }, setToast: fn => { say = fn; }, setServer, takePending, resolve,
-  extractPalette, findSpine, findSoloSpine, EDITION};
+  extractPalette, findSpine, findSoloSpine, lettering, cutOne, EDITION};
 })();
