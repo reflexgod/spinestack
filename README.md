@@ -17,12 +17,13 @@ members/index.html    Find @username (people by the start of a username or name,
 settings/index.html   your settings (signed in only; signed out, just Sign in under the heading): PROFILE (display name, bio), PHOTO (cut square, made small, sent to the Worker), ACCOUNT (private profile). A profile's Edit profile comes here
 feed/index.html       the feed: /feed/, FOLLOWING · YOU · EVERYONE, a line for each shelf saved ("@abc shelved my films · 2h") with its card, and for each film or book logged ("@abc watched Gummo · today") with its worn cover, small (72 x 108px), and the caption beside it, newest first
 worker-address.js     sends Worker requests to its workers.dev address on networks that block api.shelfstackd.com
-favicon.svg           the mark: three spines on a shelf. favicon-32.png, favicon.ico and apple-touch-icon.png are made from it (tests/art.js); every page links them
+assets/logo-hedgehog.svg   the logo: a white hedgehog with four coloured quills on #14181C. The bar shows it at 28px left of SHELFSTACKD; its colours are the only colour on the site
+favicon.svg           a copy of the logo. favicon-32.png, favicon.ico and apple-touch-icon.png are made from it (tests/art.js); every page links them
 favicon.ico           the same mark for a browser that asks for /favicon.ico whatever the page says (without it, that request is a 404 on every page)
 tmdb.svg              TMDB's logo, their own file as it comes (the "primary short" one from themoviedb.org/about/logos-attribution), shown small in privacy.html's Credits: their terms ask for it beside their line
 privacy.html          what the site keeps and who sees it; at its end, Credits (#credits, where About in every footer goes): TMDB's logo and line, Open Library, Search by Brave
 .well-known/appspecific/com.chrome.devtools.json   an empty answer for Chrome, which asks every localhost site for this file while its DevTools are open (the other 404 in the network panel). Nothing reads it
-og.jpg                the picture a shared link shows (1200 x 630: the logo and a shelf); every page names it in its og: and twitter: tags
+og.jpg                the picture a shared link shows (1200 x 630: the logo in the middle of #14181C); every page names it in its og: and twitter: tags
 sample-shelf.jpg      the builder's sample shelf (it's only at build/?sample now: a new shelf starts empty) as a picture; home shows it ("a shelf, for example") while there are no public shelves. Made by tests/art.js
 spinetip.js           a shelf's picture: hovering a spine shows "Title (year) · creator", pressing it goes to its row in the list (a shelf's page, and the builder's preview). It uses the places shelf.js says it drew each book
 cards.js              shelf cards: finds the books in a shelf's preview picture and cuts the 2:3 card round them (home, the feed, profiles), keeping what it found per preview key
@@ -489,7 +490,7 @@ choices, Log it, Watchlist), shelves, members, settings, privacy and the not-fou
   `PAGES` in `tests/site.js`.
 
 `npm run art` makes the site's own pictures again and saves them at the root: the sample shelf (`sample-shelf.jpg`), the
-share picture (`og.jpg`) and the icons (from `favicon.svg`). Run it when the builder's sample shelf or the mark changes.
+share picture (`og.jpg`) and the icons (from `assets/logo-hedgehog.svg`). Run it when the builder's sample shelf or the logo changes (`node art.js icons` makes only the icons and `og.jpg`).
 
 ## 2. Run the backend (optional, not used right now)
 

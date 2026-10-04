@@ -32,7 +32,8 @@ body{margin:0;background:var(--paper);color:var(--ink);font:400 12px/1.55 var(--
 :focus-visible{outline:2px solid var(--ink);outline-offset:3px}
 .top{padding:14px 24px;display:flex;justify-content:space-between;align-items:center}
 .top a{text-decoration:none;color:inherit;text-transform:uppercase;font-size:13px}
-.mark{font-weight:800;font-size:22px!important;letter-spacing:.34em}
+.mark{display:flex;align-items:center;gap:8px;font-weight:800;font-size:22px!important;letter-spacing:.34em}
+.mark img{width:28px;height:28px;display:block}
 .col{max-width:760px;margin:0 auto;padding:40px 16px 72px}
 h1{font-size:24px;font-weight:700;text-transform:uppercase;margin:0 0 14px}
 p{margin:0 0 12px}
@@ -60,7 +61,7 @@ li img{height:220px;width:auto;display:block;background:#F2F2F2}
 </style>
 </head>
 <body>
-<header class="top"><a class="mark" href="./">SHELFSTACKD</a><a href="./">Site</a></header>
+<header class="top"><a class="mark" href="./"><img src="assets/logo-hedgehog.svg" width="28" height="28" alt="">SHELFSTACKD</a><a href="./">Site</a></header>
 <main class="col">
   <h1>Archive</h1>
   <p class="grey">Spines people cut from their own scans. Nothing shows up in search until it's approved here.</p>
