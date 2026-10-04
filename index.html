@@ -80,19 +80,18 @@
 .none a:hover,.none a:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 
 /* New from people you follow: a card for each person, the newest thing from them. A log is its cover, worn (wear.js),
-   the whole picture; a shelf is its spines cut out on the grey panel (bare.js). Under the picture a thin bar with
-   their photo and @username; under the card, small and grey, what it was on the left and the date on the right. Six
+   the whole picture, with a 1px outline; a shelf is its spines standing on a thin line (bare.js), no box round either.
+   Under the picture their photo and @username; under the card, small and grey, what it was on the left and the date on the right. Six
    across on a wide window; on a narrower one as many as the shelf cards (four, three on a phone), and the rest scroll
    sideways inside the row */
 .frow{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:var(--card-gap)}
 .frow:empty{display:none}
 .frow li{min-width:0}
-.fcard{display:block;border:1px solid var(--hair);border-radius:var(--radius);overflow:hidden;background:var(--paper);color:var(--ink);text-decoration:none}
+.fcard{display:block;color:var(--ink);text-decoration:none}
 .fcard .art{display:block;position:relative;aspect-ratio:2/3;line-height:0}
 .fcard .art canvas.worn{display:block;width:100%;height:100%}
-.fcard .panel{background:var(--wash)}
-.fcard .panel canvas{position:absolute;inset:0;margin:auto;width:auto;height:auto;max-width:calc(100% - 2*var(--s2));max-height:calc(100% - 2*var(--s2))}
-.fby{display:flex;align-items:center;gap:var(--s1);min-width:0;padding:var(--s1) var(--s2);border-top:1px solid var(--hair);font-size:var(--fs-small);line-height:16px}
+.fcard .art.sl{display:flex;height:auto;aspect-ratio:2/3}   /* a shelf: its spines on the line, as tall as a cover is */
+.fby{display:flex;align-items:center;gap:var(--s1);min-width:0;padding:var(--s2) 0 0;font-size:var(--fs-small);line-height:16px}
 .fby .fa{flex:none;width:16px;height:16px;border-radius:50%;border:1px solid var(--ink);background:var(--wash);overflow:hidden;display:grid;place-items:center;font-size:9px;line-height:1;text-transform:uppercase}
 .fby .fa img{width:100%;height:100%;object-fit:cover;display:block}
 .fby span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -188,9 +187,8 @@
 
 <script src="shelf.js?v=20261002a"></script>
 <script src="worker-address.js?v=20261001a"></script>
-<script src="cards.js?v=20261002a"></script>
 <script src="wear.js?v=20261004a"></script>
-<script src="bare.js?v=20261006a"></script>
+<script src="bare.js?v=20261013a"></script>
 <script src="nav.js?v=20261012a"></script>
 <script>
 (() => {
@@ -279,14 +277,10 @@ document.querySelectorAll('.sheet').forEach(s => s.addEventListener('click', e =
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.querySelector('.sheet:not([hidden])')) closeSheets(); });
 
 /* ---------- shelves and people ---------- */
-// one shelf: its preview, its name, who made it
-function tile(x, lazy){
-  const li = document.createElement('li'), shelf = Shelf.shelfName({name: x.name, caption: x.caption});
-  const pic = x.preview_key ? `<img src="${esc(`${WORKER}/u/preview?k=${encodeURIComponent(x.preview_key)}&v=${encodeURIComponent(x.updated_at)}`)}" alt="" crossorigin="anonymous"${lazy ? ' loading="lazy"' : ''} width="360" height="640">` : '';   // with CORS, so cards.js can read it and cut the card round the books
-  li.innerHTML = `<a href="${esc(profileUrl(x.username, x.shelf_id))}" aria-label="${esc(shelf)} by @${esc(x.username)}">
-      <span class="pic" data-shelf="${esc(x.shelf_id)}">${pic}</span><span class="cap">${esc(shelf)}</span><span class="by">@${esc(x.username)}</span></a>`;
-  return li;
-}
+// one shelf: its spines on a line, its name, who made it (bare.js)
+const tile = x => Bare.tile(x, profileUrl(x.username, x.shelf_id));
+// the spines for the lines: every shelf's rows in one ask (Bare.lines takes the first of each)
+const lineRows = ids => api(`shelf_items?select=shelf_id,position,item_id,kind,title,author,year,spine_src,cover_src,look&shelf_id=in.(${ids.join(',')})&order=position`);
 function person(x){
   const li = document.createElement('li'), name = (x.display_name || '').trim();
   li.innerHTML = `<a href="${esc(profileUrl(x.username))}"><span class="fa" aria-hidden="true">${x.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(x.avatar_key)}`)}" alt="" loading="lazy">` : esc((name || x.username).trim()[0] || '·')}</span><span>@${esc(x.username)}</span></a>`;
@@ -300,35 +294,16 @@ const dated = t => (new Date(t).getFullYear() === new Date().getFullYear() ? MON
 const CARD = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card')) || 150;   // a card's width on a wide window (site.css)
 const face = x => `<span class="fa" aria-hidden="true">${x.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(x.avatar_key)}`)}" alt="" loading="lazy">` : esc(((x.display_name || '').trim() || x.username).trim()[0] || '·')}</span>`;
 // one card, the newest thing from one person. A log opens their Activity, where it's the first line, with its caption;
-// a shelf opens the shelf. The picture of a shelf is drawn once its books are read (shelfArt below)
+// a shelf opens the shelf. A shelf's spines stand on their line once its books are read (Bare.lines)
 function fcard(x){
   const li = document.createElement('li'), log = x.what === 'log', word = log ? (x.kind === 'movie' ? 'watched' : 'read') : 'shelved';
   const name = log ? `${x.title}${x.year ? ` (${x.year})` : ''}` : Shelf.shelfName({name: x.name, caption: x.caption});
   const to = log ? profileUrl(x.username) + '#activity' : profileUrl(x.username, x.id);
-  li.innerHTML = `<a class="fcard" href="${esc(to)}" aria-label="${esc(name)}, ${word} by @${esc(x.username)}"><span class="art${log ? '' : ' panel'}"${log ? '' : ` data-shelf="${esc(x.id)}"`}></span><span class="fby">${face(x)}<span>@${esc(x.username)}</span></span></a>
+  li.innerHTML = `<a class="fcard" href="${esc(to)}" aria-label="${esc(name)}, ${word} by @${esc(x.username)}"><span class="art${log ? '' : ' sl'}"${log ? '' : ` data-shelf="${esc(x.id)}"`}></span><span class="fby">${face(x)}<span>@${esc(x.username)}</span></span></a>
     <p class="fmeta"><span>${word}</span><time datetime="${esc(x.at)}" title="${esc(new Date(x.at).toLocaleString())}">${dated(x.at)}</time></p>`;
   if (log) li.querySelector('.art').append(Wear.cover({src: x.cover_src ? `${WORKER}/img?url=${encodeURIComponent(x.cover_src.replace(/^url:/, ''))}` : '', seed: x.id, at: x.at,
     label: `${name}, ${word} by @${x.username}`, width: CARD}));
   return li;
-}
-// the shelves' pictures: all their books and settings read in two requests, then each shelf cut out of a bare story
-// once the spines' fonts are in, and drawn again when a texture it uses arrives. One that can't be read stays an empty panel
-const drawn = [];
-Shelf.onTextureLoaded(() => { for (const f of drawn) f(); });
-async function shelfArt(rows){
-  const ids = rows.filter(x => x.what !== 'log').map(x => x.id); if (!ids.length) return;
-  const these = `in.(${ids.join(',')})`;
-  let shelves, items;
-  try { [shelves, items] = await Promise.all([api(`shelves?select=id,layout,varied,wood,filter,intensity,pro&id=${these}`),
-    api(`shelf_items?select=shelf_id,position,item_id,kind,title,author,year,spine_src,cover_src,look&shelf_id=${these}&order=position`)]); }
-  catch { return; }
-  await Bare.ready;
-  await Promise.all(shelves.map(async s => {
-    const list = await Bare.books(items.filter(r => r.shelf_id === s.id)), art = $(`#folRow .art[data-shelf="${s.id}"]`);
-    if (!art) return;
-    const draw = () => { const c = Bare.shelf(list, s); if (c){ c.setAttribute('aria-hidden', 'true'); art.replaceChildren(c); } };
-    draw(); drawn.push(draw);
-  }));
 }
 // a shelf as feed() (0006) gives it, in activity()'s shape
 const fromFeed = r => ({what: 'shelf', id: r.shelf_id, at: r.saved_at, owner: r.owner, username: r.username, display_name: r.display_name, avatar_key: r.avatar_key,
@@ -407,7 +382,7 @@ async function showOut(){
   try { rows = await everyone(GRID); }
   catch (e){ $('#outState').textContent = friendly(e); sample(); return; }
   spineWall(rows);   // an empty site: a shelf, for example
-  $('#outGrid').replaceChildren(...rows.map(x => tile(x, true)));
+  $('#outGrid').replaceChildren(...rows.map(tile)); Bare.lines($('#outGrid'), lineRows);
   $('#outState').hidden = true; $('#outJust').hidden = !rows.length;
   // the people behind the newest shelves, each once
   const seen = new Set(), who = rows.filter(x => !seen.has(x.owner) && seen.add(x.owner));
@@ -431,14 +406,15 @@ async function showIn(){
     try {
       const rows = await get();
       $(list).replaceChildren(...rows.map(make));
+      Bare.lines($(list), lineRows, list === '#folRow');   // the row from people you follow: all six at once
       $(state).hidden = true; if (!rows.length) empty();
     } catch (e){ $(state).textContent = friendly(e); }
   };
   // the newest thing from each person, newest first
-  const latest = async () => { const seen = new Set(), rows = (await following(ASK)).filter(x => !seen.has(x.owner) && seen.add(x.owner)).slice(0, ROW); shelfArt(rows); return rows; };
+  const latest = async () => { const seen = new Set(); return (await following(ASK)).filter(x => !seen.has(x.owner) && seen.add(x.owner)).slice(0, ROW); };
   await Promise.all([
     fill(latest, '#folState', '#folRow', fcard, nobody),
-    fill(() => everyone(GRID), '#inState', '#inGrid', x => tile(x, true), () => { $('#inState').textContent = 'No shelves yet.'; $('#inState').hidden = false; }),
+    fill(() => everyone(GRID), '#inState', '#inGrid', tile, () => { $('#inState').textContent = 'No shelves yet.'; $('#inState').hidden = false; }),
   ]);
 }
 

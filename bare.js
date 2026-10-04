@@ -74,5 +74,43 @@
   const FACES = ['600 40px Oswald','400 40px Oswald','600 40px "Cormorant Garamond"','italic 500 40px "Cormorant Garamond"','40px "Archivo Black"','40px "Gochi Hand"','500 40px "IBM Plex Mono"','400 40px "IBM Plex Mono"','600 40px "IBM Plex Sans"'];
   const ready = document.fonts ? Promise.all(FACES.map(f => document.fonts.load(f).catch(() => {}))) : Promise.resolve();
 
-  window.Bare = {book, books, shelf, spines, ready};
+  /* A shelf, small, where shelves are listed (home's Just shelved, Shelves): no card and no box, its spines standing on
+     a thin line (site.css's .sl), then its name and @username. tile(x, href) gives the <li>; lines(list, ask) fills
+     each line in list with its shelf's first spines as it nears the screen, all the lines near it in one ask
+     (ask(ids, n) gives shelf_items rows for those shelves, n at most each), and gives back a function to call when more
+     tiles are put in the list; now: every line at once, for a short row that scrolls sideways (what's out of sight in it
+     never nears the screen). A line whose spines can't be read stays an empty line. */
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function tile(x, href){
+    const li = document.createElement('li'), name = Shelf.shelfName({name: x.name, caption: x.caption});
+    li.innerHTML = `<a href="${esc(href)}" aria-label="${esc(name)} by @${esc(x.username)}"><span class="sl" data-shelf="${esc(x.shelf_id)}"></span><span class="cap">${esc(name)}</span><span class="by">@${esc(x.username)}</span></a>`;
+    return li;
+  }
+  const EACH = 12;   // a line holds about this many, at 96px; more would be cut off
+  function lines(list, ask, now = false, n = EACH){
+    const waiting = new Set(); let t = 0;
+    const fill = async () => {
+      const els = [...waiting]; waiting.clear(); if (!els.length) return;
+      let rows; try { rows = await ask([...new Set(els.map(el => el.dataset.shelf))], n); } catch { return; }
+      await ready;
+      await Promise.all(els.map(async el => {
+        const got = await books(rows.filter(r => r.shelf_id === el.dataset.shelf).sort((a, b) => a.position - b.position).slice(0, n));
+        el.dataset.n = got.length;
+        if (got.length) el.replaceChildren(...spines(got, el.clientHeight).map(c => { c.setAttribute('aria-hidden', 'true'); return c; }));
+      }));
+    };
+    const soon = () => { clearTimeout(t); t = setTimeout(fill, 30); };
+    const io = !now && 'IntersectionObserver' in window ? new IntersectionObserver(es => {
+      for (const e of es) if (e.isIntersecting){ io.unobserve(e.target); waiting.add(e.target); }
+      soon();
+    }, {rootMargin: '400px'}) : null;
+    const watch = () => {
+      for (const el of list.querySelectorAll('.sl[data-shelf]:not([data-w])')){ el.dataset.w = '1'; if (io) io.observe(el); else waiting.add(el); }
+      if (!io) soon();
+    };
+    watch();
+    return watch;
+  }
+
+  window.Bare = {book, books, shelf, spines, ready, tile, lines};
 })();

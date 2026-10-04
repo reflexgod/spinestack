@@ -112,10 +112,12 @@ In the order it was built (`git log main..letterboxd-flow` has each step):
   to date.
 - **Profiles:** tabs Profile · Shelves · Activity · Network; "Follows you" and "Followed by @a, @b and N others"; your
   shelf cards open the shelf's page, with one ··· menu.
-- **A shelf's own page:** its heading, Share (Share to story, Download image, Copy link), On this shelf with + Add to my
+- **A shelf's own page:** its heading, Share (Share to story, Download image, Copy link), On this shelf with Add to my
   shelf, and for its owner Edit, Make main, Make private or public, Delete.
-- **Shelf cards** (`cards.js`) cut 2:3 round the books in the picture, on home, the feed and profiles. Hovering a spine
-  on a shelf's picture names it (`spinetip.js`).
+- **Shelves listed** (home's Just shelved, Shelves): no card and no box; each is its first spines standing on a thin
+  line (`bare.js`, Bare.tile and Bare.lines), its name and @username under. `cards.js` (2:3 cards cut from the story
+  picture) is gone. Covers have a 1px outline, black on hover. Hovering a spine on a shelf's picture names it
+  (`spinetip.js`).
 - **Every page:** a favicon, a share picture, its own title and description; an empty site says so in a line.
 - **The Worker:** `/identify` drops Open Library's government reports and books that don't have what was typed
   (cache key `id4`), and takes `suggest=1` for half-typed titles. `/scans` looks with Serper, then SerpApi, then Brave,

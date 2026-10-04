@@ -398,21 +398,20 @@ test('signed-in home: New from people you follow is a row of cards, one for each
   expect(+(await cover.getAttribute('data-wear'))).toBeGreaterThan(0);
   const art0 = await cards.nth(0).locator('.art').boundingBox(), c0 = await cover.boundingBox();
   expect([Math.round(c0.x), Math.round(c0.y), Math.round(c0.width), Math.round(c0.height)]).toEqual([Math.round(art0.x), Math.round(art0.y), Math.round(art0.width), Math.round(art0.height)]);
-  // a shelf: its spines cut out on the grey panel, in the middle of it with room round them, not its story
-  const panel = cards.nth(2).locator('.art');
-  expect(await panel.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(243, 243, 243)');
-  await expect(panel.locator('canvas')).toHaveCount(1);
-  await expect(panel.locator('img')).toHaveCount(0);
-  const p = await panel.boundingBox(), shelf = await panel.locator('canvas').boundingBox();
-  expect(shelf.x).toBeGreaterThanOrEqual(p.x + 7); expect(shelf.x + shelf.width).toBeLessThanOrEqual(p.x + p.width - 7);
-  expect(shelf.y).toBeGreaterThanOrEqual(p.y + 7); expect(shelf.y + shelf.height).toBeLessThanOrEqual(p.y + p.height - 7);
-  expect(Math.abs(shelf.x + shelf.width / 2 - (p.x + p.width / 2))).toBeLessThanOrEqual(1);
-  expect(Math.abs(shelf.y + shelf.height / 2 - (p.y + p.height / 2))).toBeLessThanOrEqual(1);
-  await expect(cards.locator('.panel canvas')).toHaveCount(3);   // every shelf is drawn
+  // a shelf: its spines standing on a thin black line, from the left; no grey panel, no box, not its story
+  const line = cards.nth(2).locator('.art');
+  expect(await line.evaluate(el => { const s = getComputedStyle(el); return [s.backgroundColor, s.borderBottomWidth, s.borderBottomStyle, s.borderBottomColor, s.borderTopWidth].join(' '); }))
+    .toBe('rgba(0, 0, 0, 0) 1px solid rgb(0, 0, 0) 0px');
+  await expect(line.locator('canvas').first()).toBeVisible();
+  await expect(line.locator('img')).toHaveCount(0);
+  const p = await line.boundingBox(), spine = await line.locator('canvas').first().boundingBox();
+  expect(Math.abs(spine.y + spine.height - (p.y + p.height - 1))).toBeLessThanOrEqual(1);   // its foot on the line
+  expect(Math.abs(spine.x - p.x)).toBeLessThanOrEqual(1);
+  await expect(cards.locator('.sl[data-n]')).toHaveCount(3);   // every shelf is drawn
   expect(errors).toEqual([]);
 });
 
-test('signed-in home: each card is 2:3 with a thin bar under the picture, a 1px border and no shadow; six across, or three on a phone and the rest sideways', async ({ page }) => {
+test('signed-in home: each card is 2:3 with their photo and @username under it, no box and no shadow; six across, or three on a phone and the rest sideways', async ({ page }) => {
   await mockNetwork(page, { signedIn: true, friends: true });
   await open(page, '/');
   const cards = cardsOf(page), main = await page.locator('main').boundingBox();
@@ -425,10 +424,9 @@ test('signed-in home: each card is 2:3 with a thin bar under the picture, a 1px 
   }));
   for (const b of box) {
     expect(b.art.h / b.art.w).toBeCloseTo(1.5, 1);                                  // the picture is 2:3
-    expect(b.border).toBe('1px solid 1px 1px 1px');
+    expect(b.border).toBe('0px none 0px 0px 0px');                                   // no box
     expect(b.shadow).toBe('none');
-    expect(b.radius).toBe('3px');                                                    // what shelf cards already have
-    expect(b.bar.y).toBeGreaterThanOrEqual(b.art.y + b.art.h - 1);                   // the bar is under the picture, inside the card
+    expect(b.bar.y).toBeGreaterThanOrEqual(b.art.y + b.art.h - 1);                   // the photo and name are under the picture
     expect(b.bar.y + b.bar.h).toBeLessThanOrEqual(b.card.y + b.card.h);
     expect(b.bar.h).toBeLessThanOrEqual(26);                                         // thin
     expect(b.face.x).toBeLessThan(b.bar.x + 12);                                     // the photo first
@@ -450,8 +448,8 @@ test('signed-in home: each card is 2:3 with a thin bar under the picture, a 1px 
     await expect.poll(() => cardsOf(page).last().evaluate(li => { const r = li.getBoundingClientRect(), m = document.querySelector('main').getBoundingClientRect(); return r.right <= m.right + 1; })).toBe(true);
   } else {
     expect(inView).toBe(6);
-    expect(Math.round(box[0].card.w)).toBe(150);                                     // the column's six: 150px, 10px apart
-    expect(Math.round(box[1].li.x - box[0].li.x - box[0].li.w)).toBe(10);
+    expect(Math.round(box[0].card.w)).toBe(145);                                     // the column's six: 145px, 16px apart
+    expect(Math.round(box[1].li.x - box[0].li.x - box[0].li.w)).toBe(16);
   }
   const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(sideways).toBeLessThanOrEqual(0);                                           // the page itself never scrolls sideways
@@ -464,19 +462,20 @@ test('signed-in home on a database without logs (0007 not run on it): the newest
   await open(page, '/');
   await expect(cardsOf(page).locator('.fby span:last-child')).toHaveText(['@mira', '@june_reads', '@bea', '@kit']);   // the people with a shelf
   await expect(cardsOf(page).locator('.fmeta span')).toHaveText(['shelved', 'shelved', 'shelved', 'shelved']);
-  await expect(cardsOf(page).locator('.panel canvas')).toHaveCount(4);
+  await expect(cardsOf(page).locator('.sl[data-n]')).toHaveCount(4);
+  await expect(cardsOf(page).locator('.sl:has(canvas)')).toHaveCount(4);
   await expect(cardsOf(page).locator('a.fcard').first()).toHaveAttribute('href', `u/?mira&shelf=${SHELVES[1].id}`);
   expect(asked.filter(a => / following$/.test(a))).toEqual(['activity following', 'feed following']);   // asked once, then the feed of 0006
 });
 
-test('signed-in home: a shelf whose spines can\'t be read stays an empty grey panel, and the card still opens it', async ({ page }) => {
+test('signed-in home: a shelf whose spines can\'t be read stays an empty line, and the card still opens it', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true, friends: true });
   await page.route(u => u.pathname === '/rest/v1/shelf_items', route => route.request().method() === 'OPTIONS' ? route.fallback() : route.fulfill({ status: 500, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: '{"message":"no"}' }));
   await open(page, '/');
   await expect(cardsOf(page)).toHaveCount(6);
-  await expect(cardsOf(page).locator('.panel')).toHaveCount(3);
-  await expect(cardsOf(page).locator('.panel canvas')).toHaveCount(0);
+  await expect(cardsOf(page).locator('.sl')).toHaveCount(3);
+  await expect(cardsOf(page).locator('.sl canvas')).toHaveCount(0);
   await expect(cardsOf(page).locator('a.fcard').nth(2)).toHaveAttribute('href', `u/?june_reads&shelf=${FRIEND_SHELVES[0].id}`);
   expect(errors.filter(e => !/500/.test(e))).toEqual([]);   // the browser logs the 500 itself
 });

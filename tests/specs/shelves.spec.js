@@ -1,8 +1,9 @@
-// Shelves (/shelves/): Make a shelf (Your shelf, signed in), then every public shelf as a card, 24 at a time, Load more.
+// Shelves (/shelves/): Make a shelf (Edit your shelf, signed in), then every public shelf as its spines on a line, 24 at a
+// time, Load more.
 const { test, expect } = require('@playwright/test');
 const { SHELVES, SB_URL, CORS, feedRow, mockNetwork, watchErrors, open, putAside } = require('../site');
 
-test('Shelves, signed out: the title, Make a shelf, and every public shelf as a card cut round its books', async ({ page }) => {
+test('Shelves, signed out: the title, Make a shelf, and every public shelf as its spines on a thin line, no card', async ({ page }) => {
   const errors = watchErrors(page), net = await mockNetwork(page);
   await open(page, '/shelves/');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Shelves');
@@ -16,9 +17,13 @@ test('Shelves, signed out: the title, Make a shelf, and every public shelf as a 
   await expect(first.locator('a')).toHaveAttribute('href', `../u/?tester&shelf=${SHELVES[0].id}`);
   await expect(first.locator('.cap')).toHaveText('a much longer shelf name that has to be cut short');
   await expect(first.locator('.by')).toHaveText('@tester');
-  await expect.poll(() => first.locator('.pic img').evaluate(im => im.style.width)).not.toBe('');   // cards.js has cut it
-  const box = await first.locator('.pic').boundingBox();
-  expect(box.height / box.width).toBeCloseTo(1.5, 1);
+  // its spines (bare.js), standing on a 1px black line 96px under their tops; no picture, no panel, no box
+  const line = first.locator('.sl');
+  await expect(line.locator('canvas').first()).toBeVisible();
+  await expect(first.locator('img')).toHaveCount(0);
+  expect(await line.evaluate(el => { const s = getComputedStyle(el); return [Math.round(el.getBoundingClientRect().height), s.borderBottomWidth, s.borderBottomColor, s.backgroundColor].join(' '); }))
+    .toBe('96 1px rgb(0, 0, 0) rgba(0, 0, 0, 0)');   // the line inside the 96px
+  expect(await first.locator('a').evaluate(el => getComputedStyle(el).borderTopWidth)).toBe('0px');
   await start.click();
   await expect(page.locator('#signSheet')).toBeVisible();   // signed out: sign in first (the site is read only)
   await expect(page.locator('#signSheet .sheetbox p:not(.note)').first()).toHaveText('Sign in to start your shelf.');

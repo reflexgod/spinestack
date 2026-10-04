@@ -78,18 +78,17 @@ for (const pg of [...PAGES, { name: 'own profile', path: '/u/?tester' }]) {
   });
 }
 
-test('shelf cards: six across the column at 150px with 10px gaps (three on a phone), cut 2:3, name and @username under', async ({ page }) => {
+test('shelves listed: six across the column at 145px, 16px apart (three on a phone), each its spines on a thin line, name and @username under; no box', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/');
-  const cards = page.locator('#inGrid li'), pics = page.locator('#inGrid .pic');
+  const cards = page.locator('#inGrid li'), lines = page.locator('#inGrid .sl');
   const boxes = await cards.evaluateAll(els => els.slice(0, 7).map(e => { const r = e.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width }; }));
   const across = boxes.filter(b => Math.abs(b.y - boxes[0].y) < 1).length;
   expect(across).toBe(isPhone() ? 3 : 6);
-  expect(Math.round(boxes[1].x - boxes[0].x - boxes[0].w)).toBe(10);
-  if (!isPhone()) expect(Math.round(boxes[0].w)).toBe(150);
-  const pic = await box(pics.first());
-  expect(pic.height / pic.width).toBeCloseTo(1.5, 1);
-  expect(await css(pics.first(), 'borderTopLeftRadius', 'borderTopWidth')).toEqual({ borderTopLeftRadius: '3px', borderTopWidth: '0px' });   // no box round it
+  expect(Math.round(boxes[1].x - boxes[0].x - boxes[0].w)).toBe(16);
+  if (!isPhone()) expect(Math.round(boxes[0].w)).toBe(145);
+  await expect(lines.first().locator('canvas').first()).toBeVisible();
+  expect(await css(lines.first(), 'borderTopWidth', 'borderLeftWidth', 'borderBottomWidth', 'borderBottomColor', 'backgroundColor')).toEqual({ borderTopWidth: '0px', borderLeftWidth: '0px', borderBottomWidth: '1px', borderBottomColor: 'rgb(0, 0, 0)', backgroundColor: 'rgba(0, 0, 0, 0)' });   // a line, not a box
   expect(await css(page.locator('#inGrid .cap').first(), 'fontSize', 'textTransform')).toEqual({ fontSize: '12px', textTransform: 'none' });
   expect(await css(page.locator('#inGrid .by').first(), 'fontSize', 'color')).toEqual({ fontSize: '11px', color: 'rgb(107, 107, 107)' });
   const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -127,6 +126,23 @@ test('profile: the name, the numbers and their labels, and the tabs', async ({ p
   expect(await css(page.locator('#hero'), 'backgroundColor')).toEqual({ backgroundColor: 'rgba(0, 0, 0, 0)' });
   expect(await css(page.locator('#featWrap'), 'borderBottomWidth', 'borderBottomStyle', 'borderBottomColor')).toEqual({ borderBottomWidth: '1px', borderBottomStyle: 'solid', borderBottomColor: 'rgb(0, 0, 0)' });
 });
+
+// a cover, worn (a log, on the feed) or clean (Up next, on a profile): a 1px outline in the hairline grey, black
+// under the pointer
+for (const [where, path, sel] of [['the feed', '/feed/?everyone', '.items canvas.worn'], ['a profile', '/u/?tester', '#watchStrip canvas.clean']]) {
+  test(`covers on ${where}: a 1px outline, black on hover`, async ({ page }) => {
+    test.skip(isPhone(), 'no pointer to hover with');
+    await mockNetwork(page, { signedIn: true });
+    await open(page, path);
+    const cover = page.locator(sel).first();
+    await expect(cover).toBeVisible();
+    const outline = () => cover.evaluate(el => { const s = getComputedStyle(el); return [s.outlineWidth, s.outlineStyle, s.outlineColor].join(' '); });
+    await page.mouse.move(0, 0);
+    expect(await outline()).toBe('1px solid rgb(217, 217, 217)');
+    await cover.hover();
+    expect(await outline()).toBe('1px solid rgb(0, 0, 0)');
+  });
+}
 
 test('the feed shows a shelf saved as a strip of spines 80px tall, in line with the post’s text, not a card or the whole story', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
@@ -171,7 +187,7 @@ test('one 8px spacing scale: no margin, padding or gap off it in any page or scr
       for (const [, prop, val] of body.matchAll(/(?<![-\w])((?:margin|padding)(?:-[a-z]+)?|(?:row-|column-)?gap)\s*:\s*([^;}]+)/g)) {
         for (const n of (val.match(/(?<![\w.-])-?\d+(?:\.\d+)?px/g) || []).map(v => Math.abs(parseFloat(v)))) {
           if (SCALE.includes(n) || n === 1) continue;
-          if (n === 2 && /gap/.test(prop) && /spine|strip|sline|\.spines/.test(rule)) continue;
+          if (n === 2 && /gap/.test(prop) && /spine|strip|sline|\.spines|\.sl\b/.test(rule)) continue;
           if (/padding/.test(prop) && new RegExp(`margin(-[a-z]+)?:[^;}]*-${n}px`).test(body)) continue;   // a press area
           if (n === 44 && /pointer:coarse/.test(src.slice(Math.max(0, src.indexOf(rule) - 40), src.indexOf(rule)) + rule)) continue;
           if (/margin/.test(prop) && new RegExp(`padding(-[a-z]+)?:[^;}]*\\b${n}px`).test(body)) continue;   // its other half
@@ -192,7 +208,7 @@ test('every page sets its type in Courier Prime, loaded from Google Fonts at 400
     const html = fs.readFileSync(path.join(ROOT, f), 'utf8'), link = (html.match(/https:\/\/fonts\.googleapis\.com\/css2\?[^"]+/) || [''])[0];
     expect(link, f).toContain('family=Courier+Prime:ital,wght@0,400;0,700;1,400');
     expect(link, f).toContain('display=swap');
-    if (!['index.html', 'build/index.html', 'u/index.html', 'feed/index.html'].includes(f)) expect(link, f).not.toContain('Geist');   // pages that draw spines (the feed: People to follow)
+    if (!['index.html', 'build/index.html', 'u/index.html', 'feed/index.html', 'shelves/index.html'].includes(f)) expect(link, f).not.toContain('Geist');   // pages that draw spines (the feed: People to follow; Shelves: each shelf's spines)
   }
   expect(fs.readFileSync(path.join(ROOT, 'site.css'), 'utf8')).toMatch(/--mono:"Courier Prime",/);
 });

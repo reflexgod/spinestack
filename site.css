@@ -30,7 +30,7 @@
 
   --radius:3px;
   --btn-pad:8px 16px;
-  --cards:6; --card-gap:10px;   /* shelf cards: six across the column (150px each), 10px apart */
+  --cards:6; --card-gap:16px;   /* shelves listed: six across the column (145px each), 16px apart */
   --card:150px;                 /* a card on its own (in the feed) is that wide too */
   --cover:72px;                 /* a logged film's or book's cover, with its caption beside it (2:3, so 108px tall) */
 }
@@ -137,18 +137,18 @@ textarea{resize:vertical;line-height:1.5}
 .tabs button{font:400 var(--fs-tab) var(--mono);background:none;border:0;padding:0 0 var(--s2);margin-bottom:-1px;color:var(--grey);cursor:pointer;border-bottom:1px solid transparent}
 .tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
 
-/* ---------- shelf cards: a shelf's preview cut like a poster (2:3), its name under it, then who made it ----------
-   The preview is the whole 9:16 story, and a card shows the part with the books. cards.js finds them in the picture
-   itself and puts them in the middle of the card (it sets the picture's left, top and width, clips off the caption
-   and the "made with" line, and gives the card the story's background colour). Until it has, and for a picture it
-   can't read, the cut is the one here: spines stand between 28% and 89% of the story's height and within the middle
-   83% of its width, so the picture is drawn 1.2 times the card's width and moved up until they sit in the middle. */
+/* ---------- shelves, where they're listed: no card and no box. Each is its first spines standing on a thin black line
+   (bare.js draws them as the line nears the screen), its name under it, then who made it. Six across the column, four
+   or three on a narrower window ---------- */
 .thumbs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(var(--cards),minmax(0,1fr));gap:var(--s4) var(--card-gap)}
 .thumbs:empty{display:none}
 .thumbs a{display:block;text-decoration:none;min-width:0}
-.pic{display:block;position:relative;aspect-ratio:2/3;overflow:hidden;border-radius:var(--radius);background:var(--wash)}
-.pic::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12);pointer-events:none}   /* a hairline inside the edge, no box round it */
-.pic img{position:absolute;left:-10%;top:-33%;width:120%;height:auto;aspect-ratio:9/16;object-fit:cover;max-width:none;display:block}
+.sl{display:flex;align-items:flex-end;gap:2px;height:96px;border-bottom:1px solid var(--ink);overflow:hidden}
+.sl canvas{display:block;flex:none}
+.thumbs a:hover .cap,.thumbs a:focus-visible .cap{text-decoration:underline;text-underline-offset:3px}
+/* a cover, worn (a log) or clean (Up next): a 1px outline, black under the pointer */
+canvas.worn,canvas.clean{outline:1px solid var(--hair);outline-offset:-1px}
+canvas:is(.worn,.clean):hover,:is(a,.cover):hover canvas:is(.worn,.clean),a:focus-visible canvas:is(.worn,.clean){outline-color:var(--ink)}
 .thumbs .cap{display:block;font-size:var(--fs-card);margin-top:var(--s2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .thumbs .by,.thumbs .meta{display:block;font-size:var(--fs-small);color:var(--grey);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 

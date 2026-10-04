@@ -34,7 +34,7 @@
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Geist+Mono:wght@400;500&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
 <link rel="stylesheet" href="../site.css?v=20261012a">
 <style>
 /* shelves: a line and a button, then every public shelf as a card (site.css has the cards and the rest) */
@@ -91,7 +91,7 @@
 
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
-<script src="../cards.js?v=20261002a"></script>
+<script src="../bare.js?v=20261013a"></script>
 <script src="../nav.js?v=20261012a"></script>
 <script>
 (() => {
@@ -177,14 +177,11 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.q
 
 /* ---------- the shelves ---------- */
 let last = null;   // the last shelf shown: the next page starts after it
-// one shelf: its preview, its name, who made it (the same card as on home)
-function tile(x){
-  const li = document.createElement('li'), shelf = Shelf.shelfName({name: x.name, caption: x.caption});
-  const pic = x.preview_key ? `<img src="${esc(`${WORKER}/u/preview?k=${encodeURIComponent(x.preview_key)}&v=${encodeURIComponent(x.updated_at)}`)}" alt="" crossorigin="anonymous" loading="lazy" width="360" height="640">` : '';   // with CORS, so cards.js can read it and cut the card round the books
-  li.innerHTML = `<a href="${esc(profileUrl(x.username, x.shelf_id))}" aria-label="${esc(shelf)} by @${esc(x.username)}">
-      <span class="pic" data-shelf="${esc(x.shelf_id)}">${pic}</span><span class="cap">${esc(shelf)}</span><span class="by">@${esc(x.username)}</span></a>`;
-  return li;
-}
+// one shelf: its spines on a line, its name, who made it (the same as on home: bare.js)
+const tile = x => Bare.tile(x, profileUrl(x.username, x.shelf_id));
+// the spines for the lines: every shelf's rows in one ask (Bare.lines takes the first of each)
+const lineRows = ids => api(`shelf_items?select=shelf_id,position,item_id,kind,title,author,year,spine_src,cover_src,look&shelf_id=in.(${ids.join(',')})&order=position`);
+let lines = null;
 async function more(){
   const btn = $('#more'), grid = $('#grid'), first = !grid.children.length;
   btn.disabled = true;
@@ -198,6 +195,7 @@ async function more(){
   btn.disabled = false; $('#state').hidden = true;
   const added = rows.map(tile);
   grid.append(...added);
+  if (lines) lines(); else lines = Bare.lines(grid, lineRows);
   const end = rows[rows.length - 1];
   if (end) last = {at: end.saved_at, id: end.shelf_id};
   btn.hidden = rows.length < PAGE;
