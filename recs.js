@@ -2,7 +2,7 @@
    supabase/migrations/0010_recs.sql). Loaded by Nav.loadRecs() the first time a page needs it.
    Recs.ready()          is 0010 in the database? Asked once a page (rec_stats() answers anyone); until it is, nothing
                          here shows: no Recommend, no Recs tab, no rec in the feed.
-   Recs.open(item)       the sheet: who to (the people you both follow, a search when there are many), a note (140, optional),
+   Recs.open(item)       the sheet: who to (up to 5 of the people you both follow, one rec each; a search when there are many), a note (140, optional),
                          Show in feed (on), Send; and Share to WhatsApp, for anyone. item: {kind, title, year, creator, cover}.
    Recs.whatsapp(text, url)  a wa.me link that opens WhatsApp with that text and address.
    Recs.list(box), keep(id), dismiss(id), thread(id), reply(id, text), stats(uid): what the profile's Recs tab asks.
@@ -15,7 +15,7 @@ const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '')
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const acct = () => (window.Nav && Nav.account ? Nav.account() : {}) || {};
 const signedIn = () => { const a = acct(); return !!(a.sb && a.user && a.profile); };
-const NOTE = 140;
+const NOTE = 140, MOST = 5;   // a note's length; how many people at once
 
 const css = document.createElement('style');
 css.textContent = `
@@ -120,21 +120,35 @@ async function open(m){
   try { people = (await rpc('mutuals')) || []; } catch (e){ q('.rto').innerHTML = `<p class="rnone">${esc(friendly(e))}</p>`; return; }
   if (!sh.isConnected) return;
   if (!people.length){ q('.rto').innerHTML = '<p class="rnone">You can recommend to someone you follow who follows you back. Nobody does yet, so share it instead.</p>'; return; }
-  q('.rto').innerHTML = `<fieldset><legend class="lbl">To</legend>${people.length > 8 ? `<input type="text" class="rfind" placeholder="Find someone" aria-label="Find someone you both follow" maxlength="40" autocomplete="off">` : ''}
+  q('.rto').innerHTML = `<fieldset><legend class="lbl">To <i>(5 at most)</i></legend>${people.length > 8 ? `<input type="text" class="rfind" placeholder="Find someone" aria-label="Find someone you both follow" maxlength="40" autocomplete="off">` : ''}
     <ul class="rwho">${people.map(p => { const full = p.waiting >= 6, nm = (p.display_name || '').trim();
-      return `<li data-name="${esc((p.username + ' ' + nm).toLowerCase())}"><label><input type="radio" name="rto${id}" value="${esc(p.id)}" data-user="${esc(p.username)}"${full ? ' disabled' : ''}><span class="ra" aria-hidden="true">${avaHtml(p)}</span><span class="rn">${nm ? `${esc(nm)} ` : ''}<span>@${esc(p.username)}</span></span>${full ? '<span class="rfull">6 waiting</span>' : ''}</label></li>`; }).join('')}</ul></fieldset>`;
+      return `<li data-name="${esc((p.username + ' ' + nm).toLowerCase())}"><label><input type="checkbox" name="rto${id}" value="${esc(p.id)}" data-user="${esc(p.username)}"${full ? ' disabled data-full' : ''}><span class="ra" aria-hidden="true">${avaHtml(p)}</span><span class="rn">${nm ? `${esc(nm)} ` : ''}<span>@${esc(p.username)}</span></span>${full ? '<span class="rfull">6 waiting</span>' : ''}</label></li>`; }).join('')}</ul></fieldset>`;
   const find = q('.rfind');
   if (find) find.addEventListener('input', () => { const w = find.value.trim().replace(/^@/, '').toLowerCase(); for (const li of sh.querySelectorAll('.rwho li')) li.hidden = !!w && !li.dataset.name.includes(w); });
-  sh.addEventListener('change', e => { if (e.target.matches('.rwho input')) send.disabled = false; });
+  // up to 5 at once: past that, the rest can't be ticked
+  const boxes = () => [...sh.querySelectorAll('.rwho input')];
+  sh.addEventListener('change', e => {
+    if (!e.target.matches('.rwho input')) return;
+    const on = boxes().filter(b => b.checked).length;
+    for (const b of boxes()) if (!b.checked && !b.hasAttribute('data-full')) b.disabled = on >= MOST;
+    send.disabled = !on; send.textContent = on > 1 ? `Send to ${on}` : 'Send';
+  });
+  // one rec each, one after another: one that's refused (sent already, 6 waiting) doesn't stop the others
   send.addEventListener('click', async () => {
-    const to = q('.rwho input:checked'); if (!to) return;
+    const to = boxes().filter(b => b.checked); if (!to.length) return;
     const a = acct(); if (!signedIn()){ done(); if (window.Nav) Nav.signIn(); return; }
     send.disabled = true; say.textContent = 'Sending…';
-    let r;
-    try { r = await a.sb.from('recs').insert({...rowOf(m), receiver: to.value, note: ta.value.trim().slice(0, NOTE), in_feed: q('[data-feed]').checked}); } catch (err){ r = {error: err}; }
-    if (r.error){ send.disabled = false; say.textContent = friendly(r.error, to.dataset.user); return; }
-    done(); toast(`Sent to @${to.dataset.user}.`);
-    document.dispatchEvent(new CustomEvent('shelfstackd:rec', {detail: {item: m, to: to.dataset.user}}));
+    const sent = [], no = [];
+    for (const b of to){
+      let r;
+      try { r = await a.sb.from('recs').insert({...rowOf(m), receiver: b.value, note: ta.value.trim().slice(0, NOTE), in_feed: q('[data-feed]').checked}); } catch (err){ r = {error: err}; }
+      if (r.error) no.push(friendly(r.error, b.dataset.user)); else { sent.push('@' + b.dataset.user); b.checked = false; b.closest('li').hidden = true; }
+    }
+    const names = sent.length > 1 ? sent.slice(0, -1).join(', ') + ' and ' + sent[sent.length - 1] : sent[0];
+    if (sent.length) document.dispatchEvent(new CustomEvent('shelfstackd:rec', {detail: {item: m, to: sent.map(x => x.slice(1))}}));
+    if (!no.length){ done(); toast(`Sent to ${names}.`); return; }
+    say.textContent = (sent.length ? `Sent to ${names}. ` : '') + no.join(' ');
+    send.disabled = !boxes().some(b => b.checked);
   });
 }
 
