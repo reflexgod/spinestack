@@ -254,11 +254,11 @@ function item(x){
   }
   return shelfPost(x);
 }
-/* A shelf saved, as a compact post: "@div added 3 to their shelf", and a strip of just the spines that save added
+/* A shelf saved, as a compact post: "@div added 3 to films for the train" (the shelf by its name), and a strip of just the spines that save added
    (80px tall, drawn by bare.js), the whole post a press through to the shelf. The builder marks each spine with when it
    was first saved (look.at), so the spines added in the hour before the save are the new ones: saving again within
    the hour keeps them together in one post, since a shelf is one line on the feed whatever its saves. A save from
-   before those marks, or one that only moved or changed spines, says "updated their shelf" (or "started their shelf")
+   before those marks, or one that only moved or changed spines, says "updated <its name>" (or "started <its name>")
    with its last five spines. */
 const HOUR = 3600e3;
 function addedBy(x){
@@ -268,9 +268,11 @@ function addedBy(x){
 function shelfPost(x){
   const li = document.createElement('li'), to = profileUrl(x.username, x.id), name = (x.display_name || '').trim(), added = addedBy(x);
   li.className = 'post shelfpost'; li.dataset.id = x.id;
-  const what = added.length === 1 ? `added <a href="${esc(to)}">${esc(added[0].title || 'a spine')}</a> to their shelf`
-    : added.length ? `added <a href="${esc(to)}">${added.length}</a> to their shelf`
-    : `${x.updated ? 'updated' : 'started'} <a href="${esc(to)}">their shelf</a>`;
+  // the shelf by its name (a person can have more than one): "added 3 to films for the train"
+  const shelf = `<a href="${esc(to)}">${esc(Shelf.shelfName({name: x.name, caption: x.caption}))}</a>`;
+  const what = added.length === 1 ? `added ${esc(added[0].title || 'a spine')} to ${shelf}`
+    : added.length ? `added ${added.length} to ${shelf}`
+    : `${x.updated ? 'updated' : 'started'} ${shelf}`;
   li.innerHTML = `<a class="pava" href="${esc(profileUrl(x.username))}" tabindex="-1" aria-hidden="true">${window.Posts ? Posts.avaHtml(x) : ''}</a>
     <div class="pbody">
       <p class="phead"><a class="pwho" href="${esc(profileUrl(x.username))}">${name ? `<b>${esc(name)}</b> ` : ''}<span>@${esc(x.username)}</span></a><span class="ago">· <a href="${esc(to)}"><time datetime="${esc(x.at)}" title="${esc(new Date(x.at).toLocaleString())}">${ago(x.at)}</time></a></span></p>
@@ -416,7 +418,7 @@ async function toFollow(){
     box.innerHTML = '<h2 id="tofollowH">People to follow</h2><ul class="tfl"></ul>';
     box.querySelector('ul').append(...people.slice(0, 6).map(x => {
       const li = document.createElement('li'), name = (x.display_name || '').trim(), href = profileUrl(x.username);
-      const last = x.what === 'log' ? `${x.kind === 'movie' ? 'watched' : 'read'} ${x.title}` : x.updated ? 'updated their shelf' : 'started their shelf';
+      const last = x.what === 'log' ? `${x.kind === 'movie' ? 'watched' : 'read'} ${x.title}` : `${x.updated ? 'updated' : 'started'} ${Shelf.shelfName({name: x.name, caption: x.caption})}`;
       li.className = 'post tf'; li.dataset.owner = x.owner;
       li.innerHTML = `<a class="pava" href="${esc(href)}" tabindex="-1" aria-hidden="true">${window.Posts ? Posts.avaHtml(x) : ''}</a>
         <div class="pbody"><p class="phead"><a class="pwho" href="${esc(href)}">${name ? `<b>${esc(name)}</b> ` : ''}<span>@${esc(x.username)}</span></a></p>

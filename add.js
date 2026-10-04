@@ -243,6 +243,9 @@ css.textContent = `
 #addDialog .pick .snap:hover{border-color:var(--ink,#000)}
 #addDialog .pick .snap svg{width:20px;height:20px}
 #addDialog .addbar{display:flex;justify-content:flex-end;align-items:center;gap:var(--s3,12px);margin-top:var(--s4,16px)}
+/* which of your shelves, when you have more than one (your main one first) */
+#addDialog .addon{display:flex;align-items:center;gap:var(--s2,8px);font-size:var(--fs-small,11px);color:var(--grey,#6B6B6B);min-width:0}
+#addDialog .addon select{width:auto;max-width:220px;padding:var(--s1,4px) var(--s2,8px);font-size:var(--fs-small,11px)}
 /* under the spines a search found, at the left of the bar: "Search by Brave", small and grey (Brave asks for it where its results show) */
 #addDialog .addby{margin-right:auto;font-size:var(--fs-small,11px);color:var(--grey,#6B6B6B)}
 /* what to do with it: three choices in a row, as the tabs are (the one picked black, a line under it) */
@@ -315,7 +318,7 @@ dlg.innerHTML = `
     <div class="addfound" id="addFound" role="radiogroup" aria-label="Which spine"></div>
     <input type="file" id="addPhoto" accept="image/*" hidden>
     <p class="grey" id="addNote" hidden>Real DVD and book spines show up once the shelfstackd server is connected. Until then, upload a full DVD scan on the builder.</p>
-    <div class="addbar"><a class="addby" id="addBy" href="https://search.brave.com/" target="_blank" rel="noopener">Search by Brave</a><button class="btn primary" id="addGo" type="button" disabled>Add to shelf</button></div>
+    <div class="addbar"><a class="addby" id="addBy" href="https://search.brave.com/" target="_blank" rel="noopener">Search by Brave</a><label class="addon" id="addOnWrap" hidden><span>On</span><select id="addOn"></select></label><button class="btn primary" id="addGo" type="button" disabled>Add to shelf</button></div>
   </div>
   <div id="addPost" hidden>
     <div class="addpost">
@@ -632,6 +635,7 @@ async function findSpines(m, again){
   $('#addSpinesTitle').textContent = m.title + (m.year ? ' (' + m.year + ')' : ''); $('#addSpinesBy').textContent = m.creator ? '· ' + m.creator : '';
   $('#addNote').hidden = server || !!WORKER; $('#addFound').innerHTML = ''; $('#addDup').hidden = true; paintGo();
   $('#addBy').hidden = server || !WORKER;   // the Worker's scan search is the one that asks Brave
+  paintShelfChoice();
   if (!again && shelf && shelf.has(key)){
     // already on the shelf: ask before adding it a second time
     $('#addDupText').textContent = m.title + ' is already on your shelf.'; $('#addDup').hidden = false; cur.busy = false; sstatus('');
@@ -737,6 +741,26 @@ $('#addDupCancel').addEventListener('click', () => { $('#addDup').hidden = true;
 $('#addChange').addEventListener('click', () => { current = null; picked = null; $('#addSpines').hidden = true; $('#addMatches').hidden = !matches.length; sstatus(''); paintActive(); $('#addQ').focus(); });
 const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./,''); } catch { return 'source'; } };
 
+/* ---------- which shelf: on another page, with more than one shelf, Put on shelf asks which (your main one picked:
+   the one you made main, otherwise your oldest, as the builder and your profile have it). Read once a page. ---------- */
+let myShelves = null;
+async function paintShelfChoice(){
+  const wrap = $('#addOnWrap'), a = account();
+  wrap.hidden = true;
+  if (shelf || !(a.sb && a.user && a.profile)) return;
+  if (!myShelves){
+    try {
+      const [{data: list}, {data: me}] = await Promise.all([a.sb.from('shelves').select('id,name,caption,created_at').eq('owner', a.user.id).limit(200),
+        a.sb.from('profiles').select('pinned_shelf_id').eq('id', a.user.id).maybeSingle()]);
+      const all = list || [], main = all.find(x => x.id === (me || {}).pinned_shelf_id) || all.slice().sort((x, y) => new Date(x.created_at) - new Date(y.created_at))[0];
+      myShelves = main ? [main, ...all.filter(x => x !== main).sort((x, y) => new Date(y.created_at) - new Date(x.created_at))] : [];
+    } catch { myShelves = []; }
+  }
+  if (myShelves.length < 2) return;
+  $('#addOn').innerHTML = myShelves.map((x, i) => `<option value="${esc(x.id)}">${esc(Shelf.shelfName({name: x.name, caption: x.caption}))}${i ? '' : ' (main)'}</option>`).join('');
+  wrap.hidden = false;
+}
+
 /* ---------- Add to shelf ---------- */
 /* On the builder the spine goes straight on its shelf. From any other page the choice waits in this tab
    (sessionStorage) and the builder, opening, puts it on: the title, which choice, and for a real spine the scan
@@ -747,7 +771,7 @@ $('#addGo').addEventListener('click', () => {
   if (shelf){ if (shelf.add(bookFields(cur, cur.choice)) !== false) close(); return; }
   const r = cur.choice.startsWith('real:') ? cur.real[+cur.choice.slice(5)] : null;
   try {
-    sessionStorage.setItem(PENDING, JSON.stringify({at: Date.now(), m: cur.m, choice: r ? 'real' : cur.choice,
+    sessionStorage.setItem(PENDING, JSON.stringify({at: Date.now(), m: cur.m, choice: r ? 'real' : cur.choice, shelfId: $('#addOnWrap').hidden ? undefined : $('#addOn').value,
       real: r ? {img: r.img, source: r.source, archive: r.archive, id: r.id, en: r.en, vhs: r.vhs, photo: r.photo} : undefined}));
   } catch { sstatus('This browser won’t let the spine be carried over. Open the builder and add it there.', true); return; }
   $('#addGo').disabled = true; sstatus('Opening your shelf…');

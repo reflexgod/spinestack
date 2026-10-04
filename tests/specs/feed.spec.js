@@ -9,7 +9,7 @@ const { SHELVES, LOGS, mockNetwork, watchErrors, open } = require('../site');
 // the made-up shelves were saved at noon on 30 Sep 2026 and on each day before it: two hours later, the newest says 2h
 const NOW = new Date('2026-09-30T14:00:00Z');
 const lines = page => page.locator('#items > li');
-// what each says: "@name watched Title (year) · when", or for a shelf saved "@name added 2 to their shelf · when"
+// what each says: "@name watched Title (year) · when", or for a shelf saved "@name added 2 to <the shelf's name> · when"
 const said = page => lines(page).evaluateAll(lis => lis.map(li =>
   `${li.querySelector('.pwho span').textContent} ${li.querySelector('.pwhat').textContent} · ${li.querySelector('time').textContent}`.replace(/\s+/g, ' ').trim()));
 const tabs = page => page.getByRole('tablist', { name: 'Feed' }).getByRole('tab');
@@ -34,20 +34,20 @@ test('a line says who shelved what and how long ago; a post who watched or read 
   await expect(lines(page)).toHaveCount(20);   // 20 at a time
   let text = await said(page);
   expect(text[0]).toBe('@mira watched Gummo (1997) · 1h');
-  expect(text[1]).toBe('@tester started their shelf · 2h');
-  expect(text[2]).toBe('@mira added 2 to their shelf · 1d');   // the two spines marked as first saved just before it
+  expect(text[1]).toBe('@tester started a much longer shelf name that has to be cut short · 2h');
+  expect(text[2]).toBe('@mira added 2 to shelf number 1 · 1d');   // the two spines marked as first saved just before it
   expect(text[4]).toBe('@tester read Just Kids (2010) · 3d');
-  expect(text[5]).toBe('@tester started their shelf · 3d');
-  expect(text[6]).toBe('@mira updated their shelf · 4d');   // saved again later than it was made, nothing marked new
+  expect(text[5]).toBe('@tester started shelf number 3 · 3d');
+  expect(text[6]).toBe('@mira updated untitled shelf · 4d');   // saved again later than it was made, nothing marked new
   expect(text[9]).toBe('@mira read The Waves (1931) · 1w');
-  expect(text[10]).toBe('@mira started their shelf · 1w');
+  expect(text[10]).toBe('@mira started shelf number 7 · 1w');
   // Load more: the rest, from after the last one shown
   const more = page.waitForRequest(r => r.url().includes('/rpc/activity') && r.postDataJSON().before_id);
   await page.getByRole('button', { name: 'Load more' }).click();
   expect((await more).postDataJSON()).toMatchObject({ scope: 'everyone', before_id: SHELVES[16].id });
   await expect(lines(page)).toHaveCount(22);
   text = await said(page);
-  expect(text[20]).toBe('@longusername_twenty1 started their shelf · 2w');
+  expect(text[20]).toBe('@longusername_twenty1 started shelf number 17 · 2w');
   expect(text[21]).toBe('@longusername_twenty1 watched Kids (1995) · 1mo');
   // a post: the photo (40px) at its left; "Mira @mira · 1h"; the title in bold, a link to the post's own page; the
   // review; the cover small (72 x 108px) at its right; no box, a thin rule under it
@@ -79,7 +79,7 @@ test('a line says who shelved what and how long ago; a post who watched or read 
   expect(week.fade).toBeGreaterThan(today.fade + .1);
   expect(month.wear).toBeGreaterThan(week.wear + .25);
   expect(month.fade).toBeGreaterThan(week.fade);
-  // a shelf saved: a compact post, the person a link to them, "their shelf" and the strip links to the shelf
+  // a shelf saved: a compact post, the person a link to them, the shelf's name and the strip link to the shelf
   const first = page.locator('#items .shelfpost').first();
   await expect(first.locator('.pwho')).toHaveAttribute('href', /\/u\/\?tester$/);
   await expect(first.locator('.pwhat a')).toHaveAttribute('href', new RegExp(`/u/\\?tester&shelf=${SHELVES[0].id}$`));
@@ -124,11 +124,11 @@ test('the composer is a box like a tweet\'s: your photo at its left, and it grow
   await expect(c).not.toHaveClass(/open/);
 });
 
-test('a shelf saved is a compact post: "@mira added 2 to their shelf" and a strip of just those spines, 80px tall', async ({ page }) => {
+test('a shelf saved is a compact post: "@mira added 2 to shelf number 1" (the shelf by its name) and a strip of just those spines, 80px tall', async ({ page }) => {
   await page.clock.setFixedTime(NOW);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/feed/?everyone');
-  const mira = page.locator('#items .shelfpost').filter({ hasText: 'added 2 to their shelf' });
+  const mira = page.locator('#items .shelfpost').filter({ hasText: 'added 2 to shelf number 1' });
   await expect(mira).toHaveCount(1);
   const strip = mira.locator('.strip canvas');
   await expect(strip).toHaveCount(2);   // Kids and Delta of Venus, not Orlando, which was there before
@@ -136,7 +136,7 @@ test('a shelf saved is a compact post: "@mira added 2 to their shelf" and a stri
   expect(Math.max(...await strip.evaluateAll(cs => cs.map(c => Math.round(c.getBoundingClientRect().height))))).toBe(80);
   // a save with nothing marked as new: its last five spines (this one has eight)
   const older = page.locator('#items .shelfpost').filter({ hasText: '@longusername_twenty1' }).first();
-  await expect(older.locator('.pwhat')).toHaveText('started their shelf');
+  await expect(older.locator('.pwhat')).toHaveText('started shelf number 2');
   await expect(older.locator('.strip canvas')).toHaveCount(5);
   // the whole post goes to the shelf
   const b = await mira.locator('.phead').boundingBox();
