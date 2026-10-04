@@ -215,7 +215,7 @@
     if (window.Add) return Promise.resolve(true);
     if (!window.Shelf) return Promise.resolve(false);
     return adding = adding || new Promise(res => {
-      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261012a';
+      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261013a';
       s.onload = () => res(!!window.Add); s.onerror = () => { adding = null; s.remove(); res(false); };
       document.head.appendChild(s);
     });

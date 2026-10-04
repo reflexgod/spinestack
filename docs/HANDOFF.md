@@ -6,10 +6,32 @@ session"), again after the launch pass (see "Done in the second cloud session"),
 the design review was applied (see "Done in the third session"). Read this first, then `README.md`, which says what
 every file is and how the Worker, the accounts and the tests are set up.
 
+## Done on 5 October 2026 (phase 3 of the owner's plan, and 3a before it)
+
+No new SQL, nothing for the Worker. Each item its own commit on `letterboxd-flow`.
+
+- **3a, the feed redesign.** One 600px timeline, sticky Friends · Everyone, a tweet-box composer, posts like tweets
+  (photo, name @user · 2h, the title in bold, a spine rating, the worn cover 72px at the right, reply · Same · like ·
+  share), shelf saves as compact posts with a strip of the new spines, ratings as 1 to 5 spines in the logo colours,
+  our own words (Up next, People, Same, Friends · Everyone; old addresses still work), People to follow on an empty
+  Friends tab.
+- **More than one shelf again.** The profile shows the main one (pinned, otherwise the oldest); a Shelves (N) tab lists
+  them all; New shelf in the builder; + ADD asks which shelf; Make main, Rename and Delete on your shelf's page; the
+  feed names the shelf. No SQL: `profiles.pinned_shelf_id` (0002) is the main one.
+- **Phase 3.** Two button looks (solid black, or grey text that's black on hover; Following grey, Unfollow on hover);
+  Delete, Remove and Clear ask first on the page's own sheet; actions start with a verb (Go home, See all, Show
+  spoilers, Add to Up next, Add to my shelf, Add a photo, Edit your shelf); one icon set (Lucide, stroke 2, 16 or
+  20px; no glyph or emoji for one); one 8px spacing scale (the 12px step is 16 now; buttons 8px 16px); the welcome
+  line 22px, 20px on a phone; one section label (h2, and `.seclabel`); no boxed cards round shelves (spines on a thin
+  line, `Bare.tile` and `Bare.lines`; `cards.js` is gone); covers with a 1px outline, black on hover; Just shelved
+  with fewer than three shelves puts each across the column on one long line. Phase 3 item 12 wasn't in the plan.
+- **Tested:** `cd tests && npm run test:all` after Phase 3: html-validate clean, then Playwright 749 passed, 23
+  skipped, none failed.
+
 ## Done on 4 October 2026 (phases 0 to 2 of the owner's plan)
 
 Live data had 4 people with shelves (all films, no books) and no logs. The plan: the logo, book spines, then the feed
-as posts. Each item is its own commit on `letterboxd-flow`; nothing is merged into `main`. Phase 3 hasn't started.
+as posts. Each item is its own commit on `letterboxd-flow`; nothing is merged into `main`.
 
 - **Phase 0, the logo.** `assets/logo-hedgehog.svg` is the favicon (SVG, 32px, 180px on #14181C), the bar's mark
   (28px left of SHELFSTACKD) and `og.jpg` (the logo in the middle of #14181C). The bar's ⚡ is the word FEED.
