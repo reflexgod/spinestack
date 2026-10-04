@@ -249,3 +249,35 @@ test('without 0010 there is no Recs tab, and #recs is Profile', async ({ page })
   await expect(page.getByRole('tab', { name: 'Profile' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('tab', { name: 'Recs' })).toBeHidden();
 });
+
+/* ---------- the feed ---------- */
+test('the feed, with 0010: "@mira recommended Paris, Texas (1984) to @…", never the note; a log from a rec says who recommended it', async ({ page }) => {
+  const errors = watchErrors(page);
+  await mockNetwork(page, { signedIn: true, social: true, recs: true });
+  const asked = page.waitForRequest(r => r.url().endsWith('/rest/v1/rpc/timeline'));
+  await open(page, '/feed/?everyone');
+  expect((await asked).postDataJSON()).toMatchObject({ scope: 'everyone', before: null, n: 20 });
+  const rec = page.locator('#items .recpost');
+  await expect(rec).toHaveCount(1);
+  await expect(rec.locator('.pwho span')).toHaveText('@mira');
+  await expect(rec.locator('.pwhat')).toHaveText('recommended Paris, Texas (1984) to @longusername_twenty1');
+  await expect(rec.locator('.pwhat a')).toHaveAttribute('href', /\/u\/\?longusername_twenty1$/);
+  await expect(rec).not.toContainText('big screen');   // the note is theirs
+  const cover = rec.locator('.cover img.clean');
+  await expect(cover).toHaveAttribute('alt', 'The cover of Paris, Texas (1984)');
+  expect(await cover.evaluate(e => getComputedStyle(e).outlineWidth)).toBe('1px');
+  // @mira's The Waves came from a rec of yours
+  const waves = page.locator('#items .post').filter({ hasText: 'read The Waves' });
+  await expect(waves.locator('.recby')).toHaveText('· recommended by @tester');
+  await expect(waves.locator('.recby a')).toHaveAttribute('href', /\/u\/\?tester$/);
+  expect(errors).toEqual([]);
+});
+
+test('the feed without 0010 asks activity(), and has no recs', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, social: true });
+  const asked = page.waitForRequest(r => r.url().endsWith('/rest/v1/rpc/activity'));
+  await open(page, '/feed/?everyone');
+  await asked;
+  await expect(page.locator('#items .post').first()).toBeVisible();
+  await expect(page.locator('#items .recpost, #items .recby')).toHaveCount(0);
+});

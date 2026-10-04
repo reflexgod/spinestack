@@ -230,7 +230,7 @@ document.querySelectorAll('.sheet').forEach(s => s.addEventListener('click', e =
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.querySelector('.sheet:not([hidden])')) closeSheets(); });
 
 /* ---------- the feed ---------- */
-const feed = {scope:'', last:null, first:null, run:0, logs:true, social:false};   // logs: false once the database says activity() isn't there
+const feed = {scope:'', last:null, first:null, run:0, logs:true, social:false, recs:null};   // logs: false once the database says activity() isn't there; recs: is 0010 there (timeline())
 const avatar = x => `<a class="fa" href="${esc(profileUrl(x.username))}" tabindex="-1" aria-hidden="true">${x.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(x.avatar_key)}`)}" alt="" loading="lazy">` : esc(((x.display_name || '').trim() || x.username).trim()[0] || '·')}</a>`;
 const when = (t, text) => `<span class="ago">· <time datetime="${esc(t)}" title="${esc(new Date(t).toLocaleString())}">${text}</time></span>`;
 const COVER = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cover')) || 72;   // how wide a log's cover is (site.css)
@@ -252,6 +252,7 @@ function item(x){
     if (!(me.user && x.owner === me.user.id)) Nav.watchable(li.querySelector('.cover'), {kind: x.kind, title: x.title, year: x.year ? String(x.year) : '', creator: x.author || '', cover: x.cover_src ? x.cover_src.replace(/^url:/, '') : ''}, {moreIn: li});
     return li;
   }
+  if (x.what === 'rec') return recPost(x);
   return shelfPost(x);
 }
 /* A shelf saved, as a compact post: "@div added 3 to films for the train" (the shelf by its name), and a strip of just the spines that save added
@@ -285,15 +286,30 @@ function shelfPost(x){
   if (rows.length && window.Bare) Bare.ready.then(() => Bare.books(rows)).then(books => { if (books.length) li.querySelector('.strip').replaceChildren(...Bare.spines(books, 80)); });
   return li;
 }
+/* A rec shown in the feed (0010, only when its sender left Show in feed on): "@mira recommended Paris, Texas (1984) to
+   @kit", compact, with the cover small and clean at the right (not worn: nobody has logged it). Never the note. */
+function recPost(x){
+  const li = document.createElement('li'), name = (x.display_name || '').trim(), label = `${x.title}${x.year ? ` (${x.year})` : ''}`;
+  li.className = 'post recpost'; li.dataset.id = x.id;
+  li.innerHTML = `<a class="pava" href="${esc(profileUrl(x.username))}" tabindex="-1" aria-hidden="true">${window.Posts ? Posts.avaHtml(x) : ''}</a>
+    <div class="pbody">
+      <p class="phead"><a class="pwho" href="${esc(profileUrl(x.username))}">${name ? `<b>${esc(name)}</b> ` : ''}<span>@${esc(x.username)}</span></a><span class="ago">· <time datetime="${esc(x.at)}" title="${esc(new Date(x.at).toLocaleString())}">${ago(x.at)}</time></span></p>
+      <p class="pwhat">recommended <b>${esc(x.title)}</b>${x.year ? ` (${esc(x.year)})` : ''} to <a href="${esc(profileUrl(x.to_username))}">@${esc(x.to_username)}</a></p>
+    </div>
+    <span class="cover">${x.cover_src ? `<img class="clean" src="${esc(`${WORKER}/img?url=${encodeURIComponent(x.cover_src.replace(/^url:/, ''))}`)}" alt="The cover of ${esc(label)}" loading="lazy">` : ''}</span>`;
+  if (!(me.user && x.owner === me.user.id)) Nav.watchable(li.querySelector('.cover'), {kind: x.kind, title: x.title, year: x.year ? String(x.year) : '', creator: x.author || '', cover: x.cover_src ? x.cover_src.replace(/^url:/, '') : ''}, {moreIn: li.querySelector('.pbody')});
+  return li;
+}
 // a shelf as feed() (0006) gives it, in activity()'s shape
 const fromFeed = r => ({what: 'shelf', id: r.shelf_id, at: r.saved_at, owner: r.owner, username: r.username, display_name: r.display_name, avatar_key: r.avatar_key,
   caption: r.caption, name: r.name, preview_key: r.preview_key, created_at: r.created_at, updated_at: r.updated_at, updated: r.updated, is_public: r.is_public});
 // the next page of the tab: activity() while it's there, otherwise what 0006 has
 const missing = e => /PGRST20[25]|42883|Could not find the function|does not exist/i.test(String(e && e.message));
+const recsThere = async () => { if (feed.recs === null) feed.recs = !!(await Nav.loadRecs()); return feed.recs; };
 async function page(){
   const last = feed.last;
   if (feed.logs){
-    try { return await rpc('activity', {scope: feed.scope, before: last ? last.at : null, before_id: last ? last.id : null, n: PAGE}); }
+    try { return await rpc((await recsThere()) ? 'timeline' : 'activity', {scope: feed.scope, before: last ? last.at : null, before_id: last ? last.id : null, n: PAGE}); }
     catch (e){ if (!missing(e)) throw e; feed.logs = false; }
   }
   return (await rpc('feed', {scope: feed.scope, before: last ? last.at : null, before_id: last ? last.id : null, n: PAGE})).map(fromFeed);
@@ -331,12 +347,12 @@ async function enrich(rows, run){
     rows = rows.map(x => st.has(x.id) ? {...x, ...st.get(x.id)} : x);
   }
   // each shelf's spines, in one ask, for its strip
-  const shelves = rows.filter(x => x.what !== 'log').map(x => x.id);
+  const shelves = rows.filter(x => x.what === 'shelf').map(x => x.id);
   if (shelves.length){
     let items = [];
     try { items = await api(`shelf_items?select=shelf_id,position,item_id,kind,title,author,year,spine_src,cover_src,look&shelf_id=in.(${shelves.join(',')})&order=position`); } catch {}
     if (run !== feed.run) return null;
-    rows = rows.map(x => x.what === 'log' ? x : {...x, items: (items || []).filter(r => r.shelf_id === x.id)});
+    rows = rows.map(x => x.what !== 'shelf' ? x : {...x, items: (items || []).filter(r => r.shelf_id === x.id)});
   }
   return rows;
 }
@@ -396,7 +412,7 @@ $('#newPill').addEventListener('click', async () => {
   document.querySelector('.tabs').scrollIntoView({block: 'start'});
 });
 // the newest on a tab: activity() while it's there, otherwise feed() (0006)
-const page0 = scope => rpc('activity', {scope, before: null, before_id: null, n: PAGE}).catch(e => {
+const page0 = async scope => rpc((await recsThere()) ? 'timeline' : 'activity', {scope, before: null, before_id: null, n: PAGE}).catch(e => {
   if (!missing(e)) throw e;
   return rpc('feed', {scope, before: null, before_id: null, n: PAGE}).then(r => r.map(fromFeed));
 });
@@ -418,7 +434,7 @@ async function toFollow(){
     box.innerHTML = '<h2 id="tofollowH">People to follow</h2><ul class="tfl"></ul>';
     box.querySelector('ul').append(...people.slice(0, 6).map(x => {
       const li = document.createElement('li'), name = (x.display_name || '').trim(), href = profileUrl(x.username);
-      const last = x.what === 'log' ? `${x.kind === 'movie' ? 'watched' : 'read'} ${x.title}` : `${x.updated ? 'updated' : 'started'} ${Shelf.shelfName({name: x.name, caption: x.caption})}`;
+      const last = x.what === 'log' ? `${x.kind === 'movie' ? 'watched' : 'read'} ${x.title}` : x.what === 'rec' ? `recommended ${x.title}` : `${x.updated ? 'updated' : 'started'} ${Shelf.shelfName({name: x.name, caption: x.caption})}`;
       li.className = 'post tf'; li.dataset.owner = x.owner;
       li.innerHTML = `<a class="pava" href="${esc(href)}" tabindex="-1" aria-hidden="true">${window.Posts ? Posts.avaHtml(x) : ''}</a>
         <div class="pbody"><p class="phead"><a class="pwho" href="${esc(href)}">${name ? `<b>${esc(name)}</b> ` : ''}<span>@${esc(x.username)}</span></a></p>

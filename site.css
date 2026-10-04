@@ -151,8 +151,8 @@ textarea{resize:vertical;line-height:1.5}
 @media (max-width:640px){ .thumbs.few .sl{height:120px} }
 .thumbs a:hover .cap,.thumbs a:focus-visible .cap{text-decoration:underline;text-underline-offset:3px}
 /* a cover, worn (a log) or clean (Up next): a 1px outline, black under the pointer */
-canvas.worn,canvas.clean{outline:1px solid var(--hair);outline-offset:-1px}
-canvas:is(.worn,.clean):hover,:is(a,.cover):hover canvas:is(.worn,.clean),a:focus-visible canvas:is(.worn,.clean){outline-color:var(--ink)}
+:is(canvas,img):is(.worn,.clean){outline:1px solid var(--hair);outline-offset:-1px}
+:is(canvas,img):is(.worn,.clean):hover,:is(a,.cover):hover :is(canvas,img):is(.worn,.clean),a:focus-visible :is(canvas,img):is(.worn,.clean){outline-color:var(--ink)}
 .thumbs .cap{display:block;font-size:var(--fs-card);margin-top:var(--s2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .thumbs .by,.thumbs .meta{display:block;font-size:var(--fs-small);color:var(--grey);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 

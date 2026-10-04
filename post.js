@@ -81,6 +81,9 @@ css.textContent = `
 .post .cover{display:block;width:var(--cover,72px);line-height:0}
 .post.whole .cover{width:120px}
 .post .cover canvas{display:block;width:100%;height:auto}
+.post .cover img{display:block;width:100%;height:auto;aspect-ratio:2/3;object-fit:cover;background:var(--wash,#F3F3F3)}
+.pwhat .recby{font-weight:400;color:var(--grey,#6B6B6B)}
+.pwhat .recby a{color:inherit}
 .phead{display:flex;align-items:baseline;gap:var(--s1,4px);margin:0;min-width:0}
 .phead .pwho{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:none}
 .phead .pwho b{font-weight:700}
@@ -420,7 +423,7 @@ function item(x, opt = {}){
   li.innerHTML = `<a class="pava" href="${esc(profileUrl(x.username))}" tabindex="-1" aria-hidden="true">${avaHtml(x)}</a>
     <div class="pbody">
       <p class="phead"><a class="pwho" href="${esc(profileUrl(x.username))}">${name ? `<b>${esc(name)}</b> ` : ''}<span>@${esc(x.username)}</span></a><span class="ago">· <a href="${esc(url)}"><time datetime="${esc(at)}" title="${esc(new Date(at).toLocaleString())}">${ago(at)}</time></a></span><span class="pmenuwrap pmore"></span></p>
-      <p class="pwhat">${verb(x.kind)} <a href="${esc(url)}">${esc(x.title)}</a>${x.year ? ` (${esc(x.year)})` : ''}${social && x.rewatch ? ` <span class="tag">${x.kind === 'movie' ? 'rewatch' : 'reread'}</span>` : ''}</p>
+      <p class="pwhat">${verb(x.kind)} <a href="${esc(url)}">${esc(x.title)}</a>${x.year ? ` (${esc(x.year)})` : ''}${social && x.rewatch ? ` <span class="tag">${x.kind === 'movie' ? 'rewatch' : 'reread'}</span>` : ''}${x.rec_by ? ` <span class="recby">· recommended by <a href="${esc(profileUrl(x.rec_by))}">@${esc(x.rec_by)}</a></span>` : ''}</p>
       ${social && x.rating ? `<p class="prating">${stars(x.rating, 'sm')}</p>` : ''}
       ${say}
       <div class="pacts"></div>

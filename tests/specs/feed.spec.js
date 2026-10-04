@@ -168,7 +168,7 @@ test('signed out: Everyone shows; Friends asks you to sign in', async ({ page })
 test('a database without logs (0007 not run on it): shelves only, as before', async ({ page }) => {
   await mockNetwork(page, { signedIn: true, logs: false });
   const asked = [];
-  page.on('request', r => { if (r.url().includes('/rest/v1/rpc/')) asked.push(new URL(r.url()).pathname.split('/').pop()); });
+  page.on('request', r => { if (r.url().includes('/rest/v1/rpc/') && !r.url().includes('/rpc/rec_stats?')) asked.push(new URL(r.url()).pathname.split('/').pop()); });   // not recs.js asking whether 0010 is there
   await open(page, '/feed/?everyone');
   await expect(lines(page)).toHaveCount(18);
   await expect(page.locator('#items .post:not(.shelfpost)')).toHaveCount(0);

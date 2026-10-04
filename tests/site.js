@@ -201,7 +201,7 @@ function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, 
   }
   if (/^rpc\/(post_stats|replies_of|notifications_list|notifications_read)$/.test(what)){
     if (!social) return NOT_THERE;
-    if (what === 'rpc/post_stats') return (body.ids || []).filter(id => STATS[id] || id === NEW_LOG).map(id => ({ id, ...(STATS[id] || STATS[logId(3)]), ...(signedIn ? {} : { liked: false, logged: false }), ...(recs ? { rec_by: id === logId(1) ? 'tester' : null } : {}) }));
+    if (what === 'rpc/post_stats') return (body.ids || []).filter(id => STATS[id] || id === NEW_LOG).map(id => ({ id, ...(STATS[id] || STATS[logId(3)]), ...(signedIn ? {} : { liked: false, logged: false }), ...(recs ? { rec_by: id === logId(2) ? 'tester' : null } : {}) }));
     if (what === 'rpc/replies_of') return REPLIES.filter(r => r.log === body.lid).map(replyRow);
     if (what === 'rpc/notifications_list') return signedIn ? [...NOTES, ...(recs ? REC_NOTES : [])].sort((a, b) => b.created_at.localeCompare(a.created_at)).map(noteRow) : [];
     if (what === 'rpc/notifications_read') return NOTES.filter(n => !n.read).length;
