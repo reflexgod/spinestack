@@ -20,6 +20,7 @@ const PAGES = [
   { name: 'people', path: '/people/' },
   { name: 'post', path: '/p/?bbbbbbbb-bbbb-4bbb-8bbb-000000000000' },   // @mira's Gummo
   { name: 'notifications', path: '/notifications/' },
+  { name: 'title', path: '/t/?film=106' },   // Gummo
 ];
 /* pages without it */
 const OTHER_PAGES = [
@@ -161,6 +162,22 @@ const REC_NOTES = [
   { id: 'acacacac-acac-4cac-8cac-000000000012', kind: 'rec_watched', created_at: at(0, -6), read: false, actor: PEOPLE[1].id, log: null, rec: recId(4), rec_kind: 'book', rec_title: 'The Waves' },
   { id: 'acacacac-acac-4cac-8cac-000000000013', kind: 'rec_reply', created_at: at(0, -7), read: true, actor: PEOPLE[1].id, log: null, rec: recId(3), rec_kind: 'movie', rec_title: 'Stalker', reply_text: 'Starting it tonight.' },
 ];
+/* the Worker's /title (a title's page, /t/): Gummo by its TMDB id, The Waves (with a spine in the archive) and Just Kids
+   by their Open Library work ids; each also found by its kind, title and year */
+const TITLE_INFO = [
+  { kind: 'movie', id: '106', title: 'Gummo', year: '1997', creator: 'Harmony Korine', runtime: 89, pages: null, genres: ['Drama'],
+    overview: 'Xenia, Ohio, some years after a tornado. Two boys kill time.', cover: 'https://image.tmdb.org/t/p/w500/gummo.jpg', spine: '' },
+  { kind: 'book', id: 'OL99W', title: 'The Waves', year: '1931', creator: 'Virginia Woolf', runtime: null, pages: 297, genres: ['English fiction', 'Modernism'],
+    overview: 'Six friends, from childhood on, in soliloquies.', cover: 'https://covers.openlibrary.org/b/id/1-L.jpg', spine: '/archive/img?id=0123456789abcdef0123456789abcdef' },
+  { kind: 'book', id: 'OL5W', title: 'Just Kids', year: '2010', creator: 'Patti Smith', runtime: null, pages: 304, genres: ['Memoir'],
+    overview: 'New York, 1967.', cover: 'https://covers.openlibrary.org/b/id/2-L.jpg', spine: '' },
+];
+const titleFor = q => TITLE_INFO.find(t => q.get('film') ? t.kind === 'movie' && t.id === q.get('film') : q.get('book') ? t.kind === 'book' && t.id === q.get('book')
+  : t.kind === q.get('kind') && t.title.toLowerCase() === String(q.get('title') || '').toLowerCase() && (!q.get('year') || t.year === q.get('year')));
+// a title's logs or spines, asked for by kind, title (ilike, whatever its capitals) and year, as the title page does
+const sameTitle = (q, x) => { const eqv = k => (q.get(k) || '').replace(/^eq\./, ''), t = (q.get('title') || '').replace(/^ilike\./, '').replace(/\\(.)/g, '$1').toLowerCase(), y = q.get('year') || '';
+  return x.kind === eqv('kind') && String(x.title).toLowerCase() === t && (y === 'is.null' ? x.year == null : String(x.year) === y.replace(/^eq\./, '')); };
+const someone = id => { const p = [...PEOPLE, ...FRIENDS].find(x => x.id === id); return p ? { username: p.username, display_name: p.display_name, avatar_key: p.avatar_key } : null; };
 const noteRow = n => { const p = PEOPLE.find(x => x.id === n.actor), l = LOGS.find(x => x.id === n.log);
   return { id: n.id, kind: n.kind, created_at: n.created_at, read: n.read, actor: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key,
     log: n.log, log_kind: l ? l.kind : null, log_title: l ? l.title : null, reply_text: n.reply_text || null, rec: n.rec || null, rec_kind: n.rec_kind || null, rec_title: n.rec_title || null }; };
@@ -227,6 +244,7 @@ function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, 
     if (what === 'rpc/from_friends') return me ? FROM_FRIENDS : [];
     if (method === 'DELETE') return [{ id: eq('id') }];
     if (method !== 'GET') return null;   // a log posted, a title kept, one removed: nothing is kept here
+    if (what === 'logs' && q.get('title')) return [...LOGS, ...(friends ? FRIEND_LOGS : [])].filter(l => sameTitle(q, l) && !(fresh && l.owner === ME.id)).map(l => ({ ...l, profiles: someone(l.owner) }));
     if (what === 'logs'){ const from = +(q.get('offset') || 0), n = +(q.get('limit') || 20); return LOGS.filter(l => l.owner === eq('owner') && !(fresh && l.owner === ME.id)).slice(from, from + n); }
     if (what === 'watchlist') return WATCHLIST.filter(w => w.owner === eq('owner') && !(fresh && w.owner === ME.id));
     return [];
@@ -260,8 +278,15 @@ function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, 
     const ids = (q.get('id') || '').startsWith('in.(') ? q.get('id').slice(4, -1).split(',') : q.has('id') ? [eq('id')] : null;   // id=eq.x or id=in.(x,y)
     return [...SHELVES, ...(ids ? FRIEND_SHELVES : [])].filter(s => (!q.has('owner') || s.owner === eq('owner')) && (!ids || ids.includes(s.id)) && (ownShelf || s.owner !== ME.id));
   }
+  // who the made-up account follows (the title page asks): @mira, and the five more with friends
+  if (what === 'follows' && eq('follower') === ME.id && !q.get('followee')) return me ? [{ followee: PEOPLE[1].id }, ...(friends ? FRIENDS.map(f => ({ followee: f.id })) : [])] : [];
   // follows, read from the table: @mira follows the made-up account, and that's the only one it's asked about
   if (what === 'follows') return me && eq('follower') === PEOPLE[1].id && eq('followee') === ME.id ? [{ follower: PEOPLE[1].id }] : [];
+  if (what === 'shelf_items' && q.get('title')){   // the title page: every spine of that title, with its shelf and whose it is
+    const all = [...SHELVES, ...FRIEND_SHELVES].filter(x => !(fresh && x.owner === ME.id));
+    return [...ITEMS_BY_SHELF].flatMap(([id, rows]) => rows.filter(r => sameTitle(q, r)).map(r => { const sh = all.find(x => x.id === id);
+      return sh ? { shelf_id: id, shelves: { id, owner: sh.owner, name: sh.name, caption: sh.caption, profiles: someone(sh.owner) } } : null; })).filter(Boolean);
+  }
   if (what === 'shelf_items'){   // shelf_id=in.(x,y): each shelf's own spines; shelf_id=eq.x: ITEMS
     const ids = (q.get('shelf_id') || '').startsWith('in.(') ? q.get('shelf_id').slice(4, -1).split(',') : null;
     return ids ? ids.flatMap(id => ITEMS_BY_SHELF.get(id) || []) : ITEMS;
@@ -351,6 +376,7 @@ async function mockNetwork(page, { signedIn = false, named = true, slow = 0, cap
         return route.fulfill({ status: 200, headers: CORS, contentType: 'image/png', body: storyPicture(shelf ? shelf.layout : 'row', !!shelf && shelf.background === 'ink') });
       }
       if (/^\/(u\/blob|m\/img|archive\/img|img)$/.test(url.pathname)) return route.fulfill({ status: 200, headers: CORS, contentType: 'image/png', body: PICTURE });
+      if (url.pathname === '/title'){ const t = titleFor(url.searchParams); return t ? json(t) : route.fulfill({ status: 404, headers: CORS, contentType: 'application/json', body: '{"error":"Not found."}' }); }
       if (url.pathname === '/identify'){
         const want = url.searchParams.get('want') || 'all', q = plain(url.searchParams.get('q'));
         asked.push(url.searchParams.get('q') + (url.searchParams.get('suggest') ? ' (typed)' : ''));
@@ -404,4 +430,4 @@ async function open(page, pathname){
   await page.waitForLoadState('networkidle');
 }
 
-module.exports = { NEW_LOG, STATS, REPLIES, NOTES, MUTUALS, RECS_FOR, RECS_SENT, REC_THREAD, FEED_REC, REC_NOTES, recId, ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, LOGS, FRIENDS, FRIEND_SHELVES, FRIEND_LOGS, ITEMS_BY_SHELF, WATCHLIST, FROM_FRIENDS, PICTURE, STORY, CAPTION, MADE_WITH, CORS, WORKER, SB_URL, feedRow, storyPicture, mockNetwork, watchErrors, open, putAside };
+module.exports = { TITLE_INFO, NEW_LOG, STATS, REPLIES, NOTES, MUTUALS, RECS_FOR, RECS_SENT, REC_THREAD, FEED_REC, REC_NOTES, recId, ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, LOGS, FRIENDS, FRIEND_SHELVES, FRIEND_LOGS, ITEMS_BY_SHELF, WATCHLIST, FROM_FRIENDS, PICTURE, STORY, CAPTION, MADE_WITH, CORS, WORKER, SB_URL, feedRow, storyPicture, mockNetwork, watchErrors, open, putAside };

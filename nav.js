@@ -232,6 +232,16 @@
       document.head.appendChild(s);
     });
   }
+  // a title's page (/t/): by its TMDB or Open Library id when there is one (a search result has it), otherwise by its
+  // kind, title and year, as a log or a spine keeps it (the page finds the id and takes that address)
+  function titleUrl(m){
+    const kind = m && m.kind === 'movie' ? 'movie' : 'book';
+    if (kind === 'movie' && /^\d{1,9}$/.test(String(m.tmdb || ''))) return ROOT + 't/?film=' + m.tmdb;
+    if (kind === 'book' && /^OL\d{1,10}W$/.test(String(m.ol || ''))) return ROOT + 't/?book=' + m.ol;
+    const q = new URLSearchParams({kind, title: String((m && m.title) || '').trim()});
+    if (m && /^\d{4}$/.test(String(m.year || ''))) q.set('year', String(m.year));
+    return ROOT + 't/?' + q;
+  }
   // Share to WhatsApp: a wa.me link that opens WhatsApp with the text and the address
   const whatsapp = (text, url) => `https://wa.me/?text=${encodeURIComponent([text, url].filter(Boolean).join(' '))}`;
   // Recommend: signed in, the sheet; signed out, sign in first
@@ -359,5 +369,5 @@
     else if (on.finish) on.finish(); else location.href = ROOT + 'build/';
   }
 
-  window.Nav = {paint, add: openAdd, loadAdd, loadRecs, recommend, whatsapp, watchable, account, signIn, needAccount, visitor, onSignIn: fn => { on.signIn = fn; }, onFinish: fn => { on.finish = fn; }, onSignOut: fn => { on.signOut = fn; }, onUpload: fn => { on.upload = fn; }};
+  window.Nav = {paint, add: openAdd, loadAdd, loadRecs, recommend, whatsapp, titleUrl, watchable, account, signIn, needAccount, visitor, onSignIn: fn => { on.signIn = fn; }, onFinish: fn => { on.finish = fn; }, onSignOut: fn => { on.signOut = fn; }, onUpload: fn => { on.upload = fn; }};
 })();
