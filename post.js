@@ -2,7 +2,7 @@
    Posts.ready()            is migration 0009 in the database (supabase/migrations/0009_social.sql)? It adds a log's rating,
                             review, spoiler, rewatch and date, likes, replies, me-too and notifications. Asked once a
                             page; until it's there nothing it adds shows, and a log is a caption of 280 as before.
-   Posts.fields(host, m)    the composer's fields once a title is picked: the stars (half stars, optional), the review,
+   Posts.fields(host, m)    the composer's fields once a title is picked: the rating (five spines, halves, optional), the review,
                             and with 0009 Spoilers, Rewatch (Reread for a book) and the day. Gives {values(), clear(), focus()}.
    Posts.composer(host, {onPosted}) "What did you watch or read?": the title search, the picked title, the fields, Post.
    Posts.save(m, values)    posts a log of m ({kind, title, year, creator, cover}): {ok, row} or {error}.
@@ -11,7 +11,7 @@
                             (blurred until pressed when it has spoilers), when; and the row of actions: like, reply and
                             me too (0009), + Watchlist or In watchlist, Share, and ··· with Report (0009) or Delete.
                             Counts change at once and go back if the database says no.
-   Posts.ago(t), Posts.stars(v)
+   Posts.ago(t), Posts.stars(v): a rating (1 to 10) as five small spines in the logo's colours
    Load it after nav.js (Nav.account(), Nav.loadAdd(), Nav.needAccount()) and wear.js. */
 (() => {
 if (window.Posts) return;
@@ -25,7 +25,6 @@ const signedIn = () => { const a = acct(); return !!(a.sb && a.user && a.profile
 const ICON = (d, cls = '') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const HEART = '<path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/>';
 const BUBBLE = '<path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/>';
-const STAR = 'M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z';
 const DOTS = '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>';
 
 const css = document.createElement('style');
@@ -55,12 +54,12 @@ css.textContent = `
 .cbar{display:flex;justify-content:flex-end;gap:var(--s4,16px);align-items:center;border-top:1px solid var(--hair,#D9D9D9);padding-top:var(--s2,8px)}
 .compose:not(.open) .cbar{display:none}
 .cbar .note{margin:0 auto 0 0}
-.stars{display:inline-flex;gap:2px;vertical-align:-2px;color:var(--ink,#000)}
-.stars svg{width:16px;height:16px;display:block}
-.stars .on{fill:currentColor}
-.stars.sm svg{width:12px;height:12px}
-.stars[role=slider]{cursor:pointer;padding:var(--s1,4px) 0;outline-offset:4px;touch-action:manipulation}
-.stars[role=slider] svg{width:20px;height:20px}
+/* a rating: five small rounded spines (see spineSvgs) */
+.rating{display:inline-flex;align-items:flex-end;gap:3px;vertical-align:-2px}
+.rating svg{width:7px;height:20px;display:block}
+.rating.sm svg{width:6px;height:16px}
+.rating[role=slider]{cursor:pointer;gap:6px;padding:var(--s2,8px) 0;outline-offset:4px;touch-action:none;user-select:none}
+.rating[role=slider] svg{width:12px;height:32px}
 .pfields{display:grid;gap:var(--s3,12px);min-width:0}
 .pfields .lbl{display:block;margin-bottom:var(--s1,4px)}
 .pfields textarea{font-size:var(--fs-body,13px)}
@@ -184,16 +183,25 @@ function ago(t){
   const [n, unit] = s < 3600 ? [s / 60, 'minute'] : s < D ? [s / 3600, 'hour'] : s < 7*D ? [s / D, 'day'] : s < 30*D ? [s / (7*D), 'week'] : s < 365*D ? [s / (30*D), 'month'] : [s / (365*D), 'year'];
   return RTF.format(-Math.floor(n), unit).replace(/\s*ago$/, '').replace(/\s+/g, '');
 }
-// a rating (1 to 10, half stars) in words: "3.5 stars"
-const starWords = v => v ? `${v / 2} star${v === 2 ? '' : 's'}` : 'No rating';
-// five stars, v of them in halves, filled (a half star is the left half filled)
-function stars(v, cls = ''){
+// a rating (1 to 10: halves of 5) in words: "3.5 of 5"
+const rateWords = v => v ? `${v / 2} of 5` : 'No rating';
+/* A rating as five small rounded spines, standing side by side: a whole point is a spine filled in the logo's colours
+   (yellow, pink, purple, blue, then yellow again), half a point a spine filled half its height, the rest grey outlines.
+   The data stays 1 to 10. cls 'sm' is a post's size. */
+const SPINE_COLOURS = ['#FFD000', '#FF2E93', '#6A4BFF', '#00D5E6'];
+function spineSvgs(v){
   let h = '';
   for (let i = 1; i <= 5; i++){
-    const full = v >= 2 * i, half = v === 2 * i - 1;
-    h += `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR}" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>${full || half ? `<path class="on" d="${STAR}"${half ? ' style="clip-path:inset(0 50% 0 0)"' : ''}/>` : ''}</svg>`;
+    const full = v >= 2 * i, half = v === 2 * i - 1, c = SPINE_COLOURS[(i - 1) % SPINE_COLOURS.length];
+    h += `<svg viewBox="0 0 10 28" aria-hidden="true" data-fill="${full ? 'full' : half ? 'half' : 'none'}">`
+      + (full ? `<rect x="1" y="1" width="8" height="26" rx="3" fill="${c}"/>`
+        : `<rect x="1.5" y="1.5" width="7" height="25" rx="2.5" fill="none" stroke="#B5B5B5"/>${half ? `<rect x="1" y="14" width="8" height="13" rx="3" fill="${c}"/>` : ''}`)
+      + '</svg>';
   }
-  return `<span class="stars ${cls}" role="img" aria-label="${starWords(v)}">${h}</span>`;
+  return h;
+}
+function stars(v, cls = ''){
+  return `<span class="rating ${cls}" role="img" aria-label="${rateWords(v)}">${spineSvgs(v)}</span>`;
 }
 let toastT = 0;
 function toast(msg){ const t = document.getElementById('toast'); if (!t) return; t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 4200); }
@@ -222,7 +230,7 @@ let fieldN = 0;
 async function fields(host, m, opt = {}){
   const social = await ready(), n = ++fieldN, kind = m.kind === 'movie' ? 'movie' : 'book', max = social ? 2000 : 280;
   host.innerHTML = `<div class="pfields">
-    ${social ? `<div class="prate"><span class="lbl" id="prl${n}">Rating</span><span class="stars" role="slider" tabindex="0" aria-labelledby="prl${n}" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0" aria-valuetext="No rating"></span><span class="rv" aria-hidden="true"></span><button class="dash sm grey" type="button" data-clear hidden>Clear</button></div>` : ''}
+    ${social ? `<div class="prate"><span class="lbl" id="prl${n}">Rating</span><span class="rating" role="slider" tabindex="0" aria-labelledby="prl${n}" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0" aria-valuetext="No rating"></span><span class="rv" aria-hidden="true"></span><button class="dash sm grey" type="button" data-clear hidden>Clear</button></div>` : ''}
     <div class="psay"><label><span class="lbl">${social ? 'Review' : 'Caption'} <i>(optional)</i></span><textarea maxlength="${max}" rows="3"></textarea></label><span class="pcount" aria-hidden="true">0 / ${max}</span></div>
     ${social ? `<div class="popts"><label class="check"><input type="checkbox" name="spoiler">Spoilers</label><label class="check"><input type="checkbox" name="rewatch">${kind === 'movie' ? 'Rewatch' : 'Reread'}</label>
       <label class="pdate"><span class="lbl">${kind === 'movie' ? 'Watched on' : 'Read on'}</span><input type="date" name="day" max="${today()}" value="${today()}"></label></div>` : ''}
@@ -230,21 +238,39 @@ async function fields(host, m, opt = {}){
   const q = s => host.querySelector(s), ta = q('textarea'), count = q('.pcount');
   ta.addEventListener('input', () => { count.textContent = `${ta.value.length} / ${max}`; });
   let v = 0;
-  const slider = q('.stars[role=slider]');
+  const slider = q('.rating[role=slider]');
   const paint = () => {
     if (!slider) return;
-    slider.innerHTML = stars(v).replace(/^<span[^>]*>|<\/span>$/g, '');
-    slider.setAttribute('aria-valuenow', String(v)); slider.setAttribute('aria-valuetext', starWords(v));
-    q('.rv').textContent = v ? starWords(v) : ''; q('[data-clear]').hidden = !v;
+    slider.innerHTML = spineSvgs(v);
+    slider.setAttribute('aria-valuenow', String(v)); slider.setAttribute('aria-valuetext', rateWords(v));
+    q('.rv').textContent = v ? rateWords(v) : ''; q('[data-clear]').hidden = !v;
   };
   if (slider){
-    // a press on a star's left half is half a star, on its right half the whole star; the same again clears it
-    slider.addEventListener('click', e => {
-      const svgs = [...slider.querySelectorAll('svg')], i = svgs.findIndex(s => { const r = s.getBoundingClientRect(); return e.clientX <= r.right + 1; });
-      if (i < 0) return;
-      const r = svgs[i].getBoundingClientRect(), to = 2 * (i + 1) - (e.clientX < r.left + r.width / 2 ? 1 : 0);
-      v = v === to ? 0 : to; paint();
+    // tap: a spine's left half is half a point, its right half the whole one; the same again clears it. Drag across
+    // the spines to set it as you go
+    const at = x => {
+      const svgs = [...slider.querySelectorAll('svg')], first = svgs[0].getBoundingClientRect(), last = svgs[svgs.length - 1].getBoundingClientRect();
+      if (x <= first.left) return 1;
+      if (x >= last.right) return 10;
+      let i = svgs.findIndex(sv => x <= sv.getBoundingClientRect().right + 3); if (i < 0) i = svgs.length - 1;
+      const r = svgs[i].getBoundingClientRect();
+      return 2 * (i + 1) - (x < r.left + r.width / 2 ? 1 : 0);
+    };
+    let down = null;
+    slider.addEventListener('pointerdown', e => {
+      e.preventDefault(); slider.focus();
+      down = {x: e.clientX, moved: false, was: v};
+      try { slider.setPointerCapture(e.pointerId); } catch {}
+      v = at(e.clientX); paint();
     });
+    slider.addEventListener('pointermove', e => {
+      if (!down) return;
+      if (Math.abs(e.clientX - down.x) > 3) down.moved = true;
+      if (down.moved){ v = at(e.clientX); paint(); }
+    });
+    const up = () => { if (!down) return; if (!down.moved && down.was === v) { v = 0; paint(); } down = null; };
+    slider.addEventListener('pointerup', up);
+    slider.addEventListener('pointercancel', () => { down = null; });
     slider.addEventListener('keydown', e => {
       const k = e.key, to = k === 'ArrowRight' || k === 'ArrowUp' ? v + 1 : k === 'ArrowLeft' || k === 'ArrowDown' ? v - 1 : k === 'Home' || k === 'Delete' || k === 'Backspace' ? 0 : k === 'End' ? 10 : null;
       if (to === null) return;

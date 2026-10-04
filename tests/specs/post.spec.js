@@ -1,7 +1,7 @@
 // Logging is posting (post.js). The feed's composer, "What did you watch or read?": search, pick, the fields, Post. The
 // same fields in + ADD's Log it, which is now the choice it opens on (but on the builder). And a Log button on every
 // title on a shelf's page and on someone's Activity. With migration 0009 (mockNetwork's social) the fields are the
-// stars, a review of 2,000, Spoilers, Rewatch and the day; without it, a caption of 280, as before.
+// rating (five small spines, halves), a review of 2,000, Spoilers, Rewatch and the day; without it, a caption of 280, as before.
 const { test, expect } = require('@playwright/test');
 const { SHELVES, mockNetwork, watchErrors, open } = require('../site');
 
@@ -55,7 +55,7 @@ test('signed out, or with no username yet, there is no composer', async ({ page 
   await expect(composer(page)).toBeHidden();
 });
 
-test('with 0009: half stars, a review of 2,000, Spoilers, Rewatch and the day; all of it is posted', async ({ page }) => {
+test('with 0009: a rating in halves, a review of 2,000, Spoilers, Rewatch and the day; all of it is posted', async ({ page }) => {
   const errors = watchErrors(page);
   await page.clock.setFixedTime(new Date('2026-10-04T15:00:00'));
   await mockNetwork(page, { signedIn: true, social: true });
@@ -67,21 +67,21 @@ test('with 0009: half stars, a review of 2,000, Spoilers, Rewatch and the day; a
   // the keyboard: a half star a press
   await stars.focus();
   for (let i = 0; i < 7; i++) await page.keyboard.press('ArrowRight');
-  await expect(stars).toHaveAttribute('aria-valuetext', '3.5 stars');
+  await expect(stars).toHaveAttribute('aria-valuetext', '3.5 of 5');
   await expect(stars).toHaveAttribute('aria-valuenow', '7');
   // a press on a star's left half is half a star, on its right half the whole star; the same again clears it
   const fifth = stars.locator('svg').nth(4), b = await fifth.boundingBox();
   await page.mouse.click(b.x + b.width * .8, b.y + b.height / 2);
-  await expect(stars).toHaveAttribute('aria-valuetext', '5 stars');
+  await expect(stars).toHaveAttribute('aria-valuetext', '5 of 5');
   await page.mouse.click(b.x + b.width * .8, b.y + b.height / 2);
   await expect(stars).toHaveAttribute('aria-valuetext', 'No rating');
   const second = await stars.locator('svg').nth(1).boundingBox();
   await page.mouse.click(second.x + second.width * .2, second.y + second.height / 2);
-  await expect(stars).toHaveAttribute('aria-valuetext', '1.5 stars');
+  await expect(stars).toHaveAttribute('aria-valuetext', '1.5 of 5');
   await c.getByRole('button', { name: 'Clear' }).click();
   await expect(stars).toHaveAttribute('aria-valuetext', 'No rating');
   await stars.focus(); await page.keyboard.press('End'); await page.keyboard.press('ArrowLeft');
-  await expect(stars).toHaveAttribute('aria-valuetext', '4.5 stars');
+  await expect(stars).toHaveAttribute('aria-valuetext', '4.5 of 5');
   const review = c.getByRole('textbox', { name: 'Review (optional)' });
   await expect(review).toHaveAttribute('maxlength', '2000');
   await review.fill('x'.repeat(300));   // longer than a caption could be
@@ -154,4 +154,28 @@ test('signed out, Log is the sign-in sheet', async ({ page }) => {
   await open(page, '/u/?mira#activity');
   await page.locator('#acts .item.log').first().getByRole('button', { name: 'Log' }).click();
   await expect(page.locator('#signSheet')).toBeVisible();
+});
+
+test('the rating is five small rounded spines: filled in the logo’s colours, a half one half its height, the rest grey outlines; drag sets it', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, social: true });
+  await open(page, '/feed/?everyone');
+  const c = page.locator('#compose');
+  await c.getByRole('combobox').fill('gummo');
+  await c.getByRole('option', { name: /Gummo/ }).click();
+  const r = c.getByRole('slider', { name: 'Rating' });
+  await r.focus();
+  for (let i = 0; i < 7; i++) await page.keyboard.press('ArrowRight');   // 3.5 of 5
+  const look = () => r.locator('svg').evaluateAll(svgs => svgs.map(sv => [sv.dataset.fill, ...[...sv.querySelectorAll('rect')].map(x => (x.getAttribute('fill') === 'none' ? 'outline' : x.getAttribute('fill')) + ':' + x.getAttribute('height'))].join(' ')));
+  expect(await look()).toEqual(['full #FFD000:26', 'full #FF2E93:26', 'full #6A4BFF:26', 'half outline:25 #00D5E6:13', 'none outline:25']);
+  // drag from the first spine to the third's right half: 3 of 5
+  const s1 = await r.locator('svg').nth(0).boundingBox(), s3 = await r.locator('svg').nth(2).boundingBox();
+  await page.mouse.move(s1.x + 1, s1.y + s1.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(s3.x + s3.width * .8, s3.y + s3.height / 2, { steps: 6 });
+  await page.mouse.up();
+  await expect(r).toHaveAttribute('aria-valuetext', '3 of 5');
+  // on a post, the same spines, smaller; the fifth colour is yellow again
+  const p = page.locator('#items .post').filter({ hasText: 'watched Gummo' }).first();
+  expect(await p.locator('.prating svg').evaluateAll(svgs => svgs.map(sv => sv.dataset.fill))).toEqual(['full', 'full', 'full', 'full', 'half']);   // 9: 4.5 of 5
+  expect(await p.locator('.prating svg').nth(4).locator('rect').last().getAttribute('fill')).toBe('#FFD000');
 });
