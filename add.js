@@ -353,7 +353,8 @@ async function tmdbFilms(q){
   const yq = q.match(/^(.+?)[\s,(]+((?:19|20)\d\d)\)?$/);   // "kids 1995": TMDB finds nothing when the year is in the query
   let r = yq ? await find(yq[1], yq[2]) : await find(q);
   if (yq && !(r.results || []).length) r = await find(yq[1]);
-  return Promise.all((r.results || []).slice(0,5).map(async (m,i) => {
+  const films = (r.results || []).map((m, i) => ({m, i, c: closeness(m.title || '', q)})).sort((a, b) => a.c - b.c || (b.m.vote_count || 0) - (a.m.vote_count || 0) || a.i - b.i).map(x => x.m);   // as the Worker ranks them
+  return Promise.all(films.slice(0,5).map(async (m,i) => {
     let creator = '';
     if (i < 3) try { const c = await getJSON(`https://api.themoviedb.org/3/movie/${m.id}/credits?` + key.slice(1), opt); creator = ((c.crew || []).find(p => p.job === 'Director') || {}).name || ''; } catch {}
     return {kind:'movie', title:m.title || '', year:(m.release_date || '').slice(0,4), creator, cover:m.poster_path ? 'https://image.tmdb.org/t/p/w500' + m.poster_path : ''};
@@ -408,11 +409,21 @@ let typing = 0, run = 0, asking = null;
 const seen = new Map();          // answers already had in this dialog, so going back over a word asks nothing
 const wanted = () => ($('input[name=addKind]:checked') || {}).value || 'all';
 const plain = s => String(s || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
-// 0: the title is what was typed, 1: it starts with it, 2: it has it, 3: neither (a near miss the search still found)
+// 0: the title is what was typed, 1: it starts with it, 2: it has it, 3: neither (a near miss the search still found).
+// A leading "the", "a" or "an" doesn't count, and a year in figures is also its words (1984 is Nineteen Eighty-Four,
+// just after a title that is 1984). The same as closeness() in the Worker: keep them in step
+const ONES = 'zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen'.split(' ');
+const TENS = 'x x twenty thirty forty fifty sixty seventy eighty ninety'.split(' ');
+const under100 = n => n < 20 ? ONES[n] : TENS[Math.floor(n/10)] + (n % 10 ? ' ' + ONES[n % 10] : '');
+const yearWords = y => y >= 2000 && y < 2010 ? 'two thousand' + (y % 10 ? ' ' + ONES[y % 10] : '') : under100(Math.floor(y/100)) + ' ' + (y % 100 === 0 ? 'hundred' : y % 100 < 10 ? 'oh ' + ONES[y % 100] : under100(y % 100));
+const spelled = s => s.replace(/\b(1[0-9]|20)\d\d\b/g, y => yearWords(+y));
+const bare = s => plain(s).replace(/^(the|a|an) /, '');
 function closeness(title, q){
-  const t = plain(title), want = plain(q.replace(/[\s,(]+(?:19|20)\d\d\)?$/, ''));   // "kids 1995": the year isn't part of the title
+  const t = bare(title), want = bare(q.replace(/[\s,(]+(?:19|20)\d\d\)?$/, ''));   // "kids 1995": the year isn't part of the title
   if (!want) return 3;
-  return t === want ? 0 : t.startsWith(want + ' ') || t.startsWith(want) ? 1 : (' ' + t + ' ').includes(' ' + want + ' ') || t.includes(want) ? 2 : 3;
+  const how = w => t === w ? 0 : t.startsWith(w) ? 1 : (' ' + t + ' ').includes(' ' + w + ' ') || t.includes(w) ? 2 : 3;
+  const say = spelled(want);
+  return say === want ? how(want) : Math.min(how(want), how(say) + .5);
 }
 function rank(results, q){
   const nth = {movie: 0, book: 0};   // each kind keeps the order it came in; a film and a book as close as each other take turns
@@ -955,5 +966,5 @@ function attachSearch({input, list, onPick, say: tell = () => {}}){
 }
 
 window.Add = {open, close, watch, attachSearch, WATCH_CAP, isOpen: () => dlg.open, setShelf: s => { shelf = s; }, setToast: fn => { say = fn; }, setServer, takePending, resolve,
-  extractPalette, findSpine, findSoloSpine, lettering, cutOne, personName, EDITION};
+  extractPalette, findSpine, findSoloSpine, lettering, cutOne, personName, rank, EDITION};
 })();

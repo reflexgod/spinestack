@@ -84,6 +84,11 @@ async function outbound(request) {
     if (q === 'sputnik sweetheart') Object.assign(doc, {author_name: ['MURAKAMI HARUKI'], author_alternative_name: ['Murakami Haruki', 'MURAKAMI Haruki']});
     if (q === 'kafka on the shore') doc.author_key = ['OL2A'];
     if (q === 'the waves') Object.assign(doc, {author_name: ['Virginia Woolf'], author_key: ['OL3A']});
+    if (q === '1984') return json({docs: [{title: 'Nineteen Eighty-Four', author_name: ['George Orwell'], cover_i: 1, edition_count: 727, readinglog_count: 8598},
+      {title: '1984 (adaptation)', author_name: ['Michael Dean'], cover_i: 2, edition_count: 4, readinglog_count: 505},
+      {title: 'SparkNotes for 1984 by George Orwell', author_name: ['Spark Publishing'], cover_i: 3, edition_count: 4, readinglog_count: 64}]});
+    if (q === 'great gatsby') return json({docs: [{title: 'The great Gatsby, by F. Scott Fitzgerald', author_name: ['Morris Dickstein'], cover_i: 1, edition_count: 3, readinglog_count: 9000},
+      {title: 'The Great Gatsby', author_name: ['F. Scott Fitzgerald'], cover_i: 2, edition_count: 900, readinglog_count: 7000}]});
     return json({docs: [doc]});
   }
   if (url.hostname === 'openlibrary.org' && url.pathname.startsWith('/authors/')) {
@@ -91,6 +96,14 @@ async function outbound(request) {
     return json(url.pathname === '/authors/OL2A.json' ? {name: '村上春樹', alternate_names: ['村上 春樹', 'Haruki Murakami']} : {name: '村上春樹', alternate_names: ['村上 春樹']});
   }
   if (url.hostname === 'www.wikidata.org') return json({search: []});
+  // TMDB, for /identify's films: "gumm" (Gummo, half typed) as TMDB answers it, most popular first by its own measure,
+  // with Gummo itself seventh
+  if (url.hostname === 'api.themoviedb.org' && url.pathname === '/3/search/movie') {
+    const q = url.searchParams.get('query'), films = q === 'gumm' ? [['Gumm: In the Middle of Nowhere', 2], ['Gummo 2', 3], ['Googly Gumm Hai', 1], ["Real Men Don't Eat Gummi Bears", 9], ['Gummy Bear Massacre', 4], ['Gummitwist', 0], ['Gummo', 812], ['The Gumm Sisters', 5]]
+      : q === '1984' ? [['Wonder Woman 1984', 9000], ['1984', 40], ['Class of 1984', 300], ['Nineteen Eighty-Four', 1600]] : [];
+    return json({results: films.map(([title, votes], i) => ({id: 100 + i, title, vote_count: votes, release_date: '1997-01-01', poster_path: null}))});
+  }
+  if (url.hostname === 'api.themoviedb.org' && /^\/3\/movie\/\d+\/credits$/.test(url.pathname)) return json({crew: [{job: 'Director', name: 'Someone'}]});
   calls.push('?? ' + url.href);
   return new Response('not a provider', {status: 404});
 }
@@ -311,6 +324,21 @@ try {
   b = await book('the waves');
   assert.deepEqual([b.creator, calls.filter(c => c.startsWith('author'))], ['Virginia Woolf', []]);
   ok('a name already in Latin letters is used as it is, with nothing more asked');
+} finally { await mf.dispose(); }
+
+/* ---------- /identify: the title as typed first, then titles starting with it, then the rest ---------- */
+mf = worker({TMDB_TOKEN: 'tmdb-test-token-0000'});
+try {
+  const titles = async (q, want) => (await ask(mf, `/identify?want=${want}&q=${encodeURIComponent(q)}&suggest=1`)).body.results.map(r => r.title);
+  const gumm = await titles('gumm', 'movie');
+  assert.equal(gumm[0], 'Gummo');   // seventh in TMDB's answer, which used to be cut to its first five before anything was ranked
+  assert.deepEqual(gumm.length, 5);
+  ok('"gumm", half typed: Gummo first, ranked from TMDB’s whole answer before five are kept (it was left out)');
+  assert.deepEqual(await titles('1984', 'movie'), ['1984', 'Nineteen Eighty-Four', 'Wonder Woman 1984', 'Class of 1984']);
+  assert.deepEqual((await titles('1984', 'book')).slice(0, 2), ['Nineteen Eighty-Four', '1984 (adaptation)']);
+  ok('"1984": the title as typed, or written out (Nineteen Eighty-Four, Orwell’s, which was dropped), then starting with it, then the rest');
+  assert.deepEqual(await titles('great gatsby', 'book'), ['The Great Gatsby', 'The great Gatsby, by F. Scott Fitzgerald']);
+  ok('"great gatsby": The Great Gatsby is the title as typed (a leading The doesn’t count), above a more-read book that only starts with it');
 } finally { await mf.dispose(); }
 
 /* ---------- no key ever comes back ---------- */

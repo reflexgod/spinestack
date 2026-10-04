@@ -108,3 +108,15 @@ test('Recently active: the people behind the newest shelves, each once', async (
   await expect(people.nth(1).locator('a')).toHaveAttribute('href', '../u/?mira');
   await expect(people.nth(1).locator('img')).toHaveCount(1);
 });
+
+test('Find @username: the username as typed first, then those starting with it, whatever order the database gives', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  // the database answers with the closest one last
+  await page.route(/\/rpc\/find_people/, route => route.fulfill({ status: 200, headers: { 'Access-Control-Allow-Origin': '*' }, contentType: 'application/json',
+    body: JSON.stringify(['mirabel', 'amira', 'mira'].map((username, i) => ({ id: `4444444${i}-4444-4444-8444-444444444444`, username, display_name: username === 'amira' ? 'Mira A' : '', avatar_key: null, is_private: false, follow_state: 'none', follows_you: false }))) }));
+  await open(page, '/members/');
+  await box(page).fill('mira');
+  await expect(page.locator('#found li')).toHaveCount(3);
+  await expect(page.locator('#found li')).toContainText(['@mira', /@(mirabel|amira)/, /@(mirabel|amira)/]);
+  await expect(page.locator('#found li').nth(1)).toContainText('@mirabel');   // starts with it; amira's name only has it
+});

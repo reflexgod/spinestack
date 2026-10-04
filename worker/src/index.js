@@ -132,6 +132,22 @@ async function getJSON(url, init) {
   if (!r.ok) throw new Error(`${new URL(url).hostname} answered ${r.status}`);
   return r.json();
 }
+/* How close a title is to what was typed: 0 the same, 1 starting with it, 2 having it, 3 neither. A leading "the",
+   "a" or "an" doesn't count, nor does a year typed after the title, and a year in figures is also its words (1984 is
+   Nineteen Eighty-Four, just after a title that is 1984). The page's rank() in add.js does the same: keep them in step. */
+const ONES = 'zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen'.split(' ');
+const TENS = 'x x twenty thirty forty fifty sixty seventy eighty ninety'.split(' ');
+const under100 = n => n < 20 ? ONES[n] : TENS[Math.floor(n / 10)] + (n % 10 ? ' ' + ONES[n % 10] : '');
+const yearWords = y => y >= 2000 && y < 2010 ? 'two thousand' + (y % 10 ? ' ' + ONES[y % 10] : '') : under100(Math.floor(y / 100)) + ' ' + (y % 100 === 0 ? 'hundred' : y % 100 < 10 ? 'oh ' + ONES[y % 100] : under100(y % 100));
+const spelled = s => s.replace(/\b(1[0-9]|20)\d\d\b/g, y => yearWords(+y));
+const bare = s => words(s).join(' ').replace(/^(the|a|an) /, '');
+function closeness(title, q) {
+  const t = bare(title), typed = bare(String(q).replace(/[\s,(]+(?:19|20)\d\d\)?$/, ''));
+  if (!typed) return 3;
+  const how = w => t === w ? 0 : t.startsWith(w) ? 1 : (' ' + t + ' ').includes(' ' + w + ' ') || t.includes(w) ? 2 : 3;
+  const say = spelled(typed);   // written out, it comes just after the same in figures
+  return say === typed ? how(typed) : Math.min(how(typed), how(say) + .5);
+}
 async function tmdbFilms(q, token) {
   if (!token) return [];
   const bearer = token.length > 40, init = {headers: bearer ? {Authorization: 'Bearer ' + token, 'User-Agent': UA} : {'User-Agent': UA}};
@@ -140,7 +156,10 @@ async function tmdbFilms(q, token) {
   const yq = q.match(/^(.+?)[\s,(]+((?:19|20)\d\d)\)?$/);   // "kids 1995": TMDB finds nothing when the year is in the query
   let r = yq ? await find(yq[1], yq[2]) : await find(q);
   if (yq && !(r.results || []).length) r = await find(yq[1]);
-  return Promise.all((r.results || []).slice(0, 5).map(async (m, i) => {
+  // the whole page TMDB gives (20), closest title first, then most voted for, before five are kept: "gumm" had Gummo
+  // seventh, so it was never shown
+  const films = (r.results || []).map((m, i) => ({m, i, c: closeness(m.title || '', q)})).sort((a, b) => a.c - b.c || (b.m.vote_count || 0) - (a.m.vote_count || 0) || a.i - b.i).map(x => x.m);
+  return Promise.all(films.slice(0, 5).map(async (m, i) => {
     let creator = '';
     if (i < 3) try { const c = await getJSON(`https://api.themoviedb.org/3/movie/${m.id}/credits?` + key.slice(1), init); creator = ((c.crew || []).find(p => p.job === 'Director') || {}).name || ''; } catch {}
     return {kind: 'movie', title: m.title || '', year: (m.release_date || '').slice(0, 4), creator, cover: m.poster_path ? 'https://image.tmdb.org/t/p/w500' + m.poster_path : ''};
@@ -188,11 +207,11 @@ async function authorName(d) {
 }
 async function olBooks(q) {
   const r = await getJSON('https://openlibrary.org/search.json?limit=50&fields=title,author_name,author_alternative_name,author_key,first_publish_year,publish_year,cover_i,edition_count,readinglog_count&q=' + encodeURIComponent(q), {headers: {'User-Agent': UA}});
-  const want = words(q.replace(/[\s,(]+(?:19|20)\d\d\)?$/, ''));
-  const says = d => { const hay = words([d.title, ...(d.author_name || [])].join(' ')).join(' '); return want.length > 0 && want.every(w => hay.includes(w)); };
+  const typed = q.replace(/[\s,(]+(?:19|20)\d\d\)?$/, ''), wants = [words(typed), words(spelled(words(typed).join(' ')))];   // 1984 is also nineteen eighty four
+  const says = d => { const hay = words([d.title, ...(d.author_name || [])].join(' ')).join(' '); return wants.some(want => want.length > 0 && want.every(w => hay.includes(w))); };
   const seen = new Set(), once = d => { const k = words(d.title).join(' ').replace(/^(the|a|an) /, '') + '|' + words((d.author_name || [''])[0]).join(' '); return !seen.has(k) && !!seen.add(k); };
   const docs = (r.docs || []).filter(d => !notABook(d) && says(d))
-    .sort((a, b) => (b.readinglog_count || 0) - (a.readinglog_count || 0) || (b.edition_count || 0) - (a.edition_count || 0)).filter(once).slice(0, 5);
+    .sort((a, b) => closeness(a.title || '', q) - closeness(b.title || '', q) || (b.readinglog_count || 0) - (a.readinglog_count || 0) || (b.edition_count || 0) - (a.edition_count || 0)).filter(once).slice(0, 5);
   // Open Library's first year is sometimes a stray record (It Ends With Us: 2012, The Bell Jar: 1948).
   // Wikidata's publication date is right for known books; without it, a lone early year with a gap after it is dropped.
   const [years, authors] = await Promise.all([Promise.all(docs.map(d => wikidataYear(d.title, (d.author_name || [''])[0]).then(y => y ? String(y) : olYear(d)))), Promise.all(docs.map(authorName))]);
@@ -220,9 +239,10 @@ async function wikidataYear(title, author) {
 async function identify(p, env, cors, ctx) {
   const q = clean(p.get('q'), 120), want = ['movie', 'book'].includes(p.get('want')) ? p.get('want') : 'all';
   if (!q) return json({error: 'Type a title to search.'}, 400, cors);
+  // id7: the closest titles first, ranked before five are kept, and 1984 finding Nineteen Eighty-Four;
   // id6: an author's name as they write it ("Haruki Murakami", not "MURAKAMI HARUKI"); id5: a book's author in Latin letters when Open Library has them (id4 answers could have 村上春樹); id4: books only
   // when the title or author has what was typed, each once (id3 answers had the rest; id2 the reports)
-  const key = `id6:${want}:${q.toLowerCase()}`, make = async () => {
+  const key = `id7:${want}:${q.toLowerCase()}`, make = async () => {
     const [f, b] = await Promise.allSettled([want !== 'book' ? tmdbFilms(q, env.TMDB_TOKEN) : [], want !== 'movie' ? olBooks(q) : []]);
     if (f.status === 'rejected' && b.status === 'rejected') throw new Error('TMDB and Open Library did not answer');
     return {results: [...(f.value || []), ...(b.value || [])]};

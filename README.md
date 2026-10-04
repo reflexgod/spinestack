@@ -185,7 +185,7 @@ minute stale. Both fit the Workers Free plan and need no card.
 `cd worker && npx wrangler deploy`. Secrets and the KV cache stay as they are. To try a change first without deploying:
 `cd worker && npx wrangler dev` runs the Worker on this machine (`http://127.0.0.1:8787`, with its own empty KV and
 Durable Object; films need `TMDB_TOKEN` in `worker/.dev.vars`).
-If you change what `/identify` answers, bump its cache key prefix in `src/index.js` (`id6:` now: a book's author comes in Latin letters when Open Library has them, the way they write it: 村上春樹 and MURAKAMI HARUKI as Haruki Murakami) so answers kept
+If you change what `/identify` answers, bump its cache key prefix in `src/index.js` (`id7:` now: the closest titles first, ranked before five are kept; a book's author comes in Latin letters when Open Library has them, the way they write it: 村上春樹 and MURAKAMI HARUKI as Haruki Murakami) so answers kept
 before the change aren't reused. `/scans` keeps what the providers said as it came (`raw1:`), and its filters run again on that.
 
 ### How a real spine is found
@@ -193,7 +193,10 @@ before the change aren't reused. `/scans` keeps what the providers said as it ca
 0. In the Add to your shelf dialog (`add.js`, opened by + ADD on any page and by the builder's Add box) a title is
    looked up as it's typed: a search starts 300 ms after the last key and replaces the one before it, Enter searches at
    once. Up to six results show, films and books together, the closest titles first (the same as what was typed, then
-   starting with it, then containing it); ↑ ↓ move through them and Enter picks one.
+   starting with it, then containing it; a leading The, A or An doesn't count, and a year in figures is also its words,
+   so 1984 finds Nineteen Eighty-Four just after a title that is 1984); ↑ ↓ move through them and Enter picks one. The
+   Worker ranks the same way (`closeness()`) over the whole answer TMDB and Open Library give, before it keeps five of
+   each: "gumm", half typed, used to leave Gummo out. Members' Find @username puts the username or name as typed first too.
 1. The page asks the Worker for one round at a time, to save searches. A film has at most 4 rounds and stops once two good spines turn up;
    a book has at most 3 and stops at the first clean spine (each round after 0 is a paid search, and most books have no scan to find: `docs/BOOK-SPINES.md`).
    Films: `"<title>" <year> dvd cover`, `"<title>" <year> dvd cover english`, `"<title>" dvd cover scan`, `"<title>" criterion dvd`.

@@ -63,13 +63,22 @@ test('at most six results, films and books together, the closest titles first', 
   const d = dialog(page);
   await box(d).fill('kids');
   await expect(options(d)).toHaveCount(6);   // nine titles have "kids" in them
-  // the same title (a book and a film), then one starting with it, then ones containing it
-  expect(await names(d)).toEqual(['Kids', 'Kids', 'Kids in America', 'Spy Kids', 'Just Kids', 'The Kids Are All Right']);
+  // the same title (a book and a film), then ones starting with it (a leading The doesn't count), then ones containing it
+  expect(await names(d)).toEqual(['Kids', 'Kids', 'Kids in America', 'The Kids Are All Right', 'Spy Kids', 'Just Kids']);
   await expect(options(d).first()).toContainText('Book');
   await expect(options(d).nth(1)).toContainText('Film');
   await d.getByRole('radio', { name: 'Films' }).check();
   await expect(options(d)).toHaveCount(5);
-  expect(await names(d)).toEqual(['Kids', 'Kids in America', 'Spy Kids', 'The Kids Are All Right', 'Honey, I Shrunk the Kids']);
+  expect(await names(d)).toEqual(['Kids', 'Kids in America', 'The Kids Are All Right', 'Spy Kids', 'Honey, I Shrunk the Kids']);
+});
+
+test('the closest first, as the Worker ranks them: 1984 is also Nineteen Eighty-Four, and a leading The doesn’t count', async ({ page }) => {
+  await openDialog(page);
+  const titles = (list, q) => page.evaluate(([list, q]) => Add.rank(list.map(([kind, title]) => ({ kind, title })), q).map(m => m.title), [list, q]);
+  expect(await titles([['movie', 'Wonder Woman 1984'], ['movie', '1984'], ['book', '1984 (adaptation)'], ['book', 'Nineteen Eighty-Four']], '1984'))
+    .toEqual(['1984', 'Nineteen Eighty-Four', '1984 (adaptation)', 'Wonder Woman 1984']);
+  expect(await titles([['book', 'The great Gatsby, by F. Scott Fitzgerald'], ['book', 'The Great Gatsby']], 'great gatsby')).toEqual(['The Great Gatsby', 'The great Gatsby, by F. Scott Fitzgerald']);
+  expect(await titles([['movie', 'Gummo'], ['movie', 'Gummo 2'], ['movie', 'My Favorite Scene from Gummo'], ['movie', "G'mor Evian!"]], 'gummo')).toEqual(['Gummo', 'Gummo 2', 'My Favorite Scene from Gummo', "G'mor Evian!"]);
 });
 
 test('the keyboard: ↑ ↓ move through the results, Enter picks the highlighted one, Esc closes', async ({ page }) => {

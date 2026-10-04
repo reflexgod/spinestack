@@ -239,6 +239,12 @@ function personRow(x){
   return li;
 }
 const find = {run: 0, t: 0, shown: null};
+// as every search on the site: the username or name as typed first, then those starting with it, then the rest
+function closestFirst(rows, q){
+  const w = q.replace(/^@+/, '').toLowerCase(), how = p => { const u = (p.username || '').toLowerCase(), n = (p.display_name || '').toLowerCase();
+    return u === w || n === w ? 0 : u.startsWith(w) || n.startsWith(w) ? 1 : 2; };
+  return rows.map((p, i) => ({p, i, c: how(p)})).sort((a, b) => a.c - b.c || a.i - b.i).map(x => x.p);
+}
 async function search(q){
   const run = ++find.run, state = $('#findState'), list = $('#found');
   clearTimeout(find.t);
@@ -251,6 +257,7 @@ async function search(q){
   catch (e){ if (run !== find.run) return; list.replaceChildren(); state.textContent = friendly(e); state.hidden = false; return; }
   if (run !== find.run) return;   // something else was typed meanwhile
   find.shown = q;
+  rows = closestFirst(rows, q);
   list.replaceChildren(...rows.map(personRow));
   state.textContent = rows.length ? '' : `No one called “${q}”.`; state.hidden = !!rows.length;
 }
