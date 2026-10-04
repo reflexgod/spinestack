@@ -138,6 +138,9 @@ textarea{resize:vertical;line-height:1.5}
 .tabs::-webkit-scrollbar{display:none}
 .tabs button{flex:none;white-space:nowrap;font:400 var(--fs-tab) var(--mono);background:none;border:0;padding:0 0 var(--s2);margin-bottom:-1px;color:var(--grey);cursor:pointer;border-bottom:1px solid transparent}
 .tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+/* on a touch screen a tab is 44px tall itself, its words at the foot over the line (a press area outside it would be
+   cut off by the row, which scrolls) */
+@media (pointer:coarse){ .tabs button{min-height:44px;min-width:44px;display:inline-flex;align-items:flex-end;justify-content:center} .tabs button::before{display:none} }
 
 /* ---------- shelves, where they're listed: no card and no box. Each is its first spines standing on a thin black line
    (bare.js draws them as the line nears the screen), its name under it, then who made it. Six across the column, four
