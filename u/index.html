@@ -252,8 +252,8 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
   <button class="acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false" hidden><span class="ava" aria-hidden="true"></span><span class="who"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
   <nav class="links" aria-label="shelfstackd">
     <a href="../feed/">Feed</a>
-    <a href="../shelves/">Shelves</a><a href="../members/">Members</a>
-    <a class="find" href="../members/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
+    <a href="../shelves/">Shelves</a><a href="../people/">People</a>
+    <a class="find" href="../people/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
     <a class="bell" id="bell" href="../notifications/" aria-label="Notifications" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="dot" hidden></span></a>
   </nav>
   <a class="signin" id="signInBtn" href="#" hidden>Sign in</a>
@@ -301,7 +301,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
       <nav class="tabs" role="tablist" aria-label="Profile">
         <button type="button" role="tab" id="tabP" data-tab="profile" aria-selected="true" aria-controls="panelP">Profile</button>
         <button type="button" role="tab" id="tabA" data-tab="activity" aria-selected="false" aria-controls="panelA">Activity</button>
-        <button type="button" role="tab" id="tabW" data-tab="watchlist" aria-selected="false" aria-controls="panelW">Watchlist</button>
+        <button type="button" role="tab" id="tabW" data-tab="watchlist" aria-selected="false" aria-controls="panelW">Up next</button>
         <button type="button" role="tab" id="tabN" data-tab="network" aria-selected="false" aria-controls="panelN">Network</button>
       </nav>
       <div id="panelP" role="tabpanel" aria-labelledby="tabP">
@@ -319,14 +319,14 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
         <div class="pgrid" id="pgrid">
           <div class="pmain">
             <section id="watchSec" hidden>
-              <h2>Watchlist <small id="watchCount"></small> <a class="more" id="watchAll" href="#watchlist">See all</a></h2>
+              <h2>Up next <small id="watchCount"></small> <a class="more" id="watchAll" href="#upnext">See all</a></h2>
               <ol class="wstrip" id="watchStrip"></ol>
               <p class="grey" id="watchNone" hidden>Nothing saved for later.</p>
             </section>
             <section id="friendsSec" hidden>
               <h2>From friends</h2>
               <ol class="titles" id="friends"></ol>
-              <p class="grey" id="friendsNone" hidden>Your friends haven’t logged anything. <a href="../members/">Find people</a></p>
+              <p class="grey" id="friendsNone" hidden>Your friends haven’t logged anything. <a href="../people/">Find people</a></p>
             </section>
           </div>
         </div>
@@ -340,13 +340,13 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
       <div id="panelW" role="tabpanel" aria-labelledby="tabW" hidden>
         <div class="whead"><p class="wline" id="wLine"></p><button class="dash sm" id="wPrivacy" type="button" hidden>Make public</button><span class="note" id="wPrivNote" hidden></span></div>
         <div class="wsearch" id="wSearch" hidden>
-          <label class="lbl" for="wQ">Add to your watchlist</label>
+          <label class="lbl" for="wQ">Add to Up next</label>
           <input type="text" id="wQ" placeholder="find a film or book" maxlength="120" autocomplete="off">
           <p class="note" id="wSay" role="status"></p>
           <ul class="wsugg" id="wSugg" hidden></ul>
         </div>
         <ol class="wgrid" id="wGrid"></ol>
-        <p class="grey" id="wNone" hidden>Your watchlist is empty.</p>
+        <p class="grey" id="wNone" hidden>Nothing up next.</p>
       </div>
       <div id="panelN" role="tabpanel" aria-labelledby="tabN" hidden>
         <nav class="tabs sub" role="tablist" aria-label="Network">
@@ -846,12 +846,12 @@ async function paintWatch(){
   $('#watchAll').hidden = !lists.watch.length;
   $('#watchStrip').replaceChildren(...lists.watch.slice(0, 4).map(r => {
     const li = document.createElement('li'), a = document.createElement('a');
-    a.href = '#watchlist'; a.className = 'sealed'; a.setAttribute('aria-label', `${r.title}${r.year ? ` (${r.year})` : ''}, on the watchlist`); a.append(cleanCover(r, 100));
+    a.href = '#upnext'; a.className = 'sealed'; a.setAttribute('aria-label', `${r.title}${r.year ? ` (${r.year})` : ''}, up next`); a.append(cleanCover(r, 100));
     li.append(a); return li;
   }));
   $('#watchNone').hidden = !!lists.watch.length;
   if (!$('#panelW').hidden) paintWatchTab();
-  if (!shown && location.hash === '#watchlist') goTab('');
+  if (!shown && (location.hash === '#upnext' || location.hash === '#watchlist')) goTab('');
 }
 function paintWatchTab(){
   const mine = view.mine, rows = lists.watch;
@@ -873,7 +873,7 @@ function paintWatchTab(){
   });
   if (mine){
     const plus = document.createElement('li'); plus.className = 'wt';
-    plus.innerHTML = '<button class="wplus" type="button" aria-label="Add a film or book to your watchlist">+</button>';
+    plus.innerHTML = '<button class="wplus" type="button" aria-label="Add a film or book to Up next">+</button>';
     tiles.unshift(plus);
   }
   $('#wGrid').replaceChildren(...tiles);
@@ -886,7 +886,7 @@ function watchSearch(){
   searching = Nav.loadAdd().then(ok => {
     if (!ok){ $('#wSay').textContent = 'Search couldn’t load. Try again in a moment.'; searching = null; return; }
     Add.attachSearch({input: $('#wQ'), list: $('#wSugg'), say: t => { $('#wSay').textContent = t; }, onPick: async m => {
-      if (lists.watch.length >= Add.WATCH_CAP){ $('#wSay').textContent = `Your watchlist is full (${Add.WATCH_CAP}). Remove one to add another.`; return; }
+      if (lists.watch.length >= Add.WATCH_CAP){ $('#wSay').textContent = `Up next is full (${Add.WATCH_CAP}). Remove one to add another.`; return; }
       $('#wSay').textContent = 'Adding…';
       const r = await Add.watch(m);
       $('#wSay').textContent = r.ok && !r.already ? '' : r.error;
@@ -900,7 +900,7 @@ $('#wPrivacy').addEventListener('click', async () => {
   try {
     const rows = await api(`profiles?id=eq.${view.profile.id}&select=watchlist_public`, {method: 'PATCH', headers: {Prefer: 'return=representation'}, body: JSON.stringify({watchlist_public: next})});
     if (!rows || !rows[0]) throw new Error('That didn’t save. Try again in a moment.');
-    lists.privacy = rows[0].watchlist_public; toast(lists.privacy ? 'Your watchlist is public.' : 'Your watchlist is private.'); paintWatchTab();
+    lists.privacy = rows[0].watchlist_public; toast(lists.privacy ? 'Your Up next is public.' : 'Your Up next is private.'); paintWatchTab();
   } catch (err){ toast(friendly(err)); }
   b.disabled = false;
 });
@@ -916,7 +916,7 @@ async function paintFriends(){
   lists.friends.forEach((r, i) => { const li = $('#friends').children[i]; if (li) Nav.watchable(li.querySelector('.tc'), asItem(r), {from: r.from_id, moreIn: li.querySelector('.tacts')}); });
 }
 function paintLists(){ paintWatch(); paintFriends(); }
-const keptError = e => e && e.code === '23505' ? 'It’s already on your watchlist.' : friendly(e);
+const keptError = e => e && e.code === '23505' ? 'It’s already in Up next.' : friendly(e);
 $('#wGrid').addEventListener('click', async e => {
   const b = e.target.closest('[data-w]'), r = b && lists.watch[+b.closest('li').dataset.i]; if (!r) return;
   if (b.dataset.w === 'log'){ Nav.add({mode: 'log', item: asItem(r)}); return; }
@@ -924,7 +924,7 @@ $('#wGrid').addEventListener('click', async e => {
   try {
     const rows = await api(`watchlist?id=eq.${r.id}&select=id`, {method: 'DELETE', headers: {Prefer: 'return=representation'}});
     if (!rows || !rows[0]) throw new Error('Couldn’t take it off. Sign in again and try once more.');
-    toast(`${r.title} is off your watchlist.`); paintLists();
+    toast(`${r.title} is off Up next.`); paintLists();
   } catch (err){ toast(friendly(err)); if (b.isConnected) b.disabled = false; }
 });
 $('#friends').addEventListener('click', async e => {
@@ -934,7 +934,7 @@ $('#friends').addEventListener('click', async e => {
   try {
     if (b.dataset.f === 'keep'){
       await api('watchlist', {method: 'POST', headers: {Prefer: 'return=minimal'}, body: JSON.stringify({kind: r.kind, title: r.title, author: r.author || '', year: r.year || null, cover_src: r.cover_src || null, from_user: r.from_id})});
-      toast(`${r.title} is on your watchlist.`);
+      toast(`${r.title} is in Up next.`);
     } else {
       await api('friend_hides', {method: 'POST', headers: {Prefer: 'return=minimal'}, body: JSON.stringify({item_key: r.item_key})});
       toast(`Removed ${r.title}.`);
@@ -1294,7 +1294,7 @@ async function showPrivate(card){
    30 at a time ---------- */
 const LIST_NONE = {followers: 'No followers yet.', following: 'Not following anyone yet.', requests: 'No requests waiting.'};
 // your own lists say what to do next
-const LIST_NONE_MINE = {followers: 'Nobody follows you yet.', following: 'You follow nobody yet. <a href="../members/">Find people</a>'};
+const LIST_NONE_MINE = {followers: 'Nobody follows you yet.', following: 'You follow nobody yet. <a href="../people/">Find people</a>'};
 // one person: photo, name, and FOLLOW (or, for a request, Accept and Decline). list: the list the row is in
 function personRow(x, kind, list){
   const li = document.createElement('li'), name = (x.display_name || '').trim(), href = pageUrl(x.username);
@@ -1349,7 +1349,7 @@ document.querySelectorAll('.statlink').forEach(d => {
   d.addEventListener('click', () => goTab(d.dataset.list === 'followers' ? '#followers' : '#network'));   // its button too: Enter and Space click it
 });
 for (const a of document.querySelectorAll('#cFollowing, #cFollowers')) a.addEventListener('click', e => { e.preventDefault(); goTab(a.getAttribute('href')); });
-$('#watchSec').addEventListener('click', e => { const a = e.target.closest('a[href="#watchlist"]'); if (a){ e.preventDefault(); goTab('#watchlist'); scrollTo(0, 0); } });   // the phone's line does the same
+$('#watchSec').addEventListener('click', e => { const a = e.target.closest('a[href="#upnext"]'); if (a){ e.preventDefault(); goTab('#upnext'); scrollTo(0, 0); } });   // the phone's line does the same
 
 /* ---------- the Activity tab: a line for each shelf saved and each film or book logged, newest first (the feed's
    lines, without the photo: they're all this person's). On your own profile a private shelf is there too, marked, and
@@ -1417,10 +1417,10 @@ $('#acts').addEventListener('click', async e => {
   } catch (err){ toast(friendly(err)); if (b.isConnected) b.disabled = false; }
 });
 
-/* ---------- tabs: Profile · Activity (#activity) · Watchlist (#watchlist) · Network (#network is Following, #followers is Followers). The
+/* ---------- tabs: Profile · Activity (#activity) · Up next (#upnext; #watchlist, its old name, too) · Network (#network is Following, #followers is Followers). The
    address has the tab, so a reload lands on it, and so do the account menu's links. #shelves, from when there was a
    Shelves tab, is Profile. ---------- */
-const HASH = {'': ['profile'], '#shelves': ['profile'], '#activity': ['activity'], '#watchlist': ['watchlist'], '#network': ['network', 'following'], '#following': ['network', 'following'], '#followers': ['network', 'followers']};
+const HASH = {'': ['profile'], '#shelves': ['profile'], '#activity': ['activity'], '#upnext': ['watchlist'], '#watchlist': ['watchlist'], '#network': ['network', 'following'], '#following': ['network', 'following'], '#followers': ['network', 'followers']};
 const PANEL = {profile: '#panelP', activity: '#panelA', watchlist: '#panelW', network: '#panelN'};
 function paintTabs(){
   let [tab, net] = HASH[location.hash] || HASH[''];
@@ -1435,7 +1435,7 @@ function paintTabs(){
 }
 function goTab(hash){ history.replaceState(null, '', location.pathname + location.search + hash); paintTabs(); }
 document.querySelector('#viewProfile > .tabs').addEventListener('click', e => {
-  const b = e.target.closest('[data-tab]'); if (b) goTab({profile: '', activity: '#activity', watchlist: '#watchlist', network: '#network'}[b.dataset.tab]);
+  const b = e.target.closest('[data-tab]'); if (b) goTab({profile: '', activity: '#activity', watchlist: '#upnext', network: '#network'}[b.dataset.tab]);
 });
 document.querySelector('.tabs.sub').addEventListener('click', e => { const b = e.target.closest('[data-net]'); if (b) goTab(b.dataset.net === 'followers' ? '#followers' : '#network'); });
 // ← → move between the tabs of a row

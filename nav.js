@@ -143,7 +143,7 @@
     state = {sb: (s && s.sb) || null, user: (s && s.user) || null, profile: (s && s.profile) || null};
     if (state.sb && state.user) markKept();
     const p = state.profile;
-    acctBtn.hidden = !p; signBtn.hidden = !!p || !!(s && s.unreachable); moreBtn.hidden = !p;   // the places (Feed · Shelves · Members · search) stay as they are, in one order, whoever you are
+    acctBtn.hidden = !p; signBtn.hidden = !!p || !!(s && s.unreachable); moreBtn.hidden = !p;   // the places (Feed · Shelves · People · search) stay as they are, in one order, whoever you are
     addWrap.classList.toggle('split', !!p);
     if (!p){
       for (const m of menus) m.hide(false);
@@ -258,7 +258,7 @@
   /* ---------- a watchlist button on a cover or a spine ----------
      Nav.watchable(host, item, {from, label}): a small bookmark on the host (a cover, a spine), shown on hover or focus
      with a mouse; on a touch screen a ••• beside it with one item, Add to watchlist. One press puts the title on your
-     watchlist (add.js), then it says In watchlist. Signed out it's the sign-in sheet, and the title goes on once you're
+     watchlist (add.js), then it says In Up next. Signed out it's the sign-in sheet, and the title goes on once you're
      signed in. item: {kind, title, year, creator, cover}; from: whose log it came from (From friends). */
   const ICON_ADD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><line x1="12" x2="12" y1="7" y2="13"/><line x1="15" x2="9" y1="10" y2="10"/></svg>';   // Lucide bookmark-plus
   const wcss = document.createElement('style');
@@ -283,7 +283,7 @@
     if (visitor()){ needAccount('watch', item); return false; }
     if (!(await loadAdd())) return false;
     const r = await window.Add.watch(item, {from});
-    if (r.error) say(r.error);   // already on it (then it's In watchlist too), full, or it didn't save
+    if (r.error) say(r.error);   // already on it (then it's In Up next too), full, or it didn't save
     return r.ok;
   }
   // the page's own toast, when add.js isn't the one saying it
@@ -303,13 +303,13 @@
     const name = item.title + (item.year ? ` (${item.year})` : '');
     host.classList.add('wable');
     const b = document.createElement('button');
-    b.type = 'button'; b.className = 'wbtn'; b.innerHTML = ICON_ADD; b.setAttribute('aria-label', `Add ${name} to watchlist`); b.title = 'Add to watchlist';
+    b.type = 'button'; b.className = 'wbtn'; b.innerHTML = ICON_ADD; b.setAttribute('aria-label', `Add ${name} to Up next`); b.title = 'Add to Up next';
     const more = document.createElement('button');
     more.type = 'button'; more.className = 'wmore'; more.textContent = '•••'; more.setAttribute('aria-label', `More for ${name}`); more.setAttribute('aria-haspopup', 'menu'); more.setAttribute('aria-expanded', 'false');
     const menu = document.createElement('div'); menu.className = 'wmenu'; menu.setAttribute('role', 'menu'); menu.hidden = true;
-    const mi = document.createElement('button'); mi.type = 'button'; mi.setAttribute('role', 'menuitem'); mi.textContent = 'Add to watchlist'; menu.append(mi);
+    const mi = document.createElement('button'); mi.type = 'button'; mi.setAttribute('role', 'menuitem'); mi.textContent = 'Add to Up next'; menu.append(mi);
     // on your watchlist: a grey "In watchlist" where the ••• was, and no button
-    const state1 = document.createElement('span'); state1.className = 'win'; state1.textContent = 'In watchlist'; state1.hidden = true;
+    const state1 = document.createElement('span'); state1.className = 'win'; state1.textContent = 'In Up next'; state1.hidden = true;
     const done = () => { b.remove(); wrap.remove(); if (!state1.isConnected) (opt.moreIn ? opt.moreIn.append(state1) : host.after(state1)); state1.hidden = false; };
     const go = async e => { e.preventDefault(); e.stopPropagation(); menu.hidden = true; more.setAttribute('aria-expanded', 'false'); if (b.disabled) return; b.disabled = mi.disabled = true; const ok = await addToWatchlist(item, opt.from); if (ok) done(); else { b.disabled = mi.disabled = false; } };
     b.addEventListener('click', go); mi.addEventListener('click', go);

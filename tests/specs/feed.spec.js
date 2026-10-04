@@ -15,13 +15,13 @@ const said = page => lines(page).evaluateAll(lis => lis.map(li =>
 const tabs = page => page.getByRole('tablist', { name: 'Feed' }).getByRole('tab');
 const isPhone = () => test.info().project.name.startsWith('phone');
 
-test('the tabs are Following · Everyone; signed in it opens on Following', async ({ page }) => {
+test('the tabs are Friends · Everyone; signed in it opens on Friends', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/feed/');
-  await expect(tabs(page)).toHaveText(['Following', 'Everyone']);
-  await expect(page.getByRole('tab', { name: 'Following' })).toHaveAttribute('aria-selected', 'true');
-  await expect(page).toHaveURL(/\/feed\/\?following$/);
+  await expect(tabs(page)).toHaveText(['Friends', 'Everyone']);
+  await expect(page.getByRole('tab', { name: 'Friends' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page).toHaveURL(/\/feed\/\?friends$/);
   await expect(lines(page)).toHaveCount(8);   // only @mira is followed: her six shelves and two logs
   for (const t of await said(page)) expect(t).toMatch(/^@mira (added|updated|started|watched|read) /);
   expect(errors).toEqual([]);
@@ -144,19 +144,19 @@ test('a shelf saved is a compact post: "@mira added 2 to their shelf" and a stri
   await expect(page).toHaveURL(new RegExp(`/u/\\?mira&shelf=${SHELVES[1].id}$`));
 });
 
-test('?you, from when there was a You tab, is Following', async ({ page }) => {
+test('?you and ?following, from before, are Friends', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/feed/?you');
-  await expect(page.getByRole('tab', { name: 'Following' })).toHaveAttribute('aria-selected', 'true');
-  await expect(page).toHaveURL(/\/feed\/\?following$/);
+  await expect(page.getByRole('tab', { name: 'Friends' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page).toHaveURL(/\/feed\/\?friends$/);
 });
 
-test('signed out: Everyone shows; Following asks you to sign in', async ({ page }) => {
+test('signed out: Everyone shows; Friends asks you to sign in', async ({ page }) => {
   await mockNetwork(page);
   await open(page, '/feed/');
   await expect(page.getByRole('tab', { name: 'Everyone' })).toHaveAttribute('aria-selected', 'true');
   await expect(lines(page)).toHaveCount(20);
-  for (const [tab, says] of [['Following', /^Sign in to see who you follow\.$/]]) {
+  for (const [tab, says] of [['Friends', /^Sign in to see who you follow\.$/]]) {
     await page.getByRole('tab', { name: tab }).click();
     await expect(lines(page)).toHaveCount(0);
     await expect(page.locator('#none')).toHaveText(says);
@@ -174,7 +174,7 @@ test('a database without logs (0007 not run on it): shelves only, as before', as
   await expect(page.locator('#items .post:not(.shelfpost)')).toHaveCount(0);
   for (const t of await said(page)) expect(t).toMatch(/ (added|started|updated) /);
   expect(asked).toEqual(['activity', 'feed']);   // asked once, then the feed of 0006
-  await page.getByRole('tab', { name: 'Following' }).click();
+  await page.getByRole('tab', { name: 'Friends' }).click();
   await expect(lines(page)).toHaveCount(6);   // @mira's shelves
   expect(asked.filter(a => a === 'activity')).toHaveLength(1);   // not asked again on this page
 });
@@ -202,12 +202,12 @@ test('a film logged with + ADD shows at the top of the feed', async ({ page }) =
 test('← and → move between the tabs', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/feed/?following');
-  await page.getByRole('tab', { name: 'Following' }).focus();
+  await page.getByRole('tab', { name: 'Friends' }).focus();
   await page.keyboard.press('ArrowRight');
   await expect(page.getByRole('tab', { name: 'Everyone' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('tab', { name: 'Everyone' })).toBeFocused();
   await page.keyboard.press('ArrowLeft');
-  await expect(page.getByRole('tab', { name: 'Following' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: 'Friends' })).toHaveAttribute('aria-selected', 'true');
 });
 
 test('the next 20 come by themselves as the end of the list nears', async ({ page }) => {

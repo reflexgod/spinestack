@@ -71,8 +71,8 @@
   <button class="acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false" hidden><span class="ava" aria-hidden="true"></span><span class="who"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
   <nav class="links" aria-label="shelfstackd">
     <a href="./" aria-current="page">Feed</a>
-    <a href="../shelves/">Shelves</a><a href="../members/">Members</a>
-    <a class="find" href="../members/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
+    <a href="../shelves/">Shelves</a><a href="../people/">People</a>
+    <a class="find" href="../people/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
     <a class="bell" id="bell" href="../notifications/" aria-label="Notifications" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="dot" hidden></span></a>
   </nav>
   <a class="signin" id="signInBtn" href="#" hidden>Sign in</a>
@@ -84,7 +84,7 @@
   <h1 class="vh">Feed</h1>
   <section id="compose" aria-label="Post" hidden></section>
   <nav class="tabs" role="tablist" aria-label="Feed">
-    <button type="button" role="tab" id="tabF" data-scope="following" aria-selected="false" aria-controls="panel">Following</button>
+    <button type="button" role="tab" id="tabF" data-scope="following" aria-selected="false" aria-controls="panel">Friends</button>
     <button type="button" role="tab" id="tabE" data-scope="everyone" aria-selected="false" aria-controls="panel">Everyone</button>
   </nav>
   <div id="panel" role="tabpanel">
@@ -122,7 +122,7 @@
 <script src="../post.js?v=20261012a"></script>
 <script>
 (() => {
-/* The feed: /feed/ (?following or ?everyone picks the tab). A line for each shelf saved and each film or book
+/* The feed: /feed/ (?friends, or ?following as it was, or ?everyone picks the tab: Friends · Everyone). A line for each shelf saved and each film or book
    logged (a post: post.js), newest first, 20 at a time, the next 20 coming as the end nears. The database decides what
    shows (activity(), supabase/migrations/0007_logs_watchlist.sql): EVERYONE is public profiles, FOLLOWING the people
    you follow; with nothing there, People to follow. Every minute it looks for newer ones and says how many ("3 new
@@ -135,7 +135,7 @@ const SB_LIB = {src:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/
 const PAGE = 20;
 const params = new URLSearchParams(location.search);
 // ?you, from when there was a You tab (your own are on your profile's Activity now), is Following
-const asked = params.has('you') ? 'following' : ['following', 'everyone'].find(k => params.has(k)) || '';
+const asked = params.has('you') || params.has('friends') ? 'following' : ['following', 'everyone'].find(k => params.has(k)) || '';
 
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const profileUrl = (name, shelf) => '../u/?' + name + (shelf ? '&shelf=' + shelf : '');
@@ -214,7 +214,7 @@ Nav.onSignOut(async () => { try { const {error} = await (await supa()).auth.sign
 $('#googleBtn').addEventListener('click', async () => {
   const btn = $('#googleBtn'); btn.disabled = true;
   try {
-    const sb = await supa(), back = location.origin + location.pathname + '?' + (feed.scope || 'following');
+    const sb = await supa(), back = location.origin + location.pathname + '?' + (feed.scope === 'everyone' ? 'everyone' : 'friends');
     const {error} = await sb.auth.signInWithOAuth({provider:'google', options:{redirectTo: back}});
     if (error) throw error;
   } catch (e){ btn.disabled = false; toast(friendly(e)); }
@@ -309,7 +309,7 @@ async function show(scope){
   const run = ++feed.run;
   feed.scope = scope; feed.last = null; feed.first = null; $('#newPill').hidden = true;
   document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.scope === scope)));
-  history.replaceState(null, '', location.pathname + '?' + scope + location.hash);   // back from a shelf lands on the same tab
+  history.replaceState(null, '', location.pathname + '?' + (scope === 'following' ? 'friends' : scope) + location.hash);   // back from a shelf lands on the same tab
   $('#items').replaceChildren(); $('#none').hidden = true; $('#more').hidden = true;
   if (scope !== 'everyone' && !me.user){ $('#state').hidden = true; none('signin'); return; }
   $('#state').textContent = 'Loading…'; $('#state').hidden = false;
@@ -430,7 +430,7 @@ async function toFollow(){
     if (books.length) li.querySelector('.sp').replaceChildren(...Bare.spines(books, 64));
   }
 }
-// Follow, the same as on Members (u/ and members/: keep them in step): hover says Unfollow, and a click does it; a
+// Follow, the same as on People (u/ and people/: keep them in step): hover says Unfollow, and a click does it; a
 // private profile is asked (Requested)
 const LABEL = {none: 'Follow', following: 'Following', requested: 'Requested'}, UNDO = {following: 'Unfollow', requested: 'Cancel'};
 function followButton(btn, person){

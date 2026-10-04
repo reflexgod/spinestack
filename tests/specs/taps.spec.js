@@ -19,8 +19,8 @@ const ACT = {
   signin: async p => { await p.locator('#signInBtn').click(); },
 };
 const RUNS = [
-  ['signed out', {}, ['/', '/build/', '/feed/', '/shelves/', '/members/', '/u/?mira', '/u/?mira&shelf', '/privacy.html', '/nope/', '/feed/ signin']],
-  ['signed in', { signedIn: true }, ['/', '/feed/?everyone', '/u/?tester', '/u/?tester#activity', '/u/?tester#network', '/u/?mira', '/u/?tester&shelf', '/members/?q=m', '/settings/', '/settings/#photo']],
+  ['signed out', {}, ['/', '/build/', '/feed/', '/shelves/', '/people/', '/u/?mira', '/u/?mira&shelf', '/privacy.html', '/nope/', '/feed/ signin']],
+  ['signed in', { signedIn: true }, ['/', '/feed/?everyone', '/u/?tester', '/u/?tester#activity', '/u/?tester#network', '/u/?mira', '/u/?tester&shelf', '/people/?q=m', '/settings/', '/settings/#photo']],
   ['signed in, the builder and the dialogs', { signedIn: true }, ['/build/', '/build/ style', '/build/ row', '/feed/?everyone add', '/feed/?everyone spines', '/feed/?everyone log', '/feed/?everyone acct', '/u/?mira more', '/u/?tester&shelf share']],
   ['a new account', { signedIn: true, fresh: true }, ['/u/?tester', '/feed/']],
   ['no username yet', { signedIn: true, named: false }, ['/build/']],

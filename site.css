@@ -84,7 +84,7 @@ textarea{resize:vertical;line-height:1.5}
 .check input,.opts input{accent-color:var(--ink);margin:0}
 
 /* ---------- the top bar. Its contents sit in the column; only its bottom line runs the width of the window.
-   The places are in one order whoever you are: Feed, Shelves, Members, search. Signed in: the logo, you, the places and
+   The places are in one order whoever you are: Feed, Shelves, People, search. Signed in: the logo, you, the places and
    + ADD. Signed out: the logo, the places, SIGN IN and + ADD. Each page has the markup; nav.js runs it. ---------- */
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);border-bottom:1px solid var(--hair);display:flex;align-items:center;gap:var(--s1) var(--s5);
   padding:var(--s3) max(var(--gutter), calc((100% - var(--col))/2))}

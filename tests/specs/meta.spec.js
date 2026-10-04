@@ -6,7 +6,7 @@ const { ROOT, SHELVES, mockNetwork, open } = require('../site');
 
 const isPhone = () => test.info().project.name.startsWith('phone');
 const files = [...fs.readdirSync(ROOT).filter(f => f.endsWith('.html')),
-  ...fs.readdirSync(ROOT, { withFileTypes: true }).filter(d => d.isDirectory() && !['tests', 'worker', 'backend', 'node_modules'].includes(d.name) && !d.name.startsWith('.') && fs.existsSync(path.join(ROOT, d.name, 'index.html')))
+  ...fs.readdirSync(ROOT, { withFileTypes: true }).filter(d => d.isDirectory() && !['tests', 'worker', 'backend', 'node_modules', 'members'].includes(d.name) && !d.name.startsWith('.') && fs.existsSync(path.join(ROOT, d.name, 'index.html')))
     .map(d => d.name + '/index.html')];
 const tag = (html, re) => (re.exec(html) || [])[1];
 // a picture's size, from its first bytes
@@ -62,7 +62,7 @@ test('every page has its own title and description, the icons and the share pict
 
 test('the bar has the hedgehog, 28px, left of SHELFSTACKD, on every page', async ({ page }) => {
   await mockNetwork(page);
-  for (const p of ['/', '/feed/', '/u/?mira', '/build/', '/members/', '/shelves/', '/settings/', '/nope/']) {
+  for (const p of ['/', '/feed/', '/u/?mira', '/build/', '/people/', '/shelves/', '/settings/', '/nope/']) {
     await page.goto(p);
     const mark = page.locator('.top .mark');
     await expect(mark, p).toHaveText('SHELFSTACKD');

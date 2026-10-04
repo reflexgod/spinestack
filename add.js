@@ -288,7 +288,7 @@ dlg.innerHTML = `
   <div class="addwhat" role="radiogroup" aria-label="What to do with it">
     <label><input type="radio" name="addWhat" value="log" checked><span>Log it</span></label>
     <label><input type="radio" name="addWhat" value="shelf"><span>Put on shelf</span></label>
-    <label><input type="radio" name="addWhat" value="watch"><span>Watchlist</span></label>
+    <label><input type="radio" name="addWhat" value="watch"><span>Up next</span></label>
   </div>
   <p class="addneed" id="addNeed" hidden><span id="addNeedText"></span> <button class="dash sm" id="addNeedGo" type="button"></button></p>
   <div id="addFind">
@@ -776,8 +776,8 @@ async function resolve(p){
 /* ---------- Put on shelf, Log it, Watchlist ---------- */
 /* The watchlist holds this many titles. The database holds the same number (watchlist_before_insert() in
    supabase/migrations/0007_logs_watchlist.sql): change both together. Pages read it as Add.WATCH_CAP. */
-const WATCH_CAP = 6, FULL = `Your watchlist is full (${WATCH_CAP}). Remove one to add another.`;
-const TITLES = {shelf: 'Add to your shelf', log: 'What did you watch or read?', watch: 'Add to your watchlist'};   // no ellipsis: on a title it reads as cut off
+const WATCH_CAP = 6, FULL = `Up next is full (${WATCH_CAP}). Remove one to add another.`;
+const TITLES = {shelf: 'Add to your shelf', log: 'What did you watch or read?', watch: 'Add to Up next'};   // no ellipsis: on a title it reads as cut off
 // Log it is the first choice and the one + ADD opens on (logging is posting), except on the builder, where it's the shelf
 const firstMode = () => shelf ? 'shelf' : 'log';
 const what = () => ($('input[name=addWhat]:checked') || {}).value || firstMode();
@@ -788,7 +788,7 @@ function paintNeed(){
   const a = account(), m = what(), need = m !== 'shelf' && !(a.sb && a.user && a.profile);
   $('#addNeed').hidden = !need; $('#addFind').hidden = need;
   if (need){
-    $('#addNeedText').textContent = a.user ? 'Pick a username first.' : m === 'log' ? 'Sign in to log films and books.' : 'Sign in to keep a watchlist.';
+    $('#addNeedText').textContent = a.user ? 'Pick a username first.' : m === 'log' ? 'Sign in to log films and books.' : 'Sign in to keep an Up next.';
     $('#addNeedGo').textContent = a.user ? 'Pick one' : 'Sign in';
   }
   return need;
@@ -824,8 +824,8 @@ function showPost(m){
   $('#addPostTitle').textContent = m.title + (m.year ? ' (' + m.year + ')' : ''); $('#addPostBy').textContent = m.creator ? '· ' + m.creator : '';
   $('#addSayWrap').hidden = !log || !!(window.Posts || posting); $('#addFields').hidden = !log; postFields = null;
   if (log) withPosts(async ok => { if (run !== covRun) return; $('#addSayWrap').hidden = ok; $('#addFields').hidden = !ok; if (!ok) return; const f = await Posts.fields($('#addFields'), m); if (run !== covRun) return; postFields = f; if (focusFields){ focusFields = false; f.focus(); } });
-  $('#addPostGo').textContent = log ? 'Post' : 'Add to watchlist'; $('#addPostGo').disabled = false;
-  $('#addFeedLine').textContent = log ? `On the feed: ${a.profile ? '@' + a.profile.username : 'you'} ${verb(m)} ${m.title} · today` : `It shows on your profile, under Watchlist, which holds ${WATCH_CAP}.`;
+  $('#addPostGo').textContent = log ? 'Post' : 'Add to Up next'; $('#addPostGo').disabled = false;
+  $('#addFeedLine').textContent = log ? `On the feed: ${a.profile ? '@' + a.profile.username : 'you'} ${verb(m)} ${m.title} · today` : `It shows on your profile, under Up next, which holds ${WATCH_CAP}.`;
   if (log){ cov.replaceChildren(); withWear(() => { if (run === covRun) cov.replaceChildren(Wear.cover({src, seed: keyOf(m), at: new Date().toISOString(), label: `The cover of ${m.title}, as the feed shows it`, width: 120})); }); }
   else cov.innerHTML = src ? `<img src="${esc(src)}" alt="The cover of ${esc(m.title)}" crossorigin="anonymous">` : '<span class="blank"></span>';
   $('#addPost').hidden = false;
@@ -838,10 +838,10 @@ const rowOf = m => ({kind: m.kind === 'movie' ? 'movie' : 'book', title: String(
   year: /^\d{4}$/.test(String(m.year || '')) ? +m.year : null, cover_src: m.cover && COVER_OK.test(m.cover) && m.cover.length <= 396 ? 'url:' + m.cover : null});
 function saveError(e, status, log){
   const c = (e && e.code) || '';
-  if (c === '23505') return 'It’s already on your watchlist.';
+  if (c === '23505') return 'It’s already in Up next.';
   if (c === 'P0001' && !log && /watchlist holds/i.test(e.message || '')) return FULL;
   if (c === 'P0001' && e.message) return e.message;
-  if (status === 404 || /^(PGRST20[25]|42P01|42883)$/.test(c)) return log ? 'Logging isn’t open yet. Try again soon.' : 'The watchlist isn’t open yet. Try again soon.';
+  if (status === 404 || /^(PGRST20[25]|42P01|42883)$/.test(c)) return log ? 'Logging isn’t open yet. Try again soon.' : 'Up next isn’t open yet. Try again soon.';
   if (/fetch|network/i.test((e && e.message) || '')) return 'Couldn’t reach shelfstackd. Check your connection and try again.';
   return 'That didn’t save. Try again in a moment.';
 }
@@ -918,7 +918,7 @@ function setServer(on, recent){
    toast and on document ("shelfstackd:added"), and gives {ok, already, full, error}. Nothing is searched for. ---------- */
 async function watch(m, opt = {}){
   const a = account();
-  if (!(a.sb && a.user && a.profile)) return {ok: false, error: a.user ? 'Pick a username first.' : 'Sign in to keep a watchlist.'};
+  if (!(a.sb && a.user && a.profile)) return {ok: false, error: a.user ? 'Pick a username first.' : 'Sign in to keep an Up next.'};
   let r;
   try { r = await a.sb.from('watchlist').insert({...rowOf(m), ...(opt.from ? {from_user: opt.from} : {})}); }
   catch (err){ r = {error: err}; }
@@ -926,7 +926,7 @@ async function watch(m, opt = {}){
     const error = saveError(r.error, r.status, false), already = r.error.code === '23505', full = error === FULL;
     return {ok: already, already, full, error};   // already: it's on it, so ok; the caller says so
   }
-  pageToast(`${m.title} is on your watchlist.`);
+  pageToast(`${m.title} is in Up next.`);
   document.dispatchEvent(new CustomEvent('shelfstackd:added', {detail: {what: 'watch', item: m}}));
   return {ok: true};
 }

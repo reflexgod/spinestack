@@ -7,8 +7,8 @@ test('home: "Welcome", not "Welcome back", and nothing else on that line; the em
   await mockNetwork(page, { signedIn: true, fresh: true });
   await open(page, '/');
   await expect(page.locator('#hello')).toHaveText('Welcome, @tester.');
-  await expect(page.locator('#folNone')).toHaveText('No one followed yet. Find members');
-  await expect(page.locator('#folNone').getByRole('link', { name: 'Find members' })).toHaveAttribute('href', 'members/');
+  await expect(page.locator('#folNone')).toHaveText('No one followed yet. Find people');
+  await expect(page.locator('#folNone').getByRole('link', { name: 'Find people' })).toHaveAttribute('href', 'people/');
   expect(errors).toEqual([]);
 });
 
@@ -33,7 +33,7 @@ test('home for someone who has a shelf but nothing from people they follow: stil
   await open(page, '/');
   expect(new URL((await asked).url()).searchParams.get('owner')).toMatch(/^eq\.11111111-/);   // its own shelves, to see if it has one
   await expect(page.locator('#hello')).toHaveText('Welcome back, @tester.');   // the row's empty line says it once, not the welcome too
-  await expect(page.locator('#folNone')).toHaveText('No one followed yet. Find members');
+  await expect(page.locator('#folNone')).toHaveText('No one followed yet. Find people');
   expect(errors).toEqual([]);
 });
 
@@ -64,13 +64,13 @@ test('your empty profile: the shelf, the watchlist, From friends, Activity and N
   await expect(page.getByRole('link', { name: 'add a bio' })).toHaveAttribute('href', '../settings/');
   await expect(page.locator('#watchNone')).toHaveText('Nothing saved for later.');   // under the Watchlist heading: no second "Watchlist"
   await expect(page.locator('#friendsNone')).toHaveText('Your friends haven’t logged anything. Find people');
-  await expect(page.locator('#friendsNone').getByRole('link', { name: 'Find people' })).toHaveAttribute('href', '../members/');
+  await expect(page.locator('#friendsNone').getByRole('link', { name: 'Find people' })).toHaveAttribute('href', '../people/');
   await page.getByRole('tab', { name: 'Activity' }).click();
   await expect(page.locator('#actsNoneMine')).toHaveText('Nothing logged or shelved yet.');
   await expect(page.locator('#actsNone')).toBeHidden();
   await page.getByRole('tab', { name: 'Network' }).click();
   await expect(page.locator('#netNone')).toHaveText('You follow nobody yet. Find people');
-  await expect(page.locator('#netNone').getByRole('link', { name: 'Find people' })).toHaveAttribute('href', '../members/');
+  await expect(page.locator('#netNone').getByRole('link', { name: 'Find people' })).toHaveAttribute('href', '../people/');
   await page.getByRole('tablist', { name: 'Network' }).getByRole('tab', { name: 'Followers' }).click();
   await expect(page.locator('#netNone')).toHaveText('Nobody follows you yet.');
   expect(errors).toEqual([]);
@@ -107,8 +107,8 @@ test('empty places: six words at most each, and no two the same', async ({ page 
   await open(page, '/'); await take('home', '#folNone');
   await open(page, '/u/?tester'); await take('profile shelf', '#noneText'); await take('watchlist strip', '#watchNone'); await take('from friends', '#friendsNone');
   await page.getByRole('tab', { name: 'Activity' }).click(); await take('activity', '#actsNoneMine');
-  await page.getByRole('tab', { name: 'Watchlist' }).click(); await take('watchlist tab', '#wNone');
-  await page.getByRole('tab', { name: 'Network' }).click(); await take('following', '#netNone');
+  await page.getByRole('tab', { name: 'Up next' }).click(); await take('watchlist tab', '#wNone');
+  await page.getByRole('tab', { name: 'Network' }).click(); await expect(page.locator('#netNone')).toBeVisible(); await take('following', '#netNone');
   await open(page, '/feed/?following'); await take('feed following', '#none > p');
   await open(page, '/build/'); await take('builder', '#books .empty p:first-child');
   for (const [where, t] of said){

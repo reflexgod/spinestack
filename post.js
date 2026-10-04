@@ -125,6 +125,7 @@ css.textContent = `
   .post .pava::before{content:"";position:absolute;inset:-4px}
   .phead .pwho{padding:12px 0;margin:-12px 0}
   .pwhat{margin-top:var(--s3,12px)}   /* clear of the name's press area */
+  .post{padding-top:var(--s5,24px)}   /* and the name's press area clear of what's above the post */
   .csearch input{min-height:48px}
   .pacts > *,.pacts .share,.phead .more,.pmenu button{min-height:44px}
   .pacts > *,.pacts .share,.phead .more{min-width:44px;justify-content:center}

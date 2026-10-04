@@ -17,7 +17,7 @@ const PAGES = [
   { name: 'profile', path: '/u/?mira' },
   { name: 'settings', path: '/settings/' },
   { name: 'shelves', path: '/shelves/' },
-  { name: 'members', path: '/members/' },
+  { name: 'people', path: '/people/' },
   { name: 'post', path: '/p/?bbbbbbbb-bbbb-4bbb-8bbb-000000000000' },   // @mira's Gummo
   { name: 'notifications', path: '/notifications/' },
 ];

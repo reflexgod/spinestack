@@ -54,8 +54,8 @@
   <button class="acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false" hidden><span class="ava" aria-hidden="true"></span><span class="who"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
   <nav class="links" aria-label="shelfstackd">
     <a href="../feed/">Feed</a>
-    <a href="../shelves/">Shelves</a><a href="../members/">Members</a>
-    <a class="find" href="../members/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
+    <a href="../shelves/">Shelves</a><a href="../people/">People</a>
+    <a class="find" href="../people/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
     <a class="bell" id="bell" href="./" aria-label="Notifications" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="dot" hidden></span></a>
   </nav>
   <a class="signin" id="signInBtn" href="#" hidden>Sign in</a>
@@ -92,7 +92,7 @@
 <script src="../post.js?v=20261012a"></script>
 <script>
 (() => {
-/* Notifications: /notifications/, yours only (migration 0009, notifications_list()). Likes, replies, me-toos and new
+/* Notifications: /notifications/, yours only (migration 0009, notifications_list()). Likes, replies, Sames and new
    followers, newest first, 30 at a time; ones in a row about the same thing are one line ("@a and 2 others liked your
    log of Gummo"). A reply is its own line, with what was said. Each goes to the post (/p/) or, for a follower, their
    profile. Opening the page marks them all read (notifications_read()), and the bell's dot goes; what was unread
@@ -157,7 +157,7 @@ function grouped(rows){
   }
   return out;
 }
-const DOES = {like: 'liked your log of', reply: 'replied to your log of', metoo: 'logged', follow: 'followed you'};
+const DOES = {like: 'liked your log of', reply: 'replied to your log of', metoo: 'said Same to your log of', follow: 'followed you'};
 function names(who){
   const at = w => `<a href="../u/?${esc(w.username)}">@${esc(w.username)}</a>`, n = who.length;
   return n === 1 ? at(who[0]) : n === 2 ? `${at(who[0])} and ${at(who[1])}` : `${at(who[0])} and ${n - 1} others`;
@@ -167,7 +167,7 @@ function line(g){
   li.className = g.unread ? 'unread' : '';
   const ava = first.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(first.avatar_key)}`)}" alt="" loading="lazy">` : esc(((first.display_name || '').trim() || first.username || '·').trim()[0] || '·');
   const what = g.kind === 'follow' ? DOES.follow
-    : g.kind === 'metoo' ? `${DOES.metoo} <a href="${post}">${esc(g.log_title || 'it')}</a> too`
+    : g.kind === 'metoo' ? `${DOES.metoo} <a href="${post}">${esc(g.log_title || 'it')}</a>`
     : `${DOES[g.kind]} <a href="${post}">${esc(g.log_title || 'a log')}</a>`;
   li.innerHTML = `<a class="fa" href="../u/?${esc(first.username)}" tabindex="-1" aria-hidden="true">${ava}</a>
     <p class="nl">${names(g.who)} ${what} <span class="ago">· <time datetime="${esc(g.at)}" title="${esc(new Date(g.at).toLocaleString())}">${Posts.ago(g.at)}</time></span></p>

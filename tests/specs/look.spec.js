@@ -118,7 +118,7 @@ test('the feed shows a shelf saved as a strip of spines 80px tall, in line with 
 // cover's title on the canvas, and the spines' own faces
 test('every page sets its type in Courier Prime, loaded from Google Fonts at 400, 700 and italic 400', async () => {
   const fs = require('fs'), path = require('path'), { ROOT } = require('../site');
-  const files = ['index.html', '404.html', 'privacy.html', 'admin.html', ...['build', 'feed', 'members', 'settings', 'shelves', 'u'].map(d => d + '/index.html')];
+  const files = ['index.html', '404.html', 'privacy.html', 'admin.html', ...['build', 'feed', 'people', 'settings', 'shelves', 'u'].map(d => d + '/index.html')];
   for (const f of files) {
     const html = fs.readFileSync(path.join(ROOT, f), 'utf8'), link = (html.match(/https:\/\/fonts\.googleapis\.com\/css2\?[^"]+/) || [''])[0];
     expect(link, f).toContain('family=Courier+Prime:ital,wght@0,400;0,700;1,400');

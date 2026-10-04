@@ -19,7 +19,7 @@ for (const signedIn of [false, true]) {
         const logo = bar.getByRole('link', { name: 'shelfstackd, home' });
         await expect(logo).toBeVisible();
         expect(await pathOf(logo)).toBe('/');
-        for (const [name, to] of [['Shelves', '/shelves/'], ['Members', '/members/'], ['Feed', '/feed/']]) {
+        for (const [name, to] of [['Shelves', '/shelves/'], ['People', '/people/'], ['Feed', '/feed/']]) {
           const link = bar.locator('.links').getByRole('link', { name, exact: true });
           await expect(link).toBeVisible();
           expect(await pathOf(link)).toBe(to);
@@ -28,13 +28,13 @@ for (const signedIn of [false, true]) {
         if (!isPhone()) await expect(bar.locator('.add')).toHaveText('Add');   // + ADD (a phone shows just the +)
         // the places are in one order, signed in or out: FEED · SHELVES · MEMBERS · search (they used to change places)
         const places = await bar.locator('.links a:not([hidden])').evaluateAll(as => as.map(a => ({ name: a.getAttribute('aria-label') || a.textContent.trim(), left: a.getBoundingClientRect().left, shown: a.getBoundingClientRect().width > 0 })));
-        expect(places.map(p => p.name)).toEqual(['Feed', 'Shelves', 'Members', 'Search']);
+        expect(places.map(p => p.name)).toEqual(['Feed', 'Shelves', 'People', 'Search']);
         await expect(bar.locator('.links a', { hasText: 'Feed' })).toHaveCSS('text-transform', 'uppercase');   // a word in capitals, no ⚡
         expect(places.every(p => p.shown)).toBe(true);
         expect(places.map(p => p.left)).toEqual(places.map(p => p.left).sort((a, b) => a - b));
         const search = bar.getByRole('link', { name: 'Search' });
         await expect(search).toBeVisible();
-        expect(await pathOf(search)).toBe('/members/');
+        expect(await pathOf(search)).toBe('/people/');
         if (signedIn) {
           // logo · you ▾ · FEED · SHELVES · MEMBERS · search · + ADD ▾
           await expect(bar.locator('#acctBtn')).toBeVisible();
@@ -175,7 +175,7 @@ test.describe('account menu', () => {
 test('every sign-out is for this device only', () => {
   test.skip(isPhone(), 'reads files, no browser: once is enough');
   const fs = require('fs'), path = require('path'), { ROOT } = require('../site');
-  for (const f of ['index.html', 'build/index.html', 'feed/index.html', 'u/index.html', 'settings/index.html', 'shelves/index.html', 'members/index.html', 'admin.html']) {
+  for (const f of ['index.html', 'build/index.html', 'feed/index.html', 'u/index.html', 'settings/index.html', 'shelves/index.html', 'people/index.html', 'admin.html']) {
     const calls = fs.readFileSync(path.join(ROOT, f), 'utf8').match(/auth\.signOut\([^)]*\)/g) || [];
     expect(calls.length, f).toBeGreaterThan(0);
     for (const c of calls) expect(c, f).toBe("auth.signOut({scope: 'local'})");
@@ -352,7 +352,7 @@ test('signed-in home: a welcome by name, the row from people you follow with All
   await expect(page.locator('main').getByRole('link', { name: /new shelf/i })).toHaveCount(0);   // + ADD in the bar is the way to a new shelf
   await expect(page.locator('#in h2')).toHaveText([/^New from people you follow/, /^Just shelved/]);
   const all = page.locator('#in').getByRole('link', { name: 'All activity' });
-  await expect(all).toHaveAttribute('href', 'feed/?following');
+  await expect(all).toHaveAttribute('href', 'feed/?friends');
   await expect(all.locator('svg')).toHaveCount(0);   // no ⚡: it's Letterboxd's
   const h2 = await page.locator('#in h2').first().boundingBox(), link = await all.boundingBox();
   expect(Math.abs(h2.x + h2.width - (link.x + link.width))).toBeLessThanOrEqual(1);   // at the right of the heading

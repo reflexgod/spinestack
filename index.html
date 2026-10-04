@@ -115,8 +115,8 @@
   <button class="acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false" hidden><span class="ava" aria-hidden="true"></span><span class="who"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
   <nav class="links" aria-label="shelfstackd">
     <a href="feed/">Feed</a>
-    <a href="shelves/">Shelves</a><a href="members/">Members</a>
-    <a class="find" href="members/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
+    <a href="shelves/">Shelves</a><a href="people/">People</a>
+    <a class="find" href="people/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
     <a class="bell" id="bell" href="notifications/" aria-label="Notifications" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="dot" hidden></span></a>
   </nav>
   <a class="signin" id="signInBtn" href="#" hidden>Sign in</a>
@@ -146,7 +146,7 @@
       <ul class="thumbs" id="outGrid"></ul>
     </section>
     <section id="stackersSec" hidden>
-      <h2>Recently active <a class="more" href="members/">More</a></h2>
+      <h2>Recently active <a class="more" href="people/">More</a></h2>
       <ul class="stackers" id="stackers"></ul>
     </section>
   </div>
@@ -157,10 +157,10 @@
       <h1 id="hello">Welcome back.</h1>
     </section>
     <section>
-      <h2>New from people you follow <a class="more" href="feed/?following">All activity</a></h2>
+      <h2>New from people you follow <a class="more" href="feed/?friends">All activity</a></h2>
       <p class="grey" id="folState" role="status">Loading…</p>
       <ul class="frow" id="folRow"></ul>
-      <p class="none" id="folNone" hidden>No one followed yet. <a href="members/">Find members</a></p>
+      <p class="none" id="folNone" hidden>No one followed yet. <a href="people/">Find people</a></p>
     </section>
     <section>
       <h2>Just shelved <a class="more" href="shelves/">More</a></h2>

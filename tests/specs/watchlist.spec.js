@@ -31,7 +31,7 @@ test('your Watchlist tab: what you want to see and read, a dotted + first, then 
   await open(page, '/u/?tester#watchlist');
   await expect(page.locator('#wLine')).toHaveText('You want to see 1 film and read 1 book.');
   const first = page.locator('#wGrid li').first();
-  await expect(first.locator('.wplus')).toHaveAccessibleName('Add a film or book to your watchlist');
+  await expect(first.locator('.wplus')).toHaveAccessibleName('Add a film or book to Up next');
   expect(await first.locator('.wplus').evaluate(b => [getComputedStyle(b).borderTopStyle, (b.getBoundingClientRect().height / b.getBoundingClientRect().width).toFixed(1)])).toEqual(['dashed', '1.5']);
   await expect(tiles(page)).toHaveCount(2);
   await expect(tiles(page).locator('canvas.worn')).toHaveCount(0);                 // no wear, no dog-ear: it isn't watched or read yet
@@ -54,7 +54,7 @@ test('your Watchlist tab: what you want to see and read, a dotted + first, then 
   }
   // the + is the box
   await first.locator('.wplus').click();
-  await expect(page.getByRole('combobox', { name: 'Add to your watchlist' })).toBeFocused();
+  await expect(page.getByRole('combobox', { name: 'Add to Up next' })).toBeFocused();
   expect(errors).toEqual([]);
 });
 
@@ -62,7 +62,7 @@ test('the box on your Watchlist tab suggests as you type, and a title picked goe
   const errors = watchErrors(page), net = await mockNetwork(page, { signedIn: true });
   let scans = 0; page.on('request', r => { if (r.url().includes('/scans?')) scans++; });
   await open(page, '/u/?tester#watchlist');
-  const box = page.getByRole('combobox', { name: 'Add to your watchlist' });
+  const box = page.getByRole('combobox', { name: 'Add to Up next' });
   await box.pressSequentially('gummo', { delay: 30 });
   const option = page.locator('#wSugg').getByRole('option', { name: /Gummo/ });
   await expect(option).toBeVisible();
@@ -71,7 +71,7 @@ test('the box on your Watchlist tab suggests as you type, and a title picked goe
   await option.click();
   expect((await req).postDataJSON()).toEqual({ kind: 'movie', title: 'Gummo', author: 'Harmony Korine', year: 1997, cover_src: 'url:https://image.tmdb.org/t/p/w500/gummo.jpg' });
   await again;                                                                         // the grid is read again
-  await expect(page.locator('#toast')).toHaveText('Gummo is on your watchlist.');
+  await expect(page.locator('#toast')).toHaveText('Gummo is in Up next.');
   await expect(page.locator('#addDialog')).toBeHidden();
   await expect(box).toHaveValue('');
   expect(scans).toBe(0);
@@ -84,26 +84,26 @@ test('the box on your Watchlist tab suggests as you type, and a title picked goe
   expect(errors).toEqual([]);
 });
 
-test('full at 6: "Your watchlist is full (6). Remove one to add another." and nothing is sent', async ({ page }) => {
+test('full at 6: "Up next is full (6). Remove one to add another." and nothing is sent', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   const six = Array.from({ length: 6 }, (_, i) => ({ ...WATCHLIST[0], id: `cccccccc-cccc-4ccc-8ccc-1000000000${i}0`, title: 'Title ' + i }));
   await watchRows(page, six);
   let sent = 0; page.on('request', r => { if (r.method() === 'POST' && r.url().includes('/rest/v1/watchlist')) sent++; });
   await open(page, '/u/?tester#watchlist');
   await expect(tiles(page)).toHaveCount(6);
-  await page.getByRole('combobox', { name: 'Add to your watchlist' }).pressSequentially('gummo', { delay: 30 });
+  await page.getByRole('combobox', { name: 'Add to Up next' }).pressSequentially('gummo', { delay: 30 });
   await page.locator('#wSugg').getByRole('option', { name: /Gummo/ }).click();
-  await expect(page.locator('#wSay')).toHaveText('Your watchlist is full (6). Remove one to add another.');
+  await expect(page.locator('#wSay')).toHaveText('Up next is full (6). Remove one to add another.');
   expect(sent).toBe(0);
   await expect(page.locator('#watchSec h2')).toContainText('6 of 6');
 });
 
-test('an empty watchlist: only the + and "Your watchlist is empty."', async ({ page }) => {
+test('an empty watchlist: only the + and "Nothing up next."', async ({ page }) => {
   await mockNetwork(page, { signedIn: true, fresh: true });
   await open(page, '/u/?tester#watchlist');
   await expect(page.locator('#wGrid li')).toHaveCount(1);
   await expect(page.locator('#wGrid .wplus')).toBeVisible();
-  await expect(page.locator('#wNone')).toHaveText('Your watchlist is empty.');
+  await expect(page.locator('#wNone')).toHaveText('Nothing up next.');
   await expect(page.locator('#wLine')).toBeHidden();
 });
 
@@ -115,8 +115,8 @@ test('someone else\'s Watchlist tab: their covers and what they want, nothing to
   await expect(page.locator('#wGrid .wplus')).toHaveCount(0);
   await expect(page.locator('#wGrid').getByRole('button', { name: /^(Remove|Mark watched|Mark read)$/ })).toHaveCount(0);
   const req = posted(page);
-  if (isPhone()) { await page.locator('#wGrid').getByRole('button', { name: 'More for Stalker (1979)' }).click(); await page.getByRole('menuitem', { name: 'Add to watchlist' }).click(); }
-  else { await page.locator('#wGrid .wc').first().hover(); await page.getByRole('button', { name: 'Add Stalker (1979) to watchlist' }).click(); }
+  if (isPhone()) { await page.locator('#wGrid').getByRole('button', { name: 'More for Stalker (1979)' }).click(); await page.getByRole('menuitem', { name: 'Add to Up next' }).click(); }
+  else { await page.locator('#wGrid .wc').first().hover(); await page.getByRole('button', { name: 'Add Stalker (1979) to Up next' }).click(); }
   expect((await req).postDataJSON()).toMatchObject({ kind: 'movie', title: 'Stalker', year: 1979 });
 });
 
@@ -126,7 +126,7 @@ test('before 0008 is run: no Make public, and someone else\'s watchlist shows as
   await open(page, '/u/?tester#watchlist');
   await expect(page.locator('#wPrivacy')).toBeHidden();
   await open(page, '/u/?mira');
-  await expect(page.getByRole('tab', { name: 'Watchlist' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Up next' })).toBeVisible();
   await expect(page.locator('#watchSec')).toBeVisible();
 });
 test('after 0008: yours is private with Make public, which makes it public (and back)', async ({ page }) => {
@@ -140,29 +140,29 @@ test('after 0008: yours is private with Make public, which makes it public (and 
   await b.click();
   expect((await req).postDataJSON()).toEqual({ watchlist_public: true });
   await expect(b).toHaveText('Make private');
-  await expect(page.locator('#toast')).toHaveText('Your watchlist is public.');
+  await expect(page.locator('#toast')).toHaveText('Your Up next is public.');
 });
 test('after 0008: someone else\'s private watchlist isn\'t shown at all; a public one is', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await privacyIs(page, false);
   await open(page, '/u/?mira');
-  await expect(page.getByRole('tab', { name: 'Watchlist' })).toBeHidden();
+  await expect(page.getByRole('tab', { name: 'Up next' })).toBeHidden();
   await expect(page.locator('#watchSec')).toBeHidden();
   await open(page, '/u/?mira#watchlist');
   await expect(page.getByRole('tab', { name: 'Profile' })).toHaveAttribute('aria-selected', 'true');   // the address goes back to Profile
   await page.unroute(u => u.pathname === '/rest/v1/profiles');
   await privacyIs(page, true);
   await open(page, '/u/?mira');
-  await expect(page.getByRole('tab', { name: 'Watchlist' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Up next' })).toBeVisible();
 });
 
 /* ---------- from any cover or spine ---------- */
 async function addFrom(page, scope, name) {
   if (isPhone()) {
     await scope.getByRole('button', { name: `More for ${name}` }).click();
-    await scope.getByRole('menuitem', { name: 'Add to watchlist' }).click();
+    await scope.getByRole('menuitem', { name: 'Add to Up next' }).click();
   } else {
-    await scope.getByRole('button', { name: `Add ${name} to watchlist` }).click();
+    await scope.getByRole('button', { name: `Add ${name} to Up next` }).click();
   }
 }
 test('the feed: a post\'s share has Add to Up next, then In Up next; your own post has none', async ({ page }) => {
@@ -175,7 +175,7 @@ test('the feed: a post\'s share has Add to Up next, then In Up next; your own po
   await log.getByRole('button', { name: /^Share/ }).click();
   await log.getByRole('menuitem', { name: 'Add to Up next' }).click();
   expect((await req).postDataJSON()).toEqual({ kind: 'movie', title: 'Gummo', author: 'Harmony Korine', year: 1997, cover_src: 'url:https://image.tmdb.org/t/p/w500/gummo.jpg', from_user: '22222222-2222-4222-8222-222222222222' });
-  await expect(page.locator('#toast')).toHaveText('Gummo is on your watchlist.');
+  await expect(page.locator('#toast')).toHaveText('Gummo is in Up next.');
   await log.getByRole('button', { name: /^Share/ }).click();
   await expect(log.getByRole('menuitem', { name: 'In Up next' })).toBeDisabled();
   const mine = page.locator('#items .post').filter({ hasText: 'read Just Kids' });
