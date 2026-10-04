@@ -343,14 +343,14 @@ test('signed out, + ADD asks to sign in, and once signed in the Add dialog opens
   await expect(page.getByRole('dialog', { name: 'What did you watch or read?' })).toBeHidden();   // once, not every time
 });
 
-test('signed-in home: a welcome by name, the row from people you follow with All activity, then Just shelved', async ({ page }) => {
+test('signed-in home: a welcome by name, the row from people you follow with See all, then Just shelved', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/');
   await expect(page.locator('#hello')).toHaveText('Welcome back, @tester.');   // the row's heading says the rest
   await expect(page.locator('#hello a')).toHaveAttribute('href', 'u/?tester');
   await expect(page.locator('main').getByRole('link', { name: /new shelf/i })).toHaveCount(0);   // + ADD in the bar is the way to a new shelf
   await expect(page.locator('#in h2')).toHaveText([/^New from people you follow/, /^Just shelved/]);
-  const all = page.locator('#in').getByRole('link', { name: 'All activity' });
+  const all = page.locator('#in').getByRole('link', { name: 'See all from people you follow' });
   await expect(all).toHaveAttribute('href', 'feed/?friends');
   await expect(all.locator('svg')).toHaveCount(0);   // no ⚡: it's Letterboxd's
   const h2 = await page.locator('#in h2').first().boundingBox(), link = await all.boundingBox();

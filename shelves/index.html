@@ -206,10 +206,10 @@ async function more(){
 }
 $('#more').addEventListener('click', more);
 
-// the button by the line: signed in, Your shelf (outlined: + ADD is the black one); signed out, Make a shelf in black
+// the button by the line: signed in, Edit your shelf (plain text); signed out, Make a shelf in black
 function paintMine(signedIn){
   const a = $('#mine');
-  a.textContent = signedIn ? 'Your shelf' : 'Make a shelf'; a.classList.toggle('primary', !signedIn);
+  a.textContent = signedIn ? 'Edit your shelf' : 'Make a shelf'; a.classList.toggle('primary', !signedIn);
   document.documentElement.classList.toggle('signedout', !signedIn);
 }
 paintMine(!document.documentElement.classList.contains('signedout'));

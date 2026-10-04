@@ -1,6 +1,6 @@
 // The watchlist, as Letterboxd's: a tab of its own on a profile (/u/?name#watchlist) with what they want to see and
 // read, the covers (clean and still sealed: wear is for a log), and on your own a box that adds a title straight in (the + ADD dialog's search, no dialog
-// and no spine search), a dotted + first, Remove and ✓ Mark watched / ✓ Mark read. It holds 6. Anywhere else a cover or a spine shows
+// and no spine search), a dotted + first, Remove and Mark watched / Mark read. It holds 6. Anywhere else a cover or a spine shows
 // (the feed, someone's shelf, From friends), a bookmark on hover, or ••• on a phone, puts it on your watchlist; signed
 // out that's the sign-in sheet first. Private by default once supabase/migrations/0008_watchlist_privacy.sql is run.
 const { test, expect } = require('@playwright/test');

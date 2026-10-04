@@ -415,7 +415,7 @@ function item(x, opt = {}){
   const review = x.review != null && x.review !== '' ? x.review : (x.caption || '');
   const at = x.at || x.created_at, url = postUrl(x.id), label = `${x.title}${x.year ? ` (${x.year})` : ''}`, name = (x.display_name || '').trim();
   const say = !review ? '' : x.spoiler && social
-    ? `<div class="say spoil"><p class="sayt" aria-hidden="true">${esc(review)}</p><button class="spoilbtn" type="button" aria-label="Show the review. It has spoilers."><span>Spoilers. Show</span></button></div>`
+    ? `<div class="say spoil"><p class="sayt" aria-hidden="true">${esc(review)}</p><button class="spoilbtn" type="button" aria-label="Show the review. It has spoilers."><span>Show spoilers</span></button></div>`
     : `<p class="say">${esc(review)}</p>`;
   li.innerHTML = `<a class="pava" href="${esc(profileUrl(x.username))}" tabindex="-1" aria-hidden="true">${avaHtml(x)}</a>
     <div class="pbody">

@@ -153,13 +153,13 @@ test('Account: the private profile switch saves as it is switched', async ({ pag
   expect(errors).toEqual([]);
 });
 
-test('your profile: Edit profile, + photo and add a bio go to settings, and the old sheet is gone', async ({ page }) => {
+test('your profile: Edit profile, Add a photo and add a bio go to settings, and the old sheet is gone', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?tester');
   const edit = page.getByRole('link', { name: 'Edit profile' });
   await expect(edit).toBeVisible();
   await expect(edit).toHaveAttribute('href', '../settings/');
-  await expect(page.locator('#ava').getByRole('link', { name: '+ photo' })).toHaveAttribute('href', '../settings/#photo');
+  await expect(page.locator('#ava').getByRole('link', { name: 'Add a photo' })).toHaveAttribute('href', '../settings/#photo');
   await expect(page.locator('#editSheet')).toHaveCount(0);
   await edit.click();
   await expect(page).toHaveURL(/\/settings\/$/);

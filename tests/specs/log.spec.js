@@ -24,11 +24,11 @@ test('three choices, Log it first and picked (logging is posting); the dialog\'s
   await open(page, '/feed/?everyone');
   await page.locator('header.top .add').click();
   await expect(choices(page)).toHaveCount(3);
-  for (const [i, name] of ['Log it', 'Put on shelf', 'Up next'].entries()) await expect(choices(page).nth(i)).toHaveAccessibleName(name);
+  for (const [i, name] of ['Log it', 'Put on shelf', 'Add to Up next'].entries()) await expect(choices(page).nth(i)).toHaveAccessibleName(name);
   await expect(choices(page).first()).toBeChecked();
   await expect(dialog(page)).toHaveAccessibleName('What did you watch or read?');   // no ellipsis on a title: it reads as cut off
   await expect(dialog(page).getByRole('combobox', { name: 'Film or book name' })).toBeFocused();
-  for (const [choice, title] of [['Put on shelf', 'Add to your shelf'], ['Up next', 'Add to Up next'], ['Log it', 'What did you watch or read?']]) {
+  for (const [choice, title] of [['Put on shelf', 'Add to your shelf'], ['Add to Up next', 'Add to Up next'], ['Log it', 'What did you watch or read?']]) {
     await dialog(page).getByRole('radio', { name: choice }).check();
     await expect(dialog(page)).toHaveAccessibleName(title);
   }
@@ -79,7 +79,7 @@ test('Watchlist: the cover and Add to watchlist; the database\'s answers when it
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/feed/?everyone');
-  await pick(page, 'Up next');
+  await pick(page, 'Add to Up next');
   const d = dialog(page);
   await expect(d.locator('#addCov img')).toHaveAttribute('alt', 'The cover of Gummo');
   await expect(d.getByRole('textbox', { name: /Caption/ })).toBeHidden();
@@ -92,7 +92,7 @@ test('Watchlist: the cover and Add to watchlist; the database\'s answers when it
   await expect(page.locator('#toast')).toHaveText('Gummo is in Up next.');
   // full: the database says so, and the dialog stays open with it
   await refuse(page, 'watchlist', 400, { code: 'P0001', message: 'Your watchlist holds 6. Log one or remove one first.' });
-  await pick(page, 'Up next');
+  await pick(page, 'Add to Up next');
   await d.getByRole('button', { name: 'Add to Up next' }).click();
   await expect(d.locator('#addStatus')).toHaveText('Up next is full (6). Remove one to add another.');
   await expect(d).toBeVisible();
@@ -113,7 +113,7 @@ test('a title picked keeps its place when the choice changes', async ({ page }) 
   await d.getByRole('radio', { name: 'Put on shelf' }).check();
   await expect(d.getByRole('radiogroup', { name: 'Which spine' }).getByRole('radio')).toHaveCount(2);   // its spines, as before
   await expect(d.getByRole('button', { name: 'Post' })).toBeHidden();
-  await d.getByRole('radio', { name: 'Up next' }).check();
+  await d.getByRole('radio', { name: 'Add to Up next' }).check();
   await expect(d.getByRole('button', { name: 'Add to Up next' })).toBeVisible();
   await expect(d.locator('#addPostTitle')).toHaveText('Gummo (1997)');
   // Change: back to the results
@@ -157,7 +157,7 @@ test('a database without logs (0007 not run on it): Post says logging isn\'t ope
   await pick(page, 'Log it');
   await dialog(page).getByRole('button', { name: 'Post' }).click();
   await expect(dialog(page).locator('#addStatus')).toHaveText('Logging isn’t open yet. Try again soon.');
-  await dialog(page).getByRole('radio', { name: 'Up next' }).check();
+  await dialog(page).getByRole('radio', { name: 'Add to Up next' }).check();
   await dialog(page).getByRole('button', { name: 'Add to Up next' }).click();
   await expect(dialog(page).locator('#addStatus')).toHaveText('Up next isn’t open yet. Try again soon.');
 });
@@ -168,7 +168,7 @@ test('Watchlist after Log it: the picked title\'s cover turns clean, with no wea
   await pick(page, 'Log it');
   const d = dialog(page);
   await expect(d.locator('#addCov canvas.worn')).toHaveCount(1);   // a log: as the feed shows it
-  await d.getByRole('radio', { name: 'Up next' }).check();
+  await d.getByRole('radio', { name: 'Add to Up next' }).check();
   await expect(d.locator('#addCov img')).toHaveAttribute('alt', 'The cover of Gummo');
   await page.waitForTimeout(300);   // a worn cover still on its way doesn't come back over it
   await expect(d.locator('#addCov canvas')).toHaveCount(0);

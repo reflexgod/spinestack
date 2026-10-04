@@ -291,7 +291,7 @@ dlg.innerHTML = `
   <div class="addwhat" role="radiogroup" aria-label="What to do with it">
     <label><input type="radio" name="addWhat" value="log" checked><span>Log it</span></label>
     <label><input type="radio" name="addWhat" value="shelf"><span>Put on shelf</span></label>
-    <label><input type="radio" name="addWhat" value="watch"><span>Up next</span></label>
+    <label><input type="radio" name="addWhat" value="watch"><span>Add to Up next</span></label>
   </div>
   <p class="addneed" id="addNeed" hidden><span id="addNeedText"></span> <button class="dash sm" id="addNeedGo" type="button"></button></p>
   <div id="addFind">

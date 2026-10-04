@@ -185,7 +185,7 @@ test('on your own profile the account menu\'s Activity and Network change the ta
 const row = (page, list, title) => page.locator(`#${list} li`).filter({ hasText: title });
 const sent = (page, method, table) => page.waitForRequest(r => r.method() === method && new URL(r.url()).pathname === '/rest/v1/' + table);
 
-test('your watchlist: a strip on Profile; on its tab each cover has Remove and ✓ Mark watched (or read); From friends: Keep · Remove · ✓ Mark watched / read', async ({ page }) => {
+test('your watchlist: a strip on Profile; on its tab each cover has Remove and Mark watched (or read); From friends: Keep · Remove · Mark watched / read', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?tester');
@@ -201,8 +201,8 @@ test('your watchlist: a strip on Profile; on its tab each cover has Remove and �
   await expect(page.locator('#friendsSec h2')).toHaveText('From friends');
   await expect(page.locator('#friends li')).toHaveCount(2);
   await expect(row(page, 'friends', 'Gummo')).toContainText('from @mira');
-  await expect(row(page, 'friends', 'Gummo').locator('.tacts > button')).toHaveText(['Keep', 'Remove', '✓ Mark watched']);
-  await expect(row(page, 'friends', 'The Waves').locator('.tacts > button')).toHaveText(['Keep', 'Remove', '✓ Mark read']);
+  await expect(row(page, 'friends', 'Gummo').locator('.tacts > button')).toHaveText(['Keep', 'Remove', 'Mark watched']);
+  await expect(row(page, 'friends', 'The Waves').locator('.tacts > button')).toHaveText(['Keep', 'Remove', 'Mark read']);
   // Keep: on your watchlist, saying whose log it came from
   let req = sent(page, 'POST', 'watchlist');
   await row(page, 'friends', 'Gummo').getByRole('button', { name: 'Keep' }).click();
@@ -213,18 +213,18 @@ test('your watchlist: a strip on Profile; on its tab each cover has Remove and �
   await row(page, 'friends', 'The Waves').getByRole('button', { name: 'Remove' }).click();
   await page.locator('#confirmSheet').getByRole('button', { name: 'Remove' }).click();   // it asks first
   expect((await req).postDataJSON()).toEqual({ item_key: 'book:the waves:1931' });
-  // the Watchlist tab: each cover with Remove and ✓ Mark watched (or read): an action, not a state
+  // the Watchlist tab: each cover with Remove and Mark watched (or read): an action, not a state
   await page.getByRole('tab', { name: 'Up next' }).click();
-  await expect(row(page, 'wGrid', 'Paris, Texas').getByRole('button')).toHaveText(['Remove', '✓ Mark watched']);
+  await expect(row(page, 'wGrid', 'Paris, Texas').getByRole('button')).toHaveText(['Remove', 'Mark watched']);
   await expect(row(page, 'wGrid', 'Paris, Texas').getByRole('button', { name: 'Mark watched', exact: true })).toHaveCount(1);   // the tick isn't read out
-  await expect(row(page, 'wGrid', 'Orlando').getByRole('button')).toHaveText(['Remove', '✓ Mark read']);
+  await expect(row(page, 'wGrid', 'Orlando').getByRole('button')).toHaveText(['Remove', 'Mark read']);
   req = sent(page, 'DELETE', 'watchlist');
   await row(page, 'wGrid', 'Orlando').getByRole('button', { name: 'Remove' }).click();
   await expect(page.locator('#confirmTitle')).toHaveText('Remove “Orlando” from Up next?');
   await page.locator('#confirmSheet').getByRole('button', { name: 'Remove' }).click();
   expect(new URL((await req).url()).searchParams.get('id')).toBe('eq.' + WATCHLIST[1].id);
   await expect(page.locator('#toast')).toHaveText('Orlando is off Up next.');
-  // ✓ Mark watched: + ADD's Log it, on that title; Post logs it, and the lists are read again
+  // Mark watched: + ADD's Log it, on that title; Post logs it, and the lists are read again
   await row(page, 'wGrid', 'Paris, Texas').getByRole('button', { name: 'Mark watched' }).click();
   const d = page.getByRole('dialog', { name: 'What did you watch or read?' });
   await expect(d).toBeVisible();

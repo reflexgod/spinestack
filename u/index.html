@@ -126,7 +126,7 @@
 .wcap{font-size:var(--fs-small);overflow-wrap:anywhere}
 .wcap b{font-weight:500}
 .wcap span{color:var(--grey)}
-.wacts{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s2)}   /* one under the other: ✓ Mark watched doesn't fit beside Remove under a cover */
+.wacts{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s2)}   /* one under the other: Mark watched doesn't fit beside Remove under a cover */
 @media (pointer:coarse){ .wacts{gap:calc(var(--s5) + var(--s1))} }   /* and a press apart (44px, middle to middle) */
 .wplus{display:grid;place-items:center;width:100%;aspect-ratio:2/3;border:1px dashed var(--ink);border-radius:var(--radius);background:var(--paper);color:var(--ink);font:400 32px var(--mono);cursor:pointer;padding:0}
 .wplus:hover{background:var(--wash)}
@@ -760,7 +760,7 @@ function paintHead(){
   $('#handle').hidden = !name;
   const ava = $('#ava');
   if (p.avatar_key){ ava.className = 'ava'; ava.innerHTML = `<img src="${esc(WORKER + '/m/img?k=' + encodeURIComponent(p.avatar_key))}" alt="${esc(name || p.username)}">`; }
-  else if (mine){ ava.className = 'ava add'; ava.innerHTML = '<a class="addphoto" href="../settings/#photo">+ photo</a>'; }   // Settings, on its Photo tab
+  else if (mine){ ava.className = 'ava add'; ava.innerHTML = '<a class="addphoto" href="../settings/#photo">Add a photo</a>'; }   // Settings, on its Photo tab
   else { ava.className = 'ava'; ava.textContent = (name || p.username).trim()[0] || '·'; ava.setAttribute('aria-hidden', 'true'); }
   $('#editBtn').hidden = !mine;
   $('#reportProfile').hidden = mine;
@@ -829,14 +829,14 @@ async function paintHero(){
    database without them, neither shows. The watchlist holds Add.WATCH_CAP titles (add.js; 6). On the Profile tab it's
    a strip of up to four covers and See all; its own tab (#watchlist) has them all, clean and still sealed (not worn: that is for a log), with what they want
    to see and read over them. Yours has a box to add one (the + ADD dialog's search, add.js), a dotted + first, and
-   Remove and ✓ Mark watched (or read) on each. From friends (yours only) is what the people you follow logged lately, that you
+   Remove and Mark watched (or read) on each. From friends (yours only) is what the people you follow logged lately, that you
    haven't. A watchlist is private once migration 0008 is run (profiles.watchlist_public):
    until then there's no such column, and it's seen as before, by whoever can see the profile. ---------- */
 const lists = {watch: [], friends: [], privacy: null};   // privacy: null before 0008; then true (public) or false
 const coverOf = ref => ref ? `${WORKER}/img?url=${encodeURIComponent(String(ref).replace(/^url:/, ''))}` : '';
 const asItem = r => ({kind: r.kind, title: r.title, year: r.year ? String(r.year) : '', creator: r.author || '', cover: r.cover_src ? String(r.cover_src).replace(/^url:/, '') : ''});
 // the action, not a state: it logs the title (+ ADD's Log it). The tick is left out of its name for a screen reader
-const didIt = r => `<span aria-hidden="true">✓ </span>Mark ${r.kind === 'movie' ? 'watched' : 'read'}`;
+const didIt = r => `Mark ${r.kind === 'movie' ? 'watched' : 'read'}`;
 // a title: its cover, its name and year, who made it, Film or Book (and whose log it came from), and its buttons
 function titleRow(r, i, acts, from){
   const li = document.createElement('li'); li.dataset.i = i;
@@ -949,7 +949,7 @@ async function paintFriends(){
   if (view.mine) try { rows = await rpc('from_friends', {n: 6}); } catch {}
   lists.friends = rows || [];
   $('#friendsSec').hidden = !rows;
-  // Keep puts it on your watchlist, Remove takes it out of here for good, ✓ Mark watched (or read) logs it
+  // Keep puts it on your watchlist, Remove takes it out of here for good, Mark watched (or read) logs it
   $('#friends').replaceChildren(...lists.friends.map((r, i) => titleRow(r, i, `<button class="dash sm" type="button" data-f="keep">Keep</button><button class="dash sm grey" type="button" data-f="remove">Remove</button><button class="dash sm" type="button" data-f="log">${didIt(r)}</button>`, r.from_username)));
   $('#friendsNone').hidden = !!lists.friends.length;
   // each cover: a watchlist button (kept from whose log it was), as Keep does
@@ -984,7 +984,7 @@ $('#friends').addEventListener('click', async e => {
     paintLists();
   } catch (err){ toast(keptError(err)); if (b.isConnected) b.disabled = false; }
 });
-// something logged or put on the watchlist with + ADD on this page (a ✓ Mark watched here, too): the lists and Activity again
+// something logged or put on the watchlist with + ADD on this page (a Mark watched here, too): the lists and Activity again
 document.addEventListener('shelfstackd:added', () => {
   if (!view.mine || ONE) return;
   paintLists();
@@ -1068,7 +1068,7 @@ function paintItems(){
     const li = document.createElement('li'); li.dataset.i = i;
     li.innerHTML = `<span class="sthumb"></span>
       <span class="st"><b>${esc(r.title || 'Untitled')}${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${esc([r.author, r.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · '))}</span></span>
-      <span class="sact"><button class="dash sm" type="button" data-log="${i}">Log</button>${!have(r) ? `<button class="dash sm" type="button" data-add="${i}">+ Add to my shelf</button>` : view.mine ? '' : '<span class="onmine">On your shelf</span>'}</span>`;
+      <span class="sact"><button class="dash sm" type="button" data-log="${i}">Log</button>${!have(r) ? `<button class="dash sm" type="button" data-add="${i}">Add to my shelf</button>` : view.mine ? '' : '<span class="onmine">On your shelf</span>'}</span>`;
     // someone else's shelf: each spine onto your watchlist too
     if (!view.mine) Nav.watchable(li.querySelector('.sthumb'), {kind: r.kind, title: r.title, year: r.year ? String(r.year) : '', creator: r.author || '', cover: /^url:/.test(r.cover_src || '') ? r.cover_src.slice(4) : ''}, {moreIn: li.querySelector('.sact')});
     return li;

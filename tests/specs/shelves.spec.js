@@ -28,9 +28,9 @@ test('Shelves, signed out: the title, Make a shelf, and every public shelf as a 
 });
 
 // Signed out, nothing here says "your": the button is Make a shelf, black as on home, and the bar's + is outlined.
-// Signed in, it's Your shelf, outlined, and + ADD is the black one
+// Signed in, it's Edit your shelf, plain grey text, and + ADD is solid black
 const bg = el => getComputedStyle(el).backgroundColor;
-test('Shelves: signed out, Make a shelf in black, and no "Your shelf"', async ({ page }) => {
+test('Shelves: signed out, Make a shelf in black, and no "Edit your shelf"', async ({ page }) => {
   await mockNetwork(page);
   await open(page, '/shelves/');
   const main = page.locator('main');
@@ -39,10 +39,10 @@ test('Shelves: signed out, Make a shelf in black, and no "Your shelf"', async ({
   expect(await main.getByRole('link', { name: 'Make a shelf' }).evaluate(bg)).toBe('rgb(0, 0, 0)');
   expect(await page.locator('header.top .add').evaluate(bg)).toBe('rgb(0, 0, 0)');   // solid black too: two looks, solid or plain text
 });
-test('Shelves: signed in, Your shelf is plain grey text, and + ADD is solid black', async ({ page }) => {
+test('Shelves: signed in, Edit your shelf is plain grey text, and + ADD is solid black', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/shelves/');
-  const mine = page.locator('main').getByRole('link', { name: 'Your shelf' });
+  const mine = page.locator('main').getByRole('link', { name: 'Edit your shelf' });
   await expect(mine).toHaveAttribute('href', '../build/');
   await expect(page.locator('main').getByRole('link', { name: 'Make a shelf' })).toHaveCount(0);
   expect(await mine.evaluate(bg)).toBe('rgba(0, 0, 0, 0)');
