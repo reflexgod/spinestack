@@ -281,3 +281,22 @@ test('the feed without 0010 asks activity(), and has no recs', async ({ page }) 
   await expect(page.locator('#items .post').first()).toBeVisible();
   await expect(page.locator('#items .recpost, #items .recby')).toHaveCount(0);
 });
+
+/* ---------- notifications ---------- */
+test('notifications, with 0010: a rec for you, your rec watched, a reply in a thread; each its own line, to the Recs tab', async ({ page }) => {
+  const errors = watchErrors(page);
+  await mockNetwork(page, { signedIn: true, social: true, recs: true });
+  await open(page, '/notifications/');
+  const lines = page.locator('#nlist li');
+  await expect(lines).toHaveCount(7);
+  const text = (await lines.locator('.nl').allTextContents()).map(t => t.replace(/\s+/g, ' ').trim().replace(/ · \S+$/, ''));
+  expect(text.slice(2, 5)).toEqual([
+    '@mira recommended Paris, Texas to you',
+    '@mira read The Waves, your rec',
+    '@mira replied about Stalker',
+  ]);
+  await expect(lines.nth(2).getByRole('link', { name: 'Paris, Texas' })).toHaveAttribute('href', '../u/?tester#recs');
+  await expect(lines.nth(3).getByRole('link', { name: 'The Waves' })).toHaveAttribute('href', '../u/?tester#sent');
+  await expect(lines.nth(4).locator('.nt')).toHaveText('Starting it tonight.');
+  expect(errors).toEqual([]);
+});

@@ -147,17 +147,20 @@ document.addEventListener('click', e => { if (e.target.closest('[data-signin]'))
 
 /* ---------- the list ---------- */
 const notes = {rows: [], last: null};
-// ones in a row about the same thing (the same kind, and the same log) are one; a reply is always its own
+// ones in a row about the same thing (the same kind, and the same log) are one; a reply, and anything about a rec (0010), is always its own
 function grouped(rows){
   const out = [];
   for (const n of rows){
     const g = out[out.length - 1];
-    if (g && n.kind !== 'reply' && g.kind === n.kind && g.log === n.log && !g.who.some(w => w.actor === n.actor)) { g.who.push(n); g.unread = g.unread || !n.read; continue; }
-    out.push({kind: n.kind, log: n.log, log_kind: n.log_kind, log_title: n.log_title, at: n.created_at, reply_text: n.reply_text, unread: !n.read, who: [n]});
+    if (g && !ALONE.test(n.kind) && g.kind === n.kind && g.log === n.log && !g.who.some(w => w.actor === n.actor)) { g.who.push(n); g.unread = g.unread || !n.read; continue; }
+    out.push({kind: n.kind, log: n.log, log_kind: n.log_kind, log_title: n.log_title, rec: n.rec, rec_kind: n.rec_kind, rec_title: n.rec_title, at: n.created_at, reply_text: n.reply_text, unread: !n.read, who: [n]});
   }
   return out;
 }
+const ALONE = /^(reply|rec|rec_watched|rec_reply)$/;
 const DOES = {like: 'liked your log of', reply: 'replied to your log of', metoo: 'said Same to your log of', follow: 'followed you'};
+// a rec (0010): it's on your profile's Recs tab, For you (one for you) or Sent (yours, watched)
+const recsAt = hash => me.profile ? `../u/?${encodeURIComponent(me.profile.username)}${hash}` : '../u/';
 function names(who){
   const at = w => `<a href="../u/?${esc(w.username)}">@${esc(w.username)}</a>`, n = who.length;
   return n === 1 ? at(who[0]) : n === 2 ? `${at(who[0])} and ${at(who[1])}` : `${at(who[0])} and ${n - 1} others`;
@@ -166,12 +169,16 @@ function line(g){
   const li = document.createElement('li'), first = g.who[0], post = g.log ? `../p/?${esc(g.log)}` : '';
   li.className = g.unread ? 'unread' : '';
   const ava = first.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(first.avatar_key)}`)}" alt="" loading="lazy">` : esc(((first.display_name || '').trim() || first.username || '·').trim()[0] || '·');
-  const what = g.kind === 'follow' ? DOES.follow
+  const rt = `${esc(g.rec_title || 'a title')}`;
+  const what = g.kind === 'rec' ? `recommended <a href="${esc(recsAt('#recs'))}">${rt}</a> to you`
+    : g.kind === 'rec_watched' ? `${g.rec_kind === 'movie' ? 'watched' : 'read'} <a href="${esc(recsAt('#sent'))}">${rt}</a>, your rec`
+    : g.kind === 'rec_reply' ? `replied about <a href="${esc(recsAt('#recs'))}">${rt}</a>`
+    : g.kind === 'follow' ? DOES.follow
     : g.kind === 'metoo' ? `${DOES.metoo} <a href="${post}">${esc(g.log_title || 'it')}</a>`
     : `${DOES[g.kind]} <a href="${post}">${esc(g.log_title || 'a log')}</a>`;
   li.innerHTML = `<a class="fa" href="../u/?${esc(first.username)}" tabindex="-1" aria-hidden="true">${ava}</a>
     <p class="nl">${names(g.who)} ${what} <span class="ago">· <time datetime="${esc(g.at)}" title="${esc(new Date(g.at).toLocaleString())}">${Posts.ago(g.at)}</time></span></p>
-    ${g.kind === 'reply' && g.reply_text ? `<p class="nt">${esc(g.reply_text)}</p>` : ''}`;
+    ${(g.kind === 'reply' || g.kind === 'rec_reply') && g.reply_text ? `<p class="nt">${esc(g.reply_text)}</p>` : ''}`;
   return li;
 }
 async function more(){
