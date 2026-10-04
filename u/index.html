@@ -498,8 +498,8 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../spinetip.js?v=20261004a"></script>
-<script src="../wear.js?v=20261004a"></script>
-<script src="../nav.js?v=20261015a"></script>
+<script src="../wear.js?v=20261016a"></script>
+<script src="../nav.js?v=20261016a"></script>
 <script>
 (() => {
 /* A profile: /u/?username, and its shelf on its own page: /u/?username&shelf (one shelf each), or a shelf by its id,
@@ -1543,7 +1543,7 @@ function actLine(x){
     li.classList.add('log');
     li.innerHTML = `<p class="line">${who} ${verb} <a href="${esc(Nav.titleUrl(asItem(l)))}"><b>${esc(l.title)}</b></a> <a class="ago" href="../p/?${esc(l.id)}">· <time datetime="${esc(l.created_at)}" title="${esc(new Date(l.created_at).toLocaleString())}">${day(l.created_at)}</time></a>${view.mine ? ` <button class="dash sm grey" type="button" data-unlog="${esc(l.id)}">Delete</button>` : ` <button class="dash sm" type="button" data-relog="${esc(l.id)}">Log</button>`}</p>
       <div class="logbody"><span class="cover"></span>${l.caption ? `<p class="say">${esc(l.caption)}</p>` : ''}</div>`;
-    li.querySelector('.cover').append(Wear.cover({src: coverOf(l.cover_src), seed: l.id, at: l.created_at, label: `${l.title}${l.year ? ` (${l.year})` : ''}, ${verb} by @${p.username}`, width: COVER}));
+    li.querySelector('.cover').append(Wear.cover({kind: l.kind, src: coverOf(l.cover_src), seed: l.id, at: l.created_at, label: `${l.title}${l.year ? ` (${l.year})` : ''}, ${verb} by @${p.username}`, width: COVER}));
     if (!view.mine) Nav.watchable(li.querySelector('.cover'), asItem(l), {moreIn: li});   // someone else's log: onto your watchlist
     return li;
   }

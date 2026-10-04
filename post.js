@@ -321,7 +321,7 @@ async function composer(host, opt = {}){
     m = item; say.textContent = '';
     q('.ct').textContent = m.title + (m.year ? ` (${m.year})` : ''); q('.cby').textContent = m.creator ? '· ' + m.creator : '';
     const cov = q('.ccov'); cov.replaceChildren();
-    if (window.Wear) cov.append(Wear.cover({src: m.cover ? `${WORKER}/img?url=${encodeURIComponent(m.cover)}` : '', seed: keyOf(m), at: new Date().toISOString(), label: `The cover of ${m.title}, as the feed will show it`, width: 72}));
+    if (window.Wear) cov.append(Wear.cover({kind: m.kind, src: m.cover ? `${WORKER}/img?url=${encodeURIComponent(m.cover)}` : '', seed: keyOf(m), at: new Date().toISOString(), label: `The cover of ${m.title}, as the feed will show it`, width: 72}));
     search.hidden = true; picked.hidden = false; go.disabled = false; sizeUp();
     f = await fields(q('.cfields'), m);
     if (mine === run) f.focus();
@@ -431,7 +431,7 @@ function item(x, opt = {}){
       <div class="pacts"></div>
     </div>
     <a class="cover" href="${esc(titleUrl(x))}" tabindex="-1" aria-hidden="true"></a>`;
-  if (window.Wear) li.querySelector('.cover').append(Wear.cover({src: coverSrc(x), seed: x.id, at, label: `${label}, ${verb(x.kind)} by @${x.username}`, width: opt.cover || 72}));
+  if (window.Wear) li.querySelector('.cover').append(Wear.cover({kind: x.kind, src: coverSrc(x), seed: x.id, at, label: `${label}, ${verb(x.kind)} by @${x.username}`, width: opt.cover || 72}));
   const sp = li.querySelector('.spoilbtn');
   if (sp) sp.addEventListener('click', e => { e.stopPropagation(); const box = sp.parentNode; box.classList.remove('spoil'); box.querySelector('.sayt').removeAttribute('aria-hidden'); sp.remove(); });
   acts(li.querySelector('.pacts'), x, {mine, social, opt, li});

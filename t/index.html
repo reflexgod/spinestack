@@ -156,9 +156,9 @@ section.tsec{margin-top:var(--s6)}
 
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
-<script src="../wear.js?v=20261004a"></script>
-<script src="../nav.js?v=20261015a"></script>
-<script src="../post.js?v=20261015a"></script>
+<script src="../wear.js?v=20261016a"></script>
+<script src="../nav.js?v=20261016a"></script>
+<script src="../post.js?v=20261016a"></script>
 <script>
 (() => {
 /* A film or a book: /t/?film=<TMDB id> or /t/?book=<Open Library work id>. From the Worker's /title: the cover, the
@@ -258,7 +258,7 @@ function paintInfo(){
 // the cover: worn when you've logged it (by how long ago your log was), otherwise clean
 function paintCover(){
   const t = T.info, label = `${t.title}${t.year ? ` (${t.year})` : ''}`, src = viaWorker(T.item.cover);
-  if (T.mine && window.Wear){ $('#tCover').replaceChildren(Wear.cover({src, seed: T.mine.id, at: T.mine.created_at, label: `The cover of ${label}, worn: you ${verb(t.kind)} it`, width: 160})); return; }
+  if (T.mine && window.Wear){ $('#tCover').replaceChildren(Wear.cover({src, kind: t.kind, seed: T.mine.id, at: T.mine.created_at, label: `The cover of ${label}, worn: you ${verb(t.kind)} it`, width: 160})); return; }
   $('#tCover').innerHTML = src ? `<img class="clean" src="${esc(src)}" alt="The cover of ${esc(label)}">` : '<span class="blank" aria-hidden="true"></span>';
 }
 

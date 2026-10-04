@@ -833,7 +833,7 @@ dlg.querySelectorAll('input[name=addWhat]').forEach(r => r.addEventListener('cha
 let wearing = null, covRun = 0;
 function withWear(fn){
   if (window.Wear){ fn(); return; }
-  wearing = wearing || new Promise(res => { const sc = document.createElement('script'); sc.src = ROOT + 'wear.js?v=20261004a'; sc.onload = sc.onerror = res; document.head.appendChild(sc); });
+  wearing = wearing || new Promise(res => { const sc = document.createElement('script'); sc.src = ROOT + 'wear.js?v=20261016a'; sc.onload = sc.onerror = res; document.head.appendChild(sc); });
   wearing.then(() => { if (window.Wear) fn(); });
 }
 const verb = m => m.kind === 'movie' ? 'watched' : 'read';
@@ -842,7 +842,7 @@ const verb = m => m.kind === 'movie' ? 'watched' : 'read';
 let posting = null, postFields = null, focusFields = false, fromRec = null;
 function withPosts(fn){
   if (window.Posts){ fn(true); return; }
-  posting = posting || new Promise(res => { const sc = document.createElement('script'); sc.src = ROOT + 'post.js?v=20261015a'; sc.onload = () => res(!!window.Posts); sc.onerror = () => { posting = null; res(false); }; document.head.appendChild(sc); });
+  posting = posting || new Promise(res => { const sc = document.createElement('script'); sc.src = ROOT + 'post.js?v=20261016a'; sc.onload = () => res(!!window.Posts); sc.onerror = () => { posting = null; res(false); }; document.head.appendChild(sc); });
   posting.then(fn);
 }
 function showPost(m){
@@ -853,7 +853,7 @@ function showPost(m){
   if (log) withPosts(async ok => { if (run !== covRun) return; $('#addSayWrap').hidden = ok; $('#addFields').hidden = !ok; if (!ok) return; const f = await Posts.fields($('#addFields'), m); if (run !== covRun) return; postFields = f; if (focusFields){ focusFields = false; f.focus(); } });
   $('#addPostGo').textContent = log ? 'Post' : 'Add to Up next'; $('#addPostGo').disabled = false;
   $('#addFeedLine').textContent = log ? `On the feed: ${a.profile ? '@' + a.profile.username : 'you'} ${verb(m)} ${m.title}${fromRec ? ` · recommended by @${fromRec.by}` : ''} · today` : `It shows on your profile, under Up next, which holds ${WATCH_CAP}.`;
-  if (log){ cov.replaceChildren(); withWear(() => { if (run === covRun) cov.replaceChildren(Wear.cover({src, seed: keyOf(m), at: new Date().toISOString(), label: `The cover of ${m.title}, as the feed shows it`, width: 120})); }); }
+  if (log){ cov.replaceChildren(); withWear(() => { if (run === covRun) cov.replaceChildren(Wear.cover({src, kind: m.kind, seed: keyOf(m), at: new Date().toISOString(), label: `The cover of ${m.title}, as the feed shows it`, width: 120})); }); }
   else cov.innerHTML = src ? `<img src="${esc(src)}" alt="The cover of ${esc(m.title)}" crossorigin="anonymous">` : '<span class="blank"></span>';
   $('#addPost').hidden = false;
 }

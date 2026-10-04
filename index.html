@@ -187,9 +187,9 @@
 
 <script src="shelf.js?v=20261002a"></script>
 <script src="worker-address.js?v=20261001a"></script>
-<script src="wear.js?v=20261004a"></script>
+<script src="wear.js?v=20261016a"></script>
 <script src="bare.js?v=20261013a"></script>
-<script src="nav.js?v=20261015a"></script>
+<script src="nav.js?v=20261016a"></script>
 <script>
 (() => {
 /* Home. Signed out: a wall of the newest spines, one line about the site and Make a shelf, and nothing else before the
@@ -308,7 +308,7 @@ function fcard(x){
   const to = log ? profileUrl(x.username) + '#activity' : profileUrl(x.username, x.id);
   li.innerHTML = `<a class="fcard" href="${esc(to)}" aria-label="${esc(name)}, ${word} by @${esc(x.username)}"><span class="art${log ? '' : ' sl'}"${log ? '' : ` data-shelf="${esc(x.id)}"`}></span><span class="fby">${face(x)}<span>@${esc(x.username)}</span></span></a>
     <p class="fmeta"><span>${word}</span><time datetime="${esc(x.at)}" title="${esc(new Date(x.at).toLocaleString())}">${dated(x.at)}</time></p>`;
-  if (log) li.querySelector('.art').append(Wear.cover({src: x.cover_src ? `${WORKER}/img?url=${encodeURIComponent(x.cover_src.replace(/^url:/, ''))}` : '', seed: x.id, at: x.at,
+  if (log) li.querySelector('.art').append(Wear.cover({kind: x.kind, src: x.cover_src ? `${WORKER}/img?url=${encodeURIComponent(x.cover_src.replace(/^url:/, ''))}` : '', seed: x.id, at: x.at,
     label: `${name}, ${word} by @${x.username}`, width: CARD}));
   return li;
 }

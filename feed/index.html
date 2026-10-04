@@ -118,10 +118,10 @@
 
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
-<script src="../wear.js?v=20261004a"></script>
+<script src="../wear.js?v=20261016a"></script>
 <script src="../bare.js?v=20261013a"></script>
-<script src="../nav.js?v=20261015a"></script>
-<script src="../post.js?v=20261015a"></script>
+<script src="../nav.js?v=20261016a"></script>
+<script src="../post.js?v=20261016a"></script>
 <script>
 (() => {
 /* The feed: /feed/ (?friends, or ?following as it was, or ?everyone picks the tab: Friends · Everyone). A line for each shelf saved and each film or book
@@ -246,7 +246,7 @@ function item(x){
     li.classList.add('log');
     li.innerHTML = `${avatar(x)}<p class="line">${by} ${verb} <b>${esc(x.title)}</b> ${when(x.at, day(x.at))}</p>
       <div class="logbody"><span class="cover"></span>${x.caption ? `<p class="say">${esc(x.caption)}</p>` : ''}</div>`;
-    li.querySelector('.cover').append(Wear.cover({src: x.cover_src ? `${WORKER}/img?url=${encodeURIComponent(x.cover_src.replace(/^url:/, ''))}` : '', seed: x.id, at: x.at,
+    li.querySelector('.cover').append(Wear.cover({kind: x.kind, src: x.cover_src ? `${WORKER}/img?url=${encodeURIComponent(x.cover_src.replace(/^url:/, ''))}` : '', seed: x.id, at: x.at,
       label: `${label}, ${verb} by @${x.username}`, width: COVER}));
     // someone else's log: onto your watchlist from its cover (signed out, the sign-in sheet first)
     if (!(me.user && x.owner === me.user.id)) Nav.watchable(li.querySelector('.cover'), {kind: x.kind, title: x.title, year: x.year ? String(x.year) : '', creator: x.author || '', cover: x.cover_src ? x.cover_src.replace(/^url:/, '') : ''}, {moreIn: li});
