@@ -377,7 +377,7 @@ the browser's own `<dialog>` and `popover`; relative times use `Intl.RelativeTim
 | Cropper.js 1.6.3 | square crop of a profile photo | `cropperjs@1.6.3/dist/cropper.min.js` | `sha384-aKBOyDyHi7nysLl4xSArmbTpotGkhOQNGnSQaljyIveY3ofQZ3GWak4U9F5NcPxI` |
 | | its stylesheet | `cropperjs@1.6.3/dist/cropper.min.css` | `sha384-4B0iRmDz7QrXJK2xob77YvAC46zoUOJDr2MOKrkWWR7QoJg9i63rGSnCwIjGYGHs` |
 | browser-image-compression 2.0.2 | shrinks the photo before upload (the Worker takes 2 MB at most) | `browser-image-compression@2.0.2/dist/browser-image-compression.js` | `sha384-dHP9fwqd9BAiDh9uJ0p10khgbbcFMh34bVEiCnJ1Ah/AT2T2k4t572VEo3WXzxXp` |
-| Lucide 1.49.0 | icons (zap, search, chevron-down, x, plus) | pasted into the pages as inline SVG, not loaded | |
+| Lucide 1.49.0 | the one icon set (search, chevron-down, x, plus, minus, arrow-up, arrow-down, ellipsis, bell, bookmark-plus and the post actions), 16 or 20px, stroke 2 | pasted into the pages as inline SVG, not loaded | |
 
 Supabase loads on a page only for someone signed in or signing in; Floating UI by `nav.js`, only for someone signed
 in, who has the menus; SortableJS by the builder; Cropper.js and browser-image-compression by `settings/`, when a photo
@@ -425,7 +425,9 @@ npx playwright test specs/site.spec.js --project=phone-390    # one file, at one
   Privacy · hello@shelfstackd.com, About going to the Credits, and no credits in it); the builder's count and limit, its empty shelf,
   and the note under the preview clear of the Save bar.
 - **The look** (`specs/look.spec.js`): the content and the bar's contents in one 950px column on every page, the type
-  scale, one black button a screen, shelf cards six across at 150px (three on a phone) cut 2:3, the profile's name,
+  scale, two button looks (solid black, or plain grey text that turns black under the pointer), one icon set (Lucide,
+  stroked at 2, 16px in a line or 20px on its own; no ×, ↑, •••, + or emoji standing in for one, in the page or its
+  source), shelf cards six across at 150px (three on a phone) cut 2:3, the profile's name,
   numbers (on a phone, one small line under the name and no band) and tabs, and its shelf across the column on the
   wash.
 - **Who you both know** (in `specs/profile.spec.js`): "Follows you" by the name of someone who follows you, and

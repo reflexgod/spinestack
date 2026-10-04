@@ -130,6 +130,8 @@
 @media (pointer:coarse){ .wacts{gap:calc(var(--s5) + var(--s1))} }   /* and a press apart (44px, middle to middle) */
 .wplus{display:grid;place-items:center;width:100%;aspect-ratio:2/3;border:1px dashed var(--ink);border-radius:var(--radius);background:var(--paper);color:var(--ink);font:400 32px var(--mono);cursor:pointer;padding:0}
 .wplus:hover{background:var(--wash)}
+.wplus svg{width:20px;height:20px}
+#moreBtn svg{width:16px;height:16px;display:block}
 @media (hover:hover) and (pointer:fine){   /* over the cover, at its foot: the two share the tile's first row */
   .wt .wc,.wt .wcap{grid-row:1;grid-column:1}
   .wt .wcap{align-self:end;z-index:1;padding:var(--s1) var(--s2);background:var(--ink);color:var(--paper);line-height:1.4;opacity:0;transition:opacity .12s;pointer-events:none}
@@ -177,7 +179,7 @@
 /* Share, by the shelf's name: a small button with an icon */
 .iconbtn{display:grid;place-items:center;flex:none;width:28px;height:28px;padding:0;border:1px solid var(--ink);border-radius:var(--radius);background:var(--paper);color:var(--ink);cursor:pointer}
 .iconbtn:hover,.iconbtn[aria-expanded="true"]{background:var(--wash)}
-.iconbtn svg{width:14px;height:14px;display:block}
+.iconbtn svg{width:16px;height:16px;display:block}
 .sby{margin:0;display:flex;gap:var(--s1) var(--s2);align-items:center;flex-wrap:wrap}
 .sby a{font-weight:500;text-decoration:none}
 .sby a:hover,.sby a:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
@@ -290,7 +292,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
         <div class="pbtns">
           <a class="btn ghost sm" id="editBtn" href="../settings/" hidden>Edit profile</a>
           <button class="btn ghost sm follow" id="followBtn" type="button" hidden>Follow</button>
-          <button class="btn ghost sm" id="moreBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More">···</button>
+          <button class="btn ghost sm" id="moreBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
           <div class="menu" id="menu" role="menu" hidden><button type="button" role="menuitem" id="copyLink">Copy link</button><button type="button" role="menuitem" id="reportProfile" hidden>Report</button></div>
         </div>
       </div>
@@ -408,7 +410,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 
 <div class="sheet" id="signSheet" hidden role="dialog" aria-modal="true" aria-label="Sign in">
   <div class="sheetbox">
-    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <button class="x" data-close type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     <div>
       <h2>Sign in</h2>
       <p></p>
@@ -420,7 +422,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 
 <div class="sheet" id="listSheet" hidden role="dialog" aria-modal="true" aria-labelledby="listTitle">
   <div class="sheetbox">
-    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <button class="x" data-close type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     <div>
       <h2 id="listTitle">Requests</h2>
       <ul class="people" id="people"></ul>
@@ -432,7 +434,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 
 <div class="sheet" id="confirmSheet" hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
   <div class="sheetbox">
-    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <button class="x" data-close type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     <div>
       <h2 id="confirmTitle">Delete this shelf?</h2>
       <p id="confirmText"></p>
@@ -443,7 +445,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 
 <div class="sheet" id="reportSheet" hidden role="dialog" aria-modal="true" aria-labelledby="reportTitle">
   <div class="sheetbox">
-    <button class="x" data-close type="button" aria-label="Close">×</button>
+    <button class="x" data-close type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     <div>
       <h2 id="reportTitle">Report</h2>
       <p class="grey" id="reportWhat"></p>
@@ -913,7 +915,7 @@ function paintWatchTab(){
   });
   if (mine){
     const plus = document.createElement('li'); plus.className = 'wt';
-    plus.innerHTML = '<button class="wplus" type="button" aria-label="Add a film or book to Up next">+</button>';
+    plus.innerHTML = '<button class="wplus" type="button" aria-label="Add a film or book to Up next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>';
     tiles.unshift(plus);
   }
   $('#wGrid').replaceChildren(...tiles);

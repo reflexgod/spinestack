@@ -52,6 +52,26 @@ for (const pg of [...PAGES, { name: 'own profile', path: '/u/?tester' }]) {
     expect(looks.filter(l => l.startsWith('other'))).toEqual([]);
     expect(looks).toContain('solid');   // + ADD at least
   });
+
+  test(`${pg.name}: one icon set, one stroke weight, 16 or 20px; no glyph or emoji for an icon`, async ({ page }) => {
+    await mockNetwork(page, { signedIn: true });
+    await open(page, pg.path);
+    // every icon is from the one set (Lucide's 24-unit grid), stroked at 2, drawn 16px in a line or 20px on its own.
+    // The spines of a rating are drawings, not icons.
+    const icons = await page.locator('svg:visible').evaluateAll(els => els.filter(e => !e.closest('.rating')).map(e => {
+      const r = e.getBoundingClientRect(), s = getComputedStyle(e);
+      return { box: e.getAttribute('viewBox'), size: `${Math.round(r.width)}x${Math.round(r.height)}`, stroke: s.strokeWidth, where: (e.parentElement.getAttribute('aria-label') || e.parentElement.className || e.parentElement.tagName) + '' };
+    }));
+    for (const i of icons) {
+      expect(i.box, i.where).toBe('0 0 24 24');
+      expect(['16x16', '20x20'], i.where).toContain(i.size);
+      expect(i.stroke, i.where).toBe('2px');
+    }
+    // no button or link that is only a glyph (× ✕ ↑ ↓ ▾ ••• ··· + −), and no emoji anywhere on the page
+    const glyphs = await page.locator('button:visible, a:visible').evaluateAll(els => els.map(e => e.textContent.trim()).filter(t => /^[×✕↑↓▾▸•·+−\-…]+$/u.test(t)));
+    expect(glyphs).toEqual([]);
+    expect(await page.locator('body').innerText()).not.toMatch(/\p{Extended_Pictographic}/u);
+  });
 }
 
 test('shelf cards: six across the column at 150px with 10px gaps (three on a phone), cut 2:3, name and @username under', async ({ page }) => {
@@ -117,6 +137,20 @@ test('the feed shows a shelf saved as a strip of spines 80px tall, in line with 
 });
 
 // The type is Courier Prime (400, 700 and italic 400, from Google Fonts with display=swap) on every page, not Geist Mono.
+// what the page test can't see (a sheet's close, a builder row's arrows, a phone's •••): no button or link in any
+// page or script is only a glyph, and none is set to one
+test('no glyph for an icon in the source: every close, arrow, ellipsis, plus and minus is an icon from the set', async () => {
+  const fs = require('fs'), path = require('path'), { ROOT } = require('../site');
+  const files = ['index.html', '404.html', 'privacy.html', 'admin.html', 'add.js', 'nav.js', 'post.js', 'bare.js', 'spinetip.js',
+    ...['build', 'feed', 'people', 'settings', 'shelves', 'u', 'p', 'notifications'].map(d => d + '/index.html')];
+  for (const f of files) {
+    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    expect(src.match(/>\s*[×✕↑↓▾▸•·+−]+\s*<\/(button|a)>/gu) || [], f).toEqual([]);
+    expect(src.match(/textContent = '[×✕↑↓▾▸•·+−]+'/gu) || [], f).toEqual([]);
+    expect(src.match(/\p{Extended_Pictographic}/gu) || [], f).toEqual([]);
+  }
+});
+
 // Pages that draw shelves (home, the builder, profiles) also load Geist Mono, for shelf.js's caption and a plain
 // cover's title on the canvas, and the spines' own faces
 test('every page sets its type in Courier Prime, loaded from Google Fonts at 400, 700 and italic 400', async () => {

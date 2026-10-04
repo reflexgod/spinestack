@@ -104,7 +104,7 @@ css.textContent = `
 .pacts > a:hover,.pacts button:hover:not(:disabled),.pacts > a:focus-visible,.pacts button:focus-visible,.phead .more:hover,.phead .more:focus-visible,.phead .more[aria-expanded=true]{color:var(--ink,#000)}
 .pacts [aria-pressed=true]{color:var(--ink,#000)}
 .pacts [aria-pressed=true] svg{fill:currentColor}
-.pacts .metoo[aria-pressed=true] svg{fill:none;stroke-width:2.6}
+.pacts .metoo[aria-pressed=true] svg{fill:none}
 .pacts svg,.phead .more svg{width:16px;height:16px;display:block;flex:none}
 .pacts :disabled{cursor:default}
 .pacts .n{font-variant-numeric:tabular-nums;min-width:1ch}
@@ -214,7 +214,7 @@ function ask({text, yes}){
   return new Promise(res => {
     const from = document.activeElement, d = document.createElement('div');
     d.className = 'sheet'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-label', text);
-    d.innerHTML = `<div class="sheetbox"><button class="x" data-no type="button" aria-label="Close">×</button><div><h2>${esc(text)}</h2>
+    d.innerHTML = `<div class="sheetbox"><button class="x" data-no type="button" aria-label="Close">${ICON('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>')}</button><div><h2>${esc(text)}</h2>
       <div class="row"><button class="btn primary" type="button" data-yes>${esc(yes)}</button><button class="dash sm" type="button" data-no>Cancel</button></div></div></div>`;
     document.body.append(d);
     const done = v => { d.remove(); document.removeEventListener('keydown', onKey, true); if (from && from.focus) from.focus(); res(v); };
