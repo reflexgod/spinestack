@@ -6,6 +6,17 @@ session"), again after the launch pass (see "Done in the second cloud session"),
 the design review was applied (see "Done in the third session"). Read this first, then `README.md`, which says what
 every file is and how the Worker, the accounts and the tests are set up.
 
+## Done on 5 October 2026 (phase 6: material wear)
+
+- `wear.js` draws a logged film as a DVD keep case and a logged book as a paperback (see README); every caller passes
+  the log's kind (no kind: a paperback). This was the one planned change to wear drawing; shelf.js and the spines are
+  untouched. `specs/wear.spec.js` is rewritten for both. No SQL, nothing for the Worker.
+- **Tested:** `cd tests && npm run test:all` after Phase 6: html-validate clean, then Playwright 830 passed, 24
+  skipped, none failed; `cd worker && npm test`: 38 checks.
+- **My calls:** the pencilled price is £ or $ with a made-up amount, in Gochi Hand where the page has it (a cursive
+  otherwise), at the top left (the dog-ear is top right); on a dark cover it's faint, as pencil is. The crack is at
+  one of the four corners, the chip taken out of the plastic (see-through there).
+
 ## Done on 5 October 2026 (phase 5: the title page)
 
 - **Worker, not deployed:** `/identify` gives each film its TMDB id and each book its Open Library work id (its cache
