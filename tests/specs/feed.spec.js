@@ -1,5 +1,7 @@
-// The feed (/feed/): Following · You · Everyone, a line for each shelf saved ("@abc shelved my films · 2h") with its
-// card, and for each film or book logged ("@abc watched Gummo · today") with its cover, worn by how long ago that was.
+// The feed (/feed/): Following · Everyone, a line for each shelf saved ("@abc shelved my films · 2h") with its card,
+// and for each film or book logged, a post ("@abc watched Gummo · 1h") with its cover, worn by how long ago that was.
+// The next 20 come as the end nears; every minute it says how many newer ones there are; an empty Following has
+// People to follow.
 const { test, expect } = require('@playwright/test');
 const { SHELVES, LOGS, mockNetwork, watchErrors, open } = require('../site');
 
@@ -8,11 +10,11 @@ const NOW = new Date('2026-09-30T14:00:00Z');
 const lines = page => page.locator('#items .line');
 const tabs = page => page.getByRole('tablist', { name: 'Feed' }).getByRole('tab');
 
-test('the tabs are Following · You · Everyone; signed in it opens on Following', async ({ page }) => {
+test('the tabs are Following · Everyone; signed in it opens on Following', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/feed/');
-  await expect(tabs(page)).toHaveText(['Following', 'You', 'Everyone']);
+  await expect(tabs(page)).toHaveText(['Following', 'Everyone']);
   await expect(page.getByRole('tab', { name: 'Following' })).toHaveAttribute('aria-selected', 'true');
   await expect(page).toHaveURL(/\/feed\/\?following$/);
   await expect(lines(page)).toHaveCount(8);   // only @mira is followed: her six shelves and two logs
@@ -79,29 +81,19 @@ test('a line says who shelved or logged what and how long ago; a shelf\'s card o
   await expect(first.locator('time')).toHaveAttribute('datetime', SHELVES[0].saved_at);
 });
 
-test('You: your own shelves, said as "You shelved…", kept on reload', async ({ page }) => {
-  const errors = watchErrors(page);
+test('?you, from when there was a You tab, is Following', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
-  await open(page, '/feed/');
-  await page.getByRole('tab', { name: 'You' }).click();
-  await expect(page.getByRole('tab', { name: 'You' })).toHaveAttribute('aria-selected', 'true');
-  await expect(page).toHaveURL(/\/feed\/\?you$/);
-  await expect(lines(page)).toHaveCount(7);
-  for (const t of await lines(page).allTextContents()) expect(t).toMatch(/^You (shelved|updated|read) /);   // updated: saved again later than it was made
-  await expect(lines(page).filter({ hasText: 'Just Kids' })).toHaveCount(1);
-  await expect(page.locator('#items .pic').first()).toHaveAttribute('href', /\/u\/\?tester&shelf=/);
-  await page.reload();
-  await expect(page.getByRole('tab', { name: 'You' })).toHaveAttribute('aria-selected', 'true');
-  await expect(lines(page)).toHaveCount(7);
-  expect(errors).toEqual([]);
+  await open(page, '/feed/?you');
+  await expect(page.getByRole('tab', { name: 'Following' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page).toHaveURL(/\/feed\/\?following$/);
 });
 
-test('signed out: Everyone shows; Following and You ask you to sign in', async ({ page }) => {
+test('signed out: Everyone shows; Following asks you to sign in', async ({ page }) => {
   await mockNetwork(page);
   await open(page, '/feed/');
   await expect(page.getByRole('tab', { name: 'Everyone' })).toHaveAttribute('aria-selected', 'true');
   await expect(lines(page)).toHaveCount(20);
-  for (const [tab, says] of [['You', /^Sign in to see your own\.$/], ['Following', /^Sign in to see who you follow\.$/]]) {
+  for (const [tab, says] of [['Following', /^Sign in to see who you follow\.$/]]) {
     await page.getByRole('tab', { name: tab }).click();
     await expect(lines(page)).toHaveCount(0);
     await expect(page.locator('#none')).toHaveText(says);
@@ -119,8 +111,8 @@ test('a database without logs (0007 not run on it): shelves only, as before', as
   await expect(page.locator('#items .item.log')).toHaveCount(0);
   for (const t of await lines(page).allTextContents()) expect(t).toMatch(/ (shelved|updated) /);
   expect(asked).toEqual(['activity', 'feed']);   // asked once, then the feed of 0006
-  await page.getByRole('tab', { name: 'You' }).click();
-  await expect(lines(page)).toHaveCount(6);
+  await page.getByRole('tab', { name: 'Following' }).click();
+  await expect(lines(page)).toHaveCount(6);   // @mira's shelves
   expect(asked.filter(a => a === 'activity')).toHaveLength(1);   // not asked again on this page
 });
 
@@ -148,9 +140,62 @@ test('← and → move between the tabs', async ({ page }) => {
   await open(page, '/feed/?following');
   await page.getByRole('tab', { name: 'Following' }).focus();
   await page.keyboard.press('ArrowRight');
-  await expect(page.getByRole('tab', { name: 'You' })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('tab', { name: 'You' })).toBeFocused();
-  await page.keyboard.press('ArrowLeft');
-  await page.keyboard.press('ArrowLeft');
   await expect(page.getByRole('tab', { name: 'Everyone' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: 'Everyone' })).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.getByRole('tab', { name: 'Following' })).toHaveAttribute('aria-selected', 'true');
+});
+
+test('the next 20 come by themselves as the end of the list nears', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/feed/?everyone');
+  await expect(lines(page)).toHaveCount(20);
+  const more = page.waitForRequest(r => r.url().includes('/rpc/activity') && r.postDataJSON().before_id);
+  await page.locator('#more').scrollIntoViewIfNeeded();   // no press
+  expect((await more).postDataJSON()).toMatchObject({ scope: 'everyone', before_id: SHELVES[16].id });
+  await expect(lines(page)).toHaveCount(22);
+});
+
+test('every minute: "2 new posts" at the top when there are newer ones; it moves nothing until pressed', async ({ page }) => {
+  await page.clock.install({ time: NOW });
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/feed/?everyone');
+  await expect(lines(page)).toHaveCount(20);
+  const pill = page.locator('#newPill');
+  await page.clock.runFor(61000);
+  await expect(pill).toBeHidden();   // nothing newer yet
+  // two posts arrive
+  const fresh = [1, 2].map(i => ({ what: 'log', id: `ffffffff-ffff-4fff-8fff-00000000010${i}`, at: new Date(NOW.getTime() + i * 1000).toISOString(), owner: '22222222-2222-4222-8222-222222222222',
+    username: 'mira', display_name: 'Mira', avatar_key: null, caption: '', name: null, preview_key: null, created_at: NOW.toISOString(), updated_at: NOW.toISOString(), updated: false, is_public: true,
+    kind: 'movie', title: 'New ' + i, author: '', year: 2026, cover_src: null }));
+  // (from now on the top of the feed is just those two)
+  await page.route(u => u.pathname === '/rest/v1/rpc/activity', route => route.request().method() !== 'POST' || route.request().postDataJSON().before_id ? route.fallback()
+    : route.fulfill({ status: 200, headers: { 'Access-Control-Allow-Origin': '*' }, contentType: 'application/json', body: JSON.stringify(fresh.slice().reverse()) }));
+  const y = await page.evaluate(() => scrollY);
+  await page.clock.runFor(60000);
+  await expect(pill).toHaveText('2 new posts');
+  await expect(lines(page).first()).toContainText('watched Gummo');   // nothing moved
+  expect(await page.evaluate(() => scrollY)).toBe(y);
+  await pill.click();
+  await expect(pill).toBeHidden();
+  await expect(lines(page).first()).toContainText('watched New 2');
+});
+
+test('Following with nothing from anyone you follow: People to follow, each with their first five spines and Follow', async ({ page }) => {
+  const errors = watchErrors(page);
+  await mockNetwork(page, { signedIn: true, fresh: true });   // follows no one
+  await open(page, '/feed/?following');
+  const box = page.locator('.tofollow');
+  await expect(box.getByRole('heading', { name: 'People to follow' })).toBeVisible();
+  const people = box.locator('.person');
+  await expect(people).toHaveCount(2);   // the people behind the newest shelves and posts, not you
+  await expect(people.locator('.pn span')).toHaveText(['@mira', '@longusername_twenty1']);
+  await expect(people.first().locator('.sp canvas')).toHaveCount(3);   // her shelf has three
+  await expect(people.nth(1).locator('.sp canvas')).toHaveCount(5);   // five at most: this one has eight
+  const follow = people.first().getByRole('button', { name: 'Follow' });
+  const req = page.waitForRequest(r => r.url().includes('/rpc/follow'));
+  await follow.click();
+  expect((await req).postDataJSON()).toEqual({ target: '22222222-2222-4222-8222-222222222222' });
+  await expect(people.first().locator('button.follow')).toHaveAttribute('aria-pressed', 'true');
+  expect(errors).toEqual([]);
 });

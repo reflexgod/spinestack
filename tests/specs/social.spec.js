@@ -26,7 +26,7 @@ test('a post: @name, watched Gummo, its stars and rewatch, the worn cover, the r
   await expect(p.getByRole('link', { name: 'Reply. 2 replies' })).toHaveAttribute('href', new RegExp(`/p/\\?${LOGS[0].id}#reply$`));
   await expect(p.getByRole('button', { name: /^Me too/ })).toContainText('1');
   // the actions are small grey text, under the cover
-  const acts = p.locator('.acts');
+  const acts = p.locator('.pacts');
   expect(await acts.getByRole('button', { name: /^Me too/ }).evaluate(b => [getComputedStyle(b).color, getComputedStyle(b).fontSize])).toEqual(['rgb(107, 107, 107)', '11px']);
   expect((await acts.boundingBox()).y).toBeGreaterThan((await p.locator('.cover').boundingBox()).y + 100);
   expect(errors).toEqual([]);
@@ -127,8 +127,8 @@ test('without 0009: no like, reply, me too or Report; + Watchlist, Share, and De
   await mockNetwork(page, { signedIn: true });
   await open(page, '/feed/?everyone');
   const theirs = post(page, 'watched Gummo');
-  await expect(theirs.locator('.acts').getByRole('button')).toHaveText(['+ Watchlist', 'Share']);
-  await expect(theirs.locator('.acts a')).toHaveCount(0);
+  await expect(theirs.locator('.pacts').getByRole('button')).toHaveText(['+ Watchlist', 'Share']);
+  await expect(theirs.locator('.pacts a')).toHaveCount(0);
   await expect(theirs.locator('.stars')).toHaveCount(0);
   const mine = post(page, 'read Just Kids');
   await mine.getByRole('button', { name: 'More for this post' }).click();

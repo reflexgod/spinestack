@@ -70,18 +70,18 @@ css.textContent = `
 .spoil .sayt{filter:blur(6px);user-select:none;pointer-events:none}
 .spoil .spoilbtn{position:absolute;inset:0;width:100%;background:none;border:0;padding:0;font:600 var(--fs-btn,11px) var(--mono,monospace);color:var(--ink,#000);cursor:pointer;text-align:left}
 .spoil .spoilbtn span{background:var(--paper,#fff);padding:2px var(--s1,4px)}
-.acts{grid-column:2;display:flex;align-items:center;gap:var(--s1,4px) var(--s4,16px);flex-wrap:wrap;margin:calc(-1 * var(--s1,4px)) 0 0;min-width:0}
-.acts > *{display:inline-flex;align-items:center;gap:var(--s1,4px);background:none;border:0;padding:var(--s1,4px) 0;font:400 var(--fs-small,11px)/1.3 var(--mono,monospace);color:var(--grey,#6B6B6B);text-decoration:none;cursor:pointer;white-space:nowrap}
-.acts > button:hover:not(:disabled),.acts > a:hover,.acts > button:focus-visible,.acts > a:focus-visible{color:var(--ink,#000)}
-.acts > [aria-pressed=true]{color:var(--ink,#000)}
-.acts > [aria-pressed=true] svg{fill:currentColor}
-.acts svg{width:16px;height:16px;display:block;flex:none}
-.acts .state{cursor:default}
-.acts > :disabled{cursor:default}
-.acts .n{font-variant-numeric:tabular-nums}
+.pacts{grid-column:2;display:flex;align-items:center;gap:var(--s1,4px) var(--s4,16px);flex-wrap:wrap;margin:calc(-1 * var(--s1,4px)) 0 0;min-width:0}
+.pacts > *{display:inline-flex;align-items:center;gap:var(--s1,4px);background:none;border:0;padding:var(--s1,4px) 0;font:400 var(--fs-small,11px)/1.3 var(--mono,monospace);color:var(--grey,#6B6B6B);text-decoration:none;cursor:pointer;white-space:nowrap}
+.pacts > button:hover:not(:disabled),.pacts > a:hover,.pacts > button:focus-visible,.pacts > a:focus-visible{color:var(--ink,#000)}
+.pacts > [aria-pressed=true]{color:var(--ink,#000)}
+.pacts > [aria-pressed=true] svg{fill:currentColor}
+.pacts svg{width:16px;height:16px;display:block;flex:none}
+.pacts .state{cursor:default}
+.pacts > :disabled{cursor:default}
+.pacts .n{font-variant-numeric:tabular-nums}
 .pmenuwrap{position:relative;margin-left:auto;display:inline-flex}
-.acts .more{display:inline-flex;align-items:center;background:none;border:0;padding:var(--s1,4px) 0;color:var(--grey,#6B6B6B);cursor:pointer}
-.acts .more:hover,.acts .more:focus-visible,.acts .more[aria-expanded=true]{color:var(--ink,#000)}
+.pacts .more{display:inline-flex;align-items:center;background:none;border:0;padding:var(--s1,4px) 0;color:var(--grey,#6B6B6B);cursor:pointer}
+.pacts .more:hover,.pacts .more:focus-visible,.pacts .more[aria-expanded=true]{color:var(--ink,#000)}
 .pmenu{position:absolute;right:0;top:100%;z-index:8;background:var(--paper,#fff);border:1px solid var(--ink,#000);border-radius:var(--radius,3px);padding:var(--s1,4px) 0;white-space:nowrap}
 .pmenu.up{top:auto;bottom:100%}
 .pmenu button{display:block;width:100%;text-align:left;background:none;border:0;padding:var(--s2,8px) var(--s4,16px);font:500 var(--fs-nav,12px) var(--mono,monospace);color:inherit;cursor:pointer}
@@ -91,9 +91,9 @@ css.textContent = `
 .pask p{margin:0 0 var(--s4,16px)}
 .pask .row{display:flex;gap:var(--s4,16px);align-items:center}
 @media (pointer:coarse){   /* 44 x 44px to press on a touch screen */
-  .acts > *,.acts .more,.pmenu button{min-height:44px}
-  .acts > :not(.pmenuwrap),.acts .more{min-width:44px;justify-content:center}
-  .acts{gap:0 var(--s2,8px)}
+  .pacts > *,.pacts .more,.pmenu button{min-height:44px}
+  .pacts > :not(.pmenuwrap),.pacts .more{min-width:44px;justify-content:center}
+  .pacts{gap:0 var(--s2,8px)}
 }`;
 document.head.appendChild(css);
 
@@ -320,11 +320,11 @@ function item(x, opt = {}){
     <p class="line"><a href="${esc(profileUrl(x.username))}">${x.mine ? 'You' : '@' + esc(x.username)}</a> ${verb(x.kind)} <a href="${esc(url)}"><b>${esc(x.title)}</b></a>${social && x.rating ? ' ' + stars(x.rating, 'sm') : ''}${social && x.rewatch ? ` <span class="tag">${x.kind === 'movie' ? 'rewatch' : 'reread'}</span>` : ''}
       <span class="ago">· <a href="${esc(url)}"><time datetime="${esc(at)}" title="${esc(new Date(at).toLocaleString())}">${ago(at)}</time></a></span></p>
     <div class="logbody"><span class="cover"></span>${say}</div>
-    <div class="acts"></div>`;
+    <div class="pacts"></div>`;
   if (window.Wear) li.querySelector('.cover').append(Wear.cover({src: coverSrc(x), seed: x.id, at, label: `${label}, ${verb(x.kind)} by @${x.username}`, width: opt.cover || 72}));
   const sp = li.querySelector('.spoilbtn');
   if (sp) sp.addEventListener('click', () => { const box = sp.parentNode; box.classList.remove('spoil'); box.querySelector('.sayt').removeAttribute('aria-hidden'); sp.remove(); });
-  acts(li.querySelector('.acts'), x, {mine, social, opt, li});
+  acts(li.querySelector('.pacts'), x, {mine, social, opt, li});
   return li;
 }
 

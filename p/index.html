@@ -48,7 +48,7 @@
 .rlist .rl a{font-weight:500;text-decoration:none}
 .rlist .rl a:hover,.rlist .rl a:focus-visible{text-decoration:underline;text-underline-offset:3px}
 .rlist .rt{grid-column:2;margin:0;white-space:pre-line;overflow-wrap:anywhere}
-.rlist .acts{margin:0}
+.rlist .pacts{margin:0}
 .rnone{margin:0;color:var(--grey)}
 .rbox{display:grid;gap:var(--s2);margin-top:var(--s5);padding-top:var(--s4);border-top:1px solid var(--hair)}
 .rbox .row{display:flex;justify-content:space-between;align-items:center;gap:var(--s4)}
@@ -195,7 +195,7 @@ function replyLi(r){
   li.innerHTML = `<a class="fa" href="../u/?${esc(r.username)}" tabindex="-1" aria-hidden="true">${ava(r)}</a>
     <p class="rl"><a href="../u/?${esc(r.username)}">@${esc(r.username)}</a> <span class="ago">· <time datetime="${esc(r.created_at)}" title="${esc(new Date(r.created_at).toLocaleString())}">${Posts.ago(r.created_at)}</time></span></p>
     <p class="rt">${esc(r.text)}</p>
-    <div class="acts">${mine || theirPost ? `<button type="button" data-del>Delete</button>` : me.user ? `<button type="button" data-report>Report</button>` : ''}</div>`;
+    <div class="pacts">${mine || theirPost ? `<button type="button" data-del>Delete</button>` : me.user ? `<button type="button" data-report>Report</button>` : ''}</div>`;
   return li;
 }
 let lastReply = null;
@@ -211,7 +211,7 @@ async function replies(){
 }
 // a count on the post's own row, kept in step as replies come and go
 function bump(n){
-  const a = document.querySelector('#thePost .acts .reply'); if (!a || !post.x) return;
+  const a = document.querySelector('#thePost .pacts .reply'); if (!a || !post.x) return;
   post.x.replies = Math.max(0, (post.x.replies || 0) + n);
   a.querySelector('.n').textContent = post.x.replies || '';
   a.setAttribute('aria-label', `Reply. ${post.x.replies} repl${post.x.replies === 1 ? 'y' : 'ies'}`);

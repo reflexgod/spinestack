@@ -84,13 +84,12 @@ test('someone else\'s empty lists stay plain: nothing to do there', async ({ pag
   await expect(page.locator('#netNone a')).toHaveCount(0);
 });
 
-test('the feed: Following and You say what to do when there\'s nothing', async ({ page }) => {
+test('the feed: an empty Following says so, with Everyone, and People to follow', async ({ page }) => {
   await mockNetwork(page, { signedIn: true, fresh: true });
   await open(page, '/feed/');
-  await expect(page.locator('#none')).toHaveText('Nobody you follow has posted.Everyone');
-  await page.getByRole('tab', { name: 'You' }).click();
-  await expect(page.locator('#none')).toContainText('Nothing from you yet.');
-  await expect(page.locator('#none').getByRole('link', { name: 'Your shelf' })).toBeVisible();
+  await expect(page.locator('#none > p')).toHaveText('Nobody you follow has posted.');
+  await expect(page.locator('#none').getByRole('button', { name: 'Everyone' })).toBeVisible();
+  await expect(page.locator('#none').getByRole('heading', { name: 'People to follow' })).toBeVisible();
 });
 
 test('signing up: the username sheet speaks of your shelf, one each', async ({ page }) => {
@@ -110,8 +109,7 @@ test('empty places: six words at most each, and no two the same', async ({ page 
   await page.getByRole('tab', { name: 'Activity' }).click(); await take('activity', '#actsNoneMine');
   await page.getByRole('tab', { name: 'Watchlist' }).click(); await take('watchlist tab', '#wNone');
   await page.getByRole('tab', { name: 'Network' }).click(); await take('following', '#netNone');
-  await open(page, '/feed/?following'); await take('feed following', '#none p');
-  await open(page, '/feed/?you'); await take('feed you', '#none p');
+  await open(page, '/feed/?following'); await take('feed following', '#none > p');
   await open(page, '/build/'); await take('builder', '#books .empty p:first-child');
   for (const [where, t] of said){
     expect(t, where).not.toBe('');
