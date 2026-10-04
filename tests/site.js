@@ -132,7 +132,7 @@ const NOTES = [
   { id: 'acacacac-acac-4cac-8cac-000000000004', kind: 'follow', created_at: at(1), read: true, actor: PEOPLE[2].id, log: null },
   { id: 'acacacac-acac-4cac-8cac-000000000005', kind: 'metoo', created_at: at(2), read: true, actor: PEOPLE[1].id, log: logId(1) },
 ];
-/* migration 0010 (docs/proposed-0010-recs.sql), with mockNetwork's recs: true: who you can recommend to (@mira, and
+/* migration 0010 (supabase/migrations/0010_recs.sql), with mockNetwork's recs: true: who you can recommend to (@mira, and
    @longusername_twenty1 with 6 waiting), two recs for you from @mira (Paris, Texas with a note and a thread; Orlando,
    kept), four you sent, the counts, a rec in the feed, and its notifications */
 const recId = i => `cdcdcdcd-cdcd-4dcd-8dcd-${String(i).padStart(12, '0')}`;
@@ -319,7 +319,7 @@ const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers
    made-up account before it has saved its shelf; fresh: it has just picked its username, with nothing yet (no name,
    bio, shelf, log, watchlist or follow); friends: it follows five more people (FRIENDS), for home's row of cards;
    social: the database has migration 0009 (likes, replies, notifications; supabase/migrations/0009_social.sql).
-   recs: it has migration 0010 too (recs, their threads; docs/proposed-0010-recs.sql).
+   recs: it has migration 0010 too (recs, their threads; supabase/migrations/0010_recs.sql).
    Returns {unknown, asked}: requests nothing here could answer, and every search /identify was asked for. */
 async function mockNetwork(page, { signedIn = false, named = true, slow = 0, capped = false, realFonts = false, empty = false, logs = true, ownShelf = true, fresh = false, friends = false, social = false, recs = false } = {}){
   const unknown = [], asked = [];

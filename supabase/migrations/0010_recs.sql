@@ -1,10 +1,10 @@
--- shelfstackd, 0010 (proposed): recs. Recommend a film or a book to someone you follow who follows you back, with a
+-- shelfstackd, 0010: recs. Recommend a film or a book to someone you follow who follows you back, with a
 -- short note; they keep it (it goes on their Up next), mark it watched or read, or let it go; the two of you can talk
 -- about it in a private thread; and the feed can say "@a recommended Gummo to @b".
 --
 -- Run once, after 0009, in the Supabase dashboard (SQL Editor -> New query -> paste all of this -> Run), then run its
--- test, docs/proposed-rls_phase7.sql: the last line says "ALL 0010 CHECKS PASSED". It all runs in one transaction: if
--- anything fails, nothing is changed. Once it's run and passes, both files move to supabase/ (headers only).
+-- test, supabase/tests/rls_phase7.sql: the last line says "ALL 0010 CHECKS PASSED". It all runs in one transaction: if
+-- anything fails, nothing is changed. It was run on the live database by the owner and its test passed.
 --
 -- The pages work without it and ask for what it adds only once it's there (they look for the recs table): until then
 -- there's no Recommend, no Recs tab and no rec in the feed.

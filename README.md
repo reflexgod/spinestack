@@ -18,7 +18,7 @@ people/index.html     People (/people/; /members/, its old address, sends you on
 settings/index.html   your settings (signed in only; signed out, just Sign in under the heading): PROFILE (display name, bio), PHOTO (cut square, made small, sent to the Worker), ACCOUNT (private profile). A profile's Edit profile comes here
 feed/index.html       the feed: /feed/, a timeline in one 600px column in the middle of the page's (no heading on screen; "Feed" for screen readers): signed in, the composer, a box like a tweet's with your photo at its left that grows while it has the focus (post.js); then the tabs, staying just under the bar as you scroll; then the posts and shelves saved, newest first, each with a thin rule under it and no box. A post (post.js): photo (40px) at its left, "name @username · 2h" with ··· (Report, or Delete on yours), the title in bold ("watched Gummo (1997)", a link to its page), the rating and rewatch, the review (blurred until pressed when it has spoilers), its worn cover small (72px) at its right, then reply · Same · like · share, icons and their counts (share: Copy link, the phone's share sheet, Add to Up next); the whole post is a press through to /p/. A log posted on this page goes on top of Everyone at once. A shelf saved is a compact post naming the shelf: "@div added 3 to films for the train" with a strip of just the spines that save added (80px, bare.js), the whole post a press through to the shelf; the builder marks each spine with when it was first saved (`look.at`, seconds; spines saved before the marks load as 1, long ago), so the spines marked in the hour before the save are the new ones, and saving again within the hour keeps them in one post; a save with none marked says "updated <its name>" (or "started <its name>") with its last five spines. No shelf cards on the feed. FOLLOWING · EVERYONE (?you, from the old You tab, is Following), the next 20 coming as the end of the list nears; every minute it asks for the newest and says "3 new posts" at the top when there are newer ones (pressing it shows them; nothing moves by itself); an empty Friends tab has People to follow, as rows like posts (photo, name and @name, what they did last, Follow at the right), then the Everyone timeline under it with See all
 p/index.html          a post's own page: /p/?<log id>, the post as the feed has it with its review in full and a larger cover, then (0009) its replies, oldest first, and a box to reply in (280); Delete on your own reply or any reply to your post (after a yes), Report on someone else's; #reply puts the caret in the box (a post's reply count links there). A post you can't see says it isn't here
-recs.js               recs (migration 0010, `docs/proposed-0010-recs.sql` until it's run): loaded by `Nav.loadRecs()`, which says whether 0010 is there (a GET of `rpc/rec_stats`, which anyone may call). The Recommend sheet (`Nav.recommend(item)`): who to (the people you both follow; one with 6 waiting can't be picked; a search over them past 8), a note of 140, Show in feed (on), Send, and Share to WhatsApp; and what the profile's Recs tab asks. Recommend is on a post's share menu, + ADD (a fourth choice), a shelf's spines, your Up next and From friends: signed in, once 0010 is there
+recs.js               recs (migration 0010, `supabase/migrations/0010_recs.sql`): loaded by `Nav.loadRecs()`, which says whether 0010 is there (a GET of `rpc/rec_stats`, which anyone may call). The Recommend sheet (`Nav.recommend(item)`): who to (the people you both follow; one with 6 waiting can't be picked; a search over them past 8), a note of 140, Show in feed (on), Send, and Share to WhatsApp; and what the profile's Recs tab asks. Recommend is on a post's share menu, + ADD (a fourth choice), a shelf's spines, your Up next and From friends: signed in, once 0010 is there
 notifications/index.html  /notifications/, yours only (migration 0009): likes, replies, me-toos and new followers, newest first, 30 at a time; ones in a row about the same thing are one line ("@a and 2 others liked your log of Gummo"), a reply with what was said; each goes to the post or, for a follower, their profile. With 0010, a rec for you, your rec watched or read, and a reply in a rec's thread, each on its own line and to the Recs tab. Opening it marks them all read (the bell's dot goes); what was unread is in bold
 worker-address.js     sends Worker requests to its workers.dev address on networks that block api.shelfstackd.com
 assets/logo-hedgehog.svg   the logo: a white hedgehog with four coloured quills on #14181C. The bar shows it at 28px left of SHELFSTACKD; its colours are the only colour on the site
@@ -311,14 +311,14 @@ triggers), 300 likes and 100 replies a day under a per-person lock, reports on l
 `replies_of()`, `notifications_list()` and `notifications_read()` for the pages. The pages show what it adds only once
 the likes table answers (post.js and nav.js ask), so they still work on a database without it.
 
-**`docs/proposed-0010-recs.sql` isn't run yet** (its test is `docs/proposed-rls_phase7.sql`, `ALL 0010 CHECKS
-PASSED` on PGlite after 0001 to 0009, with 0009's test still passing after it). It adds recs (from someone you follow
+**`supabase/migrations/0010_recs.sql` is in the live database too** (run by the owner; its test,
+`supabase/tests/rls_phase7.sql`, passed: `ALL 0010 CHECKS PASSED`, and on PGlite after 0001 to 0009, with 0009's test
+still passing after it). It adds recs (from someone you follow
 who follows you back; once per title per person; not what they've logged; 6 waiting for one person; 20 sent a day),
 their private threads (rec_replies), `logs.rec` (logging a title recommended to you marks each such rec watched and
 tells whoever sent it), three notification kinds, and `mutuals()`, `recs_list()`, `rec_keep()`, `rec_thread()`,
 `rec_stats()`, `feed_recs()` and `timeline()` (the feed: `activity()` and recs together); `post_stats()` gives
-`rec_by`, and `notifications_list()` a rec's title. Until it's run the pages show none of it. Once it's run and passes,
-both files move to `supabase/` (headers only).
+`rec_by`, and `notifications_list()` a rec's title. On a database without it the pages show none of it.
 
 The live pages are still `main`, which doesn't ask for any of this: logs and the watchlist reach the site when
 `letterboxd-flow` is merged. On a database without `0007` the pages do without: the feed asks for `activity()` once,
@@ -350,8 +350,8 @@ signed-out visitors never load the Supabase library.
   `[vars]`. Both are public; Row Level Security protects every table. The secret / service_role key isn't used
   anywhere and must never be added to the page, the repo or the Worker.
 - **Database:** run each file in `supabase/migrations/` once, in order, in the dashboard's SQL Editor (the live
-  database has them all, `0001` to `0009`; there is no `0003`). Then run the test for the newest one
-  (`supabase/tests/rls_phase6.sql` after `0009`, `rls_phase5.sql` after `0008`, `rls_phase4.sql` after `0007` and `0008`, `rls_phase3.sql` after `0006`): it plays a few users and a signed-out visitor,
+  database has them all, `0001` to `0010`; there is no `0003`). Then run the test for the newest one
+  (`supabase/tests/rls_phase7.sql` after `0010`, `rls_phase6.sql` after `0009`, `rls_phase5.sql` after `0008`, `rls_phase4.sql` after `0007` and `0008`, `rls_phase3.sql` after `0006`): it plays a few users and a signed-out visitor,
   undoes everything, and ends with `ALL ... CHECKS PASSED` (or stops at the first `FAIL:`). `rls_phase1.sql` is for a
   database with `0001` only.
 - **Pro:** two switches that must agree: `SHELFSTACKD_PRO_REQUIRED` in `build/index.html` (what the page offers) and

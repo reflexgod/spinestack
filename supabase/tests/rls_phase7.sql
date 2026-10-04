@@ -1,8 +1,9 @@
--- shelfstackd, phase 7: checks recs after migration 0010 (docs/proposed-0010-recs.sql): sending one (only to someone
+-- shelfstackd, phase 7: checks recs after migration 0010 (supabase/migrations/0010_recs.sql): sending one (only to someone
 -- who follows you back, once per title, not a title they've logged, 6 waiting each, 20 a day), who sees a rec, its note
 -- and its thread, keeping one and letting it go, a log marking it watched, the notifications, the feed's line, the
 -- counts and post_stats()'s rec_by. Run it in the Supabase dashboard (SQL Editor -> New query -> paste -> Run), after
--- 0010. It makes throwaway users inside a transaction and rolls everything back at the end: nothing is kept.
+-- 0010. It passed on the live database. It makes throwaway users inside a transaction and rolls everything back at the
+-- end: nothing is kept.
 -- The last result says "ALL 0010 CHECKS PASSED". Any failed check stops with an error that starts "FAIL:".
 -- Real accounts can be in the database, so every check looks only at the test's own rows.
 --

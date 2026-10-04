@@ -1,5 +1,5 @@
 /* Recs: recommend a film or a book to someone you follow who follows you back (migration 0010,
-   docs/proposed-0010-recs.sql until it's run). Loaded by Nav.loadRecs() the first time a page needs it.
+   supabase/migrations/0010_recs.sql). Loaded by Nav.loadRecs() the first time a page needs it.
    Recs.ready()          is 0010 in the database? Asked once a page (rec_stats() answers anyone); until it is, nothing
                          here shows: no Recommend, no Recs tab, no rec in the feed.
    Recs.open(item)       the sheet: who to (the people you both follow, a search when there are many), a note (140, optional),

@@ -6,11 +6,10 @@ session"), again after the launch pass (see "Done in the second cloud session"),
 the design review was applied (see "Done in the third session"). Read this first, then `README.md`, which says what
 every file is and how the Worker, the accounts and the tests are set up.
 
-## Done on 5 October 2026 (phase 4: recs) — waiting on the owner to run 0010
+## Done on 5 October 2026 (phase 4: recs)
 
-- **SQL, not run yet:** `docs/proposed-0010-recs.sql` and its test `docs/proposed-rls_phase7.sql` (`ALL 0010 CHECKS
-  PASSED` on PGlite after 0001 to 0009; 0009's test still passes after it). Run 0010, then its test, in the SQL Editor;
-  then move both to `supabase/migrations/0010_recs.sql` and `supabase/tests/rls_phase7.sql` (headers only). Nothing
+- **SQL, run:** the owner ran `supabase/migrations/0010_recs.sql` and its test `supabase/tests/rls_phase7.sql` in the
+  SQL Editor (`ALL 0010 CHECKS PASSED`); both moved from `docs/proposed-*` with only their headers changed. Nothing
   for the Worker.
 - **The pages (shown only once 0010 answers, `Nav.loadRecs()`):** `recs.js`, the Recommend sheet (the people you both
   follow, a note of 140, Show in feed, Send, Share to WhatsApp), on a post's share menu, + ADD's fourth choice, a
