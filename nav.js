@@ -216,7 +216,7 @@
     if (window.Add) return Promise.resolve(true);
     if (!window.Shelf) return Promise.resolve(false);
     return adding = adding || new Promise(res => {
-      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261016a';
+      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261017a';
       s.onload = () => res(!!window.Add); s.onerror = () => { adding = null; s.remove(); res(false); };
       document.head.appendChild(s);
     });
@@ -228,7 +228,7 @@
   function loadRecs(){
     if (window.Recs) return window.Recs.ready();
     return recsP = recsP || new Promise(res => {
-      const s = document.createElement('script'); s.src = ROOT + 'recs.js?v=20261013a';
+      const s = document.createElement('script'); s.src = ROOT + 'recs.js?v=20261017a';
       s.onload = () => res(window.Recs ? window.Recs.ready() : false); s.onerror = () => { recsP = null; s.remove(); res(false); };
       document.head.appendChild(s);
     });
@@ -305,7 +305,11 @@
 @media (pointer:coarse){
   .wbtn{display:none}
   .wmorewrap{display:inline-block;position:relative;flex:none}
-  .wmore{display:grid;place-items:center;min-width:44px;height:44px;padding:0;border:0;background:none;color:var(--ink,#000);font:700 var(--fs-btn,11px) var(--mono,monospace);letter-spacing:.1em;cursor:pointer}
+  /* the same box as a text action beside it (a 16px icon, 8px above and below), and 44px to press round it */
+  .wmorewrap{vertical-align:middle}
+  .wmore{display:grid;place-items:center;position:relative;min-width:var(--s4,16px);padding:var(--s2,8px) 0;border:0;background:none;color:var(--ink,#000);cursor:pointer}
+  .wmore svg{width:16px;height:16px}
+  .wmore::before{content:"";position:absolute;top:calc(50% - 22px);bottom:calc(50% - 22px);left:calc(50% - 22px);right:calc(50% - 22px)}
   .wmenu.up{top:auto;bottom:100%}
   .wmenu{position:absolute;top:100%;right:0;z-index:8;background:var(--paper,#fff);border:1px solid var(--ink,#000);border-radius:var(--radius,3px);padding:var(--s1,4px) 0;white-space:nowrap}
   .wmenu button{display:block;width:100%;min-height:44px;text-align:left;background:none;border:0;padding:0 var(--s4,16px);font:500 var(--fs-nav,12px) var(--mono,monospace);color:inherit;cursor:pointer}

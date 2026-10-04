@@ -29,7 +29,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Geist+Mono:wght@400;500&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261014a">
+<link rel="stylesheet" href="../site.css?v=20261017a">
 <style>
 /* the profile (site.css has the cards, the tabs, the sheets and everything shared) */
 .phead{display:grid;grid-template-columns:96px minmax(0,1fr) auto;grid-template-areas:"ava who stats";gap:0 var(--s5);align-items:center}
@@ -158,8 +158,6 @@ html:not(.recs-on) .recbtn{display:none}   /* Recommend: only once 0010 is there
 .recs li{grid-template-columns:40px minmax(0,1fr)}
 .recs .tacts{grid-column:2;justify-content:flex-start}
 .recs .rnote{margin:var(--s1) 0 0;overflow-wrap:anywhere}
-.recs .rstate{display:inline-flex;align-items:center;gap:var(--s1);color:var(--grey);font-size:var(--fs-btn);font-weight:600}
-.recs .rstate svg{width:16px;height:16px}
 .recs .rthread{grid-column:2;display:grid;gap:var(--s2)}
 .recs .rthread[hidden]{display:none}
 .recs .rmsgs{list-style:none;margin:0;padding:0;display:grid;gap:var(--s2)}
@@ -223,7 +221,6 @@ html:not(.recs-on) .recbtn{display:none}   /* Recommend: only once 0010 is there
 .spines .st b{font-weight:500;overflow-wrap:anywhere}
 .spines .st b span{font-weight:400;color:var(--grey)}
 .spines .st > span{color:var(--grey);font-size:var(--fs-small);overflow-wrap:anywhere}
-.spines .onmine{color:var(--grey);font-size:var(--fs-small);white-space:nowrap}
    /* "On your shelf", where + Add to my shelf would be */
 .row{display:flex;gap:var(--s4) var(--s4);align-items:center;flex-wrap:wrap}
 /* a shelf's name that renames it when pressed (the hero's, and a shelf page's heading) */
@@ -427,7 +424,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
           <a class="btn" id="openBuilder" href="../build/" hidden>Edit</a>
           <button class="dash sm" id="oneRename" type="button" hidden>Rename</button>
           <button class="dash sm" id="oneMain" type="button" data-act="main" hidden>Make main</button>
-          <span class="grey sm" id="oneIsMain" hidden>Main shelf</span>
+          <span class="state" id="oneIsMain" hidden>Main shelf</span>
           <button class="dash sm" id="onePrivacy" type="button" data-act="privacy" hidden>Make private</button>
           <button class="dash sm grey" id="oneDelete" type="button" data-act="delete" hidden>Delete</button>
           <button class="dash sm" id="reportShelf" type="button" hidden>Report</button>
@@ -501,7 +498,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../spinetip.js?v=20261004a"></script>
 <script src="../wear.js?v=20261016a"></script>
-<script src="../nav.js?v=20261016a"></script>
+<script src="../nav.js?v=20261017a"></script>
 <script>
 (() => {
 /* A profile: /u/?username, and its shelf on its own page: /u/?username&shelf (one shelf each), or a shelf by its id,
@@ -865,8 +862,8 @@ const STATE = {open: 'Waiting', kept: 'Kept', watched: '', dismissed: 'Passed'};
 function recRow(r, i){
   const li = document.createElement('li'); li.dataset.i = i;
   const sent = recBox === 'sent', who = `<a href="${esc(pageUrl(r.username))}">@${esc(r.username)}</a>`, done = r.kind === 'movie' ? 'Watched' : 'Read';
-  const state = sent ? `<span class="rstate">${r.status === 'watched' ? `${done} ${CHECK}` : esc(STATE[r.status] || '')}</span>`
-    : (r.status === 'open' ? '<button class="dash sm" type="button" data-r="keep">Keep</button>' : '<span class="rstate">Kept</span>')
+  const state = sent ? `<span class="rstate state">${r.status === 'watched' ? `${done} ${CHECK}` : esc(STATE[r.status] || '')}</span>`
+    : (r.status === 'open' ? '<button class="dash sm" type="button" data-r="keep">Keep</button>' : '<span class="rstate state">Kept</span>')
       + `<button class="dash sm" type="button" data-r="log">${didIt(r)}</button><button class="dash sm" type="button" data-r="dismiss">Dismiss</button>`;
   li.innerHTML = `<span class="tc">${r.cover_src ? `<img src="${esc(coverOf(r.cover_src))}" alt="" loading="lazy">` : ''}</span>
     <span class="tt"><b><a href="${esc(Nav.titleUrl(asItem(r)))}">${esc(r.title)}</a>${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${sent ? 'to' : 'from'} ${who} · ${esc(ago(r.created_at))}</span>${r.note ? `<p class="rnote">${esc(r.note)}</p>` : ''}</span>
@@ -1187,7 +1184,7 @@ function paintItems(){
     const li = document.createElement('li'); li.dataset.i = i;
     li.innerHTML = `<span class="sthumb"></span>
       <span class="st"><b>${r.title ? `<a href="${esc(Nav.titleUrl(asItem(r)))}">${esc(r.title)}</a>` : 'Untitled'}${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${esc([r.author, r.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · '))}</span></span>
-      <span class="sact"><button class="dash sm" type="button" data-log="${i}">Log</button><button class="dash sm recbtn" type="button" data-rec="${i}">Recommend</button>${!have(r) ? `<button class="dash sm" type="button" data-add="${i}">Add to my shelf</button>` : view.mine ? '' : '<span class="onmine">On your shelf</span>'}</span>`;
+      <span class="sact"><button class="dash sm" type="button" data-log="${i}">Log</button><button class="dash sm recbtn" type="button" data-rec="${i}">Recommend</button>${!have(r) ? `<button class="dash sm" type="button" data-add="${i}">Add to my shelf</button>` : view.mine ? '' : '<span class="onmine state">On your shelf</span>'}</span>`;
     // someone else's shelf: each spine onto your watchlist too
     if (!view.mine) Nav.watchable(li.querySelector('.sthumb'), {kind: r.kind, title: r.title, year: r.year ? String(r.year) : '', creator: r.author || '', cover: /^url:/.test(r.cover_src || '') ? r.cover_src.slice(4) : ''}, {moreIn: li.querySelector('.sact')});
     return li;

@@ -20,7 +20,7 @@ const PAGES = [
   { name: 'people', path: '/people/' },
   { name: 'post', path: '/p/?bbbbbbbb-bbbb-4bbb-8bbb-000000000000' },   // @mira's Gummo
   { name: 'notifications', path: '/notifications/' },
-  { name: 'title', path: '/t/?film=106' },   // Gummo
+  { name: 'title', path: '/t/?film=106&title=Gummo&year=1997' },   // Gummo, at the address it takes
 ];
 /* pages without it */
 const OTHER_PAGES = [

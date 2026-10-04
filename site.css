@@ -71,13 +71,19 @@ em.pro,.tag{font-style:normal;font-weight:700;font-size:9px;border:1px solid cur
    Following in grey, and Unfollow when the pointer is on it. In their own case (sentence case): only the bar's places,
    section headings and the tiny labels are in capitals ---------- */
 .btn{display:inline-block;font:600 var(--fs-btn)/1.35 var(--mono);text-align:center;text-decoration:none;white-space:nowrap;
-  background:none;color:var(--grey);border:1px solid transparent;border-radius:var(--radius);padding:var(--s1) 0;cursor:pointer}
+  background:none;color:var(--grey);border:0;border-radius:var(--radius);padding:var(--s2) 0;cursor:pointer}
 .btn:hover:not(:disabled),.btn:focus-visible{color:var(--ink)}
 .btn.primary,.btn.follow:not([aria-pressed="true"]){background:var(--ink);color:var(--paper);border-color:var(--ink);padding:var(--btn-pad)}
 .btn.primary:hover:not(:disabled),.btn.follow:not([aria-pressed="true"]):hover:not(:disabled){background:#222;color:var(--paper)}
 .btn.full{width:100%}
 .btn:disabled{opacity:.5;cursor:default}
-.dash{display:inline-block;background:none;border:0;padding:0 0 var(--s1);font:600 var(--fs-btn)/1.35 var(--mono);color:var(--grey);cursor:pointer;text-decoration:none;white-space:nowrap}
+.dash{display:inline-block;background:none;border:0;padding:var(--s2) 0;font:600 var(--fs-btn)/1.35 var(--mono);color:var(--grey);cursor:pointer;text-decoration:none;white-space:nowrap}
+/* a state, where an action was ("Main shelf", "On your shelf", "In Up next"): the same box, grey, not pressed. So a
+   row of a solid button, text actions and states is one line: one font, size and line-height, 8px above and below,
+   no border */
+.state{display:inline-flex;align-items:center;gap:var(--s1);font:600 var(--fs-btn)/1.35 var(--mono);color:var(--grey);padding:var(--s2) 0;white-space:nowrap}
+.state svg{width:16px;height:16px;flex:none;margin:-1px 0}
+.btn,.dash,.state{vertical-align:middle;box-sizing:border-box}
 .dash:hover:not(:disabled),.dash:focus-visible{color:var(--ink)}
 .dash:disabled{opacity:.5;cursor:default}
 
