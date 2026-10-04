@@ -75,8 +75,8 @@ create function public.logs_post_before() returns trigger
 language plpgsql security definer set search_path = '' as $$
 declare today date := (now() at time zone 'utc')::date; src public.logs;
 begin
-  if new.review = '' and new.caption <> '' then new.review := new.caption; end if;   -- a page from before 0009
-  new.caption := left(new.review, 280);
+  if new.review = '' then new.review := new.caption;   -- a page from before 0009: the caption, which keeps its own 280 limit
+  else new.caption := left(new.review, 280); end if;
   new.watched_on := coalesce(new.watched_on, today);
   if new.watched_on > today + 1 or new.watched_on < date '1900-01-01' then
     raise exception 'That date hasn''t happened yet.' using errcode = '23514';
