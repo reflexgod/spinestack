@@ -6,6 +6,23 @@ session"), again after the launch pass (see "Done in the second cloud session"),
 the design review was applied (see "Done in the third session"). Read this first, then `README.md`, which says what
 every file is and how the Worker, the accounts and the tests are set up.
 
+## Done on 5 October 2026 (phase 4: recs) — waiting on the owner to run 0010
+
+- **SQL, not run yet:** `docs/proposed-0010-recs.sql` and its test `docs/proposed-rls_phase7.sql` (`ALL 0010 CHECKS
+  PASSED` on PGlite after 0001 to 0009; 0009's test still passes after it). Run 0010, then its test, in the SQL Editor;
+  then move both to `supabase/migrations/0010_recs.sql` and `supabase/tests/rls_phase7.sql` (headers only). Nothing
+  for the Worker.
+- **The pages (shown only once 0010 answers, `Nav.loadRecs()`):** `recs.js`, the Recommend sheet (the people you both
+  follow, a note of 140, Show in feed, Send, Share to WhatsApp), on a post's share menu, + ADD's fourth choice, a
+  shelf's spines, Up next and From friends; the profile's Recs tab (counts for anyone; For you and Sent on your own,
+  with Keep, Mark watched, Dismiss and a private thread); the feed reads `timeline()` (recs in it, never the note) and
+  a log from a rec says "recommended by @a"; notifications for a rec, a rec watched and a thread reply.
+- **Share to WhatsApp:** posts' share menu, the Recommend sheet and a shelf's Share (works without 0010).
+- **Tested:** `cd tests && npm run test:all` after Phase 4: html-validate clean, then Playwright 785 passed, 23
+  skipped, none failed.
+- **My calls:** a rec the receiver let go shows "Passed" in the sender's Sent; Share to WhatsApp on a rec is the
+  sheet's (a rec itself is private); a rec in the feed has no page of its own yet (the title page is Phase 5).
+
 ## Done on 5 October 2026 (phase 3 of the owner's plan, and 3a before it)
 
 No new SQL, nothing for the Worker. Each item its own commit on `letterboxd-flow`.
