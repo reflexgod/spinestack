@@ -79,7 +79,9 @@ async function outbound(request) {
     const q = url.searchParams.get('q');
     assert.match(url.searchParams.get('fields'), /author_alternative_name/);
     const doc = {title: q, author_name: ['村上春樹'], author_key: ['OL1A'], first_publish_year: 1987, cover_i: 1, edition_count: 40, readinglog_count: 900};
-    if (q === 'norwegian wood') doc.author_alternative_name = ['ムラカミハルキ', 'Haruki Murakami', 'Murakami Haruki'];
+    // as Open Library has them: the all-capitals one first
+    if (q === 'norwegian wood') doc.author_alternative_name = ['MURAKAMI HARUKI', 'Murakami Haruki', 'ムラカミハルキ', '무라카미 하루키', 'Haruki MURAKAMI', 'Haruki Murakami', 'Murakami Haruki Kenkyūkai'];
+    if (q === 'sputnik sweetheart') Object.assign(doc, {author_name: ['MURAKAMI HARUKI'], author_alternative_name: ['Murakami Haruki', 'MURAKAMI Haruki']});
     if (q === 'kafka on the shore') doc.author_key = ['OL2A'];
     if (q === 'the waves') Object.assign(doc, {author_name: ['Virginia Woolf'], author_key: ['OL3A']});
     return json({docs: [doc]});
@@ -296,7 +298,10 @@ try {
   const book = async q => { fresh(); return (await ask(mf, `/identify?want=book&q=${encodeURIComponent(q)}`)).body.results[0]; };
   let b = await book('norwegian wood');
   assert.deepEqual([b.title, b.creator, calls.filter(c => c.startsWith('author'))], ['norwegian wood', 'Haruki Murakami', []]);
-  ok('an author given as 村上春樹: the first Latin-script name in author_alternative_name (no author record asked for)');
+  ok('an author given as 村上春樹: Haruki Murakami from author_alternative_name, not its first Latin name, MURAKAMI HARUKI (no author record asked for)');
+  b = await book('sputnik sweetheart');
+  assert.equal(b.creator, 'Haruki Murakami');
+  ok('an author given as MURAKAMI HARUKI: in ordinary case, the family name (the one in capitals in "MURAKAMI Haruki") last');
   b = await book('kafka on the shore');
   assert.deepEqual([b.creator, calls.filter(c => c.startsWith('author'))], ['Haruki Murakami', ['author /authors/OL2A.json']]);
   ok('none in the search result: the first Latin-script name in the author record\'s alternate_names');

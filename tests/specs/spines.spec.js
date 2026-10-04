@@ -114,3 +114,13 @@ test('a film with no real spine doesn\'t ask for a photo', async ({ page }) => {
   await page.waitForTimeout(500);
   await expect(d.getByRole('button', { name: 'Have it? Photograph the spine' })).toHaveCount(0);
 });
+
+test('an author\'s name as they write it, the same as the Worker gives it: MURAKAMI HARUKI is Haruki Murakami', async ({ page }) => {
+  await withAdd(page);
+  const name = list => page.evaluate(l => Add.personName(l), list);
+  expect(await name(['MURAKAMI HARUKI', 'Murakami Haruki', 'Haruki MURAKAMI', 'Haruki Murakami'])).toBe('Haruki Murakami');
+  expect(await name(['MURAKAMI HARUKI', 'MURAKAMI Haruki'])).toBe('Haruki Murakami');
+  expect(await name(['Virginia Woolf'])).toBe('Virginia Woolf');
+  expect(await name(['J. R. R. TOLKIEN'])).toBe('J. R. R. Tolkien');
+  expect(await name(["FLANNERY O'CONNOR"])).toBe("Flannery O'Connor");
+});

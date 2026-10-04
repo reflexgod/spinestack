@@ -156,16 +156,34 @@ const ORG_AUTHOR = /\b(congress|committee|department|office|list|directory)\b/i;
 const notABook = d => !d.cover_i && (ORG_AUTHOR.test((d.author_name || []).join(' ')) || ((d.edition_count || 0) <= 1 && !d.readinglog_count));
 /* An author's name in Latin letters. Open Library sometimes gives the name as written in its own script (村上春樹 for
    Norwegian Wood): then the first Latin-script name in author_alternative_name is used, or, when there's none there,
-   the first in the author record's alternate_names. With neither, the name stays as it came. */
+   the first in the author record's alternate_names. With neither, the name stays as it came. The name is then put the
+   way the person writes it (personName). */
 const LATIN = /^[\p{Script=Latin}\p{M}\p{N}\s.,'’()&-]+$/u, latin = n => !!n && LATIN.test(n) && /\p{Script=Latin}/u.test(n);
+/* A person's name as they'd write it, from the Latin-script names Open Library has for them: "MURAKAMI HARUKI",
+   "Murakami Haruki" and "Haruki MURAKAMI" are Haruki Murakami. A word in capitals (three letters or more, not an
+   initial) is put in ordinary case. The family name is the word a library writes in capitals beside a given name in
+   ordinary case ("Haruki MURAKAMI"); it goes last. A name already in ordinary case is kept as it is. */
+const CAPS = w => (w.match(/\p{L}/gu) || []).length >= 3 && !w.includes('.') && w === w.toUpperCase();
+const cased = w => CAPS(w) ? w.toLowerCase().replace(/(^|[-'’])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()) : w;
+function personName(names){
+  const list = names.filter(Boolean).map(n => String(n).trim().replace(/\s+/g, ' ')).filter(n => n && n.split(' ').length <= 4);
+  if (!list.length) return '';
+  let family = '', marked = '';
+  for (const n of list){ const ws = n.split(' '), caps = ws.filter(CAPS); if (ws.length >= 2 && caps.length === 1){ family = caps[0].toLowerCase(); marked = n; break; } }
+  const ordinary = n => !n.split(' ').some(CAPS);
+  const best = list.find(n => ordinary(n) && (!family || n.split(' ').slice(-1)[0].toLowerCase() === family)) || marked || list.find(ordinary) || list[0];
+  let ws = best.split(' ').map(cased);
+  if (family && ws.length === 2 && ws[0].toLowerCase() === family) ws = [ws[1], ws[0]];
+  return ws.join(' ');
+}
 async function authorName(d) {
   const name = (d.author_name || [''])[0];
-  if (!name || latin(name)) return name;
-  const alt = (d.author_alternative_name || []).find(latin);
-  if (alt) return alt;
+  if (!name || latin(name) && !name.split(/\s+/).some(CAPS)) return name;
+  const alts = [...(latin(name) ? [name] : []), ...(d.author_alternative_name || []).filter(latin)];
+  if (alts.length) return personName(alts) || name;
   const key = (d.author_key || [])[0];
   if (!key) return name;
-  try { const a = await getJSON(`https://openlibrary.org/authors/${encodeURIComponent(key)}.json`, {headers: {'User-Agent': UA}}); return (a.alternate_names || []).find(latin) || name; }
+  try { const a = await getJSON(`https://openlibrary.org/authors/${encodeURIComponent(key)}.json`, {headers: {'User-Agent': UA}}); return personName((a.alternate_names || []).filter(latin)) || name; }
   catch { return name; }
 }
 async function olBooks(q) {
@@ -202,9 +220,9 @@ async function wikidataYear(title, author) {
 async function identify(p, env, cors, ctx) {
   const q = clean(p.get('q'), 120), want = ['movie', 'book'].includes(p.get('want')) ? p.get('want') : 'all';
   if (!q) return json({error: 'Type a title to search.'}, 400, cors);
-  // id5: a book's author in Latin letters when Open Library has them (id4 answers could have 村上春樹); id4: books only
+  // id6: an author's name as they write it ("Haruki Murakami", not "MURAKAMI HARUKI"); id5: a book's author in Latin letters when Open Library has them (id4 answers could have 村上春樹); id4: books only
   // when the title or author has what was typed, each once (id3 answers had the rest; id2 the reports)
-  const key = `id5:${want}:${q.toLowerCase()}`, make = async () => {
+  const key = `id6:${want}:${q.toLowerCase()}`, make = async () => {
     const [f, b] = await Promise.allSettled([want !== 'book' ? tmdbFilms(q, env.TMDB_TOKEN) : [], want !== 'movie' ? olBooks(q) : []]);
     if (f.status === 'rejected' && b.status === 'rejected') throw new Error('TMDB and Open Library did not answer');
     return {results: [...(f.value || []), ...(b.value || [])]};
