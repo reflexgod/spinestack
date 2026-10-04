@@ -9,18 +9,18 @@ const tabs = page => page.getByRole('tablist', { name: 'Profile' }).getByRole('t
 const selected = (page, name) => expect(page.getByRole('tablist', { name: 'Profile' }).getByRole('tab', { name, exact: true })).toHaveAttribute('aria-selected', 'true');
 const followList = (page, kind) => page.waitForRequest(r => r.url().includes('/rpc/follow_list') && r.postDataJSON().kind === kind);   // the Network tab's list (the page asks for the followers once by itself, for "Followed by")
 
-test('the tabs are Profile · Activity · Watchlist · Network, each with its own address, kept on reload', async ({ page }) => {
+test('the tabs are Profile · Activity · Up next · Shelves (N) · Network, each with its own address, kept on reload', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?mira');
-  await expect(tabs(page)).toHaveText(['Profile', 'Activity', 'Up next', 'Network']);
+  await expect(tabs(page)).toHaveText(['Profile', 'Activity', 'Up next', 'Shelves (6)', 'Network']);
   await selected(page, 'Profile');
-  for (const [name, hash, panel] of [['Activity', '#activity', '#panelA'], ['Up next', '#upnext', '#panelW'], ['Network', '#network', '#panelN'], ['Profile', '', '#panelP']]) {
+  for (const [name, hash, panel] of [['Activity', '#activity', '#panelA'], ['Up next', '#upnext', '#panelW'], ['Shelves (6)', '#shelves', '#panelS'], ['Network', '#network', '#panelN'], ['Profile', '', '#panelP']]) {
     await tabs(page).filter({ hasText: name }).click();
     await selected(page, name);
     expect(new URL(page.url()).hash).toBe(hash);
     await expect(page.locator(panel)).toBeVisible();
-    await expect(page.locator('#panelP, #panelA, #panelW, #panelN').locator('visible=true')).toHaveCount(1);
+    await expect(page.locator('#panelP, #panelA, #panelW, #panelS, #panelN').locator('visible=true')).toHaveCount(1);
   }
   await open(page, '/u/?mira#activity');
   await selected(page, 'Activity');
@@ -30,12 +30,13 @@ test('the tabs are Profile · Activity · Watchlist · Network, each with its ow
   await page.keyboard.press('ArrowRight');
   await selected(page, 'Up next');
   await page.keyboard.press('ArrowRight');
+  await selected(page, 'Shelves (6)');
+  await page.keyboard.press('ArrowRight');
   await selected(page, 'Network');
   await page.keyboard.press('ArrowRight');
   await selected(page, 'Profile');
-  // a link from when there was a Shelves tab is Profile
   await open(page, '/u/?mira#shelves');
-  await selected(page, 'Profile');
+  await selected(page, 'Shelves (6)');
   expect(errors).toEqual([]);
 });
 
@@ -44,14 +45,14 @@ test('Profile: their shelf first, standing on a shelf line at one spine height f
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?mira');
   const hero = page.locator('#hero');
-  await expect(hero.locator('#featCap')).toHaveText('shelf number 1');   // none picked as main: the one saved last
+  await expect(hero.locator('#featCap')).toHaveText('untitled shelf');   // none made main: her oldest
   await expect(hero.locator('#featMeta')).toHaveText(/^2 spines · /);
   await expect(page.locator('#nSpines')).toHaveText('2');
   await expect(hero.locator('canvas')).toHaveCount(1);
   await expect(hero.getByRole('link', { name: 'Edit' })).toBeHidden();   // not yours
-  await expect(page.locator('#featLink')).toHaveAttribute('href', `/u/?mira&shelf=${SHELVES[1].id}`);
+  await expect(page.locator('#featLink')).toHaveAttribute('href', `/u/?mira&shelf=${SHELVES[16].id}`);   // her oldest
   await expect(page.getByText('Most shelved')).toHaveCount(0);
-  await expect(page.getByText(/Main shelf|Recent shelves/)).toHaveCount(0);
+  await expect(page.getByText(/Main shelf|Recent shelves/).locator('visible=true')).toHaveCount(0);
   const h = await hero.boundingBox(), main = await page.locator('main').boundingBox(), watch = await page.locator('#watchSec').boundingBox();
   expect(watch.y).toBeGreaterThan(h.y + h.height);
   expect(Math.abs(watch.width - main.width)).toBeLessThanOrEqual(1);   // the watchlist across the column
@@ -355,4 +356,31 @@ test('a short bio has no "more"', async ({ page }) => {
   await open(page, '/u/?mira');
   await expect(page.locator('#bio')).toHaveText('Films, mostly.');
   await expect(page.getByRole('button', { name: 'more', exact: true })).toBeHidden();
+});
+
+test('Shelves (N): every shelf of theirs, newest first, its spines on a shelf line and its name under it; a press opens it', async ({ page }) => {
+  const errors = watchErrors(page);
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/u/?mira#shelves');
+  await selected(page, 'Shelves (6)');
+  const rows = page.locator('#sList li');
+  await expect(rows).toHaveCount(6);
+  await expect(rows.first().locator('.sn b')).toHaveText('shelf number 1');   // the one saved last first
+  await expect(rows.last().locator('.sn')).toContainText('main');            // her oldest, the one on her profile
+  await expect(rows.first().locator('.sline canvas')).toHaveCount(3);        // its spines, standing on the line
+  expect(await rows.first().locator('.sline').evaluate(el => getComputedStyle(el).borderBottomWidth)).toBe('1px');
+  await rows.first().click();
+  await expect(page).toHaveURL(/\/u\/\?mira&shelf=aaaaaaaa-aaaa-4aaa-8aaa-000000000001$/);
+  expect(errors).toEqual([]);
+});
+
+test('your own Shelves tab has your private ones too, marked', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await page.route(u => u.pathname === '/rest/v1/shelves' && u.searchParams.get('owner') === 'eq.11111111-1111-4111-8111-111111111111', async route => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    const rows = SHELVES.filter(x => x.owner === '11111111-1111-4111-8111-111111111111').map(x => x.id === SHELVES[3].id ? { ...x, is_public: false } : x);
+    return route.fulfill({ status: 200, headers: { 'Access-Control-Allow-Origin': '*' }, contentType: 'application/json', body: JSON.stringify(rows) });
+  });
+  await open(page, '/u/?tester#shelves');
+  await expect(page.locator('#sList li .tag', { hasText: 'private' })).toHaveCount(1);
 });

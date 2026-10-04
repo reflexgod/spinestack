@@ -77,12 +77,12 @@ test('+ Add to my shelf puts that same spine on the shelf being built, with no n
   expect(errors).toEqual([]);
 });
 
-test('your own shelf: Edit, Make private, and Delete after a confirm', async ({ page }) => {
+test('your own shelf: Edit, Rename, Make main, Make private, and Delete after a confirm', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   const at = `/u/?tester&shelf=${mine.id}`;
   await open(page, at);
-  await expect(page.locator('#oneActs').locator('button:visible, a:visible')).toHaveText(['Edit', 'Make private', 'Delete']);
+  await expect(page.locator('#oneActs').locator('button:visible, a:visible')).toHaveText(['Edit', 'Rename', 'Make main', 'Make private', 'Delete']);
   await expect(page.locator('#oneActs').getByRole('link', { name: 'Edit' })).toHaveAttribute('href', `../build/?open=${mine.id}`);
   // Make private
   let req = sent(page, 'PATCH', `/rest/v1/shelves?id=eq.${mine.id}`);
@@ -128,7 +128,7 @@ test('your own shelf: its name in the heading renames it; nothing says main', as
 test('/u/?name&shelf is their shelf', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?mira&shelf');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('shelf number 1');   // the one saved last
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('untitled shelf');   // her main one: none made main, so her oldest
   await expect(page.locator('#oneItems li')).toHaveCount(2);
   await expect(page.locator('#backLink')).toHaveAttribute('href', '/u/?mira');
 });
@@ -357,3 +357,31 @@ test('if your own shelf can\'t be read, every title is offered, as before', asyn
   expect(await offered(page)).toEqual(['+ Add to my shelf', '+ Add to my shelf']);
 });
 
+
+test('Make main: your shelf becomes the one on your profile; the main one says so instead, and a private one can\'t be', async ({ page }) => {
+  const errors = watchErrors(page);
+  await mockNetwork(page, { signedIn: true });
+  await open(page, `/u/?tester&shelf=${mine.id}`);
+  const req = sent(page, 'PATCH', '/rest/v1/profiles?id=eq.11111111-1111-4111-8111-111111111111');
+  await page.locator('#oneActs').getByRole('button', { name: 'Make main' }).click();
+  expect((await req).postDataJSON()).toEqual({ pinned_shelf_id: mine.id });
+  await expect(page.locator('#toast')).toHaveText('This is your main shelf now: the one on your profile.');
+  // your main one (pinned in the test account): "Main shelf", no button
+  await open(page, `/u/?tester&shelf=${SHELVES[0].id}`);
+  await expect(page.locator('#oneIsMain')).toHaveText('Main shelf');
+  await expect(page.locator('#oneActs').getByRole('button', { name: 'Make main' })).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('Rename: the shelf\'s name in its heading turns into a box, and Enter keeps it', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, `/u/?tester&shelf=${mine.id}`);
+  await page.locator('#oneActs').getByRole('button', { name: 'Rename' }).click();
+  const box = page.getByRole('textbox', { name: 'Shelf name' });
+  await expect(box).toBeFocused();
+  await box.fill('the good ones');
+  const req = sent(page, 'PATCH', `/rest/v1/shelves?id=eq.${mine.id}`);
+  await box.press('Enter');
+  expect((await req).postDataJSON()).toEqual({ name: 'the good ones' });
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('the good ones');
+});

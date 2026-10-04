@@ -185,6 +185,15 @@
 .onshelf{max-width:680px;min-width:0}
 .spines{list-style:none;margin:0;padding:0}
 .sact{display:flex;align-items:center;gap:var(--s1) var(--s3)}
+/* the Shelves tab: each shelf's spines standing on a shelf line, its name under it */
+.slist{list-style:none;margin:var(--s5) 0 0;padding:0;display:grid;gap:var(--s5)}
+.slist a{display:block;text-decoration:none;color:var(--ink)}
+.slist .sline{display:flex;align-items:flex-end;gap:2px;height:64px;border-bottom:1px solid var(--ink);overflow:hidden}
+.slist .sline canvas{display:block;flex:none}
+.slist .sn{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s1) var(--s2);margin-top:var(--s2)}
+.slist .sn b{font-weight:500}
+.slist a:hover .sn b,.slist a:focus-visible .sn b{text-decoration:underline;text-underline-offset:3px}
+.slist .sn .grey{font-size:var(--fs-small)}
 .sact [data-log]{margin-right:var(--s3)}   /* Log and + Add to my shelf: a press apart on a touch screen */
 .spines li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:var(--s3);align-items:center;padding:var(--s2) 0;border-bottom:1px solid var(--hair)}
 .spines .sthumb{display:grid;place-items:center;height:56px}
@@ -302,6 +311,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
         <button type="button" role="tab" id="tabP" data-tab="profile" aria-selected="true" aria-controls="panelP">Profile</button>
         <button type="button" role="tab" id="tabA" data-tab="activity" aria-selected="false" aria-controls="panelA">Activity</button>
         <button type="button" role="tab" id="tabW" data-tab="watchlist" aria-selected="false" aria-controls="panelW">Up next</button>
+        <button type="button" role="tab" id="tabS" data-tab="shelves" aria-selected="false" aria-controls="panelS">Shelves</button>
         <button type="button" role="tab" id="tabN" data-tab="network" aria-selected="false" aria-controls="panelN">Network</button>
       </nav>
       <div id="panelP" role="tabpanel" aria-labelledby="tabP">
@@ -348,6 +358,10 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
         <ol class="wgrid" id="wGrid"></ol>
         <p class="grey" id="wNone" hidden>Nothing up next.</p>
       </div>
+      <div id="panelS" role="tabpanel" aria-labelledby="tabS" hidden>
+        <ol class="slist" id="sList"></ol>
+        <p class="grey" id="sNone" hidden>No shelves yet.</p>
+      </div>
       <div id="panelN" role="tabpanel" aria-labelledby="tabN" hidden>
         <nav class="tabs sub" role="tablist" aria-label="Network">
           <button type="button" role="tab" id="tabNg" data-net="following" aria-selected="true" aria-controls="netPanel">Following</button>
@@ -373,6 +387,9 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
         <p class="sby" id="oneBy"></p>
         <div class="sacts" id="oneActs">
           <a class="btn" id="openBuilder" href="../build/" hidden>Edit</a>
+          <button class="dash sm" id="oneRename" type="button" hidden>Rename</button>
+          <button class="dash sm" id="oneMain" type="button" data-act="main" hidden>Make main</button>
+          <span class="grey sm" id="oneIsMain" hidden>Main shelf</span>
           <button class="dash sm" id="onePrivacy" type="button" data-act="privacy" hidden>Make private</button>
           <button class="dash sm grey" id="oneDelete" type="button" data-act="delete" hidden>Delete</button>
           <button class="dash sm" id="reportShelf" type="button" hidden>Report</button>
@@ -678,12 +695,10 @@ const savedAt = s => s.saved_at || s.updated_at;
 const PROFILE_COLS = 'id,username,display_name,bio,avatar_key,pinned_shelf_id,is_private,created_at';
 const SHELF_COLS = 'id,caption,name,filter,intensity,background,wood,layout,varied,is_public,preview_key,pro,created_at,updated_at,saved_at,shelf_items(count)';
 const fetchShelves = () => api(`shelves?select=${SHELF_COLS}&owner=eq.${view.profile.id}${view.mine ? '' : '&is_public=is.true'}&hidden=is.false&order=saved_at.desc&limit=200`);
-// their shelf: the main one (pinned, from before) when it's set, otherwise the one saved last. The builder opens the
-// same one (yourShelf() there).
-function theShelf(){
-  const p = view.profile, list = view.shelves;
-  return list.find(s => s.id === p.pinned_shelf_id) || list.slice().sort((a, b) => new Date(savedAt(b)) - new Date(savedAt(a)))[0] || null;
-}
+// their main shelf, the profile's hero: the one they made main (pinned_shelf_id), otherwise their oldest. The builder
+// opens the same one (yourShelf() there). The rest are on the Shelves tab.
+const mainOf = (list, pinned) => list.find(s => s.id === pinned) || list.slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at))[0] || null;
+function theShelf(){ return mainOf(view.shelves, view.profile.pinned_shelf_id); }
 let redrawT = 0;
 function redrawAll(){ clearTimeout(redrawT); redrawT = setTimeout(() => { for (const f of view.drawn) f(); }, 60); }
 Shelf.onTextureLoaded(() => redrawAll());
@@ -707,7 +722,7 @@ async function load(){
   view.profile = p; view.mine = !!(me.user && me.user.id === p.id);
   titled(person(p), `${person(p)} on shelfstackd: their shelf, and the films and books they log.`);
   view.shelves = await fetchShelves().catch(() => []);
-  paintStats();
+  paintStats(); paintShelfCount();
   paintHead();
   paintFollow().then(async () => { if (await finishFollow()) paintFollow(); });
   paintKnown();
@@ -724,7 +739,8 @@ async function refresh(){
   const [rows, shelves] = await Promise.all([api(`profiles?select=${PROFILE_COLS}&id=eq.${view.profile.id}`), fetchShelves()]);
   if (rows && rows[0]) view.profile = rows[0];
   view.shelves = shelves; view.drawn = [];
-  paintStats(); paintHead();
+  paintStats(); paintShelfCount(); paintHead();
+  if (!$('#panelS').hidden) paintShelvesTab();
   if (ONE) return showShelf(SHELF || (theShelf() || {}).id || '');
   paintHero();
   if (!$('#panelA').hidden) paintActivity();
@@ -756,6 +772,30 @@ function paintHead(){
   $('#since').textContent = 'on shelfstackd since ' + new Date(p.created_at).toLocaleDateString('en-US', {month:'short', year:'numeric'});
 }
 $('#bioMore').addEventListener('click', () => { $('#pbio').classList.add('open'); $('#bioMore').hidden = true; });
+/* ---------- Shelves (N): every shelf of theirs (public ones; yours, private ones too), newest first, each its spines
+   standing on a shelf line with its name under it; pressing one opens its page ---------- */
+function paintShelfCount(){ $('#tabS').textContent = `Shelves (${view.shelves.length})`; }
+let shelvesRun = 0;
+async function paintShelvesTab(){
+  const run = ++shelvesRun, list = view.shelves.slice().sort((a, b) => new Date(savedAt(b)) - new Date(savedAt(a))), main = theShelf();
+  $('#sNone').hidden = !!list.length;
+  $('#sList').replaceChildren(...list.map(s => {
+    const li = document.createElement('li'); li.dataset.id = s.id;
+    li.innerHTML = `<a href="${esc(pageUrl(view.profile.username, s.id))}"><span class="sline" aria-hidden="true"></span>
+      <span class="sn"><b>${esc(shelfName(s))}</b>${s === main ? ' <span class="tag">main</span>' : ''}${s.is_public ? '' : ' <span class="tag">private</span>'}<span class="grey">${esc(spines(countOf(s)))} · ${esc(fmtDate(s.updated_at))}</span></span></a>`;
+    return li;
+  }));
+  if (!list.length) return;
+  let rows = [];
+  try { rows = await api(`shelf_items?select=shelf_id,${ITEM_COLS}&shelf_id=in.(${list.map(s => s.id).join(',')})&order=position`); } catch { return; }
+  await fontsReady;
+  for (const li of $('#sList').children){
+    const mine = await books((rows || []).filter(r => r.shelf_id === li.dataset.id));
+    if (run !== shelvesRun) return;
+    if (mine.length) li.querySelector('.sline').replaceChildren(...smallSpines(mine, 64).map(c => { c.setAttribute('aria-hidden', 'true'); return c; }));
+  }
+}
+
 /* the hero: their shelf, big, across the column, the way the builder draws it (shelf.js), cut down to the books.
    Pressing it opens the shelf's page. Its name under it (yours: press it to rename it), and Edit on your own. */
 let heroRun = 0;
@@ -953,14 +993,14 @@ document.addEventListener('shelfstackd:added', () => {
    (signed out, it's the sign-in sheet first) ---------- */
 const shown = {shelf: null, rows: [], list: [], wall: null, pngs: [], onMine: null};   // the shelf on the page: its saved rows, the books made from them (the same order), its wall and PNGs; onMine: the titles on your own shelf (see titlesOnMine)
 /* What's already on your own shelf, so a title that's there isn't offered to it again. Your shelf is the main one if
-   one was picked before, otherwise the one saved last (as theShelf() has it, and the builder). A title is the same
+   one was picked, otherwise the oldest (as theShelf() has it, and the builder). A title is the same
    title by its kind, its name and its year. */
 const titleKey = r => [r.kind, String(r.title || '').trim().toLowerCase(), r.year || ''].join('|');
 async function myShelfId(){
   if (!me.profile) return '';
   if (view.mine) return (theShelf() || {}).id || '';
-  const list = await api(`shelves?select=id,saved_at,updated_at&owner=eq.${me.user.id}&hidden=is.false&order=saved_at.desc&limit=200`);
-  return (list.find(s => s.id === me.profile.pinned_shelf_id) || list.slice().sort((a, b) => new Date(savedAt(b)) - new Date(savedAt(a)))[0] || {}).id || '';
+  const list = await api(`shelves?select=id,created_at&owner=eq.${me.user.id}&hidden=is.false&limit=200`);
+  return (mainOf(list, me.profile.pinned_shelf_id) || {}).id || '';
 }
 // the rows of your shelf, to compare with the rows of the shelf shown (id): null when it's that very shelf, [] with
 // no shelf or signed out, undefined when it couldn't be read (then every row offers + Add, as before)
@@ -984,7 +1024,7 @@ async function showShelf(id){
     // no shelf yet (&shelf), or one that's private or gone (&shelf=<id>); yours: the way to make it
     $('#oneCap').textContent = !id ? (mine ? 'This shelf has no spines.' : 'Nothing shelved here yet.') : 'This shelf is private or gone.';
     $('#oneShelf').replaceChildren();
-    for (const b of [$('#onePrivacy'), $('#oneDelete'), $('#reportShelf')]) b.hidden = true;
+    for (const b of [$('#onePrivacy'), $('#oneDelete'), $('#reportShelf'), $('#oneRename'), $('#oneMain'), $('#oneIsMain')]) b.hidden = true;
     $('#openBuilder').hidden = !(mine && !id); $('#openBuilder').textContent = 'Make your shelf'; $('#openBuilder').href = '../build/';
     return;
   }
@@ -994,6 +1034,11 @@ async function showShelf(id){
   // yours: Edit, Make private or public, Delete. Anyone else's: Report.
   $('#openBuilder').hidden = !mine; $('#openBuilder').textContent = 'Edit'; $('#openBuilder').href = '../build/?open=' + s.id;
   for (const [b, on] of [[$('#onePrivacy'), mine], [$('#oneDelete'), mine]]){ b.hidden = !on; b.dataset.id = s.id; b.disabled = false; }
+  // yours: Rename; Make main for a public one that isn't (a private shelf can't be the one on your profile), or "Main shelf"
+  const isMain = theShelf() === s;
+  $('#oneRename').hidden = !mine;
+  $('#oneMain').hidden = !(mine && !isMain && s.is_public); $('#oneMain').dataset.id = s.id; $('#oneMain').disabled = false;
+  $('#oneIsMain').hidden = !(mine && isMain);
   $('#onePrivacy').textContent = s.is_public ? 'Make private' : 'Make public';
   $('#reportShelf').hidden = mine; $('#reportShelf').dataset.id = s.id;
   titled(`${shelfName(s)} by ${person(p)}`, `${shelfName(s)}: a shelf by ${person(p)} on shelfstackd.`);
@@ -1084,15 +1129,21 @@ async function shareShelf(what){
   saveFile(blob); toast('Downloaded ' + STORY_FILE + '.');
 }
 $('#oneActs').addEventListener('click', e => { const act = e.target.closest('[data-act]'); if (act) cardAction(act); });
+// Rename: the same as pressing the shelf's name in the heading
+$('#oneRename').addEventListener('click', () => { const b = $('#oneCap button[data-rename]'); if (b) startRename(b); });
 
-/* ---------- your shelf, from its page: Make private or public, Delete (Edit is a link to the builder) ---------- */
+/* ---------- your shelf, from its page: Make main, Make private or public, Delete (Edit is a link to the builder) ---------- */
 async function cardAction(b){
   const act = b.dataset.act, id = b.dataset.id, s = view.shelves.find(x => x.id === id);
   if (!s) return;
   if (act === 'delete' && !(await sure(`Delete “${shelfName(s)}”?`, 'The shelf and its picture go for good. This can’t be undone.', 'Delete'))) return;
   b.disabled = true;
   try {
-    if (act === 'privacy'){
+    if (act === 'main'){
+      const rows = await api(`profiles?id=eq.${view.profile.id}&select=id,pinned_shelf_id`, {method:'PATCH', headers:{Prefer:'return=representation'}, body: JSON.stringify({pinned_shelf_id: id})});
+      if (!rows || !rows[0]) throw new Error('Couldn’t change it. Sign in again and try once more.');
+      await refresh(); toast('This is your main shelf now: the one on your profile.');
+    } else if (act === 'privacy'){
       const rows = await api(`shelves?id=eq.${id}&select=id`, {method:'PATCH', headers:{Prefer:'return=representation'}, body: JSON.stringify({is_public: !s.is_public})});
       if (!rows || !rows[0]) throw new Error('Couldn’t change it. Sign in again and try once more.');
       await refresh(); toast(s.is_public ? 'Only you can see this shelf now.' : 'This shelf shows on your profile again.');
@@ -1417,17 +1468,18 @@ $('#acts').addEventListener('click', async e => {
   } catch (err){ toast(friendly(err)); if (b.isConnected) b.disabled = false; }
 });
 
-/* ---------- tabs: Profile · Activity (#activity) · Up next (#upnext; #watchlist, its old name, too) · Network (#network is Following, #followers is Followers). The
+/* ---------- tabs: Profile · Activity (#activity) · Up next (#upnext; #watchlist, its old name, too) · Shelves (#shelves) · Network (#network is Following, #followers is Followers). The
    address has the tab, so a reload lands on it, and so do the account menu's links. #shelves, from when there was a
    Shelves tab, is Profile. ---------- */
-const HASH = {'': ['profile'], '#shelves': ['profile'], '#activity': ['activity'], '#upnext': ['watchlist'], '#watchlist': ['watchlist'], '#network': ['network', 'following'], '#following': ['network', 'following'], '#followers': ['network', 'followers']};
-const PANEL = {profile: '#panelP', activity: '#panelA', watchlist: '#panelW', network: '#panelN'};
+const HASH = {'': ['profile'], '#shelves': ['shelves'], '#activity': ['activity'], '#upnext': ['watchlist'], '#watchlist': ['watchlist'], '#network': ['network', 'following'], '#following': ['network', 'following'], '#followers': ['network', 'followers']};
+const PANEL = {profile: '#panelP', activity: '#panelA', watchlist: '#panelW', shelves: '#panelS', network: '#panelN'};
 function paintTabs(){
   let [tab, net] = HASH[location.hash] || HASH[''];
   if (tab === 'watchlist' && $('#tabW').hidden) tab = 'profile';   // a watchlist that isn't shown (private, or no database for it)
   for (const b of document.querySelectorAll('#viewProfile > .tabs button')){ const on = b.dataset.tab === tab; b.setAttribute('aria-selected', String(on)); $(PANEL[b.dataset.tab]).hidden = !on; }
   if (tab === 'activity') paintActivity();
   if (tab === 'watchlist') paintWatchTab();
+  if (tab === 'shelves') paintShelvesTab();
   if (tab === 'network'){
     for (const b of document.querySelectorAll('.tabs.sub button')) b.setAttribute('aria-selected', String(b.dataset.net === net));
     if (netShown !== net){ netShown = net; netList.open(net); }
@@ -1435,7 +1487,7 @@ function paintTabs(){
 }
 function goTab(hash){ history.replaceState(null, '', location.pathname + location.search + hash); paintTabs(); }
 document.querySelector('#viewProfile > .tabs').addEventListener('click', e => {
-  const b = e.target.closest('[data-tab]'); if (b) goTab({profile: '', activity: '#activity', watchlist: '#upnext', network: '#network'}[b.dataset.tab]);
+  const b = e.target.closest('[data-tab]'); if (b) goTab({profile: '', activity: '#activity', watchlist: '#upnext', shelves: '#shelves', network: '#network'}[b.dataset.tab]);
 });
 document.querySelector('.tabs.sub').addEventListener('click', e => { const b = e.target.closest('[data-net]'); if (b) goTab(b.dataset.net === 'followers' ? '#followers' : '#network'); });
 // ← → move between the tabs of a row
