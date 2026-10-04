@@ -42,7 +42,7 @@
 .navmenu a:hover,.navmenu button:hover,.navmenu a:focus-visible,.navmenu button:focus-visible{background:var(--wash,#F3F3F3);outline:0}
 .navmenu a[aria-current]{font-weight:700}
 .navmenu hr{border:0;border-top:1px solid var(--hair,#D9D9D9);margin:var(--s1,4px) 0}
-@media (pointer:coarse){ .navmenu a,.navmenu button{padding-top:14px;padding-bottom:14px} }   /* 44px rows to press on a touch screen */`;
+@media (pointer:coarse){ .navmenu a,.navmenu button{padding-top:var(--s4,16px);padding-bottom:var(--s4,16px)} }   /* 44px rows to press on a touch screen */`;
   document.head.appendChild(css);
 
   /* ---------- the menus ---------- */

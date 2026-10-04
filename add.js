@@ -196,20 +196,20 @@ css.textContent = `
 #addDialog::backdrop{background:rgba(0,0,0,.35)}
 #addDialog *{box-sizing:border-box}
 #addDialog h2{display:block;margin:0 0 var(--s4,16px);padding:0 var(--s6,40px) 0 0;border:0;font-size:var(--fs-dialog,16px);font-weight:400;text-transform:none;letter-spacing:0;color:inherit}
-#addDialog h3{margin:0 0 var(--s3,12px);font-size:var(--fs-body,13px);font-weight:500;display:flex;flex-wrap:wrap;gap:var(--s1,4px) var(--s3,12px);align-items:baseline}
+#addDialog h3{margin:0 0 var(--s4,16px);font-size:var(--fs-body,13px);font-weight:500;display:flex;flex-wrap:wrap;gap:var(--s1,4px) var(--s4,16px);align-items:baseline}
 #addDialog h3 small{font-size:var(--fs-small,11px);font-weight:400;color:var(--grey,#6B6B6B)}
-#addDialog p{margin:0 0 var(--s3,12px)}
-#addDialog .addx{position:absolute;top:var(--s3,12px);right:var(--s3,12px);width:32px;height:32px;display:grid;place-items:center;background:none;border:0;padding:0;color:inherit;cursor:pointer}
+#addDialog p{margin:0 0 var(--s4,16px)}
+#addDialog .addx{position:absolute;top:var(--s4,16px);right:var(--s4,16px);width:32px;height:32px;display:grid;place-items:center;background:none;border:0;padding:0;color:inherit;cursor:pointer}
 #addDialog .addx svg{width:16px;height:16px}
 #addDialog .addsearch{position:relative;margin:0}
-#addDialog .addsearch input{width:100%;min-width:0;height:36px;font:400 var(--fs-body,13px) var(--mono,monospace);color:inherit;background:var(--paper,#fff);border:1px solid var(--ink,#000);border-radius:var(--radius,3px);padding:var(--s2,8px) var(--s6,40px) var(--s2,8px) var(--s3,12px)}
+#addDialog .addsearch input{width:100%;min-width:0;height:36px;font:400 var(--fs-body,13px) var(--mono,monospace);color:inherit;background:var(--paper,#fff);border:1px solid var(--ink,#000);border-radius:var(--radius,3px);padding:var(--s2,8px) var(--s6,40px) var(--s2,8px) var(--s4,16px)}
 #addDialog .addsearch input::placeholder{color:#767676}
 #addDialog .addsearch button{position:absolute;top:1px;right:1px;bottom:1px;width:var(--s6,40px);display:grid;place-items:center;background:none;border:0;padding:0;color:inherit;cursor:pointer}
 #addDialog .addsearch button svg{width:16px;height:16px}
 /* under the box: All · Films · Books, and at the right of that row what the search says ("Searching…", what it found).
    Nothing is held open for it, and nothing moves when it comes. A line too long for the row has the next one, from
    the left: the empty ::before between them takes the room on the row, and stays on it when the line goes under */
-#addDialog .addunder{display:flex;flex-wrap:wrap;gap:var(--s2,8px) var(--s4,16px);margin-top:var(--s3,12px);align-items:center}
+#addDialog .addunder{display:flex;flex-wrap:wrap;gap:var(--s2,8px) var(--s4,16px);margin-top:var(--s4,16px);align-items:center}
 #addDialog .addunder::before{content:"";flex:1 1 0;order:1}
 #addDialog .addopts{display:flex;flex-wrap:wrap;gap:var(--s2,8px) var(--s4,16px);align-items:center}
 #addDialog .addopts label{cursor:pointer;display:flex;gap:var(--s1,4px);align-items:center}
@@ -217,13 +217,13 @@ css.textContent = `
 #addDialog .addstatus{order:2;min-width:0;max-width:100%;overflow-wrap:anywhere}
 #addDialog .addstatus:empty{display:none}
 #addDialog .addstatus.err{font-weight:500}
-#addDialog #addMode,#addDialog #addRecent{margin:var(--s3,12px) 0 0}
+#addDialog #addMode,#addDialog #addRecent{margin:var(--s4,16px) 0 0}
 #addDialog .addlist{list-style:none;margin:var(--s2,8px) 0 0;padding:0;border-top:1px solid var(--hair,#D9D9D9)}
-#addDialog .addlist li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 var(--s3,12px);align-items:baseline;padding:var(--s2,8px);border-bottom:1px solid var(--hair,#D9D9D9);cursor:pointer}
+#addDialog .addlist li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 var(--s4,16px);align-items:baseline;padding:var(--s2,8px);border-bottom:1px solid var(--hair,#D9D9D9);cursor:pointer}
 #addDialog .addlist li:hover{background:var(--wash,#F3F3F3)}
 #addDialog .addlist li[aria-selected="true"]{background:var(--ink,#000);color:var(--paper,#fff)}
 #addDialog .addlist .t{font-weight:500;overflow-wrap:anywhere}
-#addDialog .addlist .y{font-weight:400;color:var(--grey,#6B6B6B);margin-left:2px;font-variant-numeric:tabular-nums}
+#addDialog .addlist .y{font-weight:400;color:var(--grey,#6B6B6B);margin-left:var(--s1,4px);font-variant-numeric:tabular-nums}
 #addDialog .addlist .k{font-size:var(--fs-label,10px);text-transform:uppercase;letter-spacing:var(--track,1px);color:var(--grey,#6B6B6B);white-space:nowrap}
 #addDialog .addlist .by{grid-column:1/-1;font-size:var(--fs-small,11px);color:var(--grey,#6B6B6B);overflow-wrap:anywhere}
 #addDialog .addlist li[aria-selected="true"] :is(.y,.k,.by){color:inherit}
@@ -242,7 +242,7 @@ css.textContent = `
   font:400 var(--fs-small,12px)/1.35 var(--mono,monospace);color:var(--ink,#000);text-align:center;padding:var(--s2,8px)}
 #addDialog .pick .snap:hover{border-color:var(--ink,#000)}
 #addDialog .pick .snap svg{width:20px;height:20px}
-#addDialog .addbar{display:flex;justify-content:flex-end;align-items:center;gap:var(--s3,12px);margin-top:var(--s4,16px)}
+#addDialog .addbar{display:flex;justify-content:flex-end;align-items:center;gap:var(--s4,16px);margin-top:var(--s4,16px)}
 /* which of your shelves, when you have more than one (your main one first) */
 #addDialog .addon{display:flex;align-items:center;gap:var(--s2,8px);font-size:var(--fs-small,11px);color:var(--grey,#6B6B6B);min-width:0}
 #addDialog .addon select{width:auto;max-width:220px;padding:var(--s1,4px) var(--s2,8px);font-size:var(--fs-small,11px)}
@@ -255,7 +255,7 @@ css.textContent = `
 #addDialog .addwhat span{display:block;padding:0 0 var(--s2,8px);margin-bottom:-1px;color:var(--grey,#6B6B6B);border-bottom:1px solid transparent;white-space:nowrap}
 #addDialog .addwhat input:checked + span{color:var(--ink,#000);border-bottom-color:var(--ink,#000)}
 #addDialog .addwhat input:focus-visible + span{outline:2px solid var(--ink,#000);outline-offset:3px}
-#addDialog .addneed{margin:0;display:flex;flex-wrap:wrap;gap:var(--s2,8px) var(--s3,12px);align-items:baseline}
+#addDialog .addneed{margin:0;display:flex;flex-wrap:wrap;gap:var(--s2,8px) var(--s4,16px);align-items:baseline}
 /* Log it and Watchlist: the cover, and beside it the title, the caption and what happens */
 #addDialog #addPost{margin-top:var(--s4,16px)}
 #addDialog .addpost{display:grid;grid-template-columns:120px minmax(0,1fr);gap:var(--s4,16px);align-items:start}
@@ -263,10 +263,10 @@ css.textContent = `
 #addDialog .addcov canvas{width:100%;height:auto;display:block}
 #addDialog .addcov img{width:100%;height:100%;object-fit:cover;display:block;border-radius:var(--radius,3px);background:var(--wash,#F3F3F3)}
 #addDialog .addcov .blank{display:block;width:100%;height:100%;border-radius:var(--radius,3px);background:var(--wash,#F3F3F3)}
-#addDialog .addpostf{display:grid;gap:var(--s3,12px);min-width:0}
+#addDialog .addpostf{display:grid;gap:var(--s4,16px);min-width:0}
 #addDialog .addpostf h3{margin:0}
 #addDialog .addsay{display:grid;gap:var(--s1,4px)}
-#addDialog .addsay textarea{width:100%;min-width:0;font:400 var(--fs-body,13px)/1.5 var(--mono,monospace);color:inherit;background:var(--paper,#fff);border:1px solid var(--ink,#000);border-radius:var(--radius,3px);padding:var(--s2,8px) var(--s3,12px);resize:vertical}
+#addDialog .addsay textarea{width:100%;min-width:0;font:400 var(--fs-body,13px)/1.5 var(--mono,monospace);color:inherit;background:var(--paper,#fff);border:1px solid var(--ink,#000);border-radius:var(--radius,3px);padding:var(--s2,8px) var(--s4,16px);resize:vertical}
 #addDialog .addsay .lbl{font-size:var(--fs-label,10px);text-transform:uppercase;letter-spacing:var(--track,1px);color:var(--grey,#6B6B6B)}
 #addDialog .addsay .lbl i{font-style:normal;text-transform:none;letter-spacing:0}
 #addDialog .addfeedline{margin:0;font-size:var(--fs-small,11px);color:var(--grey,#6B6B6B);overflow-wrap:anywhere}
@@ -280,8 +280,8 @@ css.textContent = `
   #addDialog .addsay textarea{font-size:16px}
 }
 /* on a phone it sits at the top, so the box and its suggestions stay above the keyboard */
-@media (max-width:520px){ #addDialog{padding:var(--s4,16px);margin-top:var(--s3,12px)} #addDialog .addfound{--th:220px;--tw:84px}
-  #addDialog .addpost{grid-template-columns:88px minmax(0,1fr);gap:var(--s3,12px)} #addDialog .addcov{width:88px} }`;
+@media (max-width:520px){ #addDialog{padding:var(--s4,16px);margin-top:var(--s4,16px)} #addDialog .addfound{--th:220px;--tw:84px}
+  #addDialog .addpost{grid-template-columns:88px minmax(0,1fr);gap:var(--s4,16px)} #addDialog .addcov{width:88px} }`;
 document.head.appendChild(css);
 const dlg = document.createElement('dialog');
 dlg.id = 'addDialog'; dlg.setAttribute('aria-labelledby', 'addTitle');

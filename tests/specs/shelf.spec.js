@@ -297,7 +297,7 @@ test('someone else\'s shelf: a title already on your shelf says "On your shelf" 
   // where the button would be: at the right of its row (on a touch screen, just before its •••)
   const more = rows(page).first().locator('.wmorewrap'), end = await more.isVisible() ? (await more.boundingBox()).x : (await rows(page).first().boundingBox()).x + (await rows(page).first().boundingBox()).width;
   const at = await said.boundingBox();
-  expect(Math.abs(at.x + at.width - end)).toBeLessThanOrEqual(13);
+  expect(Math.abs(at.x + at.width - end)).toBeLessThanOrEqual(17);   // one 16px step
   // the same film in another year is another title
   await myShelfHolds(page, [['book', 'The Waves', 2019], ['movie', 'The Waves', 1931]]);
   await open(page, `/u/?mira&shelf=${theirs.id}`);

@@ -344,6 +344,7 @@ test('a full shelf: Add and upload are off and say why, and work again when a sp
   // one off: there's room again
   await page.locator('#books .bopen').first().click();
   await page.locator('#books .book').first().getByRole('button', { name: /^Remove/ }).click();
+  await page.locator('#confirmYes').click();   // it asks first
   await expect(page.locator('#count')).toHaveText('(19 of 20)');
   await expect(add).toBeEnabled();
   await expect(page.locator('#findNote')).toBeHidden();

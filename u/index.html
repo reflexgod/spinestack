@@ -39,13 +39,13 @@
 .addphoto{width:100%;height:100%;border-radius:50%;display:grid;place-items:center;font:400 var(--fs-small) var(--mono);color:var(--ink);text-decoration:none}
 .who{grid-area:who;min-width:0}
 .who h1{margin:0}
-.namerow{display:flex;gap:var(--s1) var(--s3);align-items:center;flex-wrap:wrap}
+.namerow{display:flex;gap:var(--s1) var(--s4);align-items:center;flex-wrap:wrap}
 /* under the bio: people you follow who follow them */
 .mutual{margin:0;font-size:var(--fs-small);color:var(--grey);overflow-wrap:anywhere}
 .mutual a{color:var(--ink);font-weight:500;text-decoration:none}
 .mutual a:hover,.mutual a:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .handle{color:var(--grey);margin:var(--s1) 0 0;font-size:var(--fs-card)}
-.pbtns{display:flex;gap:var(--s2);align-items:center;position:relative;margin-top:var(--s3)}
+.pbtns{display:flex;gap:var(--s2);align-items:center;position:relative;margin-top:var(--s4)}
 .menu{position:absolute;top:calc(100% + var(--s1));left:0;z-index:6;background:var(--paper);border:1px solid var(--ink);border-radius:var(--radius);padding:var(--s1) 0;min-width:160px;display:grid}
 .menu button,.menu a{background:none;border:0;font:500 var(--fs-nav) var(--mono);text-align:left;text-decoration:none;padding:var(--s2) var(--s4);cursor:pointer;color:var(--ink)}
 .menu button:hover,.menu a:hover,.menu button:focus-visible,.menu a:focus-visible{background:var(--wash);outline:0}
@@ -82,7 +82,7 @@
 @media (pointer:coarse) and (max-width:640px){ .pbtns{margin-top:var(--s5)} }   /* and the buttons under the line a press away from it */
 #privNote{margin:var(--s4) 0 0}
 .privmsg{margin:var(--s6) 0 0}
-#people{padding-right:2px;max-height:min(60vh,520px);overflow:auto}   /* in the Requests sheet the list scrolls */
+#people{padding-right:var(--s1);max-height:min(60vh,520px);overflow:auto}   /* in the Requests sheet the list scrolls */
 .tabs{margin-top:var(--s5)}
 /* the Profile tab: their shelf, standing on a thin shelf line across the column as home's spine wall does, at one
    spine height (240px; 180px on a phone) from the left, so two spines make a short shelf and twenty fill the row.
@@ -94,13 +94,13 @@
 #featWrap{justify-self:stretch;border-bottom:1px solid var(--ink);line-height:0;padding-top:var(--s2);--sh:240px}
 .hero .pic1{display:block;line-height:0;overflow:hidden;width:min(calc(var(--sh) * var(--wr, 1)), 100%);aspect-ratio:var(--ar, 1)}
 .hero .pic1 canvas{display:block;width:100%;height:auto}
-.featmeta{display:flex;gap:var(--s1) var(--s3);flex-wrap:wrap;align-items:baseline;max-width:100%;font-size:var(--fs-small)}
+.featmeta{display:flex;gap:var(--s1) var(--s4);flex-wrap:wrap;align-items:baseline;max-width:100%;font-size:var(--fs-small)}
 .featmeta b{font-weight:500;font-size:var(--fs-card);min-width:0;max-width:100%}
 .hero .none{justify-self:stretch}
 .pgrid{display:grid;gap:var(--s6);margin-top:var(--s6)}
 .pmain{display:grid;gap:var(--s6);min-width:0}
 /* the watchlist on the Profile tab: up to four of its covers, and See all */
-.wstrip{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,var(--wcov));justify-content:start;gap:var(--s3);--wcov:100px}   /* up to four in one row: 100px covers, 80px on a phone */
+.wstrip{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,var(--wcov));justify-content:start;gap:var(--s4);--wcov:100px}   /* up to four in one row: 100px covers, 80px on a phone */
 .wstrip:empty{display:none}
 .wstrip a{display:block;line-height:0;position:relative}
 .wstrip canvas{display:block;width:100%;height:auto;aspect-ratio:2/3}
@@ -115,7 +115,7 @@
 .wsearch{position:relative;display:grid;gap:var(--s1);max-width:420px;margin-bottom:var(--s5)}
 .wsearch .note{margin:0;min-height:1.5em}
 .wsugg{list-style:none;margin:0;padding:var(--s1) 0;position:absolute;top:calc(100% - 1.5em);left:0;right:0;z-index:7;background:var(--paper);border:1px solid var(--ink);border-radius:var(--radius)}
-.wsugg li{padding:var(--s2) var(--s3);cursor:pointer;display:flex;gap:var(--s1) var(--s2);flex-wrap:wrap;align-items:baseline}
+.wsugg li{padding:var(--s2) var(--s4);cursor:pointer;display:flex;gap:var(--s1) var(--s2);flex-wrap:wrap;align-items:baseline}
 .wsugg li[aria-selected="true"]{background:var(--ink);color:var(--paper)}
 .wsugg .y,.wsugg .k,.wsugg .by{color:var(--grey);font-size:var(--fs-small)}
 .wsugg li[aria-selected="true"] :is(.y,.k,.by){color:inherit}
@@ -140,7 +140,7 @@
 }
 /* the watchlist and From friends: a row each, as On this shelf has them */
 .titles{list-style:none;margin:0;padding:0}
-.titles li{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:var(--s3);align-items:center;padding:var(--s2) 0;border-bottom:1px solid var(--hair)}
+.titles li{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:var(--s4);align-items:center;padding:var(--s2) 0;border-bottom:1px solid var(--hair)}
 .titles .tc{display:block;width:40px;aspect-ratio:2/3;border-radius:2px;overflow:hidden;background:var(--wash)}
 .titles .tc img{width:100%;height:100%;object-fit:cover;display:block}
 .titles .tt{display:grid;min-width:0}
@@ -149,7 +149,7 @@
 .titles .tt > span{color:var(--grey);font-size:var(--fs-small);overflow-wrap:anywhere}
 .titles .tt a{color:var(--ink);font-weight:500;text-decoration:none}
 .titles .tt a:hover,.titles .tt a:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
-.tacts{display:flex;gap:var(--s2) var(--s3);align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.tacts{display:flex;gap:var(--s2) var(--s4);align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .pmain .grey{margin:0}
 #panelA,#panelN,#viewShelf{margin-top:var(--s5)}
 /* Activity: this person's lines (site.css draws them). Network: Following · Followers under the tabs, then the
@@ -171,11 +171,11 @@
 #viewShelf .pic1:empty{display:none}
 #viewShelf .pic1 canvas{display:block;height:auto;width:min(calc(var(--w, 600) * var(--fk) * 1px), 100cqw, calc(var(--hmax) * var(--w, 600) / var(--h, 600)))}
 @media (min-width:821px){ .sgrid{grid-template-columns:minmax(0,1fr) 380px} }
-@media (max-width:640px){ #viewShelf .pic1{--fk:.36;--hmax:340px;padding:var(--s5) var(--s3)} }
+@media (max-width:640px){ #viewShelf .pic1{--fk:.36;--hmax:340px;padding:var(--s5) var(--s4)} }
 /* a shelf's own page: its name, who made it and when, what can be done with it; under the shelf, what's on it */
 .shead{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--s2);margin-bottom:var(--s5)}
 .shead h1{margin:0;min-width:0;max-width:100%}
-.stitle{display:flex;gap:var(--s2) var(--s3);align-items:center;flex-wrap:wrap}
+.stitle{display:flex;gap:var(--s2) var(--s4);align-items:center;flex-wrap:wrap}
 /* Share, by the shelf's name: a small button with an icon */
 .iconbtn{display:grid;place-items:center;flex:none;width:28px;height:28px;padding:0;border:1px solid var(--ink);border-radius:var(--radius);background:var(--paper);color:var(--ink);cursor:pointer}
 .iconbtn:hover,.iconbtn[aria-expanded="true"]{background:var(--wash)}
@@ -183,10 +183,10 @@
 .sby{margin:0;display:flex;gap:var(--s1) var(--s2);align-items:center;flex-wrap:wrap}
 .sby a{font-weight:500;text-decoration:none}
 .sby a:hover,.sby a:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
-.sacts{display:flex;gap:var(--s3) var(--s4);align-items:center;flex-wrap:wrap;margin-top:var(--s2)}
+.sacts{display:flex;gap:var(--s4) var(--s4);align-items:center;flex-wrap:wrap;margin-top:var(--s2)}
 .onshelf{max-width:680px;min-width:0}
 .spines{list-style:none;margin:0;padding:0}
-.sact{display:flex;align-items:center;gap:var(--s1) var(--s3)}
+.sact{display:flex;align-items:center;gap:var(--s1) var(--s4)}
 /* the Shelves tab: each shelf's spines standing on a shelf line, its name under it */
 .slist{list-style:none;margin:var(--s5) 0 0;padding:0;display:grid;gap:var(--s5)}
 .slist a{display:block;text-decoration:none;color:var(--ink)}
@@ -196,8 +196,8 @@
 .slist .sn b{font-weight:500}
 .slist a:hover .sn b,.slist a:focus-visible .sn b{text-decoration:underline;text-underline-offset:3px}
 .slist .sn .grey{font-size:var(--fs-small)}
-.sact [data-log]{margin-right:var(--s3)}   /* Log and + Add to my shelf: a press apart on a touch screen */
-.spines li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:var(--s3);align-items:center;padding:var(--s2) 0;border-bottom:1px solid var(--hair)}
+.sact [data-log]{margin-right:var(--s4)}   /* Log and + Add to my shelf: a press apart on a touch screen */
+.spines li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:var(--s4);align-items:center;padding:var(--s2) 0;border-bottom:1px solid var(--hair)}
 .spines .sthumb{display:grid;place-items:center;height:56px}
 .spines .sthumb canvas{display:block}
 .spines .st{display:grid;min-width:0}
@@ -206,7 +206,7 @@
 .spines .st > span{color:var(--grey);font-size:var(--fs-small);overflow-wrap:anywhere}
 .spines .onmine{color:var(--grey);font-size:var(--fs-small);white-space:nowrap}
    /* "On your shelf", where + Add to my shelf would be */
-.row{display:flex;gap:var(--s3) var(--s4);align-items:center;flex-wrap:wrap}
+.row{display:flex;gap:var(--s4) var(--s4);align-items:center;flex-wrap:wrap}
 /* a shelf's name that renames it when pressed (the hero's, and a shelf page's heading) */
 .name{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;cursor:text;text-align:left;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
 .name:hover,.name:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
@@ -216,10 +216,10 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 .tag{vertical-align:1px}
 .addbio{color:var(--grey);text-decoration:none}
 .addbio:hover,.addbio:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
-.none{display:grid;justify-items:center;gap:var(--s3);padding:var(--s5) 0 var(--s2);text-align:center}
+.none{display:grid;justify-items:center;gap:var(--s4);padding:var(--s5) 0 var(--s2);text-align:center}
 .hero .none{padding:0}
 .none p{margin:0}
-.outlines{display:flex;gap:var(--s1);align-items:flex-end;height:180px;margin-bottom:var(--s3)}
+.outlines{display:flex;gap:var(--s1);align-items:flex-end;height:180px;margin-bottom:var(--s4)}
 .outlines i{display:block;width:32px;border:1px dashed var(--ink)}
 /* the way back is plain grey text, in its own case: it goes somewhere, it doesn't do anything. (A dashed underline
    is for a small action; a grey one for an action that loses something: Delete, Remove.) */
@@ -232,7 +232,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 @media (pointer:coarse){
   .iconbtn,.addbio{position:relative}
   :is(.iconbtn,.addbio)::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))}
-  .menu button,.menu a{padding-top:15px;padding-bottom:15px}
+  .menu button,.menu a{padding-top:var(--s4);padding-bottom:var(--s4)}
   .name{position:relative;padding-top:10px;padding-bottom:10px;margin-top:-10px;margin-bottom:-10px}   /* over the date under it, under Edit and Share */
   .featmeta{row-gap:var(--s5)}   /* the name's press clears Edit when it goes under */
   .featmeta .name{z-index:1;padding-top:13px;padding-bottom:13px;margin-top:-13px;margin-bottom:-13px}   /* the hero's, in the small line under the shelf */
@@ -246,7 +246,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
   .statcol:has(> #reqBtn[hidden]){display:none}     /* with no requests waiting, nothing is left in it */
   #reqBtn{justify-self:start}
   #featWrap{--sh:180px}
-  .wstrip{--wcov:80px}
+  .wstrip{--wcov:80px;gap:var(--s2)}
   .titles li{grid-template-columns:40px minmax(0,1fr)}
   .tacts{grid-column:2;justify-content:flex-start}
 }

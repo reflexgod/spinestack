@@ -348,6 +348,9 @@ test('signed-in home: a welcome by name, the row from people you follow with See
   await open(page, '/');
   await expect(page.locator('#hello')).toHaveText('Welcome back, @tester.');   // the row's heading says the rest
   await expect(page.locator('#hello a')).toHaveAttribute('href', 'u/?tester');
+  // the welcome line is small: 24px at most on a wide window, 20px at most on a phone
+  const size = parseFloat(await page.locator('#hello').evaluate(el => getComputedStyle(el).fontSize));
+  expect(size).toBeLessThanOrEqual(isPhone() ? 20 : 24);
   await expect(page.locator('main').getByRole('link', { name: /new shelf/i })).toHaveCount(0);   // + ADD in the bar is the way to a new shelf
   await expect(page.locator('#in h2')).toHaveText([/^New from people you follow/, /^Just shelved/]);
   const all = page.locator('#in').getByRole('link', { name: 'See all from people you follow' });

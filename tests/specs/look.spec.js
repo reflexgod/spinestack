@@ -33,18 +33,22 @@ for (const pg of [...PAGES, { name: 'own profile', path: '/u/?tester' }]) {
     // page titles: 22 to 24px, weight 400, in their own case
     const h1 = page.locator('main h1:visible').first();
     const t = await css(h1, 'fontSize', 'fontWeight', 'textTransform');
-    expect(['22px', '24px']).toContain(t.fontSize);
+    expect(pg.name === 'home' && isPhone() ? ['20px'] : ['22px', '24px']).toContain(t.fontSize);   // home's welcome line: 20px on a phone
     expect(t).toMatchObject({ fontWeight: '400', textTransform: 'none' });
-    // section headings: 12px uppercase grey, 1px apart, a hairline under them
-    const h2 = page.locator('main h2:visible').first();
-    if (await h2.count()) expect(await css(h2, 'fontSize', 'textTransform', 'letterSpacing', 'color', 'borderBottomWidth')).toEqual({ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', color: 'rgb(107, 107, 107)', borderBottomWidth: '1px' });
+    // one section label, everywhere (site.css's h2, and .seclabel where a label isn't a heading): 12px uppercase grey,
+    // 1px apart, a hairline under it. A sheet's or a dialog's title is a title, not a section label.
+    const labels = await page.locator('main h2:visible, .seclabel:visible').evaluateAll(els => els.filter(e => !e.closest('.sheetbox, dialog')).map(e => {
+      const s = getComputedStyle(e);
+      return { text: e.textContent.trim().slice(0, 30), fontSize: s.fontSize, fontWeight: s.fontWeight, textTransform: s.textTransform, letterSpacing: s.letterSpacing, color: s.color, borderBottomWidth: s.borderBottomWidth };
+    }));
+    for (const { text, ...l } of labels) expect(l, text).toEqual({ fontSize: '12px', fontWeight: '400', textTransform: 'uppercase', letterSpacing: '1px', color: 'rgb(107, 107, 107)', borderBottomWidth: '1px' });
     // buttons: 11px weight 600, radius 3px; in the bar in its capitals (+ ADD), in the page in their own case
     const btn = page.locator('.btn:visible').first();
     expect(await css(btn, 'fontSize', 'fontWeight', 'textTransform', 'borderTopLeftRadius')).toEqual({ fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', borderTopLeftRadius: '3px' });
     const inPage = page.locator('main .btn:visible, .mkbar .btn:visible').first();
     if (await inPage.count()) expect(await css(inPage, 'textTransform')).toEqual({ textTransform: 'none' });
     const any = page.locator('main .btn.primary:visible, .mkbar .btn.primary:visible').first();
-    if (await any.count()) expect(await css(any, 'paddingTop', 'paddingLeft')).toEqual({ paddingTop: '7px', paddingLeft: '12px' });
+    if (await any.count()) expect(await css(any, 'paddingTop', 'paddingLeft')).toEqual({ paddingTop: '8px', paddingLeft: '16px' });
     // two looks and no third: solid black (what the screen is for, + ADD, Follow), or plain text, grey, with no box
     const looks = await page.locator('.btn:visible, .dash:visible').evaluateAll(els => els.map(e => { const s = getComputedStyle(e);
       return s.backgroundColor === 'rgb(0, 0, 0)' && s.color === 'rgb(255, 255, 255)' ? 'solid'
@@ -149,6 +153,34 @@ test('no glyph for an icon in the source: every close, arrow, ellipsis, plus and
     expect(src.match(/textContent = '[×✕↑↓▾▸•·+−]+'/gu) || [], f).toEqual([]);
     expect(src.match(/\p{Extended_Pictographic}/gu) || [], f).toEqual([]);
   }
+});
+
+// one spacing scale, in steps of 8px (site.css's --s1 to --s6: 4, 8, 16, 24, 40): every margin, padding and gap written
+// in the pages and scripts is one of 0, 4, 8, 16, 24, 32, 40 or 48px. Off it on purpose: 1px where borders overlap,
+// 2px between spines (they stand as books do), and a press area, padding that a negative margin of the same size takes
+// back (or 44px kept clear for a button over a row), which is never seen
+test('one 8px spacing scale: no margin, padding or gap off it in any page or script', async () => {
+  const fs = require('fs'), path = require('path'), { ROOT } = require('../site');
+  const files = ['site.css', 'add.js', 'nav.js', 'post.js', 'bare.js', 'spinetip.js', 'index.html', '404.html', 'privacy.html',
+    ...['build', 'feed', 'people', 'settings', 'shelves', 'u', 'p', 'notifications'].map(d => d + '/index.html')];
+  const SCALE = [0, 4, 8, 16, 24, 32, 40, 48], off = [];
+  for (const f of files) {
+    const src = fs.readFileSync(path.join(ROOT, f), 'utf8').replace(/var\(--[\w-]+,[^)]*\)/g, 'VAR');   // a fallback is the token's own value
+    for (const rule of src.match(/[^{}]*\{[^{}]*\}/g) || []) {
+      const body = rule.slice(rule.indexOf('{') + 1);
+      for (const [, prop, val] of body.matchAll(/(?<![-\w])((?:margin|padding)(?:-[a-z]+)?|(?:row-|column-)?gap)\s*:\s*([^;}]+)/g)) {
+        for (const n of (val.match(/(?<![\w.-])-?\d+(?:\.\d+)?px/g) || []).map(v => Math.abs(parseFloat(v)))) {
+          if (SCALE.includes(n) || n === 1) continue;
+          if (n === 2 && /gap/.test(prop) && /spine|strip|sline|\.spines/.test(rule)) continue;
+          if (/padding/.test(prop) && new RegExp(`margin(-[a-z]+)?:[^;}]*-${n}px`).test(body)) continue;   // a press area
+          if (n === 44 && /pointer:coarse/.test(src.slice(Math.max(0, src.indexOf(rule) - 40), src.indexOf(rule)) + rule)) continue;
+          if (/margin/.test(prop) && new RegExp(`padding(-[a-z]+)?:[^;}]*\\b${n}px`).test(body)) continue;   // its other half
+          off.push(`${f}: ${prop}:${val.trim()}  (${rule.trim().split('{')[0].trim().slice(-50)})`);
+        }
+      }
+    }
+  }
+  expect(off).toEqual([]);
 });
 
 // Pages that draw shelves (home, the builder, profiles) also load Geist Mono, for shelf.js's caption and a plain

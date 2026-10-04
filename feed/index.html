@@ -35,14 +35,14 @@
 /* the feed: a timeline, one column of 600px in the middle of the page's. The composer, the tabs (staying under the
    bar as you scroll), then the posts (post.js) and shelves saved, each with a thin rule under it and no box */
 .tl{max-width:600px;margin-inline:auto}
-.tl .tabs{position:sticky;top:var(--barh,64px);z-index:4;background:var(--paper);padding-top:var(--s3)}
+.tl .tabs{position:sticky;top:var(--barh,64px);z-index:4;background:var(--paper);padding-top:var(--s4)}
 .tl .items{gap:0;margin-top:0}
 .tl .items > li{border-bottom:1px solid var(--hair)}
 .tl .items > li.item{padding:var(--s4) 0}
 /* a shelf saved: the spines it added, in a strip 80px tall */
 .shelfpost .strip{display:flex;align-items:flex-end;gap:2px;height:80px;margin-top:var(--s2);overflow:hidden;max-width:100%}
 .shelfpost .strip canvas{display:block;flex:none}
-.fnone{display:grid;justify-items:start;gap:var(--s3);margin:var(--s5) 0 0}
+.fnone{display:grid;justify-items:start;gap:var(--s4);margin:var(--s5) 0 0}
 .fnone > p{margin:0}
 .linkish{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-decoration:none;text-decoration-thickness:1px;text-underline-offset:3px}
 .linkish:hover,.linkish:focus-visible{text-decoration:underline;text-underline-offset:3px}
@@ -62,7 +62,7 @@
 .tfl > li{border-bottom:1px solid var(--hair)}
 .post.tf{align-items:center;grid-template-columns:40px minmax(0,1fr) auto}
 .post.tf .tlast{margin:var(--s1) 0 0;color:var(--grey);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-@media (pointer:coarse){ .post.tf .tlast{margin-top:var(--s3)} }   /* clear of the name's press area */
+@media (pointer:coarse){ .post.tf .tlast{margin-top:var(--s4)} }   /* clear of the name's press area */
 .tfall h2 .more{margin-left:auto}
 </style>
 </head>
