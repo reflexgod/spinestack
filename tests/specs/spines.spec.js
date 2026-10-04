@@ -77,3 +77,40 @@ test('a film\'s spine has no lettering check: a blank DVD spine alone is still c
   const before = await page.evaluate(async url => { const img = await new Promise(ok => { const i = new Image(); i.onload = () => ok(i); i.src = url; }); return !!Add.findSoloSpine(img); }, await draw(page, 'blankSpine'));
   expect(!!film).toBe(before);
 });
+
+test('no real spine for a book: "Have it? Photograph the spine" comes first, then Generated; a photo of it is picked and goes on the shelf', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, ownShelf: false });   // /scans finds nothing for anything
+  await page.goto('/feed/');
+  await page.locator('.top .add').click();
+  const d = page.getByRole('dialog', { name: /^add to (your|the) shelf$/i });
+  await d.getByRole('combobox', { name: 'Film or book name' }).fill('the waves');
+  await d.getByRole('option', { name: /The Waves.*Book/ }).click();
+  const picks = d.locator('#addFound .pick');
+  await expect(picks.first().getByRole('button', { name: 'Have it? Photograph the spine' })).toBeVisible({ timeout: 8000 });
+  expect(await picks.evaluateAll(ps => ps.map(p => p.dataset.c))).toEqual(['photo', 'spine', 'cover']);
+  await expect(d.locator('[data-use="spine"]')).toHaveAttribute('aria-checked', 'true');   // Generated is still what's picked until there's a photo
+  // the photo: one spine, 1:8, the way a phone's crop of it would be
+  const png = await page.evaluate(src => { const c = document.createElement('canvas'), x = c.getContext('2d'); new Function('c', 'x', src)(c, x); return c.toDataURL('image/png'); }, DRAW.letteredSpine);
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), d.getByRole('button', { name: 'Have it? Photograph the spine' }).click()]);
+  await chooser.setFiles({ name: 'spine.png', mimeType: 'image/png', buffer: Buffer.from(png.split(',')[1], 'base64') });
+  const mine = d.locator('#addFound [data-use="real:0"]');
+  await expect(mine).toHaveAttribute('aria-checked', 'true');
+  await expect(mine).toHaveAccessibleName('Your photo of the spine');
+  await expect(d.getByRole('button', { name: 'Have it? Photograph the spine' })).toHaveCount(0);
+  await d.getByRole('button', { name: 'Add to shelf' }).click();
+  await expect(page).toHaveURL(/\/build\/$/);
+  await expect(page.locator('#toast')).toHaveText('The Waves added to your shelf.');
+  await expect.poll(() => page.locator('#books .book .bt').allTextContents()).toEqual(['The Waves']);
+});
+
+test('a film with no real spine doesn\'t ask for a photo', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, ownShelf: false });
+  await page.goto('/feed/');
+  await page.locator('.top .add').click();
+  const d = page.getByRole('dialog', { name: /^add to (your|the) shelf$/i });
+  await d.getByRole('combobox', { name: 'Film or book name' }).fill('gummo');
+  await d.getByRole('option', { name: /Gummo/ }).click();
+  await expect(d.locator('[data-use="spine"]')).toHaveAttribute('aria-checked', 'true');
+  await page.waitForTimeout(500);
+  await expect(d.getByRole('button', { name: 'Have it? Photograph the spine' })).toHaveCount(0);
+});

@@ -237,6 +237,11 @@ css.textContent = `
 #addDialog .pick .lbl{font-size:var(--fs-label,10px);letter-spacing:0;text-transform:none;color:var(--grey,#6B6B6B);white-space:nowrap;width:var(--tw);text-align:center;overflow:hidden;text-overflow:ellipsis;align-self:center}
 #addDialog .pick .lbl a{color:inherit}
 #addDialog .addfound .rule{flex:none;width:1px;height:var(--th);background:var(--hair,#D9D9D9)}
+/* no real spine for a book: "Have it? Photograph the spine", first, opens a picture of your own copy */
+#addDialog .pick .snap{width:var(--tw);flex-direction:column;align-items:center;justify-content:center;gap:var(--s2,8px);border:1px solid var(--hair,#D9D9D9);border-radius:var(--radius,3px);
+  font:400 var(--fs-small,12px)/1.35 var(--mono,monospace);color:var(--ink,#000);text-align:center;padding:var(--s2,8px)}
+#addDialog .pick .snap:hover{border-color:var(--ink,#000)}
+#addDialog .pick .snap svg{width:20px;height:20px}
 #addDialog .addbar{display:flex;justify-content:flex-end;align-items:center;gap:var(--s3,12px);margin-top:var(--s4,16px)}
 /* under the spines a search found, at the left of the bar: "Search by Brave", small and grey (Brave asks for it where its results show) */
 #addDialog .addby{margin-right:auto;font-size:var(--fs-small,11px);color:var(--grey,#6B6B6B)}
@@ -308,7 +313,7 @@ dlg.innerHTML = `
     <h3><span id="addSpinesTitle">Spines</span> <small id="addSpinesBy"></small> <button class="dash sm" id="addChange" type="button">Change</button></h3>
     <p id="addDup" hidden><span id="addDupText"></span> <button class="dash sm" id="addDupAdd" type="button">Add again</button> <button class="dash sm" id="addDupCancel" type="button">Cancel</button></p>
     <div class="addfound" id="addFound" role="radiogroup" aria-label="Which spine"></div>
-    <p class="grey" id="addNoReal" hidden>No real spine found.</p>
+    <input type="file" id="addPhoto" accept="image/*" hidden>
     <p class="grey" id="addNote" hidden>Real DVD and book spines show up once the shelfstackd server is connected. Until then, upload a full DVD scan on the builder.</p>
     <div class="addbar"><a class="addby" id="addBy" href="https://search.brave.com/" target="_blank" rel="noopener">Search by Brave</a><button class="btn primary" id="addGo" type="button" disabled>Add to shelf</button></div>
   </div>
@@ -492,7 +497,7 @@ function bookFields(cur, choice){
   const m = cur.m, film = m.kind === 'movie', base = {title:m.title, author:m.creator || '', kind:m.kind, year:m.year || '', coverUrl:m.cover || '', font:'oswald', key:cur.key, choice};
   if (choice.startsWith('real:')){
     const r = cur.real[+choice.slice(5)], front = r.front || cur.img || r.spine, pal = extractPalette(front);
-    return Object.assign(base, {img:front, spineImg:r.spine, archiveId:r.archive ? r.id : undefined, source:r.archive ? 'the archive' : hostOf(r.source), bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real'}, front.src ? {thumb:front.src} : {});
+    return Object.assign(base, {img:front, spineImg:r.spine, archiveId:r.archive ? r.id : undefined, source:r.archive ? 'the archive' : r.photo ? 'your photo' : hostOf(r.source), bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real'}, front.src ? {thumb:front.src} : {});
   }
   const img = cur.img, pal = extractPalette(img), t = film ? cur.title : null;
   const bg = t ? t.bg : film ? '#111111' : pal.bg, fg = t ? (contrast('#F4F4F2', bg) >= contrast('#111111', bg) ? '#F4F4F2' : '#111111') : film ? '#F4F4F2' : pal.fg;
@@ -504,16 +509,18 @@ function showTiles(cur){
   const m = cur.m, noun = m.kind === 'movie' ? 'poster' : 'cover';
   // every option in one row at one height: the spine (press it to pick it), then one line saying where it's from
   const tile = (c, art, label, what) => `<div class="pick" data-c="${c}"><button type="button" class="art" role="radio" aria-checked="${cur.choice === c}" data-use="${c}" aria-label="${what}">${art}</button><span class="lbl">${label}</span></div>`;
-  const tiles = cur.real.map((r,i) => tile('real:' + i, '', r.archive
+  const tiles = cur.real.map((r,i) => tile('real:' + i, '', r.photo ? 'Your photo' : r.archive
     ? `From the archive · <a href="#" data-report="${esc(r.id)}">Report</a>`
-    : `<a class="src" href="${esc(r.source)}" target="_blank" rel="noopener">${esc(hostOf(r.source))}</a>`, 'A real spine from ' + esc(r.archive ? 'the archive' : hostOf(r.source))));
+    : `<a class="src" href="${esc(r.source)}" target="_blank" rel="noopener">${esc(hostOf(r.source))}</a>`, r.photo ? 'Your photo of the spine' : 'A real spine from ' + esc(r.archive ? 'the archive' : hostOf(r.source))));
+  // a book with no real spine found: photographing your own copy comes first, Generated next
+  if (!cur.busy && WORKER && !server && m.kind === 'book' && !cur.real.length)
+    tiles.unshift(`<div class="pick" data-c="photo"><button type="button" class="art snap" id="addSnap">${ICON('<path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/>')}Have it? Photograph the spine</button><span class="lbl">Your copy</span></div>`);
   if (cur.img){
     tiles.push(tile('spine', '', 'Generated', 'A spine made from the ' + noun));
     tiles.push('<span class="rule" aria-hidden="true"></span>');
     tiles.push(tile('cover', `<img class="cov" src="${esc(cur.img.src)}" crossorigin="anonymous" alt="">`, 'Cover', 'The ' + noun + ', face out'));
   }
   $('#addFound').innerHTML = tiles.join('') || (cur.busy ? '' : '<p class="grey">No scans and no ' + noun + ' found for this title. Upload a scan on the builder.</p>');
-  $('#addNoReal').hidden = cur.busy || !WORKER || server || cur.real.length > 0 || m.kind !== 'book';
   const H0 = parseFloat(getComputedStyle($('#addFound')).getPropertyValue('--th')) || 300;
   cur.real.forEach((r,i) => $(`#addFound [data-c="real:${i}"] .art`).append(tileCanvas({style:'real', spineImg:r.spine}, H0*r.spine.width/r.spine.height, H0)));
   const gen = $('#addFound [data-c="spine"] .art');
@@ -593,7 +600,7 @@ async function findSpines(m, again){
   const key = keyOf(m), cur = current = {m, key, real:[], res:{spines:[]}, img:null, busy:true, choice:null}, noun = m.kind === 'movie' ? 'poster' : 'cover';
   $('#addSpines').hidden = false; $('#addMatches').hidden = true; paintActive();
   $('#addSpinesTitle').textContent = m.title + (m.year ? ' (' + m.year + ')' : ''); $('#addSpinesBy').textContent = m.creator ? '· ' + m.creator : '';
-  $('#addNote').hidden = server || !!WORKER; $('#addFound').innerHTML = ''; $('#addNoReal').hidden = true; $('#addDup').hidden = true; paintGo();
+  $('#addNote').hidden = server || !!WORKER; $('#addFound').innerHTML = ''; $('#addDup').hidden = true; paintGo();
   $('#addBy').hidden = server || !WORKER;   // the Worker's scan search is the one that asks Brave
   if (!again && shelf && shelf.has(key)){
     // already on the shelf: ask before adding it a second time
@@ -665,10 +672,34 @@ $('#addFound').addEventListener('click', e => {
     flag.removeAttribute('data-report'); flag.removeAttribute('href'); flag.textContent = 'Reported'; toast('Reported. Thanks.');
     return;
   }
+  if (e.target.closest('#addSnap')){ $('#addPhoto').click(); return; }
   const u = e.target.closest('[data-use]'), cur = current; if (!u || !cur) return;
   cur.choice = u.dataset.use; cur.touched = true;
   for (const b of dlg.querySelectorAll('#addFound [data-use]')) b.setAttribute('aria-checked', String(b.dataset.use === cur.choice));
   paintGo();
+});
+/* a photo of your own copy's spine: cut out of the picture as an upload on the builder is (one spine alone, the strip
+   between back and front, or the spine with plain background round it), made at most 900px tall, and picked */
+function spineIn(img){
+  if (img.width/img.height <= 1/6) return {x:0, y:0, w:img.width, h:img.height};
+  return (img.height/img.width < 4 && findSpine(img, 'book')) || findSoloSpine(img);
+}
+function shrink(c, most){
+  if (c.height <= most) return c;
+  const k = most/c.height, o = document.createElement('canvas'); o.width = Math.max(1, Math.round(c.width*k)); o.height = most;
+  const x = o.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(c, 0, 0, o.width, o.height); return o;
+}
+$('#addPhoto').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0], cur = current; e.target.value = '';
+  if (!f || !cur) return;
+  let img; try { img = await loadImg(URL.createObjectURL(f)); } catch { sstatus('That picture couldn’t be read. Try another.', true); return; }
+  if (cur !== current) return;
+  const c = spineIn(img);
+  if (!c){ sstatus('No spine found in that photo. Crop it to the spine and try again.', true); return; }
+  const spine = shrink(crop(img, c.x, c.y, c.w, c.h), 900);
+  cur.real.unshift({spine, front:null, photo:true, source:'', score:100, en:true, vhs:false, img:spine.toDataURL('image/jpeg', .85)});
+  cur.choice = 'real:0'; cur.touched = true; sstatus('');
+  showTiles(cur);
 });
 $('#addDupAdd').addEventListener('click', () => { if (current) findSpines(current.m, true); });
 $('#addDupCancel').addEventListener('click', () => { $('#addDup').hidden = true; $('#addSpines').hidden = true; $('#addMatches').hidden = !matches.length; current = null; paintActive(); $('#addQ').focus(); });
@@ -687,7 +718,7 @@ $('#addGo').addEventListener('click', () => {
   const r = cur.choice.startsWith('real:') ? cur.real[+cur.choice.slice(5)] : null;
   try {
     sessionStorage.setItem(PENDING, JSON.stringify({at: Date.now(), m: cur.m, choice: r ? 'real' : cur.choice,
-      real: r ? {img: r.img, source: r.source, archive: r.archive, id: r.id, en: r.en, vhs: r.vhs} : undefined}));
+      real: r ? {img: r.img, source: r.source, archive: r.archive, id: r.id, en: r.en, vhs: r.vhs, photo: r.photo} : undefined}));
   } catch { sstatus('This browser won’t let the spine be carried over. Open the builder and add it there.', true); return; }
   $('#addGo').disabled = true; sstatus('Opening your shelf…');
   location.href = ROOT + 'build/';
@@ -700,7 +731,11 @@ function takePending(){
 async function resolve(p){
   const m = p.m, key = keyOf(m), cur = {m, key: shelf && shelf.has(key) ? key + '#' + (1 + shelf.count(key)) : key, real: [], img: null};
   const poster = m.cover ? timeout(loadImg(viaWorker(m.cover)), 15000).catch(() => null) : Promise.resolve(null);
-  if (p.choice === 'real' && p.real){ const c = await cutOne(p.real, m.kind); if (c) cur.real = [c]; }
+  if (p.choice === 'real' && p.real){
+    // a photo of your own copy travels as its picture; a scan is cut again from where it was found
+    const c = p.real.photo ? await loadImg(p.real.img).then(spine => ({spine, front:null, photo:true, source:'', score:100}), () => null) : await cutOne(p.real, m.kind);
+    if (c) cur.real = [c];
+  }
   const img = await poster;
   if (img && canvasSafe(img)){ cur.img = img; if (m.kind === 'movie') cur.title = posterTitle(img); }
   const choice = p.choice === 'real' ? (cur.real.length ? 'real:0' : 'spine') : p.choice;
