@@ -144,7 +144,8 @@ test('a Log button on every title: on a shelf\'s page, and on someone\'s Activit
   await page.keyboard.press('Escape');
   await open(page, '/u/?mira#activity');
   const log = page.locator('#acts .item.log').first();
-  await expect(log.getByRole('link', { name: 'Gummo' })).toHaveAttribute('href', /\/p\/\?bbbbbbbb-bbbb-4bbb-8bbb-000000000000$/);
+  await expect(log.getByRole('link', { name: 'Gummo' })).toHaveAttribute('href', /\/t\/\?kind=movie&title=Gummo&year=1997$/);   // the title, to its page
+  await expect(log.locator('a.ago')).toHaveAttribute('href', /\/p\/\?bbbbbbbb-bbbb-4bbb-8bbb-000000000000$/);   // the day, to the post
   await log.getByRole('button', { name: 'Log' }).click();
   await expect(d.locator('#addPostTitle')).toHaveText('Gummo (1997)');
 });

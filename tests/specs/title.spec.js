@@ -150,3 +150,27 @@ test('Your review: one press on the spines rates it, then the review and Post sh
   await yours.getByRole('button', { name: 'Post' }).click();
   expect((await req).postDataJSON()).toMatchObject({ kind: 'movie', title: 'Gummo', year: 1997, rating: 8, review: 'Odd and tender.' });
 });
+
+// every title leads here: a post's title and cover, a rec in the feed, the profile's lists, a shelf's spines
+test('titles lead to their page: a post\'s title and its cover, From friends, Up next, a shelf\'s spines', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, social: true });
+  await open(page, '/feed/?everyone');
+  const post = page.locator('#items .post').filter({ hasText: 'watched Gummo' }).first();
+  await expect(post.locator('a.cover')).toHaveAttribute('href', /\/t\/\?kind=movie&title=Gummo&year=1997$/);
+  await post.locator('.pwhat').getByRole('link', { name: 'Gummo' }).click();
+  await expect(page).toHaveURL(/\/t\/\?film=106$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Gummo 1997');
+  await open(page, '/u/?tester');
+  await expect(page.locator('#friends .tt b a').first()).toHaveAttribute('href', /\/t\/\?kind=/);
+  await page.getByRole('tab', { name: 'Up next' }).click();
+  await expect(page.locator('#wGrid .wcap a').first()).toHaveAttribute('href', /\/t\/\?kind=/);
+  await open(page, '/u/?mira&shelf=aaaaaaaa-aaaa-4aaa-8aaa-000000000001');
+  await expect(page.locator('#oneItems .st b a').first()).toHaveAttribute('href', /\/t\/\?kind=/);
+});
+
+test('with 0010, the panel has Recommend, which opens the sheet on this title', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, social: true, recs: true });
+  await open(page, '/t/?film=106');
+  await panel(page).getByRole('button', { name: 'Recommend' }).click();
+  await expect(page.locator('.recsheet')).toHaveAccessibleName('Recommend Gummo (1997)');
+});

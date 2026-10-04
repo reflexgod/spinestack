@@ -55,7 +55,8 @@ test('a line says who shelved what and how long ago; a post who watched or read 
   const ava = await post.locator('.pava').boundingBox();
   expect(Math.round(ava.width)).toBe(40);
   await expect(post.locator('.phead .pwho')).toHaveText(/^Mira\s+@mira$/);
-  await expect(post.locator('.pwhat').getByRole('link', { name: 'Gummo' })).toHaveAttribute('href', /\/p\/\?bbbbbbbb-bbbb-4bbb-8bbb-000000000000$/);
+  await expect(post.locator('.pwhat').getByRole('link', { name: 'Gummo' })).toHaveAttribute('href', /\/t\/\?kind=movie&title=Gummo&year=1997$/);   // the title, to its page
+  await expect(post.locator('.ago a')).toHaveAttribute('href', /\/p\/\?bbbbbbbb-bbbb-4bbb-8bbb-000000000000$/);   // the time, to the post
   expect(await post.locator('.pwhat').evaluate(el => getComputedStyle(el).fontWeight)).toBe('700');
   await expect(post.locator('time')).toHaveAttribute('datetime', LOGS[0].created_at);
   await expect(cover).toHaveAttribute('aria-label', 'Gummo (1997), watched by @mira');

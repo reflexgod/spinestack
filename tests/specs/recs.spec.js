@@ -261,7 +261,8 @@ test('the feed, with 0010: "@mira recommended Paris, Texas (1984) to @…", neve
   await expect(rec).toHaveCount(1);
   await expect(rec.locator('.pwho span')).toHaveText('@mira');
   await expect(rec.locator('.pwhat')).toHaveText('recommended Paris, Texas (1984) to @longusername_twenty1');
-  await expect(rec.locator('.pwhat a')).toHaveAttribute('href', /\/u\/\?longusername_twenty1$/);
+  await expect(rec.locator('.pwhat a').last()).toHaveAttribute('href', /\/u\/\?longusername_twenty1$/);
+  await expect(rec.locator('.pwhat a').first()).toHaveAttribute('href', /\/t\/\?kind=movie&title=Paris%2C\+Texas&year=1984$/);   // the title, to its page
   await expect(rec).not.toContainText('big screen');   // the note is theirs
   const cover = rec.locator('.cover img.clean');
   await expect(cover).toHaveAttribute('alt', 'The cover of Paris, Texas (1984)');

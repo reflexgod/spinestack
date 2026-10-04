@@ -377,6 +377,8 @@ document.addEventListener('shelfstackd:added', e => { const d = e.detail || {}; 
 const postUrl = id => ROOT + 'p/?' + id;
 const profileUrl = name => ROOT + 'u/?' + name;
 const coverSrc = x => x.cover_src ? `${WORKER}/img?url=${encodeURIComponent(String(x.cover_src).replace(/^url:/, ''))}` : '';
+// the title's own page (/t/), from the title, as nav.js makes it
+const titleUrl = x => window.Nav && Nav.titleUrl ? Nav.titleUrl(itemOf(x)) : ROOT + 't/';
 const itemOf = x => ({kind: x.kind, title: x.title, year: x.year ? String(x.year) : '', creator: x.author || '', cover: x.cover_src ? String(x.cover_src).replace(/^url:/, '') : ''});
 
 // a small menu under a button: items [{label, run(), disabled}], shut by Esc, a press elsewhere, or picking one
@@ -423,12 +425,12 @@ function item(x, opt = {}){
   li.innerHTML = `<a class="pava" href="${esc(profileUrl(x.username))}" tabindex="-1" aria-hidden="true">${avaHtml(x)}</a>
     <div class="pbody">
       <p class="phead"><a class="pwho" href="${esc(profileUrl(x.username))}">${name ? `<b>${esc(name)}</b> ` : ''}<span>@${esc(x.username)}</span></a><span class="ago">· <a href="${esc(url)}"><time datetime="${esc(at)}" title="${esc(new Date(at).toLocaleString())}">${ago(at)}</time></a></span><span class="pmenuwrap pmore"></span></p>
-      <p class="pwhat">${verb(x.kind)} <a href="${esc(url)}">${esc(x.title)}</a>${x.year ? ` (${esc(x.year)})` : ''}${social && x.rewatch ? ` <span class="tag">${x.kind === 'movie' ? 'rewatch' : 'reread'}</span>` : ''}${x.rec_by ? ` <span class="recby">· recommended by <a href="${esc(profileUrl(x.rec_by))}">@${esc(x.rec_by)}</a></span>` : ''}</p>
+      <p class="pwhat">${verb(x.kind)} <a href="${esc(titleUrl(x))}">${esc(x.title)}</a>${x.year ? ` (${esc(x.year)})` : ''}${social && x.rewatch ? ` <span class="tag">${x.kind === 'movie' ? 'rewatch' : 'reread'}</span>` : ''}${x.rec_by ? ` <span class="recby">· recommended by <a href="${esc(profileUrl(x.rec_by))}">@${esc(x.rec_by)}</a></span>` : ''}</p>
       ${social && x.rating ? `<p class="prating">${stars(x.rating, 'sm')}</p>` : ''}
       ${say}
       <div class="pacts"></div>
     </div>
-    <span class="cover"></span>`;
+    <a class="cover" href="${esc(titleUrl(x))}" tabindex="-1" aria-hidden="true"></a>`;
   if (window.Wear) li.querySelector('.cover').append(Wear.cover({src: coverSrc(x), seed: x.id, at, label: `${label}, ${verb(x.kind)} by @${x.username}`, width: opt.cover || 72}));
   const sp = li.querySelector('.spoilbtn');
   if (sp) sp.addEventListener('click', e => { e.stopPropagation(); const box = sp.parentNode; box.classList.remove('spoil'); box.querySelector('.sayt').removeAttribute('aria-hidden'); sp.remove(); });

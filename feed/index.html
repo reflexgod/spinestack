@@ -294,7 +294,7 @@ function recPost(x){
   li.innerHTML = `<a class="pava" href="${esc(profileUrl(x.username))}" tabindex="-1" aria-hidden="true">${window.Posts ? Posts.avaHtml(x) : ''}</a>
     <div class="pbody">
       <p class="phead"><a class="pwho" href="${esc(profileUrl(x.username))}">${name ? `<b>${esc(name)}</b> ` : ''}<span>@${esc(x.username)}</span></a><span class="ago">· <time datetime="${esc(x.at)}" title="${esc(new Date(x.at).toLocaleString())}">${ago(x.at)}</time></span></p>
-      <p class="pwhat">recommended <b>${esc(x.title)}</b>${x.year ? ` (${esc(x.year)})` : ''} to <a href="${esc(profileUrl(x.to_username))}">@${esc(x.to_username)}</a></p>
+      <p class="pwhat">recommended <a href="${esc(Nav.titleUrl({kind: x.kind, title: x.title, year: x.year}))}">${esc(x.title)}</a>${x.year ? ` (${esc(x.year)})` : ''} to <a href="${esc(profileUrl(x.to_username))}">@${esc(x.to_username)}</a></p>
     </div>
     <span class="cover">${x.cover_src ? `<img class="clean" src="${esc(`${WORKER}/img?url=${encodeURIComponent(x.cover_src.replace(/^url:/, ''))}`)}" alt="The cover of ${esc(label)}" loading="lazy">` : ''}</span>`;
   if (!(me.user && x.owner === me.user.id)) Nav.watchable(li.querySelector('.cover'), {kind: x.kind, title: x.title, year: x.year ? String(x.year) : '', creator: x.author || '', cover: x.cover_src ? x.cover_src.replace(/^url:/, '') : ''}, {moreIn: li.querySelector('.pbody')});

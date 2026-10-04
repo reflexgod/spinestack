@@ -272,6 +272,8 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 .items .item.log{position:relative}
 .items .item.log>.wmorewrap{position:absolute;top:-12px;right:0}
 @media (pointer:coarse){.items .item.log .line{padding-right:44px}}
+/* a title, to its page (/t/): 44px to press on a touch screen, as the other small links are */
+@media (pointer:coarse){ :is(.titles .tt b, .spines .st b, .wcap b) a{position:relative} :is(.titles .tt b, .spines .st b, .wcap b) a::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))} }
 </style>
 </head>
 <body>
@@ -864,7 +866,7 @@ function recRow(r, i){
     : (r.status === 'open' ? '<button class="dash sm" type="button" data-r="keep">Keep</button>' : '<span class="rstate">Kept</span>')
       + `<button class="dash sm" type="button" data-r="log">${didIt(r)}</button><button class="dash sm" type="button" data-r="dismiss">Dismiss</button>`;
   li.innerHTML = `<span class="tc">${r.cover_src ? `<img src="${esc(coverOf(r.cover_src))}" alt="" loading="lazy">` : ''}</span>
-    <span class="tt"><b>${esc(r.title)}${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${sent ? 'to' : 'from'} ${who} · ${esc(ago(r.created_at))}</span>${r.note ? `<p class="rnote">${esc(r.note)}</p>` : ''}</span>
+    <span class="tt"><b><a href="${esc(Nav.titleUrl(asItem(r)))}">${esc(r.title)}</a>${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${sent ? 'to' : 'from'} ${who} · ${esc(ago(r.created_at))}</span>${r.note ? `<p class="rnote">${esc(r.note)}</p>` : ''}</span>
     <span class="tacts">${state}<button class="dash sm" type="button" data-r="thread" aria-expanded="false">Reply${r.replies ? ` (${r.replies})` : ''}</button></span>
     <div class="rthread" hidden><ol class="rmsgs"></ol><form class="rform"><textarea maxlength="280" rows="1" aria-label="Reply to @${esc(r.username)}" placeholder="Reply to @${esc(r.username)}"></textarea><button class="btn primary sm" type="submit">Send</button></form></div>`;
   return li;
@@ -952,7 +954,7 @@ const didIt = r => `Mark ${r.kind === 'movie' ? 'watched' : 'read'}`;
 function titleRow(r, i, acts, from){
   const li = document.createElement('li'); li.dataset.i = i;
   li.innerHTML = `<span class="tc">${r.cover_src ? `<img src="${esc(coverOf(r.cover_src))}" alt="" loading="lazy">` : ''}</span>
-    <span class="tt"><b>${esc(r.title)}${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${esc([r.author, r.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · '))}${from ? ` · from <a href="${esc(pageUrl(from))}">@${esc(from)}</a>` : ''}</span></span>
+    <span class="tt"><b><a href="${esc(Nav.titleUrl(asItem(r)))}">${esc(r.title)}</a>${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${esc([r.author, r.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · '))}${from ? ` · from <a href="${esc(pageUrl(from))}">@${esc(from)}</a>` : ''}</span></span>
     ${acts ? `<span class="tacts">${acts}</span>` : ''}`;
   return li;
 }
@@ -1017,7 +1019,7 @@ function paintWatchTab(){
   if (mine) watchSearch();
   const tiles = rows.map((r, i) => {
     const li = document.createElement('li'); li.className = 'wt'; li.dataset.i = i;
-    li.innerHTML = `<span class="wc sealed"></span><span class="wcap"><b>${esc(r.title)}</b>${r.year ? ` <span>${esc(r.year)}</span>` : ''}</span>${mine ? `<span class="wacts"><button class="dash sm grey" type="button" data-w="remove">Remove</button><button class="dash sm" type="button" data-w="log">${didIt(r)}</button><button class="dash sm recbtn" type="button" data-w="rec">Recommend</button></span>` : ''}`;
+    li.innerHTML = `<span class="wc sealed"></span><span class="wcap"><b><a href="${esc(Nav.titleUrl(asItem(r)))}">${esc(r.title)}</a></b>${r.year ? ` <span>${esc(r.year)}</span>` : ''}</span>${mine ? `<span class="wacts"><button class="dash sm grey" type="button" data-w="remove">Remove</button><button class="dash sm" type="button" data-w="log">${didIt(r)}</button><button class="dash sm recbtn" type="button" data-w="rec">Recommend</button></span>` : ''}`;
     const wc = li.querySelector('.wc'); wc.append(cleanCover(r));
     if (!mine) Nav.watchable(wc, asItem(r), {moreIn: li});   // someone else's: on yours too
     return li;
@@ -1181,7 +1183,7 @@ function paintItems(){
   ol.replaceChildren(...shown.rows.map((r, i) => {
     const li = document.createElement('li'); li.dataset.i = i;
     li.innerHTML = `<span class="sthumb"></span>
-      <span class="st"><b>${esc(r.title || 'Untitled')}${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${esc([r.author, r.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · '))}</span></span>
+      <span class="st"><b>${r.title ? `<a href="${esc(Nav.titleUrl(asItem(r)))}">${esc(r.title)}</a>` : 'Untitled'}${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${esc([r.author, r.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · '))}</span></span>
       <span class="sact"><button class="dash sm" type="button" data-log="${i}">Log</button><button class="dash sm recbtn" type="button" data-rec="${i}">Recommend</button>${!have(r) ? `<button class="dash sm" type="button" data-add="${i}">Add to my shelf</button>` : view.mine ? '' : '<span class="onmine">On your shelf</span>'}</span>`;
     // someone else's shelf: each spine onto your watchlist too
     if (!view.mine) Nav.watchable(li.querySelector('.sthumb'), {kind: r.kind, title: r.title, year: r.year ? String(r.year) : '', creator: r.author || '', cover: /^url:/.test(r.cover_src || '') ? r.cover_src.slice(4) : ''}, {moreIn: li.querySelector('.sact')});
@@ -1539,7 +1541,7 @@ function actLine(x){
   if (x.log){
     const l = x.log, verb = l.kind === 'movie' ? 'watched' : 'read';
     li.classList.add('log');
-    li.innerHTML = `<p class="line">${who} ${verb} <a href="../p/?${esc(l.id)}"><b>${esc(l.title)}</b></a> ${when(l.created_at, day(l.created_at))}${view.mine ? ` <button class="dash sm grey" type="button" data-unlog="${esc(l.id)}">Delete</button>` : ` <button class="dash sm" type="button" data-relog="${esc(l.id)}">Log</button>`}</p>
+    li.innerHTML = `<p class="line">${who} ${verb} <a href="${esc(Nav.titleUrl(asItem(l)))}"><b>${esc(l.title)}</b></a> <a class="ago" href="../p/?${esc(l.id)}">· <time datetime="${esc(l.created_at)}" title="${esc(new Date(l.created_at).toLocaleString())}">${day(l.created_at)}</time></a>${view.mine ? ` <button class="dash sm grey" type="button" data-unlog="${esc(l.id)}">Delete</button>` : ` <button class="dash sm" type="button" data-relog="${esc(l.id)}">Log</button>`}</p>
       <div class="logbody"><span class="cover"></span>${l.caption ? `<p class="say">${esc(l.caption)}</p>` : ''}</div>`;
     li.querySelector('.cover').append(Wear.cover({src: coverOf(l.cover_src), seed: l.id, at: l.created_at, label: `${l.title}${l.year ? ` (${l.year})` : ''}, ${verb} by @${p.username}`, width: COVER}));
     if (!view.mine) Nav.watchable(li.querySelector('.cover'), asItem(l), {moreIn: li});   // someone else's log: onto your watchlist
