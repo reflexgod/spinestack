@@ -91,3 +91,26 @@ test('Shelves, signed out: Make a shelf, then signing in, goes on to the builder
   await expect(page).toHaveURL(/\/build\/$/);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your shelf');
 });
+
+// New shelf, to build/?new: on the Shelves page signed in, at the top of your own Shelves tab, and in + ADD's ▾
+test('New shelf: on Shelves, on your own Shelves tab (not someone else\'s), and in + ADD\'s menu', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/shelves/');
+  await expect(page.locator('main').getByRole('link', { name: 'New shelf' })).toHaveAttribute('href', '../build/?new');
+  await open(page, '/u/?tester#shelves');
+  const mine = page.locator('#panelS').getByRole('link', { name: 'New shelf' });
+  await expect(mine).toHaveAttribute('href', '../build/?new');
+  const top = await mine.boundingBox(), list = await page.locator('#sList').boundingBox();
+  expect(top.y).toBeLessThan(list.y);   // at the top of the list
+  await open(page, '/u/?mira#shelves');
+  await expect(page.locator('#sList li').first()).toBeVisible();
+  await expect(page.locator('#panelS').getByRole('link', { name: 'New shelf' })).toBeHidden();
+  await open(page, '/feed/');
+  await page.locator('#addMore').click();
+  await expect(page.getByRole('menu', { name: 'More ways to add' }).getByRole('menuitem', { name: 'New shelf' })).toHaveAttribute('href', /\/build\/\?new$/);
+});
+test('signed out, the Shelves page has no New shelf', async ({ page }) => {
+  await mockNetwork(page);
+  await open(page, '/shelves/');
+  await expect(page.locator('main').getByRole('link', { name: 'New shelf' })).toBeHidden();
+});

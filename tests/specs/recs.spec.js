@@ -37,10 +37,10 @@ test('a post\'s share menu: Recommend opens the sheet; pick someone you both fol
   await expect(s).toBeVisible();
   await expect(s).toHaveAccessibleName('Recommend Gummo (1997)');
   // who to: the people you both follow; one with 6 waiting can't be picked
-  const to = s.getByRole('group', { name: 'To' }).getByRole('radio');
+  const to = s.getByRole('group', { name: /^To/ }).getByRole('checkbox');
   await expect(to).toHaveCount(MUTUALS.length);
-  await expect(s.getByRole('radio', { name: /@mira/ })).toBeEnabled();
-  await expect(s.getByRole('radio', { name: /@longusername_twenty1/ })).toBeDisabled();
+  await expect(s.getByRole('checkbox', { name: /@mira/ })).toBeEnabled();
+  await expect(s.getByRole('checkbox', { name: /@longusername_twenty1/ })).toBeDisabled();
   await expect(s.locator('.rfull')).toHaveText('6 waiting');
   const send = s.getByRole('button', { name: 'Send' });
   await expect(send).toBeDisabled();   // until someone is picked
@@ -49,7 +49,7 @@ test('a post\'s share menu: Recommend opens the sheet; pick someone you both fol
   await expect(note).toHaveAttribute('maxlength', '140');
   await note.fill('The bathtub scene.');
   await expect(s.locator('.rcount')).toHaveText('18 / 140');
-  await s.getByRole('radio', { name: /@mira/ }).check();
+  await s.getByRole('checkbox', { name: /@mira/ }).check();
   await expect(send).toBeEnabled();
   const req = sent(page, 'recs');
   await send.click();
@@ -70,7 +70,7 @@ test('the sheet says what the database says: already sent, or not following back
   await p.getByRole('button', { name: /^Share/ }).click();
   await p.getByRole('menuitem', { name: 'Recommend' }).click();
   const s = sheet(page);
-  await s.getByRole('radio', { name: /@mira/ }).check();
+  await s.getByRole('checkbox', { name: /@mira/ }).check();
   await s.getByRole('button', { name: 'Send' }).click();
   await expect(s.locator('.rsay')).toHaveText('You’ve recommended it to @mira already.');
   answer = { status: 400, body: { code: 'P0001', message: '@mira has 6 recs waiting. Try again once they’ve looked at some.' } };
@@ -313,4 +313,34 @@ test('a shelf\'s Share: Share to WhatsApp, with its name and its link', async ({
   expect(u).toMatch(/^https:\/\/wa\.me\/\?text=/);
   expect(text).toContain(' by @mira on shelfstackd: http');
   expect(text.endsWith(`/u/?mira&shelf=${SHELVES[1].id}`)).toBe(true);
+});
+
+// up to 5 people at once, one rec each; one the database refuses doesn't stop the rest
+test('Recommend to up to 5 at once: the sixth can\'t be ticked; one rec each; a refused one is said, the rest sent', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, social: true, recs: true });
+  const many = Array.from({ length: 7 }, (_, i) => ({ id: `99999999-9999-4999-8999-00000000000${i}`, username: `friend${i}`, display_name: '', avatar_key: null, waiting: 0 }));
+  await page.route(u => u.origin === SB_URL && u.pathname === '/rest/v1/rpc/mutuals', route => route.request().method() === 'OPTIONS' ? route.fulfill({ status: 204, headers: CORS })
+    : route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify(many) }));
+  const asked = [];
+  await page.route(u => u.origin === SB_URL && u.pathname === '/rest/v1/recs', route => {
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
+    const body = route.request().postDataJSON(); asked.push(body.receiver);
+    return body.receiver === many[1].id ? route.fulfill({ status: 409, headers: CORS, contentType: 'application/json', body: '{"code":"23505","message":"dup"}' })
+      : route.fulfill({ status: 201, headers: CORS, contentType: 'application/json', body: '[]' });
+  });
+  await open(page, '/feed/?everyone');
+  const p = post(page, 'watched Gummo');
+  await p.getByRole('button', { name: /^Share/ }).click();
+  await p.getByRole('menuitem', { name: 'Recommend' }).click();
+  const s = sheet(page), boxes = s.getByRole('checkbox');
+  for (let i = 0; i < 5; i++) await boxes.nth(i).check();
+  await expect(boxes.nth(5)).toBeDisabled();   // five at most
+  await expect(s.getByRole('button', { name: 'Send to 5' })).toBeEnabled();
+  await boxes.nth(4).uncheck();
+  await expect(boxes.nth(5)).toBeEnabled();
+  await s.getByRole('button', { name: 'Send to 4' }).click();
+  await expect(s.locator('.rsay')).toHaveText('Sent to @friend0, @friend2 and @friend3. You’ve recommended it to @friend1 already.');
+  expect(asked).toEqual([many[0].id, many[1].id, many[2].id, many[3].id]);   // one each
+  await expect(s.getByRole('checkbox', { name: /@friend0/ })).toBeHidden();   // sent: gone from the list
+  await expect(s.getByRole('checkbox', { name: /@friend1/ })).toBeChecked();  // refused: still ticked, to try again
 });

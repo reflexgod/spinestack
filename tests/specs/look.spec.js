@@ -222,3 +222,29 @@ for (const pg of [...PAGES, { name: 'privacy', path: '/privacy.html' }]) {
     }
   });
 }
+
+/* Every action row: a solid button, text actions and states ("Main shelf", "Following", "On your shelf") in one box,
+   so each line of a row shares its top and every item its height (within 1px), on a wide window and at 390px */
+const ROWS = '.sacts, .pbtns, #tPanel, .wacts, .tacts, .addbar, .lead, .mineacts, .ybar, .rbox .row, #oneItems .sact';
+async function rowsLineUp(page, where){
+  const bad = await page.evaluate(sel => [...document.querySelectorAll(sel)].filter(r => r.offsetParent).flatMap(row => {
+    const items = [...row.children].filter(e => e.offsetParent && getComputedStyle(e).position !== 'absolute' && !e.matches('.menu, [role=menu], .pmenu, p, .note, label.addon, .addby'))
+      .flatMap(e => e.matches('.pmenuwrap, .mineacts') ? [...e.children].filter(c => c.offsetParent && !c.matches('[role=menu], .pmenu')) : [e]);
+    if (items.length < 2) return [];
+    const box = items.map(e => { const r = e.getBoundingClientRect(); return { t: Math.round(r.top), h: Math.round(r.height), name: e.textContent.trim().slice(0, 20) || e.getAttribute('aria-label') }; });
+    const out = [], h0 = box[0].h;
+    for (const b of box) if (Math.abs(b.h - h0) > 1) out.push(`${row.className || row.id}: "${b.name}" is ${b.h}px tall, "${box[0].name}" ${h0}px`);
+    for (const b of box) for (const c of box) if (Math.abs(b.t - c.t) > 1 && Math.abs(b.t - c.t) < h0) out.push(`${row.className || row.id}: "${b.name}" and "${c.name}" are on one line but ${Math.abs(b.t - c.t)}px apart`);
+    return out;
+  }), ROWS);
+  expect([...new Set(bad)], where).toEqual([]);
+}
+for (const [name, path, opt] of [['a shelf of yours', `/u/?tester&shelf=aaaaaaaa-aaaa-4aaa-8aaa-000000000003`, {}], ['someone\'s shelf', '/u/?mira&shelf=aaaaaaaa-aaaa-4aaa-8aaa-000000000001', {}],
+  ['your profile', '/u/?tester', {}], ['someone\'s profile', '/u/?mira', {}], ['your Up next', '/u/?tester#upnext', {}], ['your Recs', '/u/?tester#recs', { recs: true }],
+  ['a title', '/t/?film=106', {}], ['a title you logged', '/t/?book=OL5W', {}], ['Shelves', '/shelves/', {}], ['a post', '/p/?bbbbbbbb-bbbb-4bbb-8bbb-000000000000', {}]]) {
+  test(`action rows line up: ${name}`, async ({ page }) => {
+    await mockNetwork(page, { signedIn: true, social: true, ...opt });
+    await open(page, path);
+    await rowsLineUp(page, name);
+  });
+}

@@ -20,7 +20,7 @@ const PAGES = [
   { name: 'people', path: '/people/' },
   { name: 'post', path: '/p/?bbbbbbbb-bbbb-4bbb-8bbb-000000000000' },   // @mira's Gummo
   { name: 'notifications', path: '/notifications/' },
-  { name: 'title', path: '/t/?film=106' },   // Gummo
+  { name: 'title', path: '/t/?film=106&title=Gummo&year=1997' },   // Gummo, at the address it takes
 ];
 /* pages without it */
 const OTHER_PAGES = [
@@ -282,9 +282,11 @@ function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, 
   if (what === 'follows' && eq('follower') === ME.id && !q.get('followee')) return me ? [{ followee: PEOPLE[1].id }, ...(friends ? FRIENDS.map(f => ({ followee: f.id })) : [])] : [];
   // follows, read from the table: @mira follows the made-up account, and that's the only one it's asked about
   if (what === 'follows') return me && eq('follower') === PEOPLE[1].id && eq('followee') === ME.id ? [{ follower: PEOPLE[1].id }] : [];
+  // one shelf's spine of a title (+ ADD asking whether it's there already): that shelf's spines as its own page has them
+  if (what === 'shelf_items' && q.get('title') && eq('shelf_id')) return ITEMS.filter(r => sameTitle(q, r)).map(r => ({ item_id: r.item_id }));
   if (what === 'shelf_items' && q.get('title')){   // the title page: every spine of that title, with its shelf and whose it is
     const all = [...SHELVES, ...FRIEND_SHELVES].filter(x => !(fresh && x.owner === ME.id));
-    return [...ITEMS_BY_SHELF].flatMap(([id, rows]) => rows.filter(r => sameTitle(q, r)).map(r => { const sh = all.find(x => x.id === id);
+    return [...ITEMS_BY_SHELF].filter(([id]) => !eq('shelf_id') || eq('shelf_id') === id).flatMap(([id, rows]) => rows.filter(r => sameTitle(q, r)).map(r => { const sh = all.find(x => x.id === id);
       return sh ? { shelf_id: id, shelves: { id, owner: sh.owner, name: sh.name, caption: sh.caption, profiles: someone(sh.owner) } } : null; })).filter(Boolean);
   }
   if (what === 'shelf_items'){   // shelf_id=in.(x,y): each shelf's own spines; shelf_id=eq.x: ITEMS

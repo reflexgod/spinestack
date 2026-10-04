@@ -382,3 +382,47 @@ test('on the builder, Put on shelf doesn’t ask', async ({ page }) => {
   await expect(d.locator('#addFound [data-use]').first()).toBeVisible();
   await expect(d.getByRole('combobox', { name: 'On' })).toBeHidden();
 });
+
+/* ---------- which shelf, and never twice on one ---------- */
+const { SHELVES: ALL_SHELVES } = require('../site');
+test('Put on shelf says which shelf: with more than one, a picker with your main one first; the builder names its own', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/feed/?everyone');
+  await page.locator('header.top .add').click();
+  const d = page.locator('#addDialog');
+  await d.getByRole('radio', { name: 'Put on shelf' }).check();
+  await d.getByRole('combobox', { name: 'Film or book name' }).fill('gummo');
+  await d.getByRole('option', { name: /Gummo/ }).click();
+  const on = d.getByRole('combobox', { name: 'On' });
+  await expect(on).toBeVisible();
+  await expect(on.locator('option').first()).toHaveText(/\(main\)$/);
+  expect(await on.locator('option').count()).toBeGreaterThan(1);
+  await page.locator('#addClose').click();
+  await open(page, '/build/');
+  await page.locator('header.top .add').click();
+  await d.getByRole('radio', { name: 'Put on shelf' }).check();
+  await d.getByRole('combobox', { name: 'Film or book name' }).fill('gummo');
+  await d.getByRole('option', { name: /Gummo/ }).click();
+  await expect(d.locator('#addOnName')).toHaveText(ALL_SHELVES[0].name);   // the shelf being built, by its name
+});
+
+test('a title already on the shelf: "Already on <shelf>", and Add to shelf stays off (on the builder and from another page)', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/build/');   // your shelf has The Waves
+  await page.locator('header.top .add').click();
+  const d = page.locator('#addDialog');
+  await d.getByRole('radio', { name: 'Put on shelf' }).check();
+  await d.getByRole('combobox', { name: 'Film or book name' }).fill('the waves');
+  await d.getByRole('option', { name: /The Waves/ }).first().click();
+  await expect(d.locator('#addDup')).toHaveText(new RegExp(`^Already on ${ALL_SHELVES[0].name}\.`));
+  await expect(d.getByRole('button', { name: 'Add again' })).toHaveCount(0);
+  await expect(d.getByRole('button', { name: 'Add to shelf' })).toBeDisabled();
+  // from the feed: the main shelf picked has it
+  await open(page, '/feed/?everyone');
+  await page.locator('header.top .add').click();
+  await d.getByRole('radio', { name: 'Put on shelf' }).check();
+  await d.getByRole('combobox', { name: 'Film or book name' }).fill('the waves');
+  await d.getByRole('option', { name: /The Waves/ }).first().click();
+  await expect(d.locator('#addDup')).toHaveText(/^Already on /);
+  await expect(d.getByRole('button', { name: 'Add to shelf' })).toBeDisabled();
+});

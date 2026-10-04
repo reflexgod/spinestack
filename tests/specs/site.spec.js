@@ -182,14 +182,14 @@ test('every sign-out is for this device only', () => {
   }
 });
 
-test('the ▾ next to + ADD has one item: Upload a scan', async ({ page }) => {
+test('the ▾ next to + ADD has New shelf and Upload a scan', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/feed/?everyone');
   const menu = page.getByRole('menu', { name: 'More ways to add' });
   await page.locator('#addMore').click();
   await expect(menu).toBeVisible();
-  await expect(menu.getByRole('menuitem')).toHaveText(['Upload a scan']);
-  expect(await menu.getByRole('menuitem').evaluate(a => new URL(a.href).pathname + new URL(a.href).hash)).toBe('/build/#upload');
+  await expect(menu.getByRole('menuitem')).toHaveText(['New shelf', 'Upload a scan']);
+  expect(await menu.getByRole('menuitem').evaluateAll(as => as.map(a => new URL(a.href).pathname + new URL(a.href).search + new URL(a.href).hash))).toEqual(['/build/?new', '/build/#upload']);
   await page.keyboard.press('Escape');
   await expect(menu).toBeHidden();
 });
@@ -559,4 +559,21 @@ test('no placeholder or menu item ends in an ellipsis, nor home\'s welcome line'
   await expect(page.locator('#addQ')).toHaveAttribute('placeholder', 'Gummo, The Waves, Kids');   // it had three full stops
   await open(page, '/');
   await expect(page.locator('#hello')).not.toHaveText(cut);
+});
+
+// at 390px, with everything the database can have (0009, 0010: the profile's six tabs), no page is wider than the
+// window; a row of tabs too long for it scrolls inside itself, on one line
+test('at 390px no page is wider than the window, with every tab there', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockNetwork(page, { signedIn: true, social: true, recs: true, friends: true });
+  for (const path of [...PAGES.map(p => p.path), '/u/?tester', '/u/?mira', `/u/?mira&shelf=${SHELVES[1].id}`, '/t/?book=OL99W', '/privacy.html', '/404.html']) {
+    await open(page, path);
+    await page.waitForTimeout(300);
+    const wide = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(wide, `${path} is wider than the window`).toBeLessThanOrEqual(0);
+    for (const row of await page.locator('.tabs:visible').all()) {
+      const ys = await row.locator('button:visible').evaluateAll(bs => bs.map(b => [Math.round(b.getBoundingClientRect().top), Math.round(b.getBoundingClientRect().height)]));
+      expect(new Set(ys.map(y => y.join())).size, `${path}: its tabs are on one line`).toBeLessThanOrEqual(1);
+    }
+  }
 });

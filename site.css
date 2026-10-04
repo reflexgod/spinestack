@@ -71,13 +71,19 @@ em.pro,.tag{font-style:normal;font-weight:700;font-size:9px;border:1px solid cur
    Following in grey, and Unfollow when the pointer is on it. In their own case (sentence case): only the bar's places,
    section headings and the tiny labels are in capitals ---------- */
 .btn{display:inline-block;font:600 var(--fs-btn)/1.35 var(--mono);text-align:center;text-decoration:none;white-space:nowrap;
-  background:none;color:var(--grey);border:1px solid transparent;border-radius:var(--radius);padding:var(--s1) 0;cursor:pointer}
+  background:none;color:var(--grey);border:0;border-radius:var(--radius);padding:var(--s2) 0;cursor:pointer}
 .btn:hover:not(:disabled),.btn:focus-visible{color:var(--ink)}
 .btn.primary,.btn.follow:not([aria-pressed="true"]){background:var(--ink);color:var(--paper);border-color:var(--ink);padding:var(--btn-pad)}
 .btn.primary:hover:not(:disabled),.btn.follow:not([aria-pressed="true"]):hover:not(:disabled){background:#222;color:var(--paper)}
 .btn.full{width:100%}
 .btn:disabled{opacity:.5;cursor:default}
-.dash{display:inline-block;background:none;border:0;padding:0 0 var(--s1);font:600 var(--fs-btn)/1.35 var(--mono);color:var(--grey);cursor:pointer;text-decoration:none;white-space:nowrap}
+.dash{display:inline-block;background:none;border:0;padding:var(--s2) 0;font:600 var(--fs-btn)/1.35 var(--mono);color:var(--grey);cursor:pointer;text-decoration:none;white-space:nowrap}
+/* a state, where an action was ("Main shelf", "On your shelf", "In Up next"): the same box, grey, not pressed. So a
+   row of a solid button, text actions and states is one line: one font, size and line-height, 8px above and below,
+   no border */
+.state{display:inline-flex;align-items:center;gap:var(--s1);font:600 var(--fs-btn)/1.35 var(--mono);color:var(--grey);padding:var(--s2) 0;white-space:nowrap}
+.state svg{width:16px;height:16px;flex:none;margin:-1px 0}
+.btn,.dash,.state{vertical-align:middle;box-sizing:border-box}
 .dash:hover:not(:disabled),.dash:focus-visible{color:var(--ink)}
 .dash:disabled{opacity:.5;cursor:default}
 
@@ -133,9 +139,14 @@ textarea{resize:vertical;line-height:1.5}
 }
 
 /* ---------- tabs ---------- */
-.tabs{display:flex;gap:var(--s5);border-bottom:1px solid var(--hair)}
-.tabs button{font:400 var(--fs-tab) var(--mono);background:none;border:0;padding:0 0 var(--s2);margin-bottom:-1px;color:var(--grey);cursor:pointer;border-bottom:1px solid transparent}
+/* one line, always: more tabs than fit scroll sideways inside the row, never the page */
+.tabs{display:flex;gap:var(--s5);border-bottom:1px solid var(--hair);overflow-x:auto;overflow-y:hidden;scrollbar-width:none;min-width:0}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:none;white-space:nowrap;font:400 var(--fs-tab) var(--mono);background:none;border:0;padding:0 0 var(--s2);margin-bottom:-1px;color:var(--grey);cursor:pointer;border-bottom:1px solid transparent}
 .tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+/* on a touch screen a tab is 44px tall itself, its words at the foot over the line (a press area outside it would be
+   cut off by the row, which scrolls) */
+@media (pointer:coarse){ .tabs button{min-height:44px;min-width:44px;display:inline-flex;align-items:flex-end;justify-content:center} .tabs button::before{display:none} }
 
 /* ---------- shelves, where they're listed: no card and no box. Each is its first spines standing on a thin black line
    (bare.js draws them as the line nears the screen), its name under it, then who made it. Six across the column, four

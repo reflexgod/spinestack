@@ -53,14 +53,14 @@ test('the panel: Log opens + ADD\'s Log it on this title; Add to Up next puts it
   await p.getByRole('button', { name: 'Share' }).click();
   await expect(p.getByRole('menuitem')).toHaveText(['Copy link', 'Share to WhatsApp']);
   await p.getByRole('menuitem', { name: 'Copy link' }).click();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/\/t\/\?film=106$/);
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/\/t\/\?film=106&title=Gummo&year=1997$/);
 });
 
 test('a link from a log (kind, title, year) takes the id\'s address; with no Worker it goes on with what the link says', async ({ page }) => {
   await mockNetwork(page, { signedIn: true, social: true });
   await open(page, '/t/?kind=movie&title=gummo&year=1997');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Gummo 1997');
-  await expect(page).toHaveURL(/\/t\/\?film=106$/);
+  await expect(page).toHaveURL(/\/t\/\?film=106&title=gummo&year=1997$/);   // the id, and the link's own title and year to match by
   // a title the Worker doesn't know (or no Worker at all): the link's own words, and what people here did with it
   await open(page, '/t/?kind=book&title=Orlando&year=1928');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Orlando 1928');
@@ -158,7 +158,7 @@ test('titles lead to their page: a post\'s title and its cover, From friends, Up
   const post = page.locator('#items .post').filter({ hasText: 'watched Gummo' }).first();
   await expect(post.locator('a.cover')).toHaveAttribute('href', /\/t\/\?kind=movie&title=Gummo&year=1997$/);
   await post.locator('.pwhat').getByRole('link', { name: 'Gummo' }).click();
-  await expect(page).toHaveURL(/\/t\/\?film=106$/);
+  await expect(page).toHaveURL(/\/t\/\?film=106&title=Gummo&year=1997$/);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Gummo 1997');
   await open(page, '/u/?tester');
   await expect(page.locator('#friends .tt b a').first()).toHaveAttribute('href', /\/t\/\?kind=/);
@@ -173,4 +173,35 @@ test('with 0010, the panel has Recommend, which opens the sheet on this title', 
   await open(page, '/t/?film=106');
   await panel(page).getByRole('button', { name: 'Recommend' }).click();
   await expect(page.locator('.recsheet')).toHaveAccessibleName('Recommend Gummo (1997)');
+});
+
+// the id's address keeps the link's title and year, and what people did with it is found by them, whatever the
+// Worker says (TMDB's year can differ from the one a log kept)
+test('matching by the link\'s title and year, even when the Worker\'s differ: your shelf, the shelves, the reviews', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, social: true });
+  const { WORKER } = require('../site');
+  await page.route(u => u.pathname === '/title', route => route.fulfill({ status: 200, headers: { 'Access-Control-Allow-Origin': '*' }, contentType: 'application/json',
+    body: JSON.stringify({ ...TITLE_INFO[0], id: '18415', title: 'Gummo', year: '1998' }) }));
+  await open(page, '/t/?film=18415&title=Gummo&year=1997');
+  await expect(panel(page).locator('.state').filter({ hasText: 'On your shelf' })).toBeVisible();
+  await expect(page.locator('#onSec')).toBeVisible();
+  await expect(page.locator('#revList .post')).toHaveCount(1);
+  await expect(page).toHaveURL(/\/t\/\?film=18415&title=Gummo&year=1997$/);
+});
+
+// a slow Worker: what the link says is drawn at once (the title, the year, the cover from a log, your status), and
+// the director, runtime and overview come in when it answers
+test('a slow Worker: the title, cover and your status at once; the details when it answers', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, social: true });
+  let answer; const held = new Promise(r => { answer = r; });
+  await page.route(u => u.pathname === '/title', async route => { await held; route.fulfill({ status: 200, headers: { 'Access-Control-Allow-Origin': '*' }, contentType: 'application/json', body: JSON.stringify(TITLE_INFO[0]) }); });
+  await page.goto('/t/?kind=movie&title=Gummo&year=1997');   // (not open(): the network won't go quiet while the Worker is held)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Gummo 1997');
+  await expect(page.locator('#state')).toBeHidden();
+  await expect(panel(page).locator('.state').filter({ hasText: 'On your shelf' })).toBeVisible();
+  await expect(page.locator('#tCover img.clean')).toBeVisible();   // the cover from @mira's log
+  await expect(page.locator('#tBy')).toBeHidden();
+  answer();
+  await expect(page.locator('#tBy')).toHaveText('Directed by Harmony Korine · 89 min');
+  await expect(page.locator('#tAbout')).toHaveText(TITLE_INFO[0].overview);
 });

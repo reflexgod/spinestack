@@ -6,6 +6,16 @@ session"), again after the launch pass (see "Done in the second cloud session"),
 the design review was applied (see "Done in the third session"). Read this first, then `README.md`, which says what
 every file is and how the Worker, the accounts and the tests are set up.
 
+## Fixes from the live test (5 October 2026)
+
+1. A row of tabs is one line that scrolls inside itself (44px tall tabs on a touch screen); a test that no page is wider
+   than 390px with every tab there. 2. New shelf on Shelves, your Shelves tab and + ADD's ▾. 3. Put on shelf says which
+   shelf (a picker, main first, with more than one). 4. Never the same title twice on one shelf ("Already on <shelf>");
+   existing duplicates are left. 5. The title page's address keeps the link's title and year, and matches by them.
+   6. Recommend to up to 5 at once. 7. The title page draws the link's title, year, cover and your status at once.
+   8. One box for every action (`.btn`, `.dash`, `.state`: 8px above and below, no border), and a test that action rows
+   line up. Full suite: html-validate clean, 866 passed, 24 skipped.
+
 ## Done on 5 October 2026 (phase 6: material wear)
 
 - `wear.js` draws a logged film as a DVD keep case and a logged book as a paperback (see README); every caller passes
