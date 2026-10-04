@@ -133,8 +133,10 @@ textarea{resize:vertical;line-height:1.5}
 }
 
 /* ---------- tabs ---------- */
-.tabs{display:flex;gap:var(--s5);border-bottom:1px solid var(--hair)}
-.tabs button{font:400 var(--fs-tab) var(--mono);background:none;border:0;padding:0 0 var(--s2);margin-bottom:-1px;color:var(--grey);cursor:pointer;border-bottom:1px solid transparent}
+/* one line, always: more tabs than fit scroll sideways inside the row, never the page */
+.tabs{display:flex;gap:var(--s5);border-bottom:1px solid var(--hair);overflow-x:auto;overflow-y:hidden;scrollbar-width:none;min-width:0}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:none;white-space:nowrap;font:400 var(--fs-tab) var(--mono);background:none;border:0;padding:0 0 var(--s2);margin-bottom:-1px;color:var(--grey);cursor:pointer;border-bottom:1px solid transparent}
 .tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
 
 /* ---------- shelves, where they're listed: no card and no box. Each is its first spines standing on a thin black line
