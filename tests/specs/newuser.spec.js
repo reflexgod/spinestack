@@ -84,12 +84,12 @@ test('someone else\'s empty lists stay plain: nothing to do there', async ({ pag
   await expect(page.locator('#netNone a')).toHaveCount(0);
 });
 
-test('the feed: an empty Following says so, with Everyone, and People to follow', async ({ page }) => {
+test('the feed: an empty Friends says so, then People to follow, then Everyone', async ({ page }) => {
   await mockNetwork(page, { signedIn: true, fresh: true });
   await open(page, '/feed/');
   await expect(page.locator('#none > p')).toHaveText('Nobody you follow has posted.');
-  await expect(page.locator('#none').getByRole('button', { name: 'Everyone' })).toBeVisible();
   await expect(page.locator('#none').getByRole('heading', { name: 'People to follow' })).toBeVisible();
+  await expect(page.locator('#none').getByRole('heading', { name: /^Everyone/ })).toBeVisible();
 });
 
 test('signing up: the username sheet speaks of your shelf, one each', async ({ page }) => {

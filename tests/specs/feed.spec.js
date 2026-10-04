@@ -245,21 +245,32 @@ test('every minute: "2 new posts" at the top when there are newer ones; it moves
   await expect(lines(page).first()).toContainText('watched New 2');
 });
 
-test('Following with nothing from anyone you follow: People to follow, each with their first five spines and Follow', async ({ page }) => {
+test('Friends with nothing from anyone you follow: People to follow as rows like posts with Follow, then the Everyone timeline', async ({ page }) => {
   const errors = watchErrors(page);
+  await page.clock.setFixedTime(NOW);
   await mockNetwork(page, { signedIn: true, fresh: true });   // follows no one
-  await open(page, '/feed/?following');
+  await open(page, '/feed/?friends');
+  await expect(page.locator('#none > p')).toHaveText('Nobody you follow has posted.');
   const box = page.locator('.tofollow');
   await expect(box.getByRole('heading', { name: 'People to follow' })).toBeVisible();
-  const people = box.locator('.person');
+  const people = box.locator('.post.tf');
   await expect(people).toHaveCount(2);   // the people behind the newest shelves and posts, not you
-  await expect(people.locator('.pn span')).toHaveText(['@mira', '@longusername_twenty1']);
-  await expect(people.first().locator('.sp canvas')).toHaveCount(3);   // her shelf has three
-  await expect(people.nth(1).locator('.sp canvas')).toHaveCount(5);   // five at most: this one has eight
-  const follow = people.first().getByRole('button', { name: 'Follow' });
+  await expect(people.locator('.pwho span')).toHaveText(['@mira', '@longusername_twenty1']);
+  await expect(people.first().locator('.tlast')).toHaveText('watched Gummo · 1h');   // what they did last
+  expect(Math.round((await people.first().locator('.pava').boundingBox()).width)).toBe(40);
+  // Follow at the right of the row
+  const follow = people.first().getByRole('button', { name: 'Follow' }), fb = await follow.boundingBox(), rb = await people.first().boundingBox();
+  expect(Math.abs(fb.x + fb.width - (rb.x + rb.width))).toBeLessThanOrEqual(1);
   const req = page.waitForRequest(r => r.url().includes('/rpc/follow'));
   await follow.click();
   expect((await req).postDataJSON()).toEqual({ target: '22222222-2222-4222-8222-222222222222' });
   await expect(people.first().locator('button.follow')).toHaveAttribute('aria-pressed', 'true');
+  // then Everyone, as the Everyone tab has it
+  const all = page.locator('.tfall');
+  await expect(all.getByRole('heading', { name: /^Everyone/ })).toBeVisible();
+  await expect(all.locator('.items > li')).toHaveCount(20);
+  await expect(all.locator('.items > li').first().locator('.pwhat')).toHaveText('watched Gummo (1997)');
+  await all.getByRole('button', { name: 'See all' }).click();
+  await expect(page.getByRole('tab', { name: 'Everyone' })).toHaveAttribute('aria-selected', 'true');
   expect(errors).toEqual([]);
 });
