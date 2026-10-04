@@ -145,6 +145,10 @@ textarea{resize:vertical;line-height:1.5}
 .thumbs a{display:block;text-decoration:none;min-width:0}
 .sl{display:flex;align-items:flex-end;gap:2px;height:96px;border-bottom:1px solid var(--ink);overflow:hidden}
 .sl canvas{display:block;flex:none}
+/* fewer than three (home's Just shelved): each shelf across the column, all its spines on one long line */
+.thumbs.few{grid-template-columns:minmax(0,1fr);gap:var(--s5)}
+.thumbs.few .sl{height:160px}
+@media (max-width:640px){ .thumbs.few .sl{height:120px} }
 .thumbs a:hover .cap,.thumbs a:focus-visible .cap{text-decoration:underline;text-underline-offset:3px}
 /* a cover, worn (a log) or clean (Up next): a 1px outline, black under the pointer */
 canvas.worn,canvas.clean{outline:1px solid var(--hair);outline-offset:-1px}

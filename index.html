@@ -279,6 +279,13 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.q
 /* ---------- shelves and people ---------- */
 // one shelf: its spines on a line, its name, who made it (bare.js)
 const tile = x => Bare.tile(x, profileUrl(x.username, x.shelf_id));
+// Just shelved: six across; with fewer than three, each shelf across the column, all its spines on one long line
+function justShelved(list, rows){
+  const few = rows.length > 0 && rows.length < 3;
+  list.classList.toggle('few', few);
+  list.replaceChildren(...rows.map(tile));
+  Bare.lines(list, lineRows, false, few ? 20 : undefined);
+}
 // the spines for the lines: every shelf's rows in one ask (Bare.lines takes the first of each)
 const lineRows = ids => api(`shelf_items?select=shelf_id,position,item_id,kind,title,author,year,spine_src,cover_src,look&shelf_id=in.(${ids.join(',')})&order=position`);
 function person(x){
@@ -382,7 +389,7 @@ async function showOut(){
   try { rows = await everyone(GRID); }
   catch (e){ $('#outState').textContent = friendly(e); sample(); return; }
   spineWall(rows);   // an empty site: a shelf, for example
-  $('#outGrid').replaceChildren(...rows.map(tile)); Bare.lines($('#outGrid'), lineRows);
+  justShelved($('#outGrid'), rows);
   $('#outState').hidden = true; $('#outJust').hidden = !rows.length;
   // the people behind the newest shelves, each once
   const seen = new Set(), who = rows.filter(x => !seen.has(x.owner) && seen.add(x.owner));
@@ -405,8 +412,8 @@ async function showIn(){
   const fill = async (get, state, list, make, empty) => {
     try {
       const rows = await get();
-      $(list).replaceChildren(...rows.map(make));
-      Bare.lines($(list), lineRows, list === '#folRow');   // the row from people you follow: all six at once
+      if (list === '#inGrid') justShelved($(list), rows);
+      else { $(list).replaceChildren(...rows.map(make)); Bare.lines($(list), lineRows, true); }   // the row from people you follow: all six at once
       $(state).hidden = true; if (!rows.length) empty();
     } catch (e){ $(state).textContent = friendly(e); }
   };

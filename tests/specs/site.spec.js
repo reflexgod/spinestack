@@ -480,6 +480,31 @@ test('signed-in home: a shelf whose spines can\'t be read stays an empty line, a
   expect(errors.filter(e => !/500/.test(e))).toEqual([]);   // the browser logs the 500 itself
 });
 
+// Just shelved with fewer than three shelves: not two small tiles and an empty row, but each shelf across the column,
+// all its spines on one long line (taller), its name and @username under
+test('signed-in home: Just shelved with fewer than three shelves puts each across the column, all its spines on one line', async ({ page }) => {
+  const errors = watchErrors(page);
+  await mockNetwork(page, { signedIn: true });
+  const two = [SHELVES[1], SHELVES[0]].map(feedRow);
+  await page.route(u => u.pathname === '/rest/v1/rpc/feed', route => route.request().method() === 'POST' && route.request().postDataJSON().scope === 'everyone'
+    ? route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify(two) }) : route.fallback());
+  await open(page, '/');
+  const grid = page.locator('#inGrid'), main = await page.locator('main').boundingBox();
+  await expect(grid.locator('li')).toHaveCount(2);
+  await expect(grid).toHaveClass(/(^| )few( |$)/);
+  const lines = grid.locator('.sl');
+  for (let i = 0; i < 2; i++) {
+    const b = await lines.nth(i).boundingBox();
+    expect(Math.abs(b.width - main.width)).toBeLessThanOrEqual(1);   // across the column
+    expect(Math.round(b.height)).toBe(isPhone() ? 120 : 160);
+  }
+  const shown = ITEMS_BY_SHELF.get(SHELVES[1].id).length;
+  await expect(lines.first().locator('canvas')).toHaveCount(Math.min(20, shown));   // all of them, not the first 12
+  await expect(grid.locator('.cap').first()).toBeVisible();
+  await expect(grid.locator('.by').first()).toHaveText('@mira');
+  expect(errors).toEqual([]);
+});
+
 // the copy: no em dashes, and no line that lists three things
 for (const signedIn of [false, true]) {
   test(`home's copy has no em dash and no rule-of-three line, signed ${signedIn ? 'in' : 'out'}`, async ({ page }) => {
