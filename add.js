@@ -244,8 +244,11 @@ css.textContent = `
 #addDialog .pick .snap svg{width:20px;height:20px}
 #addDialog .addbar{display:flex;justify-content:flex-end;align-items:center;gap:var(--s4,16px);margin-top:var(--s4,16px)}
 /* which of your shelves, when you have more than one (your main one first) */
-#addDialog .addon{display:flex;align-items:center;gap:var(--s2,8px);font-size:var(--fs-small,11px);color:var(--grey,#6B6B6B);min-width:0}
-#addDialog .addon select{width:auto;max-width:220px;padding:var(--s1,4px) var(--s2,8px);font-size:var(--fs-small,11px)}
+#addDialog .addon{display:flex;align-items:center;gap:var(--s2,8px);margin:0 0 var(--s4,16px);color:var(--grey,#6B6B6B);min-width:0}
+#addDialog .addon[hidden]{display:none}
+#addDialog .addon select{width:auto;max-width:260px;padding:var(--s1,4px) var(--s2,8px)}
+#addDialog .addon select[hidden]{display:none}
+#addDialog #addOnName{color:var(--ink,#000);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* under the spines a search found, at the left of the bar: "Search by Brave", small and grey (Brave asks for it where its results show) */
 #addDialog .addby{margin-right:auto;font-size:var(--fs-small,11px);color:var(--grey,#6B6B6B)}
 /* what to do with it: three choices in a row, as the tabs are (the one picked black, a line under it) */
@@ -315,11 +318,12 @@ dlg.innerHTML = `
   </div>
   <div id="addSpines" hidden>
     <h3><span id="addSpinesTitle">Spines</span> <small id="addSpinesBy"></small> <button class="dash sm" id="addChange" type="button">Change</button></h3>
-    <p id="addDup" hidden><span id="addDupText"></span> <button class="dash sm" id="addDupAdd" type="button">Add again</button> <button class="dash sm" id="addDupCancel" type="button">Cancel</button></p>
+    <p class="addon" id="addOnWrap" hidden><label for="addOn">On</label><select id="addOn"></select><span id="addOnName"></span></p>
+    <p id="addDup" hidden><span id="addDupText"></span> <button class="dash sm" id="addDupCancel" type="button">Pick another</button></p>
     <div class="addfound" id="addFound" role="radiogroup" aria-label="Which spine"></div>
     <input type="file" id="addPhoto" accept="image/*" hidden>
     <p class="grey" id="addNote" hidden>Real DVD and book spines show up once the shelfstackd server is connected. Until then, upload a full DVD scan on the builder.</p>
-    <div class="addbar"><a class="addby" id="addBy" href="https://search.brave.com/" target="_blank" rel="noopener">Search by Brave</a><label class="addon" id="addOnWrap" hidden><span>On</span><select id="addOn"></select></label><button class="btn primary" id="addGo" type="button" disabled>Add to shelf</button></div>
+    <div class="addbar"><a class="addby" id="addBy" href="https://search.brave.com/" target="_blank" rel="noopener">Search by Brave</a><button class="btn primary" id="addGo" type="button" disabled>Add to shelf</button></div>
   </div>
   <div id="addPost" hidden>
     <div class="addpost">
@@ -538,7 +542,7 @@ function bookFields(cur, choice){
   return Object.assign(base, {img, thumb:img.src, bg, fg, accent:pal.accent, titleImg:t && t.img, style:choice === 'cover' ? 'cover' : film ? 'dvd' : 'art'});
 }
 const tileCanvas = (b, w, H0) => { const dpr = Math.min(2, window.devicePixelRatio || 1), sp = makeSpine(b, w*dpr, H0*dpr); sp.style.width = sp.width/dpr + 'px'; sp.setAttribute('aria-hidden', 'true'); return sp; };
-function paintGo(){ const cur = current; $('#addGo').disabled = !cur || !cur.choice; }   // while scans load too: the spine made from the cover is ready
+function paintGo(){ const cur = current; $('#addGo').disabled = !cur || !cur.choice || !!cur.dup; }   // not while it's already on the shelf picked   // while scans load too: the spine made from the cover is ready
 function showTiles(cur){
   const m = cur.m, noun = m.kind === 'movie' ? 'poster' : 'cover';
   // every option in one row at one height: the spine (press it to pick it), then one line saying where it's from
@@ -636,10 +640,10 @@ async function findSpines(m, again){
   $('#addSpinesTitle').textContent = m.title + (m.year ? ' (' + m.year + ')' : ''); $('#addSpinesBy').textContent = m.creator ? '· ' + m.creator : '';
   $('#addNote').hidden = server || !!WORKER; $('#addFound').innerHTML = ''; $('#addDup').hidden = true; paintGo();
   $('#addBy').hidden = server || !WORKER;   // the Worker's scan search is the one that asks Brave
-  paintShelfChoice();
-  if (!again && shelf && shelf.has(key)){
-    // already on the shelf: ask before adding it a second time
-    $('#addDupText').textContent = m.title + ' is already on your shelf.'; $('#addDup').hidden = false; cur.busy = false; sstatus('');
+  paintShelfChoice(cur);
+  if (shelf && shelf.has(key)){
+    // already on this shelf: never twice on one shelf
+    $('#addDupText').textContent = `Already on ${shelf.name ? shelf.name() : 'your shelf'}.`; $('#addDup').hidden = false; cur.busy = false; cur.dup = true; sstatus('');
     return;
   }
   if (again && shelf) cur.key = key + '#' + (1 + shelf.count(key));
@@ -736,7 +740,6 @@ $('#addPhoto').addEventListener('change', async e => {
   cur.choice = 'real:0'; cur.touched = true; sstatus('');
   showTiles(cur);
 });
-$('#addDupAdd').addEventListener('click', () => { if (current) findSpines(current.m, true); });
 $('#addDupCancel').addEventListener('click', () => { $('#addDup').hidden = true; $('#addSpines').hidden = true; $('#addMatches').hidden = !matches.length; current = null; paintActive(); $('#addQ').focus(); });
 // Change: back to the results, with the box ready for the arrow keys
 $('#addChange').addEventListener('click', () => { current = null; picked = null; $('#addSpines').hidden = true; $('#addMatches').hidden = !matches.length; sstatus(''); paintActive(); $('#addQ').focus(); });
@@ -745,10 +748,15 @@ const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./,''); } c
 /* ---------- which shelf: on another page, with more than one shelf, Put on shelf asks which (your main one picked:
    the one you made main, otherwise your oldest, as the builder and your profile have it). Read once a page. ---------- */
 let myShelves = null;
-async function paintShelfChoice(){
-  const wrap = $('#addOnWrap'), a = account();
+const shelfLabel = x => Shelf.shelfName({name: x.name, caption: x.caption});
+async function paintShelfChoice(cur){
+  const wrap = $('#addOnWrap'), a = account(), sel = $('#addOn'), name = $('#addOnName');
   wrap.hidden = true;
-  if (shelf || !(a.sb && a.user && a.profile)) return;
+  if (shelf){   // the builder: the shelf being built
+    if (shelf.name){ sel.hidden = true; name.textContent = shelf.name(); wrap.hidden = false; }
+    return;
+  }
+  if (!(a.sb && a.user && a.profile)) return;
   if (!myShelves){
     try {
       const [{data: list}, {data: me}] = await Promise.all([a.sb.from('shelves').select('id,name,caption,created_at').eq('owner', a.user.id).limit(200),
@@ -757,10 +765,28 @@ async function paintShelfChoice(){
       myShelves = main ? [main, ...all.filter(x => x !== main).sort((x, y) => new Date(y.created_at) - new Date(x.created_at))] : [];
     } catch { myShelves = []; }
   }
-  if (myShelves.length < 2) return;
-  $('#addOn').innerHTML = myShelves.map((x, i) => `<option value="${esc(x.id)}">${esc(Shelf.shelfName({name: x.name, caption: x.caption}))}${i ? '' : ' (main)'}</option>`).join('');
+  if (cur !== current) return;
+  if (!myShelves.length){ sel.hidden = true; name.textContent = 'a new shelf'; wrap.hidden = false; return; }
+  sel.hidden = myShelves.length < 2; name.hidden = !sel.hidden;
+  if (myShelves.length < 2) name.textContent = shelfLabel(myShelves[0]);
+  else sel.innerHTML = myShelves.map((x, i) => `<option value="${esc(x.id)}">${esc(shelfLabel(x))}${i ? '' : ' (main)'}</option>`).join('');
   wrap.hidden = false;
+  checkDup(cur);
 }
+// already on the shelf picked? Then it says so, and Add to shelf stays off
+const likeOf = s => String(s).replace(/[\\%_]/g, c => '\\' + c);
+async function checkDup(cur){
+  const a = account(), id = myShelves.length > 1 ? $('#addOn').value : (myShelves[0] || {}).id, m = cur && cur.m;
+  if (!id || !m) return;
+  let rows = [];
+  try { ({data: rows} = await a.sb.from('shelf_items').select('item_id').eq('shelf_id', id).eq('kind', m.kind === 'movie' ? 'movie' : 'book').ilike('title', likeOf(m.title))
+    .filter('year', /^\d{4}$/.test(String(m.year || '')) ? 'eq' : 'is', /^\d{4}$/.test(String(m.year || '')) ? +m.year : null).limit(1)); } catch {}
+  if (cur !== current) return;
+  cur.dup = !!(rows && rows.length);
+  $('#addDupText').textContent = cur.dup ? `Already on ${shelfLabel(myShelves.find(x => x.id === id) || {})}.` : ''; $('#addDup').hidden = !cur.dup;
+  paintGo();
+}
+$('#addOn').addEventListener('change', () => checkDup(current));
 
 /* ---------- Add to shelf ---------- */
 /* On the builder the spine goes straight on its shelf. From any other page the choice waits in this tab
@@ -768,11 +794,11 @@ async function paintShelfChoice(){
    it was cut from (the builder loads that scan again and cuts it the same way). */
 const PENDING = 'shelfstackd-add';
 $('#addGo').addEventListener('click', () => {
-  const cur = current; if (!cur || !cur.choice) return;   // while scans load too
+  const cur = current; if (!cur || !cur.choice || cur.dup) return;   // while scans load too; never twice on one shelf
   if (shelf){ if (shelf.add(bookFields(cur, cur.choice)) !== false) close(); return; }
   const r = cur.choice.startsWith('real:') ? cur.real[+cur.choice.slice(5)] : null;
   try {
-    sessionStorage.setItem(PENDING, JSON.stringify({at: Date.now(), m: cur.m, choice: r ? 'real' : cur.choice, shelfId: $('#addOnWrap').hidden ? undefined : $('#addOn').value,
+    sessionStorage.setItem(PENDING, JSON.stringify({at: Date.now(), m: cur.m, choice: r ? 'real' : cur.choice, shelfId: myShelves && myShelves.length > 1 ? $('#addOn').value : undefined,
       real: r ? {img: r.img, source: r.source, archive: r.archive, id: r.id, en: r.en, vhs: r.vhs, photo: r.photo} : undefined}));
   } catch { sstatus('This browser won’t let the spine be carried over. Open the builder and add it there.', true); return; }
   $('#addGo').disabled = true; sstatus('Opening your shelf…');

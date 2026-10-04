@@ -676,7 +676,12 @@ $('#clear').addEventListener('click', async () => {
   const ok = await sure(mine ? 'Clear your shelf?' : 'Clear this shelf?', (n === 1 ? 'The spine comes off the list. ' : `All ${n} spines come off the list. `) + (acct.shelfId ? 'Your saved shelf stays as it was until you press Save.' : 'This can’t be undone.'), 'Clear');
   if (ok) clearShelf();
 });
+// the same title on one shelf twice: never (a shelf saved with one already keeps it, but nothing adds another)
+const sameTitle = (b, m) => (b.kind || 'book') === (m.kind || 'book') && String(b.title || '').trim().toLowerCase() === String(m.title || '').trim().toLowerCase() && String(b.year || '') === String(m.year || '');
+// the shelf open here, by its name ("your shelf" for one with none yet)
+function shelfNow(){ const s = acct.shelfId && acct.shelves.find(x => x.id === acct.shelfId); return s ? Shelf.shelfName({name: s.name, caption: s.caption}) : 'your shelf'; }
 function shelve(b){
+  if (!isSample && b.title && books.some(x => sameTitle(x, b))){ toast(`Already on ${shelfNow()}.`); return false; }
   if (isSample){ books = []; isSample = false; }
   if (books.length >= spineMax()){ if (isPro()) toast('A shelf holds up to 20 spines. Remove one first.'); else proToast('Free shelves hold 6 spines. Pro holds 20.'); return false; }
   books.push(b); renderList(); return true;
@@ -689,7 +694,7 @@ const direct = !window.claude;   // the Claude preview can't reach other sites
 const viaWorker = u => WORKER ? WORKER + '/img?url=' + encodeURIComponent(u) : u;
 const timeout = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('timeout')), ms))]);
 // what the dialog needs to know about this shelf, and where its Add to shelf puts a spine
-Add.setShelf({has: key => books.some(b => b.key === key), count: key => books.filter(b => (b.key || '').split('#')[0] === key).length,
+Add.setShelf({has: key => !isSample && books.some(b => [b.kind || 'book', String(b.title || '').trim().toLowerCase(), b.year || ''].join('|') === key), count: key => books.filter(b => (b.key || '').split('#')[0] === key).length, name: shelfNow,
   add: f => { const ok = shelve(newBook(f)); if (ok) toast(f.title + ' added to your shelf.'); return ok; }});
 $('#findForm').addEventListener('submit', e => { e.preventDefault(); const q = $('#findQ').value.trim(); $('#findQ').value = ''; Add.open({query: q}); });
 // typing here is typing in the Add dialog's search: it opens with what's typed so far and suggests titles as you go
