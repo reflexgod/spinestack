@@ -63,6 +63,7 @@
 
 <main class="feed">
   <h1>Activity</h1>
+  <section id="compose" aria-label="Post" hidden></section>
   <nav class="tabs" role="tablist" aria-label="Feed">
     <button type="button" role="tab" id="tabF" data-scope="following" aria-selected="false" aria-controls="panel">Following</button>
     <button type="button" role="tab" id="tabY" data-scope="you" aria-selected="false" aria-controls="panel">You</button>
@@ -98,6 +99,7 @@
 <script src="../cards.js?v=20261002a"></script>
 <script src="../wear.js?v=20261004a"></script>
 <script src="../nav.js?v=20261012a"></script>
+<script src="../post.js?v=20261012a"></script>
 <script>
 (() => {
 /* The feed: /feed/ (?following, ?you or ?everyone picks the tab). A line for each shelf saved and each film or book
@@ -305,9 +307,16 @@ document.querySelector('.tabs').addEventListener('keydown', e => {
   const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]; next.focus(); next.click();
 });
 
+// signed in with a username: "What did you watch or read?" at the top; a post goes on the feed at once
+async function compose(){
+  if (!me.profile || !window.Posts) return;
+  $('#compose').hidden = false;
+  await Posts.composer($('#compose'));
+}
 (async () => {
   await startSession();
   paintAcct();
+  compose();
   show(asked || (me.user ? 'following' : 'everyone'));
 })();
 })();

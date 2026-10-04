@@ -4,7 +4,7 @@ const { test, expect } = require('@playwright/test');
 const { PAGES, SHELVES, ME, mockNetwork, watchErrors, open } = require('../site');
 
 const isPhone = () => test.info().project.name.startsWith('phone');
-const dialog = page => page.getByRole('dialog', { name: /^add to (your|the) shelf$/i });
+const dialog = page => page.getByRole('dialog', { name: /^(add to (your|the) shelf|what did you watch or read\?)$/i });
 const NEW = { signedIn: true, ownShelf: false };   // signed out the builder is closed: someone signed in, with no shelf yet, starts empty
 const rows = page => page.locator('#books .book');
 const titles = page => page.locator('#books .book .bt').allTextContents();
@@ -13,6 +13,7 @@ const spines = d => d.getByRole('radiogroup', { name: 'Which spine' }).getByRole
 // through the dialog: search, pick the first match, wait for its spines, Add to shelf
 async function addGummo(page) {
   const d = dialog(page);
+  await d.getByRole('radio', { name: 'Put on shelf' }).check();   // + ADD opens on Log it, except on the builder
   await d.getByRole('combobox', { name: 'Film or book name' }).fill('gummo');
   await d.getByRole('option', { name: /Gummo/ }).click();   // the suggestions come by themselves
   await expect(spines(d)).toHaveCount(2);                      // no scans in the tests: Generated, and Cover
@@ -345,6 +346,7 @@ test('the shelf being made is still there after leaving the page and coming back
   await open(page, '/feed/?everyone');
   await page.locator('header.top .add').click();
   const d = dialog(page);
+  await d.getByRole('radio', { name: 'Put on shelf' }).check();
   await d.getByRole('combobox', { name: 'Film or book name' }).fill('waves');
   await d.getByRole('option', { name: /The Waves/ }).click();
   await expect(spines(d)).toHaveCount(2);

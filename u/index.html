@@ -184,7 +184,8 @@
 .sacts{display:flex;gap:var(--s3) var(--s4);align-items:center;flex-wrap:wrap;margin-top:var(--s2)}
 .onshelf{max-width:680px;min-width:0}
 .spines{list-style:none;margin:0;padding:0}
-.sact{display:flex;align-items:center;gap:var(--s1)}
+.sact{display:flex;align-items:center;gap:var(--s1) var(--s3)}
+.sact [data-log]{margin-right:var(--s3)}   /* Log and + Add to my shelf: a press apart on a touch screen */
 .spines li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:var(--s3);align-items:center;padding:var(--s2) 0;border-bottom:1px solid var(--hair)}
 .spines .sthumb{display:grid;place-items:center;height:56px}
 .spines .sthumb canvas{display:block}
@@ -1019,7 +1020,7 @@ function paintItems(){
     const li = document.createElement('li'); li.dataset.i = i;
     li.innerHTML = `<span class="sthumb"></span>
       <span class="st"><b>${esc(r.title || 'Untitled')}${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${esc([r.author, r.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · '))}</span></span>
-      <span class="sact">${!have(r) ? `<button class="dash sm" type="button" data-add="${i}">+ Add to my shelf</button>` : view.mine ? '' : '<span class="onmine">On your shelf</span>'}</span>`;
+      <span class="sact"><button class="dash sm" type="button" data-log="${i}">Log</button>${!have(r) ? `<button class="dash sm" type="button" data-add="${i}">+ Add to my shelf</button>` : view.mine ? '' : '<span class="onmine">On your shelf</span>'}</span>`;
     // someone else's shelf: each spine onto your watchlist too
     if (!view.mine) Nav.watchable(li.querySelector('.sthumb'), {kind: r.kind, title: r.title, year: r.year ? String(r.year) : '', creator: r.author || '', cover: /^url:/.test(r.cover_src || '') ? r.cover_src.slice(4) : ''}, {moreIn: li.querySelector('.sact')});
     return li;
@@ -1032,6 +1033,9 @@ function paintItems(){
 // puts it on your shelf there. Signed out, the sign-in sheet comes first, and the row waits in this tab until then
 const ADD_ROW = 'shelfstackd-add-row';
 $('#oneItems').addEventListener('click', e => {
+  // Log: this title in + ADD's Log it (signed out, the sign-in sheet first)
+  const lg = e.target.closest('[data-log]'), lr = lg && shown.rows[+lg.dataset.log];
+  if (lr){ if (Nav.visitor()) Nav.needAccount('add'); else Nav.add({mode: 'log', item: asItem(lr)}); return; }
   const b = e.target.closest('[data-add]'), r = b && shown.rows[+b.dataset.add]; if (!r) return;
   try { sessionStorage.setItem(ADD_ROW, JSON.stringify({at: Date.now(), row: {kind: r.kind, title: r.title, author: r.author, year: r.year, spine_src: r.spine_src, cover_src: r.cover_src, look: r.look}})); }
   catch { toast('Couldn’t take it to the builder. Try again.'); return; }
@@ -1360,7 +1364,7 @@ function actLine(x){
   if (x.log){
     const l = x.log, verb = l.kind === 'movie' ? 'watched' : 'read';
     li.classList.add('log');
-    li.innerHTML = `<p class="line">${who} ${verb} <b>${esc(l.title)}</b> ${when(l.created_at, day(l.created_at))}${view.mine ? ` <button class="dash sm grey" type="button" data-unlog="${esc(l.id)}">Delete</button>` : ''}</p>
+    li.innerHTML = `<p class="line">${who} ${verb} <a href="../p/?${esc(l.id)}"><b>${esc(l.title)}</b></a> ${when(l.created_at, day(l.created_at))}${view.mine ? ` <button class="dash sm grey" type="button" data-unlog="${esc(l.id)}">Delete</button>` : ` <button class="dash sm" type="button" data-relog="${esc(l.id)}">Log</button>`}</p>
       <div class="logbody"><span class="cover"></span>${l.caption ? `<p class="say">${esc(l.caption)}</p>` : ''}</div>`;
     li.querySelector('.cover').append(Wear.cover({src: coverOf(l.cover_src), seed: l.id, at: l.created_at, label: `${l.title}${l.year ? ` (${l.year})` : ''}, ${verb} by @${p.username}`, width: COVER}));
     if (!view.mine) Nav.watchable(li.querySelector('.cover'), asItem(l), {moreIn: li});   // someone else's log: onto your watchlist
@@ -1399,6 +1403,9 @@ async function paintActivity(more){
 $('#actsMore').addEventListener('click', () => paintActivity(true));
 // Delete on one of your logs: it comes off the feed and your profile, after a yes
 $('#acts').addEventListener('click', async e => {
+  // Log on someone else's: the same title, in + ADD's Log it (signed out, the sign-in sheet first)
+  const relog = e.target.closest('[data-relog]'), rl = relog && acts.logs.find(x => x.id === relog.dataset.relog);
+  if (rl){ if (Nav.visitor()) Nav.needAccount('add'); else Nav.add({mode: 'log', item: asItem(rl)}); return; }
   const b = e.target.closest('[data-unlog]'), l = b && acts.logs.find(x => x.id === b.dataset.unlog); if (!l) return;
   if (!(await sure('Delete this log?', `${l.title} comes off the feed and your profile. This can’t be undone.`, 'Delete'))) return;
   b.disabled = true;

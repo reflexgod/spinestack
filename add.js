@@ -1,5 +1,5 @@
-/* + ADD: the Add dialog, the same on every page. At the top, what to do with the title: Put on shelf (the default),
-   Log it, or Watchlist. Under that, a search box (All / Films / Books under it) that suggests titles as you type: up
+/* + ADD: the Add dialog, the same on every page. At the top, what to do with the title: Log it (the default: logging is
+   posting; on the builder it is Put on shelf), Put on shelf, or Watchlist. Under that, a search box (All / Films / Books under it) that suggests titles as you type: up
    to six, films and books together, the closest titles first; ↑ ↓ move through them and Enter picks.
    Put on shelf: picking a result goes to step 2, which finds that title's spines (the Worker finds DVD and book scans,
    the browser cuts the spine out of each) and shows the choices with an Add to shelf button. On the builder that puts
@@ -286,8 +286,8 @@ dlg.innerHTML = `
   <button class="addx" id="addClose" type="button" aria-label="Close">${ICON('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>')}</button>
   <h2 id="addTitle">Add to your shelf</h2>
   <div class="addwhat" role="radiogroup" aria-label="What to do with it">
-    <label><input type="radio" name="addWhat" value="shelf" checked><span>Put on shelf</span></label>
-    <label><input type="radio" name="addWhat" value="log"><span>Log it</span></label>
+    <label><input type="radio" name="addWhat" value="log" checked><span>Log it</span></label>
+    <label><input type="radio" name="addWhat" value="shelf"><span>Put on shelf</span></label>
     <label><input type="radio" name="addWhat" value="watch"><span>Watchlist</span></label>
   </div>
   <p class="addneed" id="addNeed" hidden><span id="addNeedText"></span> <button class="dash sm" id="addNeedGo" type="button"></button></p>
@@ -323,6 +323,7 @@ dlg.innerHTML = `
       <div class="addpostf">
         <h3><span id="addPostTitle"></span> <small id="addPostBy"></small> <button class="dash sm" id="addPostChange" type="button">Change</button></h3>
         <label class="addsay" id="addSayWrap"><span class="lbl">Caption <i>(optional)</i></span><textarea id="addSay" maxlength="280" rows="3"></textarea></label>
+        <div id="addFields" hidden></div>
         <p class="addfeedline" id="addFeedLine"></p>
       </div>
     </div>
@@ -776,9 +777,10 @@ async function resolve(p){
 /* The watchlist holds this many titles. The database holds the same number (watchlist_before_insert() in
    supabase/migrations/0007_logs_watchlist.sql): change both together. Pages read it as Add.WATCH_CAP. */
 const WATCH_CAP = 6, FULL = `Your watchlist is full (${WATCH_CAP}). Remove one to add another.`;
-const TITLES = {shelf: 'Add to your shelf', log: 'Log a film or book', watch: 'Add to your watchlist'};   // no ellipsis: on a title it reads as cut off
-
-const what = () => ($('input[name=addWhat]:checked') || {}).value || 'shelf';
+const TITLES = {shelf: 'Add to your shelf', log: 'What did you watch or read?', watch: 'Add to your watchlist'};   // no ellipsis: on a title it reads as cut off
+// Log it is the first choice and the one + ADD opens on (logging is posting), except on the builder, where it's the shelf
+const firstMode = () => shelf ? 'shelf' : 'log';
+const what = () => ($('input[name=addWhat]:checked') || {}).value || firstMode();
 // who is signed in, as the page's bar knows it (nav.js)
 const account = () => (window.Nav && Nav.account ? Nav.account() : {}) || {};
 // Log it and Watchlist need an account with a username: until there is one, the dialog says so instead of searching
@@ -808,11 +810,20 @@ function withWear(fn){
   wearing.then(() => { if (window.Wear) fn(); });
 }
 const verb = m => m.kind === 'movie' ? 'watched' : 'read';
+// post.js: the composer's fields (the stars, the review and, with migration 0009, spoilers, rewatch and the day), the
+// same as the feed's; loaded the first time Log it shows a title. Without it, the caption box is the one field
+let posting = null, postFields = null, focusFields = false;
+function withPosts(fn){
+  if (window.Posts){ fn(true); return; }
+  posting = posting || new Promise(res => { const sc = document.createElement('script'); sc.src = ROOT + 'post.js?v=20261012a'; sc.onload = () => res(!!window.Posts); sc.onerror = () => { posting = null; res(false); }; document.head.appendChild(sc); });
+  posting.then(fn);
+}
 function showPost(m){
   current = null; $('#addSpines').hidden = true; $('#addMatches').hidden = true; paintActive(); sstatus('');
   const log = what() === 'log', a = account(), cov = $('#addCov'), src = m.cover ? viaWorker(m.cover) : '', run = ++covRun;
   $('#addPostTitle').textContent = m.title + (m.year ? ' (' + m.year + ')' : ''); $('#addPostBy').textContent = m.creator ? '· ' + m.creator : '';
-  $('#addSayWrap').hidden = !log;
+  $('#addSayWrap').hidden = !log || !!(window.Posts || posting); $('#addFields').hidden = !log; postFields = null;
+  if (log) withPosts(async ok => { if (run !== covRun) return; $('#addSayWrap').hidden = ok; $('#addFields').hidden = !ok; if (!ok) return; const f = await Posts.fields($('#addFields'), m); if (run !== covRun) return; postFields = f; if (focusFields){ focusFields = false; f.focus(); } });
   $('#addPostGo').textContent = log ? 'Post' : 'Add to watchlist'; $('#addPostGo').disabled = false;
   $('#addFeedLine').textContent = log ? `On the feed: ${a.profile ? '@' + a.profile.username : 'you'} ${verb(m)} ${m.title} · today` : `It shows on your profile, under Watchlist, which holds ${WATCH_CAP}.`;
   if (log){ cov.replaceChildren(); withWear(() => { if (run === covRun) cov.replaceChildren(Wear.cover({src, seed: keyOf(m), at: new Date().toISOString(), label: `The cover of ${m.title}, as the feed shows it`, width: 120})); }); }
@@ -850,6 +861,11 @@ $('#addPostGo').addEventListener('click', async () => {
     if (!w.ok || w.already){ btn.disabled = false; sstatus(esc(w.error), true); return; }
     close(); return;
   }
+  if (postFields && window.Posts){   // post.js posts it, and says so on document ("shelfstackd:added", with the post)
+    const p = await Posts.save(m, postFields.values());
+    if (p.error){ btn.disabled = false; sstatus(esc(p.error), true); return; }
+    close(); pageToast(`Logged ${m.title}. It’s on the feed.`); return;
+  }
   try { r = await a.sb.from('logs').insert({...rowOf(m), caption: $('#addSay').value.trim().slice(0, 280)}); }
   catch (err){ r = {error: err}; }
   if (r.error){ btn.disabled = false; sstatus(esc(saveError(r.error, r.status, log)), true); return; }
@@ -872,12 +888,12 @@ function reset(){
 function open(opt){
   opt = opt || {};
   if (!dlg.open){ reset(); if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', ''); }
-  const mode = TITLES[opt.mode] ? opt.mode : 'shelf';
+  const mode = TITLES[opt.mode] ? opt.mode : firstMode();
   for (const r of dlg.querySelectorAll('input[name=addWhat]')) r.checked = r.value === mode;
   paintWhat(false);
   if (!$('#addFind').hidden && opt.item && opt.item.title){
     picked = opt.item;
-    if (mode === 'shelf') findSpines(picked); else { showPost(picked); ($('#addSayWrap').hidden ? $('#addPostGo') : $('#addSay')).focus(); return; }
+    if (mode === 'shelf') findSpines(picked); else { showPost(picked); ($('#addSayWrap').hidden ? $('#addPostGo') : $('#addSay')).focus(); if (mode === 'log'){ if (postFields) postFields.focus(); else focusFields = true; } return; }
   }
   const q = opt.query ? String(opt.query).trim() : '';
   if (q){ $('#addQ').value = q; if (opt.typed) $('#addQ').dispatchEvent(new Event('input')); else search(false); }

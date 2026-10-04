@@ -338,10 +338,10 @@ test('signed out, + ADD asks to sign in, and once signed in the Add dialog opens
   await page.locator('header.top .add').click();
   await expect(page.locator('#signSheet')).toBeVisible();
   await signBack(); await page.reload();
-  await expect(page.getByRole('dialog', { name: 'Add to your shelf' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'What did you watch or read?' })).toBeVisible();
   await expect(page).toHaveURL(/\/feed\//);
   await page.keyboard.press('Escape'); await page.reload();
-  await expect(page.getByRole('dialog', { name: 'Add to your shelf' })).toBeHidden();   // once, not every time
+  await expect(page.getByRole('dialog', { name: 'What did you watch or read?' })).toBeHidden();   // once, not every time
 });
 
 test('signed-in home: a welcome by name, the row from people you follow with All activity, then Just shelved', async ({ page }) => {

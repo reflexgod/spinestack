@@ -82,7 +82,8 @@ test('no real spine for a book: "Have it? Photograph the spine" comes first, the
   await mockNetwork(page, { signedIn: true, ownShelf: false });   // /scans finds nothing for anything
   await page.goto('/feed/');
   await page.locator('.top .add').click();
-  const d = page.getByRole('dialog', { name: /^add to (your|the) shelf$/i });
+  const d = page.getByRole('dialog', { name: /^(add to (your|the) shelf|what did you watch or read\?)$/i });
+  await d.getByRole('radio', { name: 'Put on shelf' }).check();
   await d.getByRole('combobox', { name: 'Film or book name' }).fill('the waves');
   await d.getByRole('option', { name: /The Waves.*Book/ }).click();
   const picks = d.locator('#addFound .pick');
@@ -107,7 +108,8 @@ test('a film with no real spine doesn\'t ask for a photo', async ({ page }) => {
   await mockNetwork(page, { signedIn: true, ownShelf: false });
   await page.goto('/feed/');
   await page.locator('.top .add').click();
-  const d = page.getByRole('dialog', { name: /^add to (your|the) shelf$/i });
+  const d = page.getByRole('dialog', { name: /^(add to (your|the) shelf|what did you watch or read\?)$/i });
+  await d.getByRole('radio', { name: 'Put on shelf' }).check();
   await d.getByRole('combobox', { name: 'Film or book name' }).fill('gummo');
   await d.getByRole('option', { name: /Gummo/ }).click();
   await expect(d.locator('[data-use="spine"]')).toHaveAttribute('aria-checked', 'true');

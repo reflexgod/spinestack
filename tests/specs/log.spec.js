@@ -1,4 +1,4 @@
-// + ADD's three choices: Put on shelf (as before), Log it (the cover as the feed will show it, a caption, Post) and
+// + ADD's three choices: Log it, the one it opens on (the cover as the feed will show it, a caption, Post), Put on shelf, and
 // Watchlist (Add to watchlist). Log it and Watchlist never search for spines, and need an account with a username.
 const { test, expect } = require('@playwright/test');
 const { SB_URL, CORS, mockNetwork, watchErrors, open } = require('../site');
@@ -18,24 +18,24 @@ const refuse = (page, table, status, body) => page.route(u => u.origin === SB_UR
   return route.fulfill({ status, headers: CORS, contentType: 'application/json', body: JSON.stringify(body) });
 });
 
-test('three choices, Put on shelf first; the dialog\'s title says which', async ({ page }) => {
+test('three choices, Log it first and picked (logging is posting); the dialog\'s title says which', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/feed/?everyone');
   await page.locator('header.top .add').click();
   await expect(choices(page)).toHaveCount(3);
-  for (const [i, name] of ['Put on shelf', 'Log it', 'Watchlist'].entries()) await expect(choices(page).nth(i)).toHaveAccessibleName(name);
+  for (const [i, name] of ['Log it', 'Put on shelf', 'Watchlist'].entries()) await expect(choices(page).nth(i)).toHaveAccessibleName(name);
   await expect(choices(page).first()).toBeChecked();
-  await expect(dialog(page)).toHaveAccessibleName('Add to your shelf');   // no ellipsis on a title: it reads as cut off
+  await expect(dialog(page)).toHaveAccessibleName('What did you watch or read?');   // no ellipsis on a title: it reads as cut off
   await expect(dialog(page).getByRole('combobox', { name: 'Film or book name' })).toBeFocused();
-  for (const [choice, title] of [['Log it', 'Log a film or book'], ['Watchlist', 'Add to your watchlist'], ['Put on shelf', 'Add to your shelf']]) {
+  for (const [choice, title] of [['Put on shelf', 'Add to your shelf'], ['Watchlist', 'Add to your watchlist'], ['Log it', 'What did you watch or read?']]) {
     await dialog(page).getByRole('radio', { name: choice }).check();
     await expect(dialog(page)).toHaveAccessibleName(title);
   }
   // ← → move between them, as radio buttons do
   await choices(page).first().focus();
   await page.keyboard.press('ArrowRight');
-  await expect(dialog(page).getByRole('radio', { name: 'Log it' })).toBeChecked();
+  await expect(dialog(page).getByRole('radio', { name: 'Put on shelf' })).toBeChecked();
   expect(errors).toEqual([]);
 });
 

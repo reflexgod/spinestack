@@ -5,7 +5,7 @@ const { test, expect } = require('@playwright/test');
 const { PAGES, mockNetwork, watchErrors, open } = require('../site');
 
 const isPhone = () => test.info().project.name.startsWith('phone');
-const dialog = page => page.getByRole('dialog', { name: /^add to (your|the) shelf$/i });   // "the" signed out
+const dialog = page => page.getByRole('dialog', { name: /^(add to (your|the) shelf|what did you watch or read\?)$/i });   // "the" signed out; + ADD opens on Log it, except on the builder
 const box = d => d.getByRole('combobox', { name: 'Film or book name' });
 const options = d => d.getByRole('option');
 const names = d => d.locator('#addRows .t').evaluateAll(els => els.map(e => e.firstChild.textContent.trim()));
@@ -15,6 +15,8 @@ async function openDialog(page, opt, path = '/') {
   await open(page, path);
   await page.locator('header.top .add').click();
   await expect(dialog(page)).toBeVisible();
+  await dialog(page).getByRole('radio', { name: 'Put on shelf' }).check();   // these are about the shelf's spines (+ ADD opens on Log it)
+  await dialog(page).getByRole('combobox', { name: 'Film or book name' }).focus();
   return net;
 }
 

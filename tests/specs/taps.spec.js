@@ -11,7 +11,7 @@ const ACT = {
   style: async p => { await p.locator('#stylePanel summary').click(); },
   row: async p => { await p.locator('#books .bopen').first().click(); },
   add: async p => { await p.locator('header.top .add').click(); await p.locator('#addQ').fill('kids'); await p.locator('#addRows li').first().waitFor(); },
-  spines: async p => { await p.locator('header.top .add').click(); await p.locator('#addQ').fill('gummo'); await p.locator('#addRows li').first().click(); await p.locator('#addFound .art').first().waitFor(); },
+  spines: async p => { await p.locator('header.top .add').click(); await p.locator('input[name=addWhat][value=shelf]').check(); await p.locator('#addQ').fill('gummo'); await p.locator('#addRows li').first().click(); await p.locator('#addFound .art').first().waitFor(); },
   log: async p => { await p.locator('header.top .add').click(); await p.locator('input[name=addWhat][value=log]').check(); await p.locator('#addQ').fill('gummo'); await p.locator('#addRows li').first().click(); await p.locator('#addPostGo').waitFor(); },
   acct: async p => { await p.locator('#acctBtn').click(); await p.locator('#acctMenu a').first().waitFor(); },
   more: async p => { await p.locator('#moreBtn').click(); },
