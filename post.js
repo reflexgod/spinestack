@@ -344,7 +344,7 @@ async function save(m, v = {}){
   const social = await ready();
   const day = v.watched_on && v.watched_on <= today() ? v.watched_on : null;
   const row = {...rowOf(m), ...(social
-    ? {review: String(v.review || '').slice(0, 2000), rating: v.rating >= 1 && v.rating <= 10 ? Math.round(v.rating) : null, spoiler: !!v.spoiler, rewatch: !!v.rewatch, ...(day ? {watched_on: day} : {}), ...(v.metoo ? {metoo_of: v.metoo} : {})}
+    ? {review: String(v.review || '').slice(0, 2000), rating: v.rating >= 1 && v.rating <= 10 ? Math.round(v.rating) : null, spoiler: !!v.spoiler, rewatch: !!v.rewatch, ...(day ? {watched_on: day} : {}), ...(v.metoo ? {metoo_of: v.metoo} : {}), ...(v.rec ? {rec: v.rec} : {})}
     : {caption: String(v.review || '').slice(0, 280)})};
   let r;
   try { r = await a.sb.from('logs').insert(row).select('id,created_at').single(); } catch (err){ r = {error: err}; }
@@ -389,7 +389,7 @@ function menuOn(btn, list){
     const items = await list();
     menu.replaceChildren(...items.map(it => {
       const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'menuitem'); b.textContent = it.label; b.disabled = !!it.disabled;
-      b.addEventListener('click', ev => { ev.stopPropagation(); shut(); it.run(); });
+      b.addEventListener('click', ev => { ev.stopPropagation(); shut(); btn.focus(); it.run(); });   // the focus back on the button, as the menu shuts
       return b;
     }));
     menu.hidden = false; btn.setAttribute('aria-expanded', 'true');
@@ -486,7 +486,9 @@ function acts(row, x, {mine, social, opt, li}){
   const url = () => new URL(postUrl(x.id), location.href).href;
   menuOn(q('.share'), async () => {
     const list = [{label: 'Copy link', run: async () => { try { await navigator.clipboard.writeText(url()); toast('Link copied.'); } catch { toast(url()); } }}];
+    list.push({label: 'Share to WhatsApp', run: () => { window.open(Nav.whatsapp(`@${x.username} ${verb(x.kind)} ${name}${x.year ? ` (${x.year})` : ''} on shelfstackd:`, url()), '_blank', 'noopener'); }});
     if (navigator.share) list.push({label: 'Share…', run: async () => { try { await navigator.share({url: url(), title: `@${x.username} ${verb(x.kind)} ${name}`}); } catch {} }});
+    if (signedIn() && window.Nav && Nav.loadRecs && await Nav.loadRecs()) list.push({label: 'Recommend', run: () => Nav.recommend(m)});
     if (!mine){
       const keys = opt.watch || await watched(), on = keys.has(keyOf(m));
       list.push({label: on ? 'In Up next' : 'Add to Up next', disabled: on, run: async () => {

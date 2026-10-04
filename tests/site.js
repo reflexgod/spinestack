@@ -132,15 +132,66 @@ const NOTES = [
   { id: 'acacacac-acac-4cac-8cac-000000000004', kind: 'follow', created_at: at(1), read: true, actor: PEOPLE[2].id, log: null },
   { id: 'acacacac-acac-4cac-8cac-000000000005', kind: 'metoo', created_at: at(2), read: true, actor: PEOPLE[1].id, log: logId(1) },
 ];
+/* migration 0010 (docs/proposed-0010-recs.sql), with mockNetwork's recs: true: who you can recommend to (@mira, and
+   @longusername_twenty1 with 6 waiting), two recs for you from @mira (Paris, Texas with a note and a thread; Orlando,
+   kept), four you sent, the counts, a rec in the feed, and its notifications */
+const recId = i => `cdcdcdcd-cdcd-4dcd-8dcd-${String(i).padStart(12, '0')}`;
+const MUTUALS = [{ id: PEOPLE[1].id, username: 'mira', display_name: 'Mira', avatar_key: 'avatars/mira', waiting: 0 },
+  { id: PEOPLE[2].id, username: 'longusername_twenty1', display_name: '', avatar_key: null, waiting: 6 }];
+const recRow = (i, other, x) => ({ id: recId(i), created_at: at(i), note: '', in_feed: true, author: '', year: null, cover_src: null, log: null, replies: 0,
+  other: other.id, username: other.username, display_name: other.display_name, avatar_key: other.avatar_key, ...x });
+const RECS_FOR = [
+  recRow(1, PEOPLE[1], { status: 'open', note: 'Watch it on a big screen.', kind: 'movie', title: 'Paris, Texas', author: 'Wim Wenders', year: 1984, cover_src: 'url:https://image.tmdb.org/t/p/w500/paris.jpg', replies: 1 }),
+  recRow(2, PEOPLE[1], { status: 'kept', kind: 'book', title: 'Orlando', author: 'Virginia Woolf', year: 1928 }),
+];
+const RECS_SENT = [
+  recRow(3, PEOPLE[1], { status: 'open', note: 'Slow, but worth it.', kind: 'movie', title: 'Stalker', year: 1979 }),
+  recRow(4, PEOPLE[1], { status: 'watched', kind: 'book', title: 'The Waves', year: 1931 }),
+  recRow(5, PEOPLE[2], { status: 'kept', kind: 'movie', title: 'Kids', year: 1995 }),
+  recRow(6, PEOPLE[2], { status: 'dismissed', kind: 'movie', title: 'Julien Donkey-Boy', year: 1999 }),
+];
+const REC_THREAD = { [recId(1)]: [{ id: 'cececece-cece-4ece-8ece-000000000001', created_at: at(0, -5), text: 'Saving it for Sunday.', owner: ME.id, username: 'tester', display_name: 'Test Person', avatar_key: null }] };
+const REC_STATS = id => id === ME.id ? { sent: 4, watched: 1 } : { sent: 12, watched: 7 };
+// in the feed: "@mira recommended Paris, Texas to @longusername_twenty1", an hour old
+const FEED_REC = { what: 'rec', id: recId(7), at: at(0, -1), owner: PEOPLE[1].id, username: 'mira', display_name: 'Mira', avatar_key: 'avatars/mira', caption: '', name: null, preview_key: null,
+  created_at: at(0, -1), updated_at: at(0, -1), updated: false, is_public: true, kind: 'movie', title: 'Paris, Texas', author: 'Wim Wenders', year: 1984,
+  cover_src: 'url:https://image.tmdb.org/t/p/w500/paris.jpg', to_username: 'longusername_twenty1', to_display_name: '' };
+const REC_NOTES = [
+  { id: 'acacacac-acac-4cac-8cac-000000000011', kind: 'rec', created_at: at(0, -4), read: false, actor: PEOPLE[1].id, log: null, rec: recId(1), rec_kind: 'movie', rec_title: 'Paris, Texas' },
+  { id: 'acacacac-acac-4cac-8cac-000000000012', kind: 'rec_watched', created_at: at(0, -6), read: false, actor: PEOPLE[1].id, log: null, rec: recId(4), rec_kind: 'book', rec_title: 'The Waves' },
+  { id: 'acacacac-acac-4cac-8cac-000000000013', kind: 'rec_reply', created_at: at(0, -7), read: true, actor: PEOPLE[1].id, log: null, rec: recId(3), rec_kind: 'movie', rec_title: 'Stalker', reply_text: 'Starting it tonight.' },
+];
 const noteRow = n => { const p = PEOPLE.find(x => x.id === n.actor), l = LOGS.find(x => x.id === n.log);
   return { id: n.id, kind: n.kind, created_at: n.created_at, read: n.read, actor: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key,
-    log: n.log, log_kind: l ? l.kind : null, log_title: l ? l.title : null, reply_text: n.reply_text || null }; };
+    log: n.log, log_kind: l ? l.kind : null, log_title: l ? l.title : null, reply_text: n.reply_text || null, rec: n.rec || null, rec_kind: n.rec_kind || null, rec_title: n.rec_title || null }; };
 
 /* ---------- Supabase's REST API, answered from the data above ---------- */
-function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, friends, social){
+function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, friends, social, recs){
   if (fresh) ownShelf = false;
   const me = signedIn && !fresh;   // the made-up account as it is (follows @mira); fresh: nothing yet
   const what = url.pathname.replace(/^\/rest\/v1\//, ''), q = url.searchParams, eq = k => (q.get(k) || '').replace(/^eq\./, '');
+  // 0010: with recs, its tables and functions; without, they aren't there
+  if (/^(recs|rec_replies)$/.test(what)){
+    if (!recs) return NO_TABLE;
+    if (method === 'POST' && what === 'rec_replies') return [{ id: 'cececece-cece-4ece-8ece-000000000099', created_at: new Date().toISOString(), owner: ME.id, ...body }];
+    if (method === 'POST') return [{ id: recId(99), created_at: new Date().toISOString(), sender: ME.id, status: 'open', ...body }];
+    return method === 'GET' ? [] : null;
+  }
+  if (/^rpc\/(rec_stats|mutuals|recs_list|rec_keep|rec_thread|feed_recs|timeline)$/.test(what)){
+    if (!recs) return NOT_THERE;
+    if (what === 'rpc/rec_stats') return [REC_STATS(body.uid || q.get('uid'))];
+    if (what === 'rpc/mutuals') return signedIn ? MUTUALS : [];
+    if (what === 'rpc/recs_list') return !signedIn ? [] : body.box === 'sent' ? RECS_SENT : RECS_FOR;
+    if (what === 'rpc/rec_keep') return 'kept';
+    if (what === 'rpc/rec_thread') return REC_THREAD[body.rid] || [];
+    if (what === 'rpc/timeline'){
+      const rows = rest(new URL(url.href.replace('/rpc/timeline', '/rpc/activity')), method, body, signedIn, named, empty, logs, ownShelf, fresh, friends, social, recs);
+      if (!Array.isArray(rows)) return rows;
+      const all = [...rows.map(r => ({ ...r, to_username: null, to_display_name: null })), ...(body.scope === 'everyone' && !body.before_id ? [FEED_REC] : [])];
+      return all.sort((a, b) => b.at.localeCompare(a.at) || b.id.localeCompare(a.id)).slice(0, body.n || 20);
+    }
+    return [];
+  }
   // 0009: with social, its tables and functions; without, they aren't there
   if (/^(likes|replies|notifications|act_counts)$/.test(what)){
     if (!social) return NO_TABLE;
@@ -150,9 +201,9 @@ function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, 
   }
   if (/^rpc\/(post_stats|replies_of|notifications_list|notifications_read)$/.test(what)){
     if (!social) return NOT_THERE;
-    if (what === 'rpc/post_stats') return (body.ids || []).filter(id => STATS[id] || id === NEW_LOG).map(id => ({ id, ...(STATS[id] || STATS[logId(3)]), ...(signedIn ? {} : { liked: false, logged: false }) }));
+    if (what === 'rpc/post_stats') return (body.ids || []).filter(id => STATS[id] || id === NEW_LOG).map(id => ({ id, ...(STATS[id] || STATS[logId(3)]), ...(signedIn ? {} : { liked: false, logged: false }), ...(recs ? { rec_by: id === logId(1) ? 'tester' : null } : {}) }));
     if (what === 'rpc/replies_of') return REPLIES.filter(r => r.log === body.lid).map(replyRow);
-    if (what === 'rpc/notifications_list') return signedIn ? NOTES.map(noteRow) : [];
+    if (what === 'rpc/notifications_list') return signedIn ? [...NOTES, ...(recs ? REC_NOTES : [])].sort((a, b) => b.created_at.localeCompare(a.created_at)).map(noteRow) : [];
     if (what === 'rpc/notifications_read') return NOTES.filter(n => !n.read).length;
   }
   // a log posted: the database's answer is the new row
@@ -268,8 +319,9 @@ const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers
    made-up account before it has saved its shelf; fresh: it has just picked its username, with nothing yet (no name,
    bio, shelf, log, watchlist or follow); friends: it follows five more people (FRIENDS), for home's row of cards;
    social: the database has migration 0009 (likes, replies, notifications; supabase/migrations/0009_social.sql).
+   recs: it has migration 0010 too (recs, their threads; docs/proposed-0010-recs.sql).
    Returns {unknown, asked}: requests nothing here could answer, and every search /identify was asked for. */
-async function mockNetwork(page, { signedIn = false, named = true, slow = 0, capped = false, realFonts = false, empty = false, logs = true, ownShelf = true, fresh = false, friends = false, social = false } = {}){
+async function mockNetwork(page, { signedIn = false, named = true, slow = 0, capped = false, realFonts = false, empty = false, logs = true, ownShelf = true, fresh = false, friends = false, social = false, recs = false } = {}){
   const unknown = [], asked = [];
   if (signedIn){
     const exp = Math.floor(Date.now() / 1000) + 3600, b64 = o => Buffer.from(JSON.stringify(o)).toString('base64url');
@@ -285,7 +337,7 @@ async function mockNetwork(page, { signedIn = false, named = true, slow = 0, cap
     if (method === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
     if (url.origin === SB_URL && url.pathname.startsWith('/rest/v1/')){
       let body = {}; try { body = JSON.parse(req.postData() || '{}'); } catch {}
-      let data = rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, friends, social);
+      let data = rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, friends, social, recs);
       if (data && data.__status) return route.fulfill({ status: data.__status, headers: CORS, contentType: 'application/json', body: JSON.stringify(data.body) });
       if (/vnd\.pgrst\.object/.test(req.headers().accept || '')) data = Array.isArray(data) ? data[0] || null : data;   // .single()
       return route.fulfill({ status: data === null ? 204 : 200, headers: CORS, contentType: 'application/json', body: data === null ? '' : JSON.stringify(data) });
@@ -331,6 +383,7 @@ function watchErrors(page){
   page.on('console', m => {
     if (m.type() !== 'error') return;
     if (/\/rest\/v1\/likes\?select=log&limit=1$/.test((m.location() || {}).url || '')) return;   // post.js asking whether 0009 is there: 404 until it is
+    if (/\/rest\/v1\/rpc\/rec_stats\?uid=0{8}-/.test((m.location() || {}).url || '')) return;   // recs.js asking whether 0010 is there: the same
     errors.push(m.text());
   });
   page.on('pageerror', e => errors.push(String(e && e.message || e)));
@@ -351,4 +404,4 @@ async function open(page, pathname){
   await page.waitForLoadState('networkidle');
 }
 
-module.exports = { NEW_LOG, STATS, REPLIES, NOTES, ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, LOGS, FRIENDS, FRIEND_SHELVES, FRIEND_LOGS, ITEMS_BY_SHELF, WATCHLIST, FROM_FRIENDS, PICTURE, STORY, CAPTION, MADE_WITH, CORS, WORKER, SB_URL, feedRow, storyPicture, mockNetwork, watchErrors, open, putAside };
+module.exports = { NEW_LOG, STATS, REPLIES, NOTES, MUTUALS, RECS_FOR, RECS_SENT, REC_THREAD, FEED_REC, REC_NOTES, recId, ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, LOGS, FRIENDS, FRIEND_SHELVES, FRIEND_LOGS, ITEMS_BY_SHELF, WATCHLIST, FROM_FRIENDS, PICTURE, STORY, CAPTION, MADE_WITH, CORS, WORKER, SB_URL, feedRow, storyPicture, mockNetwork, watchErrors, open, putAside };

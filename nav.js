@@ -221,6 +221,24 @@
     });
   }
   function openAdd(opt){ return loadAdd().then(ok => { if (ok) window.Add.open(opt); return ok; }); }
+  // recs.js, loaded once: true when it's there and migration 0010 is in the database (Recommend, the Recs tab, recs in
+  // the feed); false until then
+  let recsP = null;
+  function loadRecs(){
+    if (window.Recs) return window.Recs.ready();
+    return recsP = recsP || new Promise(res => {
+      const s = document.createElement('script'); s.src = ROOT + 'recs.js?v=20261013a';
+      s.onload = () => res(window.Recs ? window.Recs.ready() : false); s.onerror = () => { recsP = null; s.remove(); res(false); };
+      document.head.appendChild(s);
+    });
+  }
+  // Share to WhatsApp: a wa.me link that opens WhatsApp with the text and the address
+  const whatsapp = (text, url) => `https://wa.me/?text=${encodeURIComponent([text, url].filter(Boolean).join(' '))}`;
+  // Recommend: signed in, the sheet; signed out, sign in first
+  function recommend(item){
+    if (visitor()){ needAccount('rec', item); return; }
+    loadRecs().then(ok => { if (ok) window.Recs.open(item); });
+  }
   addLink.addEventListener('click', e => {
     if (visitor()){ e.preventDefault(); needAccount('add'); return; }   // signed out: nothing is added, or searched for
     if (e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;   // a new tab or window still gets the builder
@@ -253,6 +271,7 @@
     if (g.go === 'build' && !/\/build\/$/.test(location.pathname)) location.href = ROOT + 'build/';
     else if (g.go === 'add') openAdd();
     else if (g.go === 'watch' && g.item) loadAdd().then(ok => { if (ok) window.Add.watch(g.item); });
+    else if (g.go === 'rec' && g.item) recommend(g.item);
   }
 
   /* ---------- a watchlist button on a cover or a spine ----------
@@ -340,5 +359,5 @@
     else if (on.finish) on.finish(); else location.href = ROOT + 'build/';
   }
 
-  window.Nav = {paint, add: openAdd, loadAdd, watchable, account, signIn, needAccount, visitor, onSignIn: fn => { on.signIn = fn; }, onFinish: fn => { on.finish = fn; }, onSignOut: fn => { on.signOut = fn; }, onUpload: fn => { on.upload = fn; }};
+  window.Nav = {paint, add: openAdd, loadAdd, loadRecs, recommend, whatsapp, watchable, account, signIn, needAccount, visitor, onSignIn: fn => { on.signIn = fn; }, onFinish: fn => { on.finish = fn; }, onSignOut: fn => { on.signOut = fn; }, onUpload: fn => { on.upload = fn; }};
 })();

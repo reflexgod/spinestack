@@ -292,6 +292,7 @@ dlg.innerHTML = `
     <label><input type="radio" name="addWhat" value="log" checked><span>Log it</span></label>
     <label><input type="radio" name="addWhat" value="shelf"><span>Put on shelf</span></label>
     <label><input type="radio" name="addWhat" value="watch"><span>Add to Up next</span></label>
+    <label id="addRecWrap" hidden><input type="radio" name="addWhat" value="rec"><span>Recommend</span></label>
   </div>
   <p class="addneed" id="addNeed" hidden><span id="addNeedText"></span> <button class="dash sm" id="addNeedGo" type="button"></button></p>
   <div id="addFind">
@@ -493,7 +494,7 @@ $('#addQ').addEventListener('input', () => {
 dlg.querySelectorAll('input[name=addKind]').forEach(r => r.addEventListener('change', () => { if ($('#addQ').value.trim()) search(false); }));
 // a result picked: its spines (Put on shelf), or its post (Log it, Watchlist)
 let picked = null;
-const pick = i => { const m = matches[i]; if (!m) return; picked = m; if (what() === 'shelf') findSpines(m); else showPost(m); };
+const pick = i => { const m = matches[i]; if (!m) return; picked = m; if (what() === 'shelf') findSpines(m); else if (what() === 'rec') recommendIt(m); else showPost(m); };
 // Enter: picks the highlighted result when the results on screen answer what's in the box; otherwise it searches now
 $('#addForm').addEventListener('submit', e => {
   e.preventDefault();
@@ -801,7 +802,7 @@ async function resolve(p){
 /* The watchlist holds this many titles. The database holds the same number (watchlist_before_insert() in
    supabase/migrations/0007_logs_watchlist.sql): change both together. Pages read it as Add.WATCH_CAP. */
 const WATCH_CAP = 6, FULL = `Up next is full (${WATCH_CAP}). Remove one to add another.`;
-const TITLES = {shelf: 'Add to your shelf', log: 'What did you watch or read?', watch: 'Add to Up next'};   // no ellipsis: on a title it reads as cut off
+const TITLES = {shelf: 'Add to your shelf', log: 'What did you watch or read?', watch: 'Add to Up next', rec: 'Recommend a film or a book'};   // no ellipsis: on a title it reads as cut off
 // Log it is the first choice and the one + ADD opens on (logging is posting), except on the builder, where it's the shelf
 const firstMode = () => shelf ? 'shelf' : 'log';
 const what = () => ($('input[name=addWhat]:checked') || {}).value || firstMode();
@@ -812,7 +813,7 @@ function paintNeed(){
   const a = account(), m = what(), need = m !== 'shelf' && !(a.sb && a.user && a.profile);
   $('#addNeed').hidden = !need; $('#addFind').hidden = need;
   if (need){
-    $('#addNeedText').textContent = a.user ? 'Pick a username first.' : m === 'log' ? 'Sign in to log films and books.' : 'Sign in to keep an Up next.';
+    $('#addNeedText').textContent = a.user ? 'Pick a username first.' : m === 'log' ? 'Sign in to log films and books.' : m === 'rec' ? 'Sign in to recommend films and books.' : 'Sign in to keep an Up next.';
     $('#addNeedGo').textContent = a.user ? 'Pick one' : 'Sign in';
   }
   return need;
@@ -823,8 +824,10 @@ function paintWhat(switched){
   $('#addTitle').textContent = TITLES[what()];
   if (paintNeed() || !switched) return;
   if (!picked){ $('#addQ').focus(); return; }
-  if (what() === 'shelf'){ $('#addPost').hidden = true; findSpines(picked); } else showPost(picked);
+  if (what() === 'shelf'){ $('#addPost').hidden = true; findSpines(picked); } else if (what() === 'rec') recommendIt(picked); else showPost(picked);
 }
+// Recommend: the title picked goes to the Recommend sheet (recs.js), and this dialog shuts
+function recommendIt(m){ close(); if (window.Nav && Nav.recommend) Nav.recommend(m); }
 dlg.querySelectorAll('input[name=addWhat]').forEach(r => r.addEventListener('change', () => paintWhat(true)));
 // the cover as the feed will show it, worn (wear.js, loaded the first time it's needed)
 let wearing = null, covRun = 0;
@@ -836,7 +839,7 @@ function withWear(fn){
 const verb = m => m.kind === 'movie' ? 'watched' : 'read';
 // post.js: the composer's fields (the stars, the review and, with migration 0009, spoilers, rewatch and the day), the
 // same as the feed's; loaded the first time Log it shows a title. Without it, the caption box is the one field
-let posting = null, postFields = null, focusFields = false;
+let posting = null, postFields = null, focusFields = false, fromRec = null;
 function withPosts(fn){
   if (window.Posts){ fn(true); return; }
   posting = posting || new Promise(res => { const sc = document.createElement('script'); sc.src = ROOT + 'post.js?v=20261013a'; sc.onload = () => res(!!window.Posts); sc.onerror = () => { posting = null; res(false); }; document.head.appendChild(sc); });
@@ -849,12 +852,12 @@ function showPost(m){
   $('#addSayWrap').hidden = !log || !!(window.Posts || posting); $('#addFields').hidden = !log; postFields = null;
   if (log) withPosts(async ok => { if (run !== covRun) return; $('#addSayWrap').hidden = ok; $('#addFields').hidden = !ok; if (!ok) return; const f = await Posts.fields($('#addFields'), m); if (run !== covRun) return; postFields = f; if (focusFields){ focusFields = false; f.focus(); } });
   $('#addPostGo').textContent = log ? 'Post' : 'Add to Up next'; $('#addPostGo').disabled = false;
-  $('#addFeedLine').textContent = log ? `On the feed: ${a.profile ? '@' + a.profile.username : 'you'} ${verb(m)} ${m.title} · today` : `It shows on your profile, under Up next, which holds ${WATCH_CAP}.`;
+  $('#addFeedLine').textContent = log ? `On the feed: ${a.profile ? '@' + a.profile.username : 'you'} ${verb(m)} ${m.title}${fromRec ? ` · recommended by @${fromRec.by}` : ''} · today` : `It shows on your profile, under Up next, which holds ${WATCH_CAP}.`;
   if (log){ cov.replaceChildren(); withWear(() => { if (run === covRun) cov.replaceChildren(Wear.cover({src, seed: keyOf(m), at: new Date().toISOString(), label: `The cover of ${m.title}, as the feed shows it`, width: 120})); }); }
   else cov.innerHTML = src ? `<img src="${esc(src)}" alt="The cover of ${esc(m.title)}" crossorigin="anonymous">` : '<span class="blank"></span>';
   $('#addPost').hidden = false;
 }
-$('#addPostChange').addEventListener('click', () => { picked = null; $('#addPost').hidden = true; $('#addMatches').hidden = !matches.length; sstatus(''); paintActive(); $('#addQ').focus(); });
+$('#addPostChange').addEventListener('click', () => { picked = null; fromRec = null; $('#addPost').hidden = true; $('#addMatches').hidden = !matches.length; sstatus(''); paintActive(); $('#addQ').focus(); });
 // a log or a watchlist row, as the database keeps a title (the same rules as a shelf's spine; the cover only from TMDB
 // or Open Library)
 const COVER_OK = /^https:\/\/(image\.tmdb\.org|covers\.openlibrary\.org)\/\S+$/;
@@ -886,7 +889,7 @@ $('#addPostGo').addEventListener('click', async () => {
     close(); return;
   }
   if (postFields && window.Posts){   // post.js posts it, and says so on document ("shelfstackd:added", with the post)
-    const p = await Posts.save(m, postFields.values());
+    const p = await Posts.save(m, {...postFields.values(), ...(fromRec ? {rec: fromRec.id} : {})});
     if (p.error){ btn.disabled = false; sstatus(esc(p.error), true); return; }
     close(); pageToast(`Logged ${m.title}. It’s on the feed.`); return;
   }
@@ -912,12 +915,14 @@ function reset(){
 function open(opt){
   opt = opt || {};
   if (!dlg.open){ reset(); if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', ''); }
+  fromRec = opt.rec && opt.rec.id ? opt.rec : null;   // Mark watched on a rec: {id, by}
+  if (window.Nav && Nav.loadRecs) Nav.loadRecs().then(ok => { $('#addRecWrap').hidden = !ok; });
   const mode = TITLES[opt.mode] ? opt.mode : firstMode();
   for (const r of dlg.querySelectorAll('input[name=addWhat]')) r.checked = r.value === mode;
   paintWhat(false);
   if (!$('#addFind').hidden && opt.item && opt.item.title){
     picked = opt.item;
-    if (mode === 'shelf') findSpines(picked); else { showPost(picked); ($('#addSayWrap').hidden ? $('#addPostGo') : $('#addSay')).focus(); if (mode === 'log'){ if (postFields) postFields.focus(); else focusFields = true; } return; }
+    if (mode === 'shelf') findSpines(picked); else if (mode === 'rec'){ recommendIt(picked); return; } else { showPost(picked); ($('#addSayWrap').hidden ? $('#addPostGo') : $('#addSay')).focus(); if (mode === 'log'){ if (postFields) postFields.focus(); else focusFields = true; } return; }
   }
   const q = opt.query ? String(opt.query).trim() : '';
   if (q){ $('#addQ').value = q; if (opt.typed) $('#addQ').dispatchEvent(new Event('input')); else search(false); }

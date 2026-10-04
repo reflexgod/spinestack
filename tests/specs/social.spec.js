@@ -120,7 +120,7 @@ test('share: Copy link copies the post\'s own address; Add to Up next puts its t
   // your own post has no Up next
   const mine = post(page, 'read Just Kids');
   await mine.getByRole('button', { name: /^Share/ }).click();
-  await expect(mine.getByRole('menuitem')).toHaveText(['Copy link']);
+  await expect(mine.getByRole('menuitem')).toHaveText(['Copy link', 'Share to WhatsApp']);
 });
 
 test('···: Report on someone else\'s post; Delete on yours, which asks first', async ({ page }) => {
