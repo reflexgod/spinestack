@@ -32,7 +32,8 @@ const OTHER_PAGES = [
 const ME = { id: '11111111-1111-4111-8111-111111111111', username: 'tester' };
 const day = n => new Date(Date.UTC(2026, 8, 30 - n, 12)).toISOString();
 const PEOPLE = [
-  { id: ME.id, username: 'tester', display_name: 'Test Person', bio: 'A made-up account for the tests.', avatar_key: null, pinned_shelf_id: null, is_private: false, created_at: day(60) },
+  // its main shelf is pinned to its newest (SHELVES[0]): with none pinned it would be its oldest
+  { id: ME.id, username: 'tester', display_name: 'Test Person', bio: 'A made-up account for the tests.', avatar_key: null, pinned_shelf_id: 'aaaaaaaa-aaaa-4aaa-8aaa-000000000000', is_private: false, created_at: day(60) },
   { id: '22222222-2222-4222-8222-222222222222', username: 'mira', display_name: 'Mira', bio: 'Films, mostly.', avatar_key: 'avatars/mira', pinned_shelf_id: null, is_private: false, created_at: day(40) },
   { id: '33333333-3333-4333-8333-333333333333', username: 'longusername_twenty1', display_name: '', bio: '', avatar_key: null, pinned_shelf_id: null, is_private: false, created_at: day(20) },
 ];

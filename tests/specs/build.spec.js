@@ -272,16 +272,37 @@ test('a shelf that had a caption of its own, saved again untouched: its picture 
   expect(renamed).toBe(0);   // its name is as it was
 });
 
-test('?open=<id>, an old link, opens that shelf of yours, with its name, who can view it, and its spines', async ({ page }) => {
+test('?open=<id> opens another shelf of yours, titled with its name, with who can view it and its spines', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
-  const older = SHELVES.filter(s => s.owner === ME.id)[1];   // from before there was one shelf each
+  const older = SHELVES.filter(s => s.owner === ME.id)[1];   // not the main one
   await open(page, '/build/?open=' + older.id);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your shelf');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(older.caption);
+  await expect(page).toHaveTitle(`${older.caption} · shelfstackd`);
   await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue(older.caption);
   await expect(page.getByRole('radio', { name: 'Public' })).toBeChecked();
   expect(await titles(page)).toEqual(['The Waves', 'Journey by Moonlight']);
-  await expect(page.getByRole('button', { name: /new shelf/i })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'New shelf' })).toHaveAttribute('href', './?new');
+  expect(errors).toEqual([]);
+});
+
+test('New shelf: an empty one, saved as one more of yours, not over your main one', async ({ page }) => {
+  const errors = watchErrors(page);
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/build/');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your shelf');
+  await page.getByRole('link', { name: 'New shelf' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('New shelf');
+  await expect(page.getByRole('link', { name: 'New shelf' })).toBeHidden();
+  expect(await titles(page)).toEqual([]);
+  await page.locator('header.top .add').click();
+  await addGummo(page);
+  await page.getByRole('textbox', { name: 'Name' }).fill('films for the train');
+  const saved = page.waitForRequest(r => r.url().includes('/rpc/save_shelf'));
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  const { shelf, items } = (await saved).postDataJSON();
+  expect(SHELVES.some(x => x.id === shelf.id)).toBe(false);   // a new one
+  expect(items.map(i => i.title)).toEqual(['Gummo']);
   expect(errors).toEqual([]);
 });
 
@@ -319,10 +340,11 @@ test('old ?embed links come to the builder itself, at the root and at /build/', 
   await expect(page.locator('header.top')).toBeVisible();
   await page.goto('/?embed&new');
   await expect(page).toHaveURL(/\/build\/$/);
-  await expect.poll(() => titles(page)).toEqual(['The Waves', 'Journey by Moonlight']);   // a new shelf, then; your shelf now
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('New shelf');   // a new shelf, empty
+  expect(await titles(page)).toEqual([]);
 });
 
-test('your shelf, being changed, is still being changed after another page; an old ?open link to another opens that one', async ({ page }) => {
+test('your shelf, being changed, is still being changed after another page; New shelf is a new one; ?open to another opens that one', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   const older = SHELVES.filter(s => s.owner === ME.id)[1];
   await open(page, '/build/');
@@ -330,10 +352,12 @@ test('your shelf, being changed, is still being changed after another page; an o
   await addGummo(page);
   await page.waitForFunction(() => !!sessionStorage.getItem('spinestack-draft'));
   await page.waitForTimeout(700);
-  await open(page, '/build/?new');            // an old + new shelf link: it's your shelf, still being changed
+  await open(page, '/build/');               // back again: still being changed
   expect(await titles(page)).toEqual(['The Waves', 'Journey by Moonlight', 'Gummo']);
-  await page.waitForFunction(() => !!sessionStorage.getItem('spinestack-draft'));
   await page.waitForTimeout(700);
+  await open(page, '/build/?new');            // New shelf: an empty one, not the one being changed
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('New shelf');
+  expect(await titles(page)).toEqual([]);   // (an empty shelf keeps no draft)
   await open(page, '/build/?open=' + older.id);   // another saved shelf was asked for: it opens, not the draft
   await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue(older.caption);
   expect(await titles(page)).toEqual(['The Waves', 'Journey by Moonlight']);

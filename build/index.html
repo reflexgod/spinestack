@@ -64,6 +64,9 @@
 /* the builder, laid out like a new-list page: Add, the spines as a list, Style, and the live preview beside them.
    The bottom area stays in view: the shelf's name and who can view it, with Cancel and Save (beside them
    on a wide window, under them on a phone). site.css has everything shared */
+/* the title, and New shelf beside it once you have a shelf */
+.mkhead{display:flex;align-items:baseline;gap:var(--s2) var(--s4);flex-wrap:wrap}
+.mkhead h1{margin-right:auto}
 .mkgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:var(--s5) var(--s6);align-items:start}
 .mkform{display:grid;gap:var(--s5);min-width:0}
 .field legend{padding:0;margin-bottom:var(--s1)}
@@ -253,7 +256,7 @@ footer{margin-top:0}
 </header>
 
 <main class="mk">
-  <h1 id="pageTitle">Your shelf</h1>
+  <div class="mkhead"><h1 id="pageTitle">Your shelf</h1><a class="dash sm" id="newShelf" href="./?new" hidden>New shelf</a></div>
   <div class="gate" id="gate">
     <button class="btn primary" id="gateGo" type="button">Continue with Google</button>
     <p class="note">Accounts are for people 18 or older. <a href="../privacy.html">Privacy</a></p>
@@ -392,8 +395,8 @@ const W = 1080, H = 1920;
 const {FONTS, STYLES, crop, loadImg, isReal, TEX, texture, isDark, posterTitle, DEFAULT_CAPTION} = Shelf;
 // the colour picking and the spine finder live in add.js (the + ADD dialog uses them on every page)
 const {extractPalette, findSpine, findSoloSpine} = Add;
-// ?new: an old link from when there were many shelves (+ new shelf). There's one shelf each now, so it's your shelf
-// like any other visit; the address is only tidied
+// ?new: a new shelf, empty, saved as one more of yours (New shelf, here and on your Shelves tab). Without it, the
+// builder opens your main shelf
 const FRESH = new URLSearchParams(location.search).has('new');
 // ?sample: the page opens with the sample shelf on it. Nobody is sent here: it's for the tests, and for tests/art.js,
 // which makes the picture of a shelf that home shows when the site is empty.
@@ -1087,7 +1090,9 @@ async function startAccounts(){
   const openId = new URLSearchParams(location.search).get('open');
   let draft = takeDraft();
   if (draft && !returning() && openId && draft.shelfId !== openId){ dropDraft(); draft = null; }
-  acct.openAsked = openId && !draft ? openId : null;   // then that one opens, not yours
+  if (draft && !returning() && FRESH && draft.shelfId){ dropDraft(); draft = null; }   // New shelf: not the one that was being changed
+  // then that one opens, not your main one: ?open=<id>, a new shelf, or the shelf the draft is
+  acct.openAsked = openId && !draft ? openId : FRESH && !draft ? 'new' : draft ? 'draft' : null;
   if (draft) await restoreDraft(draft);
   if (FRESH) history.replaceState(null, '', here() + location.hash);
   try {
@@ -1334,8 +1339,8 @@ $('#cancelBtn').addEventListener('click', e => {
   location.href = acct.profile ? '../u/?' + acct.profile.username : '../';
 });
 
-/* your saved shelf: one each. Accounts from before keep any others they made; yours is the main one (pinned) if it's
-   set, otherwise the one saved last, as on your profile. An old link (?open=<id>) can still open one of the others. */
+/* your saved shelves. The builder opens your main one: the one you made main (profiles.pinned_shelf_id), otherwise
+   your oldest, as your profile's hero has it. ?open=<id> opens another; ?new makes a new one. */
 const SHELF_COLS = 'id,caption,name,filter,intensity,background,wood,layout,varied,is_public,preview_key,pro,created_at,updated_at,saved_at,shelf_items(count)';
 async function loadMine(){
   if (!acct.profile) return;
@@ -1344,7 +1349,16 @@ async function loadMine(){
   if (error){ toast('Couldn’t load your shelves. Try again in a moment.'); return; }
   acct.shelves = data || [];
 }
-const yourShelf = () => acct.shelves.find(s => s.id === (acct.profile || {}).pinned_shelf_id) || acct.shelves.slice().sort((a, b) => new Date(b.saved_at || b.updated_at) - new Date(a.saved_at || a.updated_at))[0] || null;
+const yourShelf = () => acct.shelves.find(s => s.id === (acct.profile || {}).pinned_shelf_id) || acct.shelves.slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at))[0] || null;
+// the page's title: Your shelf (your main one), the shelf's name (another of yours), or New shelf; and New shelf to
+// press once you have one
+function paintTitle(){
+  if (!acct.profile) return;
+  const main = yourShelf(), s = acct.shelfId && acct.shelves.find(x => x.id === acct.shelfId);
+  const t = !acct.shelfId ? (acct.shelves.length ? 'New shelf' : 'Your shelf') : !main || s === main || !s ? 'Your shelf' : (s.name || (s.caption && s.caption !== DEFAULT_CAPTION ? s.caption : 'Untitled shelf'));
+  $('#pageTitle').textContent = t; document.title = t + ' · shelfstackd';
+  $('#newShelf').hidden = !acct.shelves.length || !acct.shelfId;
+}
 // signed in, and not already on a saved shelf: yours opens
 async function openYours(){
   if (!acct.profile || acct.shelfId || acct.openAsked) return;
@@ -1413,7 +1427,7 @@ async function openShelf(id){
   // its name (while it has none of its own, its caption) and who can view it
   const named = s.name != null, shown = named ? s.name : s.caption && s.caption !== DEFAULT_CAPTION ? s.caption : '';
   $('#shelfName').value = shown; nameIt(); redraw(); setVisible(s.is_public);   // the preview's caption is that name, whatever caption it was saved with
-  acct.shelfId = id; paintAcct(); $('#saveNote').textContent = '';
+  acct.shelfId = id; paintAcct(); paintTitle(); $('#saveNote').textContent = '';
 }
 
 /* The shelf being made waits in this tab: while Google signs you in (the page leaves and comes back), and while
@@ -1469,18 +1483,21 @@ function takeRow(){
   boot();
   if (await startAccounts() === false) return;   // signed out: the builder is closed
   const p = Add.takePending();
+  // + ADD on another page picked one of your shelves (Put on shelf asks which when you have more than one)
+  if (p && p.shelfId && p.shelfId !== acct.shelfId && acct.shelves.some(x => x.id === p.shelfId)) await openShelf(p.shelfId);
+  paintTitle();
   if (p){
     $('#saveNote').textContent = 'Adding ' + p.m.title + '…';
     let f = null; try { f = await Add.resolve(p); } catch {}
     $('#saveNote').textContent = ''; paintAcct();
-    if (f){ if (shelve(newBook(f))) toast(p.m.title + ' added to your shelf.'); }
+    if (f){ if (shelve(newBook(f))) toast(p.m.title + ' added to ' + (acct.shelfId && acct.shelfId !== (yourShelf() || {}).id ? $('#pageTitle').textContent : 'your shelf') + '.'); }
     else { toast('Couldn’t add ' + p.m.title + '. Search for it again.'); Add.open({query: p.m.title}); }
   }
   const row = takeRow();
   if (row){
     const name = row.title || 'That spine';
     $('#saveNote').textContent = 'Adding ' + name + '…';
-    let b = null; try { b = await rebuild({...row, item_id: undefined, look: {...(row.look || {}), at: undefined}}); } catch {}   // new on this shelf   // a book of its own here, with a new id
+    let b = null; try { b = await rebuild({...row, item_id: undefined, look: {...(row.look || {}), at: undefined}}); } catch {}   // a book of its own here, with a new id, and new on this shelf
     $('#saveNote').textContent = '';
     if (!b) toast('Couldn’t add ' + name + '. Its picture didn’t load.');
     else { if (b.source === 'your saved shelf') b.source = 'a saved shelf'; if (shelve(b)) toast(name + ' added to your shelf.'); }
