@@ -7,10 +7,15 @@
    Posts.composer(host, {onPosted}) "What did you watch or read?": the title search, the picked title, the fields, Post.
    Posts.save(m, values)    posts a log of m ({kind, title, year, creator, cover, tmdb or ol}): {ok, row} or {error}. With
                             0011 the log keeps the title's id (Nav.ids()).
+   Posts.update(x, values)  your own log x with these values (the proposed 0011: rating, review, spoiler, rewatch, the
+                            day; nothing else in a log can change): {ok, row} or {error}. Says so on document
+                            ("shelfstackd:edited", {post}). Posts.edit(x) opens the fields filled in on a sheet, and
+                            gives the row as saved (or null for Cancel). Posts.canEdit(): is 0011 there.
    Posts.stats(ids)         post_stats() for these logs (0009): a Map of id to {rating, review, likes, replies, ...}.
    Posts.item(x, opt)       one post, an <li>: photo, @name, "watched Gummo", the stars, the worn cover, the review
                             (blurred until pressed when it has spoilers), when; and the row of actions: like, reply and
-                            me too (0009), + Watchlist or In watchlist, Share, and ··· with Report (0009) or Delete.
+                            me too (0009), + Watchlist or In watchlist, Share, and ··· with Report (0009), or Edit
+                            (0011) and Delete on your own; "edited" in grey beside the time once it has been.
                             Counts change at once and go back if the database says no.
    Posts.ago(t), Posts.stars(v): a rating (1 to 10) as five small spines in the logo's colours
    Load it after nav.js (Nav.account(), Nav.loadAdd(), Nav.needAccount()) and wear.js. */
@@ -91,6 +96,8 @@ css.textContent = `
 .phead .pwho span,.phead .ago,.phead .ago a{color:var(--grey,#6B6B6B);text-decoration:none;white-space:nowrap}
 .phead .pwho:hover b,.phead .ago a:hover{text-decoration:underline;text-underline-offset:3px}
 .phead .pmore{margin-left:auto}
+.phead .edited{color:var(--grey,#6B6B6B);font-size:var(--fs-small,11px);white-space:nowrap}
+.sheetbox.editbox{max-width:520px}
 .pwhat{margin:var(--s1,4px) 0 0;font-weight:700;overflow-wrap:anywhere}
 .pwhat a{text-decoration:none}
 .pwhat a:hover,.pwhat a:focus-visible{text-decoration:underline;text-underline-offset:3px}
@@ -232,7 +239,8 @@ function ask({text, yes}){
 /* ---------- the composer's fields ---------- */
 let fieldN = 0;
 async function fields(host, m, opt = {}){
-  const social = await ready(), n = ++fieldN, kind = m.kind === 'movie' ? 'movie' : 'book', max = social ? 2000 : 280;
+  // opt.values: a log's own, to edit it ({rating, review, spoiler, rewatch, watched_on})
+  const social = await ready(), n = ++fieldN, kind = m.kind === 'movie' ? 'movie' : 'book', max = social ? 2000 : 280, was = opt.values || null;
   host.innerHTML = `<div class="pfields">
     ${social ? `<div class="prate"><span class="lbl" id="prl${n}">Rating</span><span class="rating" role="slider" tabindex="0" aria-labelledby="prl${n}" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0" aria-valuetext="No rating"></span><span class="rv" aria-hidden="true"></span><button class="dash sm grey" type="button" data-clear hidden>Clear</button></div>` : ''}
     <div class="psay"><label><span class="lbl">${social ? 'Review' : 'Caption'} <i>(optional)</i></span><textarea maxlength="${max}" rows="3"></textarea></label><span class="pcount" aria-hidden="true">0 / ${max}</span></div>
@@ -242,6 +250,13 @@ async function fields(host, m, opt = {}){
   const q = s => host.querySelector(s), ta = q('textarea'), count = q('.pcount');
   ta.addEventListener('input', () => { count.textContent = `${ta.value.length} / ${max}`; });
   let v = 0;
+  if (was){
+    ta.value = String((was.review != null && was.review !== '' ? was.review : was.caption) || '').slice(0, max); count.textContent = `${ta.value.length} / ${max}`;
+    v = was.rating >= 1 && was.rating <= 10 ? was.rating : 0;
+    if (q('[name=spoiler]')) q('[name=spoiler]').checked = !!was.spoiler;
+    if (q('[name=rewatch]')) q('[name=rewatch]').checked = !!was.rewatch;
+    if (q('[name=day]') && /^\d{4}-\d{2}-\d{2}$/.test(String(was.watched_on || ''))) q('[name=day]').value = was.watched_on;
+  }
   const slider = q('.rating[role=slider]');
   const paint = () => {
     if (!slider) return;
@@ -363,6 +378,49 @@ async function save(m, v = {}){
   return {ok: true, row: posted};
 }
 
+/* ---------- editing your own (the proposed 0011) ---------- */
+const canEdit = () => window.Nav && Nav.ids ? Nav.ids() : Promise.resolve(false);
+async function update(x, v = {}){
+  const a = acct();
+  if (!(a.sb && a.user && a.profile)) return {error: 'Sign in to edit your posts.'};
+  const day = v.watched_on && v.watched_on <= today() ? v.watched_on : null;
+  const cols = {review: String(v.review || '').slice(0, 2000), rating: v.rating >= 1 && v.rating <= 10 ? Math.round(v.rating) : null, spoiler: !!v.spoiler, rewatch: !!v.rewatch, ...(day ? {watched_on: day} : {})};
+  let r;
+  try { r = await a.sb.from('logs').update(cols).eq('id', x.id).eq('owner', a.user.id).select('id,edited_at').single(); } catch (err){ r = {error: err}; }
+  if (r.error) return {error: friendly(r.error)};
+  const row = {...x, ...cols, caption: cols.review.slice(0, 280), edited_at: (r.data && r.data.edited_at) || new Date().toISOString()};
+  document.dispatchEvent(new CustomEvent('shelfstackd:edited', {detail: {post: row}}));
+  return {ok: true, row};
+}
+// Edit: the composer's fields with your log's values in them, on a sheet; Save keeps them (the same post, so its likes,
+// replies and me-toos stay on it). Gives the row as saved, or null
+function edit(x){
+  return new Promise(async res => {
+    const from = document.activeElement, d = document.createElement('div'), label = `${x.title}${x.year ? ` (${x.year})` : ''}`;
+    d.className = 'sheet'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-label', `Edit your post about ${label}`);
+    d.innerHTML = `<div class="sheetbox editbox"><button class="x" data-no type="button" aria-label="Close">${ICON('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>')}</button><div><h2>Edit your post</h2>
+      <p class="grey">${esc(verb(x.kind))} ${esc(label)}</p><div class="efields"></div>
+      <div class="row"><button class="btn primary" type="button" data-yes>Save</button><button class="dash sm" type="button" data-no>Cancel</button><p class="note grey" role="status"></p></div></div></div>`;
+    document.body.append(d);
+    let busy = false;
+    const done = v => { d.remove(); document.removeEventListener('keydown', onKey, true); if (from && from.focus && from.isConnected) from.focus(); res(v); };
+    const onKey = e => { if (e.key === 'Escape' && !busy){ e.stopPropagation(); done(null); } };
+    document.addEventListener('keydown', onKey, true);
+    const f = await fields(d.querySelector('.efields'), itemOf(x), {values: x});
+    f.focus();
+    d.addEventListener('click', async e => {
+      if (busy) return;
+      if (e.target.closest('[data-no]') || e.target === d){ done(null); return; }
+      if (!e.target.closest('[data-yes]')) return;
+      busy = true; const say = d.querySelector('.note'); say.textContent = 'Saving…';
+      const r = await update(x, f.values());
+      busy = false;
+      if (r.error){ say.textContent = r.error; return; }
+      done(r.row);
+    });
+  });
+}
+
 /* ---------- a post ---------- */
 const keyOf = m => [m.kind === 'movie' ? 'movie' : 'book', String(m.title || '').trim().toLowerCase(), String(m.year || '')].join('|');
 let watchKeys = null, watchAsk = null;
@@ -426,7 +484,7 @@ function item(x, opt = {}){
     : `<p class="say">${esc(review)}</p>`;
   li.innerHTML = `<a class="pava" href="${esc(profileUrl(x.username))}" tabindex="-1" aria-hidden="true">${avaHtml(x)}</a>
     <div class="pbody">
-      <p class="phead"><a class="pwho" href="${esc(profileUrl(x.username))}">${name ? `<b>${esc(name)}</b> ` : ''}<span>@${esc(x.username)}</span></a><span class="ago">· <a href="${esc(url)}"><time datetime="${esc(at)}" title="${esc(new Date(at).toLocaleString())}">${ago(at)}</time></a></span><span class="pmenuwrap pmore"></span></p>
+      <p class="phead"><a class="pwho" href="${esc(profileUrl(x.username))}">${name ? `<b>${esc(name)}</b> ` : ''}<span>@${esc(x.username)}</span></a><span class="ago">· <a href="${esc(url)}"><time datetime="${esc(at)}" title="${esc(new Date(at).toLocaleString())}">${ago(at)}</time></a></span>${x.edited_at ? `<span class="edited" title="Edited ${esc(new Date(x.edited_at).toLocaleString())}">edited</span>` : ''}<span class="pmenuwrap pmore"></span></p>
       <p class="pwhat">${verb(x.kind)} <a href="${esc(titleUrl(x))}">${esc(x.title)}</a>${x.year ? ` (${esc(x.year)})` : ''}${social && x.rewatch ? ` <span class="tag">${x.kind === 'movie' ? 'rewatch' : 'reread'}</span>` : ''}${x.rec_by ? ` <span class="recby">· recommended by <a href="${esc(profileUrl(x.rec_by))}">@${esc(x.rec_by)}</a></span>` : ''}</p>
       ${social && x.rating ? `<p class="prating">${stars(x.rating, 'sm')}</p>` : ''}
       ${say}
@@ -508,11 +566,18 @@ function acts(row, x, {mine, social, opt, li}){
     return list;
   });
 
-  // ···, in the post's top line: Report someone else's (0009), Delete your own (it asks first)
+  // ···, in the post's top line: Report someone else's (0009); Edit (0011) and Delete your own (Delete asks first)
   const slot = li.querySelector('.pmore');
   if (mine || social){
     slot.innerHTML = `<button type="button" class="more" aria-label="More for this post">${ICON(DOTS)}</button>`;
-    menuOn(slot.querySelector('.more'), () => mine ? [{label: 'Delete', run: async () => {
+    menuOn(slot.querySelector('.more'), async () => mine ? [...(social && await canEdit() ? [{label: 'Edit', run: async () => {
+      const row = await edit(x); if (!row) return;
+      Object.assign(x, row);
+      const again = item(x, opt); li.replaceWith(again);   // the same post, its counts as they were
+      const more = again.querySelector('.phead .more'); if (more) more.focus();
+      toast('Saved.');
+      if (opt.onEdited) opt.onEdited(x);
+    }}] : []), {label: 'Delete', run: async () => {
       if (!(await ask({text: `Delete your post about ${name}?`, yes: 'Delete'}))) return;
       const a = acct(); let r;
       try { r = await a.sb.from('logs').delete().eq('id', x.id).eq('owner', a.user.id); } catch (err){ r = {error: err}; }
@@ -534,5 +599,5 @@ async function report(type, id){
   return friendly(r.error);
 }
 
-window.Posts = {ready, fields, composer, save, stats, item, ago, stars, ask, report, rest, rpc, watched, friendly, postUrl, verb, menuOn, avaHtml};
+window.Posts = {ready, fields, composer, save, update, edit, canEdit, stats, item, ago, stars, ask, report, rest, rpc, watched, friendly, postUrl, verb, menuOn, avaHtml};
 })();

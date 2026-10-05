@@ -368,7 +368,12 @@ $('#tPanel').addEventListener('click', async e => {
 document.addEventListener('shelfstackd:added', async e => {
   const d = e.detail || {};
   if (d.what === 'watch' && d.item) watchKeys.add(keyOf(d.item));
-  if (d.what === 'log'){ await community(); paintAll(); return; }
+  if (d.what === 'log'){
+    await community();
+    // just posted, and not in what was read back yet: yours from what was posted, so Your review edits it from now on
+    if (!T.mine && d.post && d.post.id && me.user && d.post.owner === me.user.id && Nav.sameTitle(d.post, matchOf())){ T.logs = [d.post, ...T.logs]; T.mine = d.post; }
+    paintAll(); return;
+  }
   paintPanel();
 });
 
@@ -393,23 +398,42 @@ document.querySelector('#revSec .tabs').addEventListener('keydown', e => {
   const next = all[(i + (e.key === 'ArrowRight' ? 1 : all.length - 1)) % all.length]; next.focus(); next.click();
 });
 
-// Your review: signed in and not logged yet. One press on the spines rates it; then the review and Post show
-let yf = null;
+/* Your review, signed in. Not logged yet: one press on the spines rates it, then the review and Post show, and Post
+   logs it. Logged it already (with 0011, which lets a log be edited): your log's rating, review and the rest, filled
+   in, and Save edits that log; so a rating first and the review later is one log. Before 0011 it's gone once logged */
+let yf = null, yfFor = '';
 async function paintYours(){
-  const show = !!me.profile && !T.mine && T.social;
+  const edit = !!T.mine && T.social && await Posts.canEdit();
+  const show = !!me.profile && T.social && (!T.mine || edit);
   $('#yours').hidden = !show;
-  if (!show || yf) return;
-  yf = await Posts.fields($('#yFields'), T.item);
+  if (!show) return;
+  const want = edit ? 'edit:' + T.mine.id : 'post';
+  if (yfFor === want) return;
+  yfFor = want;
+  $('#yours').classList.toggle('rated', edit); $('#yours').classList.toggle('editing', edit);
+  $('#yPost').textContent = edit ? 'Save' : 'Post'; $('#ySay').textContent = '';
+  yf = null;
+  const f = await Posts.fields($('#yFields'), T.item, edit ? {values: T.mine} : {});
+  if (yfFor !== want) return;   // painted again meanwhile
+  yf = f;
   const slider = $('#yFields .rating[role=slider]');
-  if (slider) new MutationObserver(() => { if (+slider.getAttribute('aria-valuenow') > 0) $('#yours').classList.add('rated'); }).observe(slider, {attributes: true, attributeFilter: ['aria-valuenow']});
+  if (slider && !edit) new MutationObserver(() => { if (+slider.getAttribute('aria-valuenow') > 0) $('#yours').classList.add('rated'); }).observe(slider, {attributes: true, attributeFilter: ['aria-valuenow']});
 }
 $('#yPost').addEventListener('click', async () => {
   if (!yf) return;
-  const b = $('#yPost'); b.disabled = true; $('#ySay').textContent = 'Posting…';
-  const r = await Posts.save(T.item, yf.values());
+  const editing = $('#yours').classList.contains('editing') && T.mine;
+  const b = $('#yPost'); b.disabled = true; $('#ySay').textContent = editing ? 'Saving…' : 'Posting…';
+  const r = editing ? await Posts.update(T.mine, yf.values()) : await Posts.save(T.item, yf.values());
   b.disabled = false;
   if (r.error){ $('#ySay').textContent = r.error; return; }
-  $('#ySay').textContent = ''; toast(`Logged ${T.item.title}. It’s on the feed.`);
+  $('#ySay').textContent = ''; toast(editing ? 'Saved.' : `Logged ${T.item.title}. It’s on the feed.`);
+});
+// a log of yours edited here (Your review, or Edit on a review): the page with it, at once
+document.addEventListener('shelfstackd:edited', e => {
+  const x = (e.detail || {}).post; if (!x || !T.logs) return;
+  T.logs = T.logs.map(l => l.id === x.id ? {...l, ...x} : l);
+  if (T.mine && T.mine.id === x.id) T.mine = {...T.mine, ...x};
+  paintStats(); paintReviews(T.tab);
 });
 
 function paintAll(){ paintCover(); paintStats(); paintShelves(); paintPanel(); paintReviews(T.tab); paintYours(); }
