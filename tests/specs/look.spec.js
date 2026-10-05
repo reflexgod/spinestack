@@ -24,7 +24,7 @@ for (const pg of [...PAGES, { name: 'own profile', path: '/u/?tester' }]) {
     if (!isPhone()) expect(Math.abs(foot.left - main.left)).toBeLessThanOrEqual(1);
   });
 
-  test(`${pg.name}: the type scale, and two button looks: solid black or plain grey text`, async ({ page }) => {
+  test(`${pg.name}: the type scale, and three button looks: solid black, outlined, or plain grey text`, async ({ page }) => {
     await mockNetwork(page, { signedIn: true });
     await open(page, pg.path);
     expect(await css(page.locator('body'), 'fontSize')).toEqual({ fontSize: '13px' });
@@ -49,9 +49,11 @@ for (const pg of [...PAGES, { name: 'own profile', path: '/u/?tester' }]) {
     if (await inPage.count()) expect(await css(inPage, 'textTransform')).toEqual({ textTransform: 'none' });
     const any = page.locator('main .btn.primary:visible, .mkbar .btn.primary:visible').first();
     if (await any.count()) expect(await css(any, 'paddingTop', 'paddingLeft')).toEqual({ paddingTop: '8px', paddingLeft: '16px' });
-    // two looks and no third: solid black (what the screen is for, + ADD, Follow), or plain text, grey, with no box
+    // three looks and no fourth: solid black (what the screen is for, + ADD, Follow), outlined (black on white, a 1px
+    // black line round it: + New shelf), or plain text, grey, with no box
     const looks = await page.locator('.btn:visible, .dash:visible').evaluateAll(els => els.map(e => { const s = getComputedStyle(e);
       return s.backgroundColor === 'rgb(0, 0, 0)' && s.color === 'rgb(255, 255, 255)' ? 'solid'
+        : s.backgroundColor === 'rgb(255, 255, 255)' && s.color === 'rgb(0, 0, 0)' && s.boxShadow === 'rgb(0, 0, 0) 0px 0px 0px 1px inset' ? 'line'
         : s.backgroundColor === 'rgba(0, 0, 0, 0)' && (s.borderTopWidth === '0px' || s.borderTopColor === 'rgba(0, 0, 0, 0)') && s.color === 'rgb(107, 107, 107)' ? 'text' : 'other: ' + e.textContent.trim(); }));
     expect(looks.filter(l => l.startsWith('other'))).toEqual([]);
     expect(looks).toContain('solid');   // + ADD at least
@@ -144,13 +146,13 @@ for (const [where, path, sel] of [['the feed', '/feed/?everyone', '.items canvas
   });
 }
 
-test('the feed shows a shelf saved as a strip of spines 80px tall, in line with the post’s text, not a card or the whole story', async ({ page }) => {
+test('the feed shows a shelf saved as a strip of spines 112px tall, in line with the post’s text, not a card or the whole story', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/feed/?everyone');
   const post = page.locator('.shelfpost').first();
   await expect(post.locator('.strip canvas').first()).toBeVisible();
   const strip = await box(post.locator('.strip')), what = await box(post.locator('.pwhat'));
-  expect(Math.round(strip.height)).toBe(80);
+  expect(Math.round(strip.height)).toBe(112);
   expect(Math.abs(strip.left - what.left)).toBeLessThanOrEqual(1);   // in line with the text above it
   expect(strip.left - (await box(post.locator('.pava'))).right).toBeGreaterThan(0);   // and clear of the photo
   await expect(page.locator('#items .pic')).toHaveCount(0);

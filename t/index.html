@@ -30,7 +30,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261017a">
+<link rel="stylesheet" href="../site.css?v=20261019a">
 <style>
 /* a title's page: the cover at the left (worn when you've logged it), what it is in the middle, what you can do with it
    at the right; then whose shelves it's on, and the reviews */
@@ -60,6 +60,7 @@
 .tpanel .state a{color:inherit}
 .tpanel .pmenuwrap{position:relative}
 section.tsec{margin-top:var(--s6)}
+@media (max-width:640px){ section.tsec{margin-top:var(--s5)} }   /* a phone: 24px between On shelves and the reviews, as between the rest */
 .tava{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:var(--s2)}
 .tava a{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;border:1px solid var(--ink);background:var(--wash);overflow:hidden;text-decoration:none;color:var(--ink);text-transform:uppercase}
 .tava img{width:100%;height:100%;object-fit:cover;display:block}
@@ -155,7 +156,7 @@ section.tsec{margin-top:var(--s6)}
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../wear.js?v=20261016a"></script>
-<script src="../nav.js?v=20261018a"></script>
+<script src="../nav.js?v=20261019a"></script>
 <script src="../post.js?v=20261018a"></script>
 <script>
 (() => {

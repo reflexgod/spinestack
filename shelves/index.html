@@ -35,13 +35,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Geist+Mono:wght@400;500&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261017a">
+<link rel="stylesheet" href="../site.css?v=20261019a">
 <style>
 /* shelves: a line and a button, then every public shelf as a card (site.css has the cards and the rest) */
 .shelves h1{margin-bottom:var(--s2)}
 .lead{display:flex;gap:var(--s4) var(--s5);align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:var(--s5)}
 .lead p{margin:0}
-.mineacts{display:flex;gap:var(--s5);align-items:center}
+.mineacts{display:flex;gap:var(--s4) var(--s5);align-items:center;flex-wrap:wrap}
 #state,#none{margin:0}
 #more{margin-top:var(--s6)}
 /* signed out: Make a shelf is the black button, and the bar's + is outlined */
@@ -65,7 +65,7 @@
 <main class="shelves">
   <h1>Shelves</h1>
   <div class="lead">
-    <span class="mineacts"><a class="btn primary" id="mine" href="../build/">Make a shelf</a><a class="dash" id="newShelf" href="../build/?new" hidden>New shelf</a></span>
+    <span class="mineacts"><a class="btn primary" id="mine" href="../build/">Make a shelf</a><a class="btn line" id="newShelf" href="../build/?new" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>New shelf</a></span>
   </div>
   <p class="grey" id="state" role="status">Loading…</p>
   <ul class="thumbs" id="grid" aria-label="Shelves"></ul>
@@ -93,7 +93,7 @@
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../bare.js?v=20261013a"></script>
-<script src="../nav.js?v=20261018a"></script>
+<script src="../nav.js?v=20261019a"></script>
 <script>
 (() => {
 /* Shelves: /shelves/. Every public shelf of a public profile, newest saved first, as cards: 24 at a time, then Load

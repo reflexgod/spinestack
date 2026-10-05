@@ -367,11 +367,21 @@ test('Shelves (N): every shelf of theirs, newest first, its spines on a shelf li
   await open(page, '/u/?mira#shelves');
   await selected(page, 'Shelves (6)');
   const rows = page.locator('#sList li');
-  await expect(rows).toHaveCount(6);
-  await expect(rows.first().locator('.sn b')).toHaveText('shelf number 1');   // the one saved last first
-  await expect(rows.last().locator('.sn')).toContainText('main');            // her oldest, the one on her profile
+  await expect(rows).toHaveCount(6);   // someone else's: no slot for a new one
+  await expect(rows.first().locator('.sn')).toHaveText('shelf number 1');    // the one saved last first
+  await expect(rows.last().locator('.sm .state')).toHaveText('Main shelf');  // her oldest, the one on her profile: grey, no box
+  expect(await rows.last().locator('.sm .state').evaluate(el => { const s = getComputedStyle(el); return [s.color, s.borderTopWidth]; })).toEqual(['rgb(107, 107, 107)', '0px']);
+  await expect(rows.first().locator('.sm')).toContainText(/^\d spines?·\w{3} \d+, \d{4}$/);   // how many, and when (the dots between are drawn apart)
   await expect(rows.first().locator('.sline canvas')).toHaveCount(3);        // its spines, standing on the line
-  expect(await rows.first().locator('.sline').evaluate(el => getComputedStyle(el).borderBottomWidth)).toBe('1px');
+  const line = rows.first().locator('.sline');
+  expect(await line.evaluate(el => getComputedStyle(el).borderBottomWidth)).toBe('1px');
+  // the spines at the feed's height, and the line only as wide as they are, and 16px more
+  const sizes = await line.evaluate(el => { const c = [...el.querySelectorAll('canvas')], r = el.getBoundingClientRect(); return { h: Math.max(...c.map(x => x.getBoundingClientRect().height)), w: r.width, spines: c.reduce((a, x) => a + x.getBoundingClientRect().width, 0) + 2 * (c.length - 1) }; });
+  expect(sizes.h).toBeGreaterThan(96); expect(sizes.h).toBeLessThanOrEqual(112);   // drawn for 112px; the tallest of a few, as varied as they are, a little less
+  expect(Math.abs(sizes.w - (sizes.spines + 16))).toBeLessThanOrEqual(1);
+  // three to a row on a wide window, one on a phone
+  const tops = await rows.evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().top)));
+  expect(new Set(tops).size).toBe(test.info().project.name.startsWith('phone') ? 6 : 2);
   await rows.first().click();
   await expect(page).toHaveURL(/\/u\/\?mira&shelf=aaaaaaaa-aaaa-4aaa-8aaa-000000000001$/);
   expect(errors).toEqual([]);
@@ -385,5 +395,24 @@ test('your own Shelves tab has your private ones too, marked', async ({ page }) 
     return route.fulfill({ status: 200, headers: { 'Access-Control-Allow-Origin': '*' }, contentType: 'application/json', body: JSON.stringify(rows) });
   });
   await open(page, '/u/?tester#shelves');
-  await expect(page.locator('#sList li .tag', { hasText: 'private' })).toHaveCount(1);
+  await expect(page.locator('#sList li .sm .state', { hasText: 'Private' })).toHaveCount(1);
+});
+
+test('your own Shelves tab: + New shelf as an outlined button at the top, and a dashed slot to make one at the end', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/u/?tester#shelves');
+  const top = page.locator('#sNewRow').getByRole('link', { name: 'New shelf' });
+  await expect(top).toHaveAttribute('href', '../build/?new');
+  expect(await top.evaluate(e => { const s = getComputedStyle(e); return [s.color, s.backgroundColor, s.boxShadow]; }))
+    .toEqual(['rgb(0, 0, 0)', 'rgb(255, 255, 255)', 'rgb(0, 0, 0) 0px 0px 0px 1px inset']);   // a 1px black line round it
+  await expect(top.locator('svg')).toHaveCount(1);   // its +
+  const slot = page.locator('#sList li').last();
+  await expect(slot.getByRole('link', { name: 'New shelf' })).toHaveAttribute('href', '../build/?new');
+  expect(await slot.locator('.sslot').evaluate(e => getComputedStyle(e).borderTopStyle)).toBe('dashed');
+  expect(Math.round((await slot.locator('.sslot').boundingBox()).height)).toBe(112);   // a small shelf's height
+  // tight under the button: 24px to the first shelf
+  const b = await top.boundingBox(), first = await page.locator('#sList li').first().boundingBox();
+  expect(Math.round(first.y - (b.y + b.height))).toBe(24);
+  await slot.getByRole('link').click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('New shelf');   // the builder, on a new one
 });

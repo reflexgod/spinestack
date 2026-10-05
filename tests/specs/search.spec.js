@@ -40,7 +40,7 @@ test('"gummo": the film, with its cover, year and director; pressing it opens it
   const gummo = films.getByRole('link').first();
   await expect(gummo).toContainText('Gummo');
   await expect(gummo).toContainText('1997 · Harmony Korine');
-  await expect(gummo.locator('img.cv')).toHaveAttribute('src', /\/img\?url=https%3A%2F%2Fimage\.tmdb\.org%2Ft%2Fp%2Fw500%2Fgummo\.jpg$/);
+  await expect(gummo.locator('.cv img')).toHaveAttribute('src', /\/img\?url=https%3A%2F%2Fimage\.tmdb\.org%2Ft%2Fp%2Fw185%2Fgummo\.jpg$/);   // TMDB's, at a list's size
   await expect(gummo).toHaveAttribute('href', /\/t\/\?film=106&title=Gummo&year=1997$/);   // by its TMDB id
   await expect(group(page, 'Books')).toHaveCount(0);   // nothing by that name
   await gummo.click();
@@ -145,4 +145,29 @@ test('a new tab from the icon is still the People page', async ({ page }) => {
   await open(page, '/');
   expect(await icon(page).getAttribute('href')).toBe('people/');
   await expect(icon(page)).toHaveAttribute('aria-haspopup', 'dialog');
+});
+
+// a book's cover is Open Library's (medium, through the Worker, as + ADD has it); with none, or one that doesn't come,
+// a paper block with the title in small type, never a grey box
+test('books have covers; with none, a paper block with the title', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await page.route(u => u.pathname === '/identify', route => route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify({ results: [
+    { kind: 'book', ol: 'OL99W', title: 'The Waves', year: '1931', creator: 'Virginia Woolf', cover: 'https://covers.openlibrary.org/b/id/1-L.jpg' },
+    { kind: 'book', ol: 'OL98W', title: 'The Waves Behind the Boat', year: '1967', creator: 'Francis King', cover: '' },
+    { kind: 'book', ol: 'OL97W', title: 'Waves of Light', year: '2001', creator: '', cover: 'https://covers.openlibrary.org/b/id/404-L.jpg' },
+  ] }) }));
+  await page.route(u => u.pathname === '/img' && /404-M/.test(decodeURIComponent(u.search)), route => route.fulfill({ status: 404, headers: CORS, body: '' }));
+  await open(page, '/feed/?everyone');
+  await icon(page).click();
+  await box(page).fill('waves');
+  const books = group(page, 'Books').getByRole('link');
+  await expect(books).toHaveCount(3);
+  await expect(books.nth(0).locator('.cv img')).toHaveAttribute('src', /covers\.openlibrary\.org%2Fb%2Fid%2F1-M\.jpg$/);
+  await expect.poll(() => books.nth(0).locator('.cv img').evaluate(i => i.complete && i.naturalWidth > 0)).toBe(true);
+  for (const i of [1, 2]) {
+    const cv = books.nth(i).locator('.cv');
+    await expect(cv.locator('img')).toHaveCount(0);   // none, or it didn't come
+    await expect(cv.locator('.cvt')).toHaveText(i === 1 ? 'The Waves Behind the Boat' : 'Waves of Light');
+    expect(await cv.evaluate(e => getComputedStyle(e).backgroundColor)).toBe('rgb(255, 255, 255)');   // paper, not grey
+  }
 });

@@ -65,9 +65,10 @@ h2 .more:hover,h2 .more:focus-visible,.seclabel .more:hover,.seclabel .more:focu
 .note.warn{color:var(--ink);font-weight:700}
 em.pro,.tag{font-style:normal;font-weight:700;font-size:9px;border:1px solid currentColor;padding:0 var(--s1);letter-spacing:.04em;text-transform:uppercase}
 
-/* ---------- buttons: two looks, no more. Solid black (.btn.primary) for what a screen is for; everything else is a
-   plain text action (.btn without primary, and .dash): small, grey, black on hover. A state ("Following", "In Up
-   next", "Main shelf") is grey text that isn't pressed. Follow is solid black until it's pressed; then it says
+/* ---------- buttons: three looks, no more. Solid black (.btn.primary) for what a screen is for; outlined (.btn.line:
+   black on white, a 1px black line round it, the same box as the solid one) for a second thing to make that has to read as a
+   button (+ New shelf); everything else is a plain text action (.btn without primary, and .dash): small, grey, black
+   on hover. A state ("Following", "In Up next", "Main shelf") is grey text that isn't pressed. Follow is solid black until it's pressed; then it says
    Following in grey, and Unfollow when the pointer is on it. In their own case (sentence case): only the bar's places,
    section headings and the tiny labels are in capitals ---------- */
 .btn{display:inline-block;font:600 var(--fs-btn)/1.35 var(--mono);text-align:center;text-decoration:none;white-space:nowrap;
@@ -75,6 +76,9 @@ em.pro,.tag{font-style:normal;font-weight:700;font-size:9px;border:1px solid cur
 .btn:hover:not(:disabled),.btn:focus-visible{color:var(--ink)}
 .btn.primary,.btn.follow:not([aria-pressed="true"]){background:var(--ink);color:var(--paper);border-color:var(--ink);padding:var(--btn-pad)}
 .btn.primary:hover:not(:disabled),.btn.follow:not([aria-pressed="true"]):hover:not(:disabled){background:#222;color:var(--paper)}
+.btn.line{display:inline-flex;align-items:center;justify-content:center;gap:var(--s1);background:var(--paper);color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink);padding:var(--btn-pad)}   /* its line drawn inside: the solid one's box */
+.btn.line:hover:not(:disabled),.btn.line:focus-visible{background:var(--wash);color:var(--ink)}
+.btn.line svg{width:16px;height:16px;flex:none;margin:-1px 0}
 .btn.full{width:100%}
 .btn:disabled{opacity:.5;cursor:default}
 .dash{display:inline-block;background:none;border:0;padding:var(--s2) 0;font:600 var(--fs-btn)/1.35 var(--mono);color:var(--grey);cursor:pointer;text-decoration:none;white-space:nowrap}
@@ -139,8 +143,9 @@ textarea{resize:vertical;line-height:1.5}
 }
 
 /* ---------- tabs ---------- */
-/* one line, always: more tabs than fit scroll sideways inside the row, never the page */
-.tabs{display:flex;gap:var(--s5);border-bottom:1px solid var(--hair);overflow-x:auto;overflow-y:hidden;scrollbar-width:none;min-width:0}
+/* one line, always: more tabs than fit scroll sideways inside the row, never the page; 16px of room after the last,
+   so scrolled to the end it isn't cut off at the edge */
+.tabs{display:flex;gap:var(--s5);border-bottom:1px solid var(--hair);overflow-x:auto;overflow-y:hidden;scrollbar-width:none;min-width:0;padding-right:var(--s4)}
 .tabs::-webkit-scrollbar{display:none}
 .tabs button{flex:none;white-space:nowrap;font:400 var(--fs-tab) var(--mono);background:none;border:0;padding:0 0 var(--s2);margin-bottom:-1px;color:var(--grey);cursor:pointer;border-bottom:1px solid transparent}
 .tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}

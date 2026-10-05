@@ -59,13 +59,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Geist+Mono:wght@400;500&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261017a">
+<link rel="stylesheet" href="../site.css?v=20261019a">
 <style>
 /* the builder, laid out like a new-list page: Add, the spines as a list, Style, and the live preview beside them.
    The bottom area stays in view: the shelf's name and who can view it, with Cancel and Save (beside them
    on a wide window, under them on a phone). site.css has everything shared */
 /* the title, and New shelf beside it once you have a shelf */
-.mkhead{display:flex;align-items:baseline;gap:var(--s2) var(--s4);flex-wrap:wrap}
+.mkhead{display:flex;align-items:center;gap:var(--s2) var(--s4);flex-wrap:wrap;margin-bottom:var(--s5)}
+.mkhead h1{margin-bottom:0}
 .mkhead h1{margin-right:auto}
 .mkgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:var(--s5) var(--s6);align-items:start}
 .mkform{display:grid;gap:var(--s5);min-width:0}
@@ -146,9 +147,14 @@ details.style[open] summary svg{transform:rotate(180deg)}
 .seg{display:flex;gap:var(--s4);flex-wrap:wrap}
 .seg button{font:400 var(--fs-body) var(--mono);background:none;border:0;padding:0 0 var(--s1);color:var(--grey);cursor:pointer;border-bottom:1px solid transparent}
 .seg button[aria-pressed="true"]{color:var(--ink);border-bottom-color:var(--ink)}
-.filters{display:flex;gap:var(--s2);overflow-x:auto;padding:var(--s1)}
-.flt{flex:none;display:grid;gap:var(--s1);background:none;border:0;padding:0;cursor:pointer;font:400 var(--fs-label) var(--mono);text-transform:uppercase;letter-spacing:.04em;color:var(--grey);text-align:left}
-.flt canvas{width:54px;height:96px;display:block;border:1px solid var(--hair)}
+/* the filters: one row that scrolls sideways, every filter the same width 8px apart, its name on one line under its
+   picture (cut with … when it's long; the whole name is its label), and PRO on a line of its own. 8px of room at both
+   ends, so the first and the last (and the picked one's outline) are never cut off */
+.filters{display:flex;gap:var(--s2);overflow-x:auto;padding:var(--s2);margin:0 calc(-1 * var(--s2));scrollbar-width:thin}
+.flt{flex:0 0 64px;width:64px;min-width:0;display:grid;grid-template-rows:auto auto auto;align-content:start;justify-items:start;gap:var(--s1);background:none;border:0;padding:0;cursor:pointer;font:400 var(--fs-label) var(--mono);text-transform:uppercase;letter-spacing:.04em;color:var(--grey);text-align:left}
+.flt canvas{width:64px;height:114px;display:block;border:1px solid var(--hair)}
+.flt .fn{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.flt em.pro{margin:0}
 .flt[aria-pressed="true"]{color:var(--ink)}
 .flt[aria-pressed="true"] canvas{outline:2px solid var(--ink);outline-offset:1px;border-color:var(--ink)}
 em.pro{margin:0 var(--s1)}
@@ -256,7 +262,7 @@ footer{margin-top:0}
 </header>
 
 <main class="mk">
-  <div class="mkhead"><h1 id="pageTitle">Your shelf</h1><a class="dash sm" id="newShelf" href="./?new" hidden>New shelf</a></div>
+  <div class="mkhead"><h1 id="pageTitle">Your shelf</h1><a class="btn line" id="newShelf" href="./?new" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>New shelf</a></div>
   <div class="gate" id="gate">
     <button class="btn primary" id="gateGo" type="button">Continue with Google</button>
     <p class="note">Accounts are for people 18 or older. <a href="../privacy.html">Privacy</a></p>
@@ -384,7 +390,7 @@ footer{margin-top:0}
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../spinetip.js?v=20261004a"></script>
-<script src="../nav.js?v=20261018a"></script>
+<script src="../nav.js?v=20261019a"></script>
 <script src="../add.js?v=20261018a"></script>
 <script>
 (() => {
@@ -488,7 +494,7 @@ const sizes = (H0, U, list = books) => Shelf.sizes(H0, U, list, settings);
 Shelf.onTextureLoaded(() => redraw());
 /* the Filter row: a live thumbnail of this shelf in each look */
 function renderFilterRow(){
-  $('#filters').innerHTML = FILTERS.map(fl => `<button type="button" class="flt" data-v="${fl.id}" aria-pressed="${settings.filter === fl.id}"><canvas width="108" height="192" aria-hidden="true"></canvas><span>${fl.name}${fl.pro ? '<em class="pro">PRO</em>' : ''}</span></button>`).join('');
+  $('#filters').innerHTML = FILTERS.map(fl => `<button type="button" class="flt" data-v="${fl.id}" aria-pressed="${settings.filter === fl.id}"><canvas width="128" height="228" aria-hidden="true"></canvas><span class="fn" title="${fl.name}">${fl.name}</span>${fl.pro ? '<em class="pro">PRO</em>' : ''}</button>`).join('');
 }
 let thumbT = 0;
 function renderThumbs(){

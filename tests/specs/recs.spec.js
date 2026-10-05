@@ -347,3 +347,15 @@ test('Recommend to up to 5 at once: the sixth can\'t be ticked; one rec each; a 
   await expect(s.getByRole('checkbox', { name: /@friend0/ })).toBeHidden();   // sent: gone from the list
   await expect(s.getByRole('checkbox', { name: /@friend1/ })).toBeChecked();  // refused: still ticked, to try again
 });
+
+// a rec with no cover (Orlando): paper with its title in small type, not a grey box
+test('a rec with no cover shows paper with its title', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, social: true, recs: true });
+  await open(page, '/u/?tester#recs');
+  const orlando = page.locator('#rList li').filter({ hasText: 'Orlando' }).locator('.tc');
+  await expect(orlando.locator('img')).toHaveCount(0);
+  await expect(orlando.locator('.tct')).toHaveText('Orlando');
+  expect(await orlando.evaluate(e => getComputedStyle(e).backgroundColor)).toBe('rgb(255, 255, 255)');
+  const paris = page.locator('#rList li').filter({ hasText: 'Paris, Texas' }).locator('.tc img');
+  await expect(paris).toHaveCount(1);   // one with a cover has it, over the paper
+});

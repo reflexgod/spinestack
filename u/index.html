@@ -29,14 +29,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Geist+Mono:wght@400;500&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261017a">
+<link rel="stylesheet" href="../site.css?v=20261019a">
 <style>
 /* the profile (site.css has the cards, the tabs, the sheets and everything shared) */
 .phead{display:grid;grid-template-columns:96px minmax(0,1fr) auto;grid-template-areas:"ava who stats";gap:0 var(--s5);align-items:center}
 .ava{grid-area:ava;width:96px;height:96px;border-radius:50%;border:1px solid var(--ink);background:var(--wash);display:grid;place-items:center;overflow:hidden;font:400 36px var(--mono);text-transform:uppercase;color:var(--ink);padding:0}
 .ava img{width:100%;height:100%;object-fit:cover;display:block}
 .ava.add{border-style:dashed;background:var(--paper)}
-.addphoto{width:100%;height:100%;border-radius:50%;display:grid;place-items:center;font:400 var(--fs-small) var(--mono);color:var(--ink);text-decoration:none}
+.addphoto{width:100%;height:100%;border-radius:50%;display:grid;place-items:center;padding:var(--s2);text-align:center;font:400 var(--fs-small)/1.3 var(--mono);color:var(--ink);text-decoration:none}   /* inside the circle, on two lines on a phone */
 .who{grid-area:who;min-width:0}
 .who h1{margin:0}
 .namerow{display:flex;gap:var(--s1) var(--s4);align-items:center;flex-wrap:wrap}
@@ -142,8 +142,11 @@ html:not(.recs-on) .recbtn{display:none}   /* Recommend: only once 0010 is there
 /* the watchlist and From friends: a row each, as On this shelf has them */
 .titles{list-style:none;margin:0;padding:0}
 .titles li{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:var(--s4);align-items:center;padding:var(--s2) 0;border-bottom:1px solid var(--hair)}
-.titles .tc{display:block;width:40px;aspect-ratio:2/3;border-radius:2px;overflow:hidden;background:var(--wash)}
-.titles .tc img{width:100%;height:100%;object-fit:cover;display:block}
+/* a title's small cover (a rec, From friends): paper with its title in small type under the picture, which is all there
+   is when it has no cover or the cover doesn't come; never a grey box */
+.titles .tc{position:relative;display:block;width:40px;aspect-ratio:2/3;border-radius:2px;overflow:hidden;background:var(--paper);outline:1px solid var(--hair);outline-offset:-1px}
+.titles .tc .tct{position:absolute;inset:var(--s1);font:400 8px/1.2 var(--mono);color:var(--grey);overflow:hidden;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
+.titles .tc img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .titles .tt{display:grid;min-width:0}
 .titles .tt b{font-weight:500;overflow-wrap:anywhere}
 .titles .tt b span{font-weight:400;color:var(--grey)}
@@ -167,7 +170,7 @@ html:not(.recs-on) .recbtn{display:none}   /* Recommend: only once 0010 is there
 .recs .rform{display:flex;gap:var(--s2);align-items:flex-end}
 .recs .rform textarea{flex:1;min-width:0;resize:vertical}
 .pmain .grey{margin:0}
-#panelA,#panelN,#viewShelf{margin-top:var(--s5)}
+#panelA,#panelN{margin-top:var(--s5)}   /* a shelf's own page (#viewShelf) starts where every page does, 24px under the bar */
 /* Activity: this person's lines (site.css draws them). Network: Following · Followers under the tabs, then the
    people, in the page */
 #acts:empty,#netPeople:empty{display:none}
@@ -203,16 +206,24 @@ html:not(.recs-on) .recbtn{display:none}   /* Recommend: only once 0010 is there
 .onshelf{max-width:680px;min-width:0}
 .spines{list-style:none;margin:0;padding:0}
 .sact{display:flex;align-items:center;gap:var(--s1) var(--s4)}
-/* the Shelves tab: each shelf's spines standing on a shelf line, its name under it */
-.snew{margin:var(--s5) 0 0}
-.slist{list-style:none;margin:var(--s5) 0 0;padding:0;display:grid;gap:var(--s5)}
-.slist a{display:block;text-decoration:none;color:var(--ink)}
-.slist .sline{display:flex;align-items:flex-end;gap:2px;height:64px;border-bottom:1px solid var(--ink);overflow:hidden}
+/* the Shelves tab: + New shelf, then each shelf a compact block: its spines at the feed's height standing on a shelf
+   line only as wide as they are (and a little), its name, then Main shelf or Private, how many spines, and when. Three
+   across on a wide window, two on a narrower one, one on a phone; yours end with a dashed slot to make another */
+.snew{margin:var(--s4) 0 0}
+.slist{list-style:none;margin:var(--s5) 0 0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s5)}
+@media (max-width:820px){ .slist{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width:640px){ .slist{grid-template-columns:minmax(0,1fr)} }
+.slist li{min-width:0}
+.slist a{display:block;text-decoration:none;color:var(--ink);min-width:0}
+.slist .sline{display:flex;align-items:flex-end;gap:2px;height:112px;width:max-content;min-width:48px;max-width:100%;padding-right:var(--s4);border-bottom:1px solid var(--ink);overflow:hidden}
 .slist .sline canvas{display:block;flex:none}
-.slist .sn{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s1) var(--s2);margin-top:var(--s2)}
-.slist .sn b{font-weight:500}
-.slist a:hover .sn b,.slist a:focus-visible .sn b{text-decoration:underline;text-underline-offset:3px}
-.slist .sn .grey{font-size:var(--fs-small)}
+.slist .sn{display:block;margin-top:var(--s2);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slist a:hover .sn,.slist a:focus-visible .sn{text-decoration:underline;text-underline-offset:3px}
+.slist .sm{display:flex;flex-wrap:wrap;align-items:center;gap:0 var(--s2);color:var(--grey);font-size:var(--fs-small)}
+.slist .sm .state{padding:0}
+.slist .sslot{display:flex;align-items:center;justify-content:center;gap:var(--s1);height:112px;border:1px dashed var(--grey);border-radius:var(--radius);color:var(--grey);font:600 var(--fs-btn)/1.35 var(--mono)}
+.slist .sslot svg{width:16px;height:16px}
+.slist a:hover .sslot,.slist a:focus-visible .sslot{color:var(--ink);border-color:var(--ink)}
 .sact [data-log]{margin-right:var(--s4)}   /* Log and + Add to my shelf: a press apart on a touch screen */
 .spines li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:var(--s4);align-items:center;padding:var(--s2) 0;border-bottom:1px solid var(--hair)}
 .spines .sthumb{display:grid;place-items:center;height:56px}
@@ -393,7 +404,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
         </div>
       </div>
       <div id="panelS" role="tabpanel" aria-labelledby="tabS" hidden>
-        <p class="snew" id="sNewRow" hidden><a class="dash" href="../build/?new">New shelf</a></p>
+        <p class="snew" id="sNewRow" hidden><a class="btn line" href="../build/?new"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>New shelf</a></p>
         <ol class="slist" id="sList"></ol>
         <p class="grey" id="sNone" hidden>No shelves yet.</p>
       </div>
@@ -498,7 +509,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../spinetip.js?v=20261004a"></script>
 <script src="../wear.js?v=20261016a"></script>
-<script src="../nav.js?v=20261018a"></script>
+<script src="../nav.js?v=20261019a"></script>
 <script>
 (() => {
 /* A profile: /u/?username, and its shelf on its own page: /u/?username&shelf (one shelf each), or a shelf by its id,
@@ -816,24 +827,30 @@ $('#bioMore').addEventListener('click', () => { $('#pbio').classList.add('open')
    standing on a shelf line with its name under it; pressing one opens its page ---------- */
 function paintShelfCount(){ $('#tabS').textContent = `Shelves (${view.shelves.length})`; }
 let shelvesRun = 0;
+const PLUS_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>';   // Lucide plus
 async function paintShelvesTab(){
   const run = ++shelvesRun, list = view.shelves.slice().sort((a, b) => new Date(savedAt(b)) - new Date(savedAt(a))), main = theShelf();
   $('#sNone').hidden = !!list.length;
   $('#sNewRow').hidden = !view.mine;   // your own: a new one, at the top
+  const slot = document.createElement('li');   // yours: one more, to make
+  slot.className = 'snewslot';
+  slot.innerHTML = `<a href="../build/?new" aria-label="New shelf"><span class="sslot">${PLUS_ICON}New shelf</span></a>`;
   $('#sList').replaceChildren(...list.map(s => {
     const li = document.createElement('li'); li.dataset.id = s.id;
     li.innerHTML = `<a href="${esc(pageUrl(view.profile.username, s.id))}"><span class="sline" aria-hidden="true"></span>
-      <span class="sn"><b>${esc(shelfName(s))}</b>${s === main ? ' <span class="tag">main</span>' : ''}${s.is_public ? '' : ' <span class="tag">private</span>'}<span class="grey">${esc(spines(countOf(s)))} · ${esc(fmtDate(s.updated_at))}</span></span></a>`;
+      <span class="sn">${esc(shelfName(s))}</span>
+      <span class="sm">${s === main ? '<span class="state">Main shelf</span><span aria-hidden="true">·</span>' : ''}${s.is_public ? '' : '<span class="state">Private</span><span aria-hidden="true">·</span>'}<span>${esc(spines(countOf(s)))}</span><span aria-hidden="true">·</span><span>${esc(fmtDate(s.updated_at))}</span></span></a>`;
     return li;
-  }));
+  }), ...(view.mine ? [slot] : []));
   if (!list.length) return;
   let rows = [];
   try { rows = await api(`shelf_items?select=${ITEM_COLS}&shelf_id=in.(${list.map(s => s.id).join(',')})&order=position`); } catch { return; }
   await fontsReady;
   for (const li of $('#sList').children){
+    if (!li.dataset.id) continue;   // the new shelf slot
     const mine = await books((rows || []).filter(r => r.shelf_id === li.dataset.id));
     if (run !== shelvesRun) return;
-    if (mine.length) li.querySelector('.sline').replaceChildren(...smallSpines(mine, 64).map(c => { c.setAttribute('aria-hidden', 'true'); return c; }));
+    if (mine.length) li.querySelector('.sline').replaceChildren(...smallSpines(mine, 112).map(c => { c.setAttribute('aria-hidden', 'true'); return c; }));
   }
 }
 
@@ -859,13 +876,15 @@ async function paintRecs(box){
   $('#rList').replaceChildren(...recRows.map((r, i) => recRow(r, i)));
 }
 const STATE = {open: 'Waiting', kept: 'Kept', watched: '', dismissed: 'Passed'};
+// a small cover that doesn't come: its paper and title stay
+document.addEventListener('error', e => { if (e.target && e.target.matches && e.target.matches('.titles .tc img')) e.target.remove(); }, true);
 function recRow(r, i){
   const li = document.createElement('li'); li.dataset.i = i;
   const sent = recBox === 'sent', who = `<a href="${esc(pageUrl(r.username))}">@${esc(r.username)}</a>`, done = r.kind === 'movie' ? 'Watched' : 'Read';
   const state = sent ? `<span class="rstate state">${r.status === 'watched' ? `${done} ${CHECK}` : esc(STATE[r.status] || '')}</span>`
     : (r.status === 'open' ? '<button class="dash sm" type="button" data-r="keep">Keep</button>' : '<span class="rstate state">Kept</span>')
       + `<button class="dash sm" type="button" data-r="log">${didIt(r)}</button><button class="dash sm" type="button" data-r="dismiss">Dismiss</button>`;
-  li.innerHTML = `<span class="tc">${r.cover_src ? `<img src="${esc(coverOf(r.cover_src))}" alt="" loading="lazy">` : ''}</span>
+  li.innerHTML = `<span class="tc"><span class="tct" aria-hidden="true">${esc(r.title)}</span>${r.cover_src ? `<img src="${esc(coverOf(r.cover_src))}" alt="" loading="lazy">` : ''}</span>
     <span class="tt"><b><a href="${esc(Nav.titleUrl(asItem(r)))}">${esc(r.title)}</a>${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${sent ? 'to' : 'from'} ${who} · ${esc(ago(r.created_at))}</span>${r.note ? `<p class="rnote">${esc(r.note)}</p>` : ''}</span>
     <span class="tacts">${state}<button class="dash sm" type="button" data-r="thread" aria-expanded="false">Reply${r.replies ? ` (${r.replies})` : ''}</button></span>
     <div class="rthread" hidden><ol class="rmsgs"></ol><form class="rform"><textarea maxlength="280" rows="1" aria-label="Reply to @${esc(r.username)}" placeholder="Reply to @${esc(r.username)}"></textarea><button class="btn primary sm" type="submit">Send</button></form></div>`;
@@ -954,7 +973,7 @@ const didIt = r => `Mark ${r.kind === 'movie' ? 'watched' : 'read'}`;
 // a title: its cover, its name and year, who made it, Film or Book (and whose log it came from), and its buttons
 function titleRow(r, i, acts, from){
   const li = document.createElement('li'); li.dataset.i = i;
-  li.innerHTML = `<span class="tc">${r.cover_src ? `<img src="${esc(coverOf(r.cover_src))}" alt="" loading="lazy">` : ''}</span>
+  li.innerHTML = `<span class="tc"><span class="tct" aria-hidden="true">${esc(r.title)}</span>${r.cover_src ? `<img src="${esc(coverOf(r.cover_src))}" alt="" loading="lazy">` : ''}</span>
     <span class="tt"><b><a href="${esc(Nav.titleUrl(asItem(r)))}">${esc(r.title)}</a>${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${esc([r.author, r.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · '))}${from ? ` · from <a href="${esc(pageUrl(from))}">@${esc(from)}</a>` : ''}</span></span>
     ${acts ? `<span class="tacts">${acts}</span>` : ''}`;
   return li;

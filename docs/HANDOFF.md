@@ -6,6 +6,30 @@ session"), again after the launch pass (see "Done in the second cloud session"),
 the design review was applied (see "Done in the third session"). Read this first, then `README.md`, which says what
 every file is and how the Worker, the accounts and the tests are set up.
 
+## Done on 5 October 2026 (design pass)
+
+No SQL, nothing for the Worker, shelf.js's drawing untouched. Each item its own commit.
+
+1. **+ New shelf is a button:** a third button look, `.btn.line` (black on white, a 1px line drawn inside with
+   box-shadow so the padding stays 8px 16px, the solid one's box), with its +, on the Shelves page, your Shelves tab,
+   the builder and + ADD's ▾. `look.spec.js` now allows three looks (solid, outlined, text) and no fourth.
+2. **The Shelves tab:** a grid (three across, two under 820px, one on a phone) of compact shelves: spines 112px (the
+   feed's height) on a line as wide as they are and 16px more, the name, then Main shelf / Private as grey states, the
+   count and date; 16px under the tabs, 24px to the first; yours end with a dashed "+ New shelf" slot.
+3. **The Filter row:** every filter 64px wide, 8px apart, the name on one line (… when long), PRO on its own line, 8px
+   of room at both ends. Tab rows and home's card row have room after their last item (the spine wall doesn't: it's
+   centred when it fits).
+4. **Feed shelf posts:** spines 112px, the line as wide as the spines and 16px more (48px at least, to press).
+5. **Search covers:** the small cover (Open Library medium, TMDB 185px) through the Worker; under it paper with the
+   title, which is what shows with no cover or one that fails. Live, Open Library covers took 3 s at the large size and
+   1.5 s at medium, which is why they looked like grey boxes.
+6. **Spacing:** a shelf's page and the post page start 24px under the bar like every page (were 48 and 26); "Add a
+   photo" centred inside its circle; title page sections 24px apart on a phone; recs and From friends with no cover
+   show paper and the title. `specs/fit.spec.js` checks every page and sheet at both widths.
+- **Tested:** `cd tests && npm run test:all`: html-validate clean, then Playwright 978 passed, 24 skipped, none failed.
+- `tests/shots.js` covers the Shelves tab, title, post, notifications, people, Style, search, + ADD's ▾ and the
+  Recommend sheet now, and takes `node shots.js [folder] [names]`; its Up next shot had been broken since the rename.
+
 ## Done on 5 October 2026 (ids, edits, one search)
 
 - **SQL, not run:** `docs/proposed-0011-ids-edits.sql` and its test `docs/proposed-rls_phase8.sql` (`ALL 0011 CHECKS

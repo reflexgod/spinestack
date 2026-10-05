@@ -42,6 +42,11 @@
 .navmenu a:hover,.navmenu button:hover,.navmenu a:focus-visible,.navmenu button:focus-visible{background:var(--wash,#F3F3F3);outline:0}
 .navmenu a[aria-current]{font-weight:700}
 .navmenu hr{border:0;border-top:1px solid var(--hair,#D9D9D9);margin:var(--s1,4px) 0}
+/* + New shelf, in the ▾ menu: the outlined button (site.css's .btn.line), across the menu */
+.navmenu a.mbtn{display:flex;align-items:center;justify-content:center;gap:var(--s1,4px);width:auto;margin:var(--s2,8px) var(--s4,16px);padding:var(--s2,8px) var(--s4,16px);box-shadow:inset 0 0 0 1px var(--ink,#000);border-radius:var(--radius,3px);
+  background:var(--paper,#fff);font:600 var(--fs-btn,11px)/1.35 var(--mono,monospace);letter-spacing:0}
+.navmenu a.mbtn:hover,.navmenu a.mbtn:focus-visible{background:var(--wash,#F3F3F3)}
+.navmenu a.mbtn svg{width:16px;height:16px;flex:none;margin:-1px 0}
 @media (pointer:coarse){ .navmenu a,.navmenu button{padding-top:var(--s4,16px);padding-bottom:var(--s4,16px)} }   /* 44px rows to press on a touch screen */`;
   document.head.appendChild(css);
 
@@ -128,7 +133,9 @@
     acctMenu.menu.addEventListener('click', e => { if (e.target.closest('a')) acctMenu.hide(false); });
     addMenu = makeMenu('addMenu', 'More ways to add', moreBtn, {placement: 'bottom-end'});
     const up = item('Upload a scan', ROOT + 'build/#upload'); up.dataset.upload = '';
-    addMenu.menu.append(item('New shelf', ROOT + 'build/?new'), up);
+    const fresh = item('New shelf', ROOT + 'build/?new'); fresh.className = 'mbtn';   // + New shelf: a button, so it reads as one
+    fresh.insertAdjacentHTML('afterbegin', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>');
+    addMenu.menu.append(fresh, up);
     // Upload a scan: on the builder it opens the file picker; from anywhere else the link goes to the builder's upload
     addMenu.menu.addEventListener('click', e => { addMenu.hide(false); if (on.upload && e.target.closest('[data-upload]')){ e.preventDefault(); on.upload(); } });
   }
@@ -343,7 +350,7 @@
   function loadSearch(){
     if (window.Search) return Promise.resolve(true);
     return searching = searching || new Promise(res => {
-      const s = document.createElement('script'); s.src = ROOT + 'search.js?v=20261018a';
+      const s = document.createElement('script'); s.src = ROOT + 'search.js?v=20261019a';
       s.onload = () => res(!!window.Search); s.onerror = () => { searching = null; s.remove(); res(false); };
       document.head.appendChild(s);
     });
