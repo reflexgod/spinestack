@@ -125,7 +125,7 @@ test('the composer is a box like a tweet\'s: your photo at its left, and it grow
   await expect(c).not.toHaveClass(/open/);
 });
 
-test('a shelf saved is a compact post: "@mira added 2 to shelf number 1" (the shelf by its name) and a strip of just those spines, 80px tall', async ({ page }) => {
+test('a shelf saved is a compact post: "@mira added 2 to shelf number 1" (the shelf by its name) and a strip of just those spines, 112px tall, on a line as wide as they are', async ({ page }) => {
   await page.clock.setFixedTime(NOW);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/feed/?everyone');
@@ -133,8 +133,12 @@ test('a shelf saved is a compact post: "@mira added 2 to shelf number 1" (the sh
   await expect(mira).toHaveCount(1);
   const strip = mira.locator('.strip canvas');
   await expect(strip).toHaveCount(2);   // Kids and Delta of Venus, not Orlando, which was there before
-  for (const c of await strip.all()) expect(Math.round((await c.boundingBox()).height)).toBeLessThanOrEqual(80);
-  expect(Math.max(...await strip.evaluateAll(cs => cs.map(c => Math.round(c.getBoundingClientRect().height))))).toBe(80);
+  for (const c of await strip.all()) expect(Math.round((await c.boundingBox()).height)).toBeLessThanOrEqual(112);
+  expect(Math.max(...await strip.evaluateAll(cs => cs.map(c => Math.round(c.getBoundingClientRect().height))))).toBe(112);
+  // the line: the spines, the 2px between them, and 16px more; not the post's width
+  const w = await mira.locator('.strip').evaluate(el => { const cs = [...el.querySelectorAll('canvas')]; return { line: el.getBoundingClientRect().width, spines: cs.reduce((a, c) => a + c.getBoundingClientRect().width, 0) + 2 * (cs.length - 1), post: el.closest('.pbody').getBoundingClientRect().width }; });
+  expect(Math.abs(w.line - (w.spines + 16))).toBeLessThanOrEqual(1);
+  expect(w.line).toBeLessThan(w.post / 2);
   // a save with nothing marked as new: its last five spines (this one has eight)
   const older = page.locator('#items .shelfpost').filter({ hasText: '@longusername_twenty1' }).first();
   await expect(older.locator('.pwhat')).toHaveText('started shelf number 2');
