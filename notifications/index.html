@@ -42,6 +42,7 @@
 .nlist .nl a:hover,.nlist .nl a:focus-visible{text-decoration:underline;text-underline-offset:3px}
 .nlist .unread .nl{font-weight:700}
 .nlist .ago{color:var(--grey);font-size:var(--fs-small);font-weight:400;white-space:nowrap}
+.nlist .ago a{color:inherit}
 .nlist .nt{grid-column:2;margin:0;color:var(--grey);white-space:pre-line;overflow-wrap:anywhere}
 #state{margin:var(--s5) 0 0}
 #more{margin-top:var(--s5)}
@@ -158,6 +159,17 @@ function grouped(rows){
   return out;
 }
 const ALONE = /^(reply|rec|rec_watched|rec_reply)$/;
+/* The logs and recs they're about, read once each (yours, so you can read them): their year, and with 0011 their id,
+   so a title goes to its own page (/t/), as every title on the site does. The time goes to the post, or to the rec */
+const about = new Map();
+async function readAbout(rows){
+  const want = k => [...new Set(rows.map(n => n[k]).filter(id => id && !about.has(id)))];
+  const logs = want('log'), recs = want('rec');
+  const got = await Promise.all([logs.length ? Posts.rest(`logs?select=*&id=in.(${logs.join(',')})`).catch(() => []) : [],
+    recs.length ? Posts.rest(`recs?select=*&id=in.(${recs.join(',')})`).catch(() => []) : []]);
+  for (const r of got.flat()) if (r && r.id) about.set(r.id, r);
+}
+const titleAt = (id, kind, title) => Nav.titleUrl(about.get(id) || {kind, title});
 const DOES = {like: 'liked your log of', reply: 'replied to your log of', metoo: 'said Same to your log of', follow: 'followed you'};
 // a rec (0010): it's on your profile's Recs tab, For you (one for you) or Sent (yours, watched)
 const recsAt = hash => me.profile ? `../u/?${encodeURIComponent(me.profile.username)}${hash}` : '../u/';
@@ -169,15 +181,18 @@ function line(g){
   const li = document.createElement('li'), first = g.who[0], post = g.log ? `../p/?${esc(g.log)}` : '';
   li.className = g.unread ? 'unread' : '';
   const ava = first.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(first.avatar_key)}`)}" alt="" loading="lazy">` : esc(((first.display_name || '').trim() || first.username || '·').trim()[0] || '·');
-  const rt = `${esc(g.rec_title || 'a title')}`;
-  const what = g.kind === 'rec' ? `recommended <a href="${esc(recsAt('#recs'))}">${rt}</a> to you`
-    : g.kind === 'rec_watched' ? `${g.rec_kind === 'movie' ? 'watched' : 'read'} <a href="${esc(recsAt('#sent'))}">${rt}</a>, your rec`
-    : g.kind === 'rec_reply' ? `replied about <a href="${esc(recsAt('#recs'))}">${rt}</a>`
+  const rt = `<a href="${esc(titleAt(g.rec, g.rec_kind, g.rec_title))}">${esc(g.rec_title || 'a title')}</a>`, lt = fallback => `<a href="${esc(titleAt(g.log, g.log_kind, g.log_title))}">${esc(g.log_title || fallback)}</a>`;
+  const what = g.kind === 'rec' ? `recommended ${rt} to you`
+    : g.kind === 'rec_watched' ? `${g.rec_kind === 'movie' ? 'watched' : 'read'} ${rt}, your rec`
+    : g.kind === 'rec_reply' ? `replied about ${rt}`
     : g.kind === 'follow' ? DOES.follow
-    : g.kind === 'metoo' ? `${DOES.metoo} <a href="${post}">${esc(g.log_title || 'it')}</a>`
-    : `${DOES[g.kind]} <a href="${post}">${esc(g.log_title || 'a log')}</a>`;
+    : g.kind === 'metoo' ? `${DOES.metoo} ${lt('it')}`
+    : `${DOES[g.kind]} ${lt('a log')}`;
+  // the time: to the post (a like, a reply, a me-too), or to the rec on your profile's Recs tab
+  const to = post || (g.kind === 'rec_watched' ? recsAt('#sent') : /^rec/.test(g.kind) ? recsAt('#recs') : '');
+  const time = `<time datetime="${esc(g.at)}" title="${esc(new Date(g.at).toLocaleString())}">${Posts.ago(g.at)}</time>`;
   li.innerHTML = `<a class="fa" href="../u/?${esc(first.username)}" tabindex="-1" aria-hidden="true">${ava}</a>
-    <p class="nl">${names(g.who)} ${what} <span class="ago">· <time datetime="${esc(g.at)}" title="${esc(new Date(g.at).toLocaleString())}">${Posts.ago(g.at)}</time></span></p>
+    <p class="nl">${names(g.who)} ${what} <span class="ago">· ${to ? `<a href="${esc(to)}">${time}</a>` : time}</span></p>
     ${(g.kind === 'reply' || g.kind === 'rec_reply') && g.reply_text ? `<p class="nt">${esc(g.reply_text)}</p>` : ''}`;
   return li;
 }
@@ -187,6 +202,7 @@ async function more(){
   try { rows = await Posts.rpc('notifications_list', {before: notes.last ? notes.last.at : null, before_id: notes.last ? notes.last.id : null, n: PAGE}); }
   catch (e){ btn.disabled = false; $('#state').textContent = friendly(e); $('#state').hidden = false; return; }
   btn.disabled = false;
+  await readAbout(rows);
   notes.rows.push(...rows);
   const end = rows[rows.length - 1]; if (end) notes.last = {at: end.created_at, id: end.id};
   $('#nlist').replaceChildren(...grouped(notes.rows).map(line));

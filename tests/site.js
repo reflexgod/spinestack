@@ -246,6 +246,8 @@ function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, 
     if (!recs) return NO_TABLE;
     if (method === 'POST' && what === 'rec_replies') return [{ id: 'cececece-cece-4ece-8ece-000000000099', created_at: new Date().toISOString(), owner: ME.id, ...body }];
     if (method === 'POST') return [{ id: recId(99), created_at: new Date().toISOString(), sender: ME.id, status: 'open', ...body }];
+    // recs by id (the notifications page reads the ones it names): the two of them can
+    if (method === 'GET' && what === 'recs' && (q.get('id') || '').startsWith('in.(')){ const want = q.get('id').slice(4, -1).split(','); return [...RECS_FOR, ...RECS_SENT].filter(r => want.includes(r.id)); }
     return method === 'GET' ? [] : null;
   }
   if (/^rpc\/(rec_stats|mutuals|recs_list|rec_keep|rec_thread|feed_recs|timeline)$/.test(what)){
@@ -288,6 +290,7 @@ function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, 
     return l ? [{ ...withIds(l), ...(STATS[l.id] || {}), ...body, ...(edit ? { edited_at: new Date().toISOString() } : {}) }] : [];
   }
   if (what === 'shelf_items' && method === 'PATCH') return ids ? [] : { __status: 403, body: { code: '42501', message: 'permission denied for table shelf_items' } };
+  if (what === 'logs' && method === 'GET' && (q.get('id') || '').startsWith('in.(')){ const want = q.get('id').slice(4, -1).split(','); return LOGS_NOW.filter(l => want.includes(l.id)); }   // logs by id (the notifications page)
   if (what === 'logs' && method === 'GET' && q.get('id')){   // one log by its id (a post's own page)
     const l = LOGS_NOW.find(x => x.id === eq('id'));
     if (l) return [l];
