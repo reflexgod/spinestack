@@ -1,8 +1,9 @@
 // A title's page (/t/): /t/?film=<TMDB id> or /t/?book=<Open Library work id>, or a log's or a spine's kind, title and
-// year (the page finds the id). The cover (worn when you've logged it), what it is (the Worker's /title), how people
-// rated it (the average in spines, a histogram of the ten halves, watched by N · M friends), the panel (Log, Put on
-// shelf, Add to Up next, Recommend, Share, or how each stands), On shelves (people you follow first, 12 faces), and the
-// reviews: Friends · Popular · Recent, with Your review at the top until you've logged it.
+// year (the page finds the id). Shelf first: its spine (when the archive has one) and its cover (worn when you've
+// logged it) on a short shelf line, what it is beside them, and one row of actions under them (Log, Put on shelf, Add
+// to Up next, Recommend, Share, or how each stands); how people rated it (the average in spines, a pile of books for
+// each rating from one spine to five, "N watched it · M friends have this"), On N shelves (people you follow first, 12
+// faces), and What people said: From friends · Most liked · Newest, with Your take at the top until you've logged it.
 const { test, expect } = require('@playwright/test');
 const { ME, LOGS, SB_URL, CORS, TITLE_INFO, mockNetwork, watchErrors, open } = require('../site');
 
@@ -15,7 +16,7 @@ test('a film by its TMDB id: what it is, how it was rated, who watched it, the p
   await open(page, '/t/?film=106');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Gummo 1997');
   await expect(page).toHaveTitle('Gummo (1997) · shelfstackd');
-  await expect(page.locator('#tBy')).toHaveText('Directed by Harmony Korine · 89 min');
+  await expect(page.locator('#tBy')).toHaveText('dir. Harmony Korine · 89 min');
   await expect(page.locator('#tGenres')).toHaveText('Drama');
   await expect(page.locator('#tAbout')).toHaveText(TITLE_INFO[0].overview);
   await expect(page.locator('#tSpine')).toBeHidden();   // none in the archive
@@ -23,15 +24,27 @@ test('a film by its TMDB id: what it is, how it was rated, who watched it, the p
   const cover = page.locator('#tCover img.clean');
   await expect(cover).toHaveAttribute('alt', 'The cover of Gummo (1997)');
   await expect(page.locator('#tCover canvas.worn')).toHaveCount(0);
-  // @mira gave it 4.5 spines; the histogram has ten halves, the ninth filled; you follow her
+  // @mira gave it 4.5 spines: five piles, one spine to five, a half counting up, so the five-spine pile has her; you
+  // follow her
   await expect(page.locator('#tAvg [role=img]')).toHaveAttribute('aria-label', '4.5 of 5');
   await expect(page.locator('#tAvg .grey')).toHaveText('4.5 of 5 · 1 rating');
-  await expect(page.locator('#tHist li')).toHaveCount(10);
-  expect(await page.locator('#tHist li').evaluateAll(ls => ls.map(l => l.dataset.n))).toEqual(['0', '0', '0', '0', '0', '0', '0', '0', '1', '0']);
-  await expect(page.locator('#tWho')).toHaveText('watched by 1 · 1 friend');
-  // the panel: Log first and solid; your shelf has it already; Up next; Share
+  await expect(page.locator('#tHist li')).toHaveCount(5);
+  expect(await page.locator('#tHist li').evaluateAll(ls => ls.map(l => l.dataset.n))).toEqual(['0', '0', '0', '0', '1']);
+  await expect(page.locator('#tHist li').nth(4).locator('.pile i')).toHaveCount(10);   // the most given: ten books high
+  await expect(page.locator('#tHist li').nth(0).locator('.pile i')).toHaveCount(0);
+  await expect(page.locator('#tHist li .rating')).toHaveCount(5);   // under each pile, its rating in spines
+  await expect(page.locator('#tWho')).toHaveText('1 watched it · 1 friend has this');
+  // shelf first: the cover standing on a short line at the top, what it is beside it, the actions in one row under them
+  const shelf = await page.locator('#tShelf').boundingBox(), info = await page.locator('.tinfo').boundingBox(), row = await panel(page).boundingBox();
+  expect(info.x).toBeGreaterThanOrEqual(shelf.x + shelf.width);
+  expect(row.y).toBeGreaterThanOrEqual(shelf.y + shelf.height - 1);
+  expect(await page.locator('#tShelf').evaluate(e => getComputedStyle(e).borderBottomWidth)).toBe('1px');
+  // the panel: Log first and solid; your shelf has it already; Up next; Share (its icon), all on one line
   const p = panel(page);
-  await expect(p.locator(':scope > *')).toHaveText(['Log', 'On your shelf', 'Add to Up next', 'Share']);
+  await expect(p.locator(':scope > *')).toHaveText(['Log', 'On your shelf', 'Add to Up next', '']);
+  await expect(p.getByRole('button', { name: 'Share' })).toBeVisible();
+  const tops = await p.locator(':scope > *').evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().top)));
+  expect(new Set(tops).size).toBe(1);
   expect(await p.getByRole('button', { name: 'Log' }).evaluate(b => getComputedStyle(b).backgroundColor)).toBe('rgb(0, 0, 0)');
   expect(await p.locator('.state').evaluate(s => getComputedStyle(s).color)).toBe('rgb(107, 107, 107)');
   expect(errors).toEqual([]);
@@ -53,7 +66,7 @@ test('the panel: Log opens + ADD\'s Log it on this title; Add to Up next puts it
   await p.getByRole('button', { name: 'Share' }).click();
   await expect(p.getByRole('menuitem')).toHaveText(['Copy link', 'Share to WhatsApp']);
   await p.getByRole('menuitem', { name: 'Copy link' }).click();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/\/t\/\?film=106&title=Gummo&year=1997$/);
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('https://api.shelfstackd.com/s/t/film/106');   // the share link: a preview with its cover
 });
 
 test('a link from a log (kind, title, year) takes the id\'s address; with no Worker it goes on with what the link says', async ({ page }) => {
@@ -78,7 +91,7 @@ test('a book: by and pages, its real spine from the archive; a title you logged 
   await expect(page.locator('#tBy')).toHaveText('by Virginia Woolf · 297 pages');
   await expect(page.locator('#tSpine img')).toHaveAttribute('src', /\/archive\/img\?id=0123456789abcdef0123456789abcdef$/);
   await expect(page.locator('#tSpine img')).toHaveAttribute('alt', 'The spine of The Waves (1931)');
-  await expect(page.locator('#tWho')).toHaveText('read by 1 · 1 friend');
+  await expect(page.locator('#tWho')).toHaveText('1 read it · 1 friend has this');
   // Just Kids: you read it
   await open(page, '/t/?book=OL5W');
   await expect(page.locator('#tCover canvas.worn')).toHaveCount(1);
@@ -95,19 +108,21 @@ test('On shelves: the people whose shelves have it, people you follow first, eac
   await mockNetwork(page, { signedIn: true, social: true });
   await open(page, '/t/?film=106');
   const faces = page.locator('#onList a');
-  await expect(page.locator('#onH')).toHaveText(/^On shelves \(\d+\)$/);
+  await expect(page.locator('#onH')).toHaveText(/^On \d+ shel(f|ves)$/);
   await expect(faces.first()).toHaveAttribute('aria-label', /^@mira: /);   // you follow @mira
   await expect(faces.first()).toHaveAttribute('href', /^\.\.\/u\/\?mira&shelf=/);
   expect(await faces.evaluateAll(as => as.some(a => a.getAttribute('aria-label').startsWith('@tester')))).toBe(false);
   expect(await faces.count()).toBeLessThanOrEqual(12);
 });
 
-test('reviews: Friends · Popular · Recent; each a post, a press to its page', async ({ page }) => {
+test('What people said: From friends · Most liked · Newest; each a post, a press to its page', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true, social: true });
   await open(page, '/t/?film=106');
-  const tabs = page.getByRole('tablist', { name: 'Reviews' }).getByRole('tab');
-  await expect(tabs).toHaveText(['Friends', 'Popular', 'Recent']);
+  await expect(page.locator('#revH')).toHaveText('What people said');
+  await expect(page.locator('#yours > .lbl')).toHaveText('Your take');
+  const tabs = page.getByRole('tablist', { name: 'What people said' }).getByRole('tab');
+  await expect(tabs).toHaveText(['From friends', 'Most liked', 'Newest']);
   await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');   // someone you follow reviewed it
   const post = page.locator('#revList .post');
   await expect(post).toHaveCount(1);
@@ -122,18 +137,18 @@ test('reviews: Friends · Popular · Recent; each a post, a press to its page', 
   expect(errors).toEqual([]);
 });
 
-test('signed out: no Friends tab, no Your review; the panel signs you in first', async ({ page }) => {
+test('signed out: no From friends tab, no Your take; the panel signs you in first', async ({ page }) => {
   await mockNetwork(page, { social: true });
   await open(page, '/t/?film=106');
-  await expect(page.getByRole('tab', { name: 'Friends' })).toBeHidden();
-  await expect(page.getByRole('tab', { name: 'Popular' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: 'From friends' })).toBeHidden();
+  await expect(page.getByRole('tab', { name: 'Most liked' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('#yours')).toBeHidden();
-  await expect(page.locator('#tWho')).toHaveText('watched by 1');
+  await expect(page.locator('#tWho')).toHaveText('1 watched it');
   await panel(page).getByRole('button', { name: 'Log' }).click();
   await expect(page.locator('#signSheet')).toBeVisible();
 });
 
-test('Your review: one press on the spines rates it, then the review and Post show; Post logs it', async ({ page }) => {
+test('Your take: one press on the spines rates it, then the review and Post show; Post logs it', async ({ page }) => {
   await mockNetwork(page, { signedIn: true, social: true });
   await open(page, '/t/?film=106');
   const yours = page.locator('#yours');
@@ -204,7 +219,7 @@ test('Gummo at its live address: On your shelf, On shelves and the reviews, from
   await expect(panel(page).getByRole('button', { name: 'Put on shelf' })).toHaveCount(0);
   await expect(page.locator('#onSec')).toBeVisible();
   await expect(page.locator('#onList a').first()).toHaveAttribute('aria-label', /^@mira: /);
-  await expect(page.locator('#tWho')).toHaveText('watched by 1 · 1 friend');
+  await expect(page.locator('#tWho')).toHaveText('1 watched it · 1 friend has this');
   await expect(page.locator('#revList .post')).toHaveCount(1);
   expect(asked.some(s => s.includes('profiles!logs_owner_fkey('))).toBe(true);
   expect(asked.some(s => s.includes('profiles!shelves_owner_fkey('))).toBe(true);
@@ -224,6 +239,6 @@ test('a slow Worker: the title, cover and your status at once; the details when 
   await expect(page.locator('#tCover img.clean')).toBeVisible();   // the cover from @mira's log
   await expect(page.locator('#tBy')).toBeHidden();
   answer();
-  await expect(page.locator('#tBy')).toHaveText('Directed by Harmony Korine · 89 min');
+  await expect(page.locator('#tBy')).toHaveText('dir. Harmony Korine · 89 min');
   await expect(page.locator('#tAbout')).toHaveText(TITLE_INFO[0].overview);
 });

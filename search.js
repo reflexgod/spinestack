@@ -39,7 +39,9 @@ css.textContent = `
 .srch .sr .cv{position:relative;width:40px;height:60px;flex:none;display:block;overflow:hidden;background:var(--paper,#fff);outline:1px solid var(--hair,#D9D9D9);outline-offset:-1px}
 /* a cover's place: paper with the title in small type, under the picture while it comes, and all there is with none */
 .srch .sr .cv .cvt{position:absolute;inset:var(--s1,4px);font:400 8px/1.2 var(--mono,monospace);color:var(--grey,#6B6B6B);overflow:hidden;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
-.srch .sr .cv img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.srch .sr .cv img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .15s}
+.srch .sr .cv img.in{opacity:1}   /* the paper and its title until the whole cover has come, never half a picture */
+@media (prefers-reduced-motion:reduce){ .srch .sr .cv img{transition:none} }
 .srch .sr .av{width:32px;height:32px;flex:none;border-radius:50%;border:1px solid var(--ink,#000);background:var(--wash,#F3F3F3);overflow:hidden;display:grid;place-items:center;text-transform:uppercase;font-size:var(--fs-small,11px)}
 .srch .sr .av img{width:100%;height:100%;object-fit:cover;display:block}
 .srch .sr .tx{min-width:0;display:grid}
@@ -110,7 +112,7 @@ const avaHtml = p => p.avatar_key ? `<img src="${esc(`${worker()}/m/img?k=${enco
 const small = u => String(u || '').replace(/^(https:\/\/covers\.openlibrary\.org\/b\/id\/\d+)-L\.jpg$/, '$1-M.jpg').replace(/^(https:\/\/image\.tmdb\.org\/t\/p\/)w500\//, '$1w185/');
 const titleRow = m => {
   const cover = m.cover ? `${worker()}/img?url=${encodeURIComponent(small(m.cover))}` : '', what = [m.year, m.creator].filter(Boolean).join(' · ');
-  return `<li><a class="sr" href="${esc(window.Nav && Nav.titleUrl ? Nav.titleUrl(m) : ROOT + 't/')}"><span class="cv" aria-hidden="true"><span class="cvt">${esc(m.title)}</span>${cover ? `<img src="${esc(cover)}" alt="" loading="lazy">` : ''}</span><span class="tx"><b>${esc(m.title)}</b>${what ? `<span>${esc(what)}</span>` : ''}</span></a></li>`;
+  return `<li><a class="sr" href="${esc(window.Nav && Nav.titleUrl ? Nav.titleUrl(m) : ROOT + 't/')}"><span class="cv" aria-hidden="true"><span class="cvt">${esc(m.title)}</span>${cover ? `<img src="${esc(cover)}" alt="" width="40" height="60" decoding="async">` : ''}</span><span class="tx"><b>${esc(m.title)}</b>${what ? `<span>${esc(what)}</span>` : ''}</span></a></li>`;
 };
 const personRow = p => {
   const name = (p.display_name || '').trim();
@@ -190,6 +192,7 @@ box.addEventListener('keydown', e => {
   rows[Math.max(0, Math.min(rows.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)))].focus();
 });
 // a cover that doesn't come: its paper and title stay
+res.addEventListener('load', e => { if (e.target && e.target.matches && e.target.matches('.cv img')) e.target.classList.add('in'); }, true);
 res.addEventListener('error', e => { if (e.target && e.target.matches && e.target.matches('.cv img')) e.target.remove(); }, true);
 box.addEventListener('click', e => {
   if (e.target === box || e.target.closest('[data-shut]')){ shut(); return; }

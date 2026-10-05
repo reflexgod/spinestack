@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>About · shelfstackd</title>
+<meta name="description" content="What shelfstackd is: a shelf of the films and books you love, with their real spines, and who made it.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<meta name="theme-color" content="#FFFFFF">
+<meta property="og:site_name" content="shelfstackd">
+<meta property="og:type" content="website">
+<meta property="og:title" content="About · shelfstackd">
+<meta property="og:description" content="What shelfstackd is: a shelf of the films and books you love, with their real spines, and who made it.">
+<meta property="og:url" content="https://shelfstackd.com/about/">
+<meta property="og:image" content="https://shelfstackd.com/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="shelfstackd: a white hedgehog with four coloured quills, on dark grey.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://shelfstackd.com/og.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap">
+<link rel="stylesheet" href="../site.css?v=20261020a">
+<style>
+/* a page to read, as privacy.html is: the shared column, the text kept to a comfortable width in it */
+body{line-height:1.65}
+main > *{max-width:680px}
+.ptop{display:flex;justify-content:space-between;align-items:center;gap:var(--s4);max-width:none;margin-bottom:var(--s6)}
+.ptop a{text-decoration:none;font-size:var(--fs-nav);font-weight:500;letter-spacing:var(--track);text-transform:uppercase}
+.ptop .r{display:flex;gap:var(--s5)}
+@media (pointer:coarse){ .ptop a{position:relative} .ptop a::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))} }   /* 44 x 44px to press (see site.css) */
+h1{margin-bottom:var(--s5)}
+h2{margin-top:var(--s6)}
+/* what it is: five short lines, one under the other */
+.what{list-style:none;margin:0;padding:0;display:grid;gap:var(--s2)}
+.what li{margin:0}
+.made{display:flex;align-items:center;gap:var(--s4)}
+.made img{width:40px;height:40px;flex:none;display:block}
+.made p{margin:0}
+.tmdb{display:block;height:14px;width:auto;margin:0 0 var(--s2)}
+</style>
+</head>
+<body>
+<main>
+  <div class="ptop"><a href="../">shelfstackd</a><span class="r"><a href="../feed/">Feed</a><a href="../build/">Make a shelf</a></span></div>
+  <h1>About shelfstackd</h1>
+  <ul class="what">
+    <li>shelfstackd is a shelf for the films and books you love.</li>
+    <li>Type a title and it finds the real spine, from a DVD case or a book.</li>
+    <li>Your shelf goes on your profile, and out to your story in one press.</li>
+    <li>Log what you watch and read; its cover wears a little with time, as yours would.</li>
+    <li>Follow your friends, and send them something for their Up next.</li>
+  </ul>
+
+  <h2>Who made it</h2>
+  <div class="made">
+    <img src="../assets/logo-hedgehog.svg" alt="" width="40" height="40">
+    <p>Made by Viraaj (<a href="../u/?viraaj">@viraaj</a>) in 2026. Say hello: <a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a></p>
+  </div>
+
+  <h2 id="credits">Credits</h2>
+  <img class="tmdb" src="../tmdb.svg" alt="TMDB" width="108" height="14">
+  <p>Film data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+  <p>Book data from <a href="https://openlibrary.org/" target="_blank" rel="noopener">Open Library</a>. <a href="https://search.brave.com/" target="_blank" rel="noopener">Search by Brave</a>.</p>
+</main>
+
+<footer>
+  <p class="fnav"><a href="./" aria-current="page">About</a><span aria-hidden="true">·</span><a href="../privacy.html">Privacy</a><span aria-hidden="true">·</span><a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a></p>
+</footer>
+</body>
+</html>

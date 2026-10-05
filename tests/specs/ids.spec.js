@@ -17,9 +17,9 @@ test('the title page matches by id first: two spellings of one film are one, and
   // the logs asked for: TMDB's 106, or no id and Gummo (1997)
   const or = new URL((await asked).url()).searchParams.get('or');
   expect(or).toBe('(tmdb_id.eq.106,and(tmdb_id.is.null,title.ilike."gummo",year.eq.1997))');
-  // @mira's "Gummo" (1997) and @longusername_twenty1's "gummo." (1998), both 106: watched by 2
-  await expect(page.locator('#tWho')).toHaveText('watched by 2 · 1 friend');
-  await page.getByRole('tab', { name: 'Recent' }).click();
+  // @mira's "Gummo" (1997) and @longusername_twenty1's "gummo." (1998), both 106: 2 watched it
+  await expect(page.locator('#tWho')).toHaveText('2 watched it · 1 friend has this');
+  await page.getByRole('tab', { name: 'Newest' }).click();
   await expect(page.locator('#revList .post')).toHaveCount(2);
   await expect(page.locator('#revList .post .pwho span')).toHaveText(['@mira', '@longusername_twenty1']);
   // the spines are from before ids: found by title and year, and the made-up account's own is one of them
@@ -34,7 +34,7 @@ test('without 0011 the same page asks by title and year only, and the other spel
   await open(page, '/t/?film=106&title=Gummo&year=1997');
   expect(new URL((await asked).url()).searchParams.get('or')).toBe('(and(title.ilike."gummo",year.eq.1997))');
   expect(new URL((await asked).url()).searchParams.get('select')).not.toContain('tmdb_id');
-  await expect(page.locator('#tWho')).toHaveText('watched by 1 · 1 friend');
+  await expect(page.locator('#tWho')).toHaveText('1 watched it · 1 friend has this');
 });
 
 test('a new log, Up next and a rec keep the id the Worker found', async ({ page }) => {

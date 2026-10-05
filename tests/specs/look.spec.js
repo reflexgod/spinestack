@@ -97,29 +97,21 @@ test('shelves listed: six across the column at 145px, 16px apart (three on a pho
   expect(sideways).toBeLessThanOrEqual(0);
 });
 
-test('profile: the name, the numbers and their labels, and the tabs', async ({ page }) => {
+test('profile: the name, the numbers as one plain line under the bio, and the tabs', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?mira');
   expect(await css(page.locator('#name'), 'fontSize', 'fontWeight')).toEqual({ fontSize: '22px', fontWeight: '400' });
-  const counts = page.locator('#counts'), stats = page.locator('.stats');
-  if (isPhone()) {
-    // a phone: one small line under the name and @username, over the buttons; no band of three big numbers
-    await expect(stats).toBeHidden();
-    await expect(counts).toHaveText('2 spines · 1 following · 2 followers');
-    expect(await css(counts, 'fontSize', 'color', 'borderTopWidth', 'borderBottomWidth')).toEqual({ fontSize: '12px', color: 'rgb(107, 107, 107)', borderTopWidth: '0px', borderBottomWidth: '0px' });
-    const line = await box(counts), handle = await page.locator('#handle').boundingBox(), btns = await page.locator('.pbtns').boundingBox();
-    expect(line.height).toBeLessThan(24);                                      // one line (the band was 80px)
-    expect(Math.abs(line.left - handle.x)).toBeLessThanOrEqual(1);
-    expect((await counts.boundingBox()).y).toBeGreaterThanOrEqual(handle.y + handle.height - 1);
-    expect(btns.y).toBeGreaterThan((await counts.boundingBox()).y + line.height);
-    await expect(page.locator('#statCol')).toBeHidden();                        // nothing left in the band's place
-  } else {
-    await expect(counts).toBeHidden();
-    await expect(stats).toBeVisible();
-  }
-  expect(await css(page.locator('#nSpines'), 'fontSize', 'fontWeight')).toEqual({ fontSize: '20px', fontWeight: '700' });
-  expect(await css(page.locator('.stats dt').first(), 'fontSize', 'textTransform', 'color')).toEqual({ fontSize: '10px', textTransform: 'uppercase', color: 'rgb(107, 107, 107)' });
-  expect((await css(page.locator('.stats div').nth(1), 'borderLeftWidth')).borderLeftWidth).toBe('1px');   // a thin line between the numbers (a wide window)
+  // at every width: one small line under the bio, over the buttons; no row of big numbers with capital labels
+  const counts = page.locator('#counts');
+  await expect(counts).toHaveText('2 spines · 1 following · 2 followers');
+  expect(await css(counts, 'fontSize', 'color', 'borderTopWidth', 'borderBottomWidth')).toEqual({ fontSize: '12px', color: 'rgb(107, 107, 107)', borderTopWidth: '0px', borderBottomWidth: '0px' });
+  const one = await box(counts), bio = await page.locator('#pbio').boundingBox(), btns = await page.locator('.pbtns').boundingBox();
+  expect(one.height).toBeLessThan(24);                                      // one line
+  expect(Math.abs(one.left - bio.x)).toBeLessThanOrEqual(1);
+  expect((await counts.boundingBox()).y).toBeGreaterThanOrEqual(bio.y + bio.height - 1);
+  expect(btns.y).toBeGreaterThan((await counts.boundingBox()).y + one.height);
+  await expect(page.locator('.stats, #statCol, dl')).toHaveCount(0);
+  expect(await page.locator('#pcard').evaluate(e => [...e.querySelectorAll('*')].filter(x => getComputedStyle(x).textTransform === 'uppercase' && x.offsetParent && /\S/.test(x.textContent) && !x.closest('.tag')).length)).toBe(0);
   expect(await css(page.locator('#tabP'), 'fontSize', 'textTransform', 'color', 'borderBottomWidth', 'borderBottomColor')).toEqual({ fontSize: '13px', textTransform: 'none', color: 'rgb(0, 0, 0)', borderBottomWidth: '1px', borderBottomColor: 'rgb(0, 0, 0)' });
   expect((await css(page.locator('#tabA'), 'color')).color).toBe('rgb(107, 107, 107)');
   // its shelf: no panel, standing on a 1px black shelf line across the column (as home's spine wall)

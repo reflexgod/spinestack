@@ -195,7 +195,7 @@ for (const [whose, at] of [['someone\'s public shelf', `/u/?mira&shelf=${theirs.
     // Copy link
     await shareMenu(page).getByRole('menuitem', { name: 'Copy link' }).click();
     await expect(shareMenu(page)).toBeHidden();
-    await expect(page.locator('#toast')).toHaveText(new RegExp('Link copied\\.|' + at.replace(/[?]/g, '\\?')));
+    await expect(page.locator('#toast')).toHaveText(/^Link copied\.$|^https:\/\/api\.shelfstackd\.com\/s\/u\/(mira|tester)\/aaaaaaaa-/);   // the share link (a preview with the shelf's picture)
     // Download image: the whole story, 1080 x 1920
     await share.click();
     let download = page.waitForEvent('download');
@@ -220,7 +220,7 @@ for (const [whose, at] of [['someone\'s public shelf', `/u/?mira&shelf=${theirs.
   });
 }
 
-test('on a phone with a share sheet, Share to story hands the picture to it', async ({ page }) => {
+test('on a phone with a share sheet, Share to story shows the picture with Share, which hands it to the share sheet', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, `/u/?mira&shelf=${theirs.id}`);
   await expect(page.locator('#oneItems li')).toHaveCount(2);
@@ -239,8 +239,14 @@ test('on a phone with a share sheet, Share to story hands the picture to it', as
   await expect(shareMenu(page)).toBeVisible();
   await shareMenu(page).getByRole('menuitem', { name: 'Share to story' }).click();
   await expect(page.locator('#toast')).toHaveText(/^Making the picture…$|^$/);
-  // the page says it's making the picture (a browser can take a few seconds over a PNG this size), then the picture
-  // goes to the share sheet: nothing is saved, and the line is taken away
+  // the page says it's making the picture (a browser can take a few seconds over a PNG this size), then shows it on a
+  // sheet with Share: that press is the share sheet's own (a phone lets a page share only straight from a press), and
+  // nothing is saved
+  const sheet = page.locator('#storySheet');
+  await expect(sheet).toBeVisible({ timeout: 20000 });
+  await expect(sheet.locator('img.storypic')).toBeVisible();
+  await expect(sheet.getByRole('button', { name: 'Share' })).toBeFocused();
+  await sheet.getByRole('button', { name: 'Share' }).click();
   await expect.poll(() => page.evaluate(() => window.__shared), { timeout: 20000 }).toEqual([['shelfstackd-story.png image/png true']]);
   await expect(page.locator('#toast')).toBeHidden();
   expect(downloads).toBe(0);

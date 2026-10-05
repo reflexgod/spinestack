@@ -1,21 +1,21 @@
-// A profile's tabs (/u/?name): Profile · Activity · Watchlist · Network. Profile has their shelf on a shelf line, then
-// a strip of the watchlist and (on your own) From friends; Activity a line for each shelf saved and each film or book
-// logged; Watchlist its covers (specs/watchlist.spec.js); Network Following · Followers.
+// A profile's tabs (/u/?name): Profile · Posts · Up next · Shelves · People. Profile has their shelf on a shelf line, then
+// a strip of the watchlist and (on your own) From friends; Posts a line for each shelf saved and each film or book
+// logged; Up next its covers (specs/watchlist.spec.js); People Following · Followers.
 const { test, expect } = require('@playwright/test');
 const { SHELVES, PEOPLE, ME, LOGS, WATCHLIST, SB_URL, CORS, mockNetwork, watchErrors, open } = require('../site');
 
 const NOW = new Date('2026-09-30T14:00:00Z');   // two hours after the newest made-up shelf was saved
 const tabs = page => page.getByRole('tablist', { name: 'Profile' }).getByRole('tab');
 const selected = (page, name) => expect(page.getByRole('tablist', { name: 'Profile' }).getByRole('tab', { name, exact: true })).toHaveAttribute('aria-selected', 'true');
-const followList = (page, kind) => page.waitForRequest(r => r.url().includes('/rpc/follow_list') && r.postDataJSON().kind === kind);   // the Network tab's list (the page asks for the followers once by itself, for "Followed by")
+const followList = (page, kind) => page.waitForRequest(r => r.url().includes('/rpc/follow_list') && r.postDataJSON().kind === kind);   // the People tab's list (the page asks for the followers once by itself, for "Followed by")
 
-test('the tabs are Profile · Activity · Up next · Shelves (N) · Network, each with its own address, kept on reload', async ({ page }) => {
+test('the tabs are Profile · Posts · Up next · Shelves (N) · People, each with its own address, kept on reload', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?mira');
-  await expect(tabs(page)).toHaveText(['Profile', 'Activity', 'Up next', 'Shelves (6)', 'Network']);
+  await expect(tabs(page)).toHaveText(['Profile', 'Posts', 'Up next', 'Shelves (6)', 'People']);
   await selected(page, 'Profile');
-  for (const [name, hash, panel] of [['Activity', '#activity', '#panelA'], ['Up next', '#upnext', '#panelW'], ['Shelves (6)', '#shelves', '#panelS'], ['Network', '#network', '#panelN'], ['Profile', '', '#panelP']]) {
+  for (const [name, hash, panel] of [['Posts', '#posts', '#panelA'], ['Up next', '#upnext', '#panelW'], ['Shelves (6)', '#shelves', '#panelS'], ['People', '#people', '#panelN'], ['Profile', '', '#panelP']]) {
     await tabs(page).filter({ hasText: name }).click();
     await selected(page, name);
     expect(new URL(page.url()).hash).toBe(hash);
@@ -23,7 +23,7 @@ test('the tabs are Profile · Activity · Up next · Shelves (N) · Network, eac
     await expect(page.locator('#panelP, #panelA, #panelW, #panelS, #panelN').locator('visible=true')).toHaveCount(1);
   }
   await open(page, '/u/?mira#activity');
-  await selected(page, 'Activity');
+  await selected(page, 'Posts');
   await expect(page.locator('#panelA')).toBeVisible();
   // ← → move along the row
   await tabs(page).nth(1).focus();
@@ -32,7 +32,7 @@ test('the tabs are Profile · Activity · Up next · Shelves (N) · Network, eac
   await page.keyboard.press('ArrowRight');
   await selected(page, 'Shelves (6)');
   await page.keyboard.press('ArrowRight');
-  await selected(page, 'Network');
+  await selected(page, 'People');
   await page.keyboard.press('ArrowRight');
   await selected(page, 'Profile');
   await open(page, '/u/?mira#shelves');
@@ -47,7 +47,7 @@ test('Profile: their shelf first, standing on a shelf line at one spine height f
   const hero = page.locator('#hero');
   await expect(hero.locator('#featCap')).toHaveText('untitled shelf');   // none made main: her oldest
   await expect(hero.locator('#featMeta')).toHaveText(/^2 spines · /);
-  await expect(page.locator('#nSpines')).toHaveText('2');
+  await expect(page.locator('#cSpines')).toHaveText('2 spines');
   await expect(hero.locator('canvas')).toHaveCount(1);
   await expect(hero.getByRole('link', { name: 'Edit' })).toBeHidden();   // not yours
   await expect(page.locator('#featLink')).toHaveAttribute('href', `/u/?mira&shelf=${SHELVES[16].id}`);   // her oldest
@@ -81,7 +81,7 @@ test('Profile: their shelf first, standing on a shelf line at one spine height f
   expect(errors).toEqual([]);
 });
 
-test('Activity: a line for each shelf saved and each film or book logged, newest first, with no photo beside it', async ({ page }) => {
+test('Posts: a line for each shelf saved and each film or book logged, newest first, with no photo beside it', async ({ page }) => {
   await page.clock.setFixedTime(NOW);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?mira#activity');
@@ -113,13 +113,13 @@ test('Activity: a line for each shelf saved and each film or book logged, newest
   expect(mira.username).toBe('mira');
 });
 
-test('Network: Following first, then Followers; the numbers at the top open them', async ({ page }) => {
+test('People: Following first, then Followers; the numbers at the top open them', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   let asked = followList(page, 'following');
   await open(page, '/u/?mira#network');
   expect((await asked).postDataJSON()).toMatchObject({ uid: PEOPLE[1].id, kind: 'following' });
-  const sub = page.getByRole('tablist', { name: 'Network' }).getByRole('tab');
+  const sub = page.getByRole('tablist', { name: 'People' }).getByRole('tab');
   await expect(sub).toHaveText(['Following', 'Followers']);
   await expect(sub.first()).toHaveAttribute('aria-selected', 'true');
   const people = page.locator('#netPeople .person');
@@ -134,41 +134,39 @@ test('Network: Following first, then Followers; the numbers at the top open them
   await expect(sub.nth(1)).toHaveAttribute('aria-selected', 'true');
   expect(new URL(page.url()).hash).toBe('#followers');
   await expect(people).toHaveCount(2);
-  // from the Profile tab, the number FOLLOWING opens Network on Following, FOLLOWERS on Followers; no sheet. On a
-  // phone the numbers are one line of links under the name ("2 spines · 1 following · 2 followers"), which do the same
+  // from the Profile tab, the line of numbers: following opens People on Following, FOLLOWERS on Followers; no sheet. On a
+  // the numbers are one line of links under the bio ("2 spines · 1 following · 2 followers"), which do the same
   const phone = test.info().project.name.startsWith('phone');
-  const number = kind => phone ? page.locator('#counts').getByRole('link', { name: new RegExp(kind === 'following' ? 'following' : 'followers?$') }) : page.locator(`.statlink[data-list="${kind}"] button`);
+  const number = kind => page.locator('#counts').getByRole('link', { name: new RegExp(kind === 'following' ? 'following' : 'followers?$') });
   await tabs(page).first().click();
-  if (phone) {
-    await expect(page.locator('#counts').getByRole('link')).toHaveText(['2 spines', '1 following', '2 followers']);
-    expect(await page.locator('#cSpines').evaluate(a => a.pathname + a.search)).toBe('/u/?mira&shelf');   // the spines: their shelf's page
-  }
+  await expect(page.locator('#counts').getByRole('link')).toHaveText(['2 spines', '1 following', '2 followers']);   // one line, at every width
+  expect(await page.locator('#cSpines').evaluate(a => a.pathname + a.search)).toBe('/u/?mira&shelf');   // the spines: their shelf's page
   asked = followList(page, 'following');
   await number('following').click();
   expect((await asked).postDataJSON()).toMatchObject({ kind: 'following' });
-  await selected(page, 'Network');
+  await selected(page, 'People');
   await expect(sub.first()).toHaveAttribute('aria-selected', 'true');
   await number('followers').click();
   await expect(sub.nth(1)).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('#listSheet')).toBeHidden();
   await open(page, '/u/?mira#followers');
-  await selected(page, 'Network');
+  await selected(page, 'People');
   await expect(sub.nth(1)).toHaveAttribute('aria-selected', 'true');
   expect(errors).toEqual([]);
 });
 
-test('on your own profile the account menu\'s Activity and Network change the tab without loading the page again; Shelf is your shelf\'s page', async ({ page }) => {
+test('on your own profile the account menu\'s Posts and People change the tab without loading the page again; Shelf is your shelf\'s page', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?tester');
   await page.evaluate(() => { window.stayed = true; });
-  for (const [item, tab] of [['Activity', 'Activity'], ['Network', 'Network']]) {
+  for (const [item, tab] of [['Posts', 'Posts'], ['People', 'People']]) {
     await page.locator('#acctBtn').click();
     await page.getByRole('menu', { name: 'Account' }).getByRole('menuitem', { name: item, exact: true }).click();
     await selected(page, tab);
     await expect(page.getByRole('menu', { name: 'Account' })).toBeHidden();   // nothing loaded, so the menu shut itself
   }
   expect(await page.evaluate(() => window.stayed)).toBe(true);
-  // your own Activity has your shelf and your log, and Delete on the log
+  // your own Posts has your shelf and your log, and Delete on the log
   await tabs(page).nth(1).click();
   await expect(page.locator('#acts .line')).toHaveCount(7);
   await expect(page.locator('#acts .line').first()).toHaveText(/^@tester (shelved|updated) /);
@@ -192,12 +190,15 @@ test('your watchlist: a strip on Profile; on its tab each cover has Remove and M
   await expect(page.locator('#watchSec h2')).toHaveText('Up next 2 of 6 See all');
   await expect(page.locator('#watchStrip li')).toHaveCount(2);
   await expect(page.locator('#watchStrip').getByRole('button')).toHaveCount(0);
-  // small covers, up to four in one row: about 100px wide (80px on a phone), 2:3, left-aligned
+  // small covers, leaning on each other on one short shelf line: 100px wide (80px on a phone), 2:3, from the left, each
+  // over the one before by about a fifth, their feet on the line
   const covers = await page.locator('#watchStrip canvas').evaluateAll(cs => cs.map(c => { const r = c.getBoundingClientRect(); return [r.left, r.top, r.width, r.height]; }));
   const wide = test.info().project.name.startsWith('phone') ? 80 : 100, col = await page.locator('#watchStrip').boundingBox();
   for (const [x, y, w, h] of covers){ expect(Math.abs(w - wide)).toBeLessThanOrEqual(1); expect(Math.abs(h - wide * 1.5)).toBeLessThanOrEqual(1); expect(Math.abs(y - covers[0][1])).toBeLessThanOrEqual(1); }
   expect(Math.abs(covers[0][0] - col.x)).toBeLessThanOrEqual(1);
-  expect(4 * wide + 3 * 12).toBeLessThanOrEqual(col.width);   // room for four in the row, on a phone too
+  expect(Math.round(covers[1][0] - covers[0][0])).toBe(Math.round(wide * .78));
+  expect(await page.locator('#watchStrip').evaluate(e => getComputedStyle(e).borderBottom)).toBe('1px solid rgb(0, 0, 0)');
+  expect(Math.abs(covers[0][1] + covers[0][3] - (col.y + col.height - 1))).toBeLessThanOrEqual(1);
   await expect(page.locator('#friendsSec h2')).toHaveText('From friends');
   await expect(page.locator('#friends li')).toHaveCount(2);
   await expect(row(page, 'friends', 'Gummo')).toContainText('from @mira');
@@ -242,7 +243,7 @@ test('your watchlist: a strip on Profile; on its tab each cover has Remove and M
   expect(errors).toEqual([]);
 });
 
-test('a database without logs (0007 not run on it): no watchlist, no From friends, and Activity is shelves', async ({ page }) => {
+test('a database without logs (0007 not run on it): no watchlist, no From friends, and Posts is shelves', async ({ page }) => {
   await mockNetwork(page, { signedIn: true, logs: false });
   await open(page, '/u/?tester');
   await expect(page.locator('#hero canvas')).toHaveCount(1);
@@ -314,8 +315,8 @@ test('"Followed by" names two and counts the others, who are a press away', asyn
   await open(page, '/u/?mira');
   await expect(mutual(page)).toHaveText('Followed by @ana, @ben and 3 others');
   await mutual(page).getByRole('link', { name: '3 others' }).click();
-  await selected(page, 'Network');
-  await expect(page.getByRole('tablist', { name: 'Network' }).getByRole('tab', { name: 'Followers' })).toHaveAttribute('aria-selected', 'true');
+  await selected(page, 'People');
+  await expect(page.getByRole('tablist', { name: 'People' }).getByRole('tab', { name: 'Followers' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('#netPeople .person')).toHaveCount(5);
 });
 

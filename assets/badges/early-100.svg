@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44" width="44" height="44">
+  <!-- Early 100: placeholder art in the logo's colours (the owner replaces this file). A 1 and two 0s as three spines -->
+  <rect width="44" height="44" rx="6" fill="#FFD000"/>
+  <rect x="9" y="12" width="5" height="20" rx="1.5" fill="#14181C"/>
+  <rect x="17" y="12" width="9" height="20" rx="4.5" fill="none" stroke="#14181C" stroke-width="3"/>
+  <rect x="28" y="12" width="9" height="20" rx="4.5" fill="none" stroke="#14181C" stroke-width="3"/>
+  <rect x="7" y="34" width="30" height="2" fill="#FF2E93"/>
+</svg>

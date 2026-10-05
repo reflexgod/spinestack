@@ -60,6 +60,17 @@ const SHOTS = [
   { name: 'build-style', path: '/build/?sample', signedIn: true, full: true, act: async page => { await page.locator('#stylePanel summary').click(); } },
   { name: 'add-menu', path: '/feed/?everyone', signedIn: true, act: async page => { await page.locator('#addMore').click(); } },
   { name: 'search', path: '/feed/?everyone', signedIn: true, act: async page => { await page.locator('header.top .find').click(); await page.locator('#srchQ').fill('waves'); await page.locator('.srch .srchg').first().waitFor(); await page.waitForTimeout(500); } },
+  // our own: @viraaj's Gummo card (after its 2 seconds of grain), About, an empty feed, Invite friends, a story
+  { name: 'profile-gummo', path: '/u/?viraaj', signedIn: true, opts: { social: true }, act: async page => { await page.waitForTimeout(2200); } },
+  { name: 'about', path: '/about/', signedIn: false },
+  { name: 'feed-empty', path: '/feed/?friends', signedIn: true, opts: { social: true, fresh: true }, full: true },
+  { name: 'invite', path: '/feed/?everyone', signedIn: true, act: async page => { await page.locator('#acctBtn').click(); await page.locator('#acctMenu').getByRole('menuitem', { name: 'Invite friends' }).click(); } },
+  { name: 'story', path: '/u/?viraaj', signedIn: true, act: async page => {
+    await page.waitForTimeout(2200);
+    const url = await page.evaluate(async () => { await new Promise(r => { const s = document.createElement('script'); s.src = '../story.js'; s.onload = r; document.head.append(s); });
+      const c = await Story.make({ kind: 'profile', avatar: '', name: 'Viraaj', username: 'viraaj', line: document.querySelector('#counts').textContent, picture: document.querySelector('#featLink canvas') }); return c.toDataURL('image/png'); });
+    await page.setContent(`<body style="margin:0;background:#ddd;display:grid;place-items:center;min-height:100vh"><img src="${url}" style="height:90vh;outline:1px solid #999"></body>`);
+  } },
   { name: 'recommend', path: '/feed/?everyone', signedIn: true, opts: { social: true, recs: true }, act: async page => {
     const p = page.locator('#items .post').filter({ hasText: 'watched Gummo' }).first();
     await p.getByRole('button', { name: /^Share/ }).click(); await p.getByRole('menuitem', { name: 'Recommend' }).click();

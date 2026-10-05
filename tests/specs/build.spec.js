@@ -331,7 +331,7 @@ test('your own profile with no shelf yet: "Your shelf is empty." and Make your s
   await mockNetwork(page, { signedIn: true, ownShelf: false });
   await open(page, '/u/?tester');
   await expect(page.locator('#hero')).toContainText('Your shelf is empty.');
-  await expect(page.locator('#nSpines')).toHaveText('0');
+  await expect(page.locator('#cSpines')).toHaveText('0 spines');
   await page.locator('#hero').getByRole('link', { name: 'Make your shelf' }).click();
   await expect(page).toHaveURL(/\/build\/$/);
   await expect(page.locator('#books .empty')).toContainText('No spines yet.');

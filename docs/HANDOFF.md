@@ -6,6 +6,112 @@ session"), again after the launch pass (see "Done in the second cloud session"),
 the design review was applied (see "Done in the third session"). Read this first, then `README.md`, which says what
 every file is and how the Worker, the accounts and the tests are set up.
 
+## Done on 6 October 2026 (our own, Gummo, marketing, phone first)
+
+Nothing merged into `main`, nothing deployed, shelf.js's drawing untouched (story.js and the title page only use what
+it draws), no key added anywhere.
+
+- **SQL, proposed, not run:** `docs/proposed-0012-badges.sql` and its test `docs/proposed-rls_phase9.sql` (`ALL 0012
+  CHECKS PASSED` on PGlite after 0001 to 0011; 0009, 0010 and 0011's tests still pass after it; the test fails against
+  five broken copies of 0012: the 101st counted, the table readable, the order wrong, a hidden profile counted, badges
+  kept after their profile is deleted). It adds a `badges` table (given by hand in the SQL Editor; no page can read or
+  write it), `badges_of(names)` (each name's badges, and `early-100` for the first 100 profiles by signup order, private
+  ones too), an index on `profiles (created_at, id)`, and gives @viraaj `founder`. Until it's run, badges.js uses its
+  own list: Founder for @viraaj, Early 100 for the five public profiles on the live site today (viraaj, prathmesh,
+  rudra, hardik, div; read with the public key). **A private profile that signed up before today has no Early 100
+  until 0012 is run.** After running it and its test: move both into `supabase/` and set `FROM_DB = true` in badges.js.
+- **The Worker, not deployed: it needs a deploy** (`cd worker && npm test && npx wrangler deploy`). New: the share links
+  `/s/u/<name>`, `/s/u/<name>/<shelf id>`, `/s/t/film/<id>`, `/s/t/book/<id>` (see README's Worker table). The pages on
+  this branch already copy and send these links, so **deploy the Worker before merging this branch**, or shared links
+  answer 404. `cd worker && npm test`: 43 checks pass (6 new for the share links).
+
+### Our own (Part A): every change that took out a Letterboxd copy
+
+1. Profile tab **Network is People** (`#people`; `#network` still works), and **Activity is Posts** (`#posts`;
+   `#activity` still works), here and in the account menu.
+2. **No row of big numbers with capital labels.** The numbers are one plain line under the bio at every width
+   ("9 spines · 3 following · 3 followers"), each a link, as the phone already had. Requests moved into the button row.
+3. **The title page is shelf first:** the real spine (when the archive has one) and the cover stand on a short shelf
+   line at the top, the title, year, director and runtime beside them, the actions in one row under them (on a phone
+   the row scrolls sideways; Share is an icon). No poster | info | action box columns.
+4. **The rating chart is piles of books, not bars:** five piles (one spine to five, a half counting up), each a stack
+   of lying books in the logo's colours as tall as how many gave it, on one shelf line, with the count and the rating
+   in spines under each. No ten-bar histogram.
+5. **Words:** "Directed by" is **dir.**; "watched by 12 · 3 friends" is **"12 watched it · 3 friends have this"** (a
+   friend has it when they logged it or shelved it); Reviews is **What people said**; Your review is **Your take**;
+   the tabs Friends · Popular · Recent are **From friends · Most liked · Newest**; "On shelves (3)" is **On 3 shelves**;
+   Up next's "You want to see 4 films and read 2 books" is **"4 films and 2 books waiting."**
+6. **Up next on the Profile tab** (Letterboxd's four favourites in a row) is the covers leaning on each other on one
+   short shelf line, up to six.
+7. **The Up next tab** (a poster grid with the title laid over the cover on hover) stands its covers on shelf lines,
+   the titles always under them.
+8. **Home's "New from people you follow"** (their row of posters with an avatar under each) is **"Lately, from people
+   you follow"**, every card standing on one long shelf line.
+9. **The feed's "People to follow"** is **Follow these people**.
+10. The README's "Letterboxd's habits are the rule" is gone; it says our own habits are.
+- **Looked at and kept:** the heart for a like (everyone's, not theirs; we have no eye or watched icon); "Log" (our
+  word for a post since phase 2); the Profile tab's name; "Followed by @a, @b"; the Shelves page (already spines on lines).
+
+### Part B: the Gummo theme on @viraaj's profile
+
+`themes.js` (data: `BY_USER = {viraaj: 'gummo'}`, and the theme's variables; a later Pro version reads the same from the
+database). Only the profile card changes: a banner of faded lime-green siding with a light grain (CSS; to use a
+picture, put it at `assets/themes/gummo/banner.jpg` and set `banner: 'banner.jpg'` in themes.js, which a test checks),
+the card from bunny pink to wall mustard, the photo a crooked polaroid with tape over the banner's foot, the name on a
+VHS label (siding green and sky stripe), the bio in Gochi Hand, Courier Prime for the rest, the card's grey text a dark
+brown (6:1 or more on both ends of the gradient; a test computes it, and axe runs on the card). When the profile opens:
+2 seconds of grain flicker and a blinking REC in the corner, once, then nothing; none with reduced motion; no sound.
+No stills, posters or logo. 390px fits. Everyone else's profile is as it was.
+
+### Part C: for marketing
+
+1. **Share to story** (`story.js`, 1080 x 1920 PNG on a canvas): a shelf's Share, every post's Share and a profile's
+   ···. Logo and name at the top, the shelf's spines on their line (or the log's worn cover, its rating and review, or
+   the profile's photo, name, numbers and shelf), the title, @username, shelfstackd.com. On a phone that can share
+   files: a sheet with the picture and **Share** (the press is the share sheet's own, which iPhone Safari needs; Android
+   Chrome is happy either way), and Save the picture; anywhere else the PNG is downloaded. The shelf's old "Download
+   image" (the builder's whole story) is kept.
+2. **Invite links:** `shelfstackd.com/?invite=<username>` is kept in the browser (30 days) and taken off the address;
+   signed-out home says "@viraaj invited you."; once the new account picks its username it follows the inviter, who
+   gets the new-follower notification 0009 already sends. **Invite friends** in the account menu: the link, Copy link,
+   Share to WhatsApp. No SQL. (A notification saying "joined through your invite" rather than "followed you" would need
+   a new notification kind: not done.)
+3. **Badges** (`badges.js`, `assets/badges/founder.svg` and `early-100.svg`: placeholders in the logo's colours, swap
+   the files for the final art): see SQL above. A row of 22px squares 6px apart under the name on every profile; the
+   most important one, 14px, beside the name on a post (feed, post page, title page); a tooltip with the name and one
+   line on hover, focus, or a tap (a tap elsewhere or Esc shuts it). On a phone each badge's press area is 44px tall but
+   only 28px wide (they're 6px apart, as asked), so they're left out of the 44px press test.
+4. **Link previews:** the Worker's share links (above). Profile, shelf and title Copy link / Share to WhatsApp give them.
+   A preview fetcher gets the right title, line and picture (the shelf's picture, the person's photo, the title's
+   cover); a person is sent straight on to shelfstackd.com. Posts (`/p/`) still share their own address. Later, if you
+   want the links on shelfstackd.com itself: proxy the domain through Cloudflare and serve these tags from a Worker
+   route there (needs the DNS orange-clouded, which GitHub Pages' certificate doesn't like), or add `s.shelfstackd.com`
+   as a second custom domain in `wrangler.toml`.
+5. **Empty states:** an empty Friends tab says so, then **Log your first film** (black, opens Log it; only while you've
+   logged nothing) and **Follow these people**, then Everyone; an empty Everyone has Log your first film too; an empty
+   Recs tab (For you or Sent) says "Recommend something to a friend." with **Recommend** (+ ADD's Recommend).
+6. **About** (`/about/`): five lines, who made it (with a link to @viraaj), and the Credits. Every footer's About goes
+   there (it went to privacy.html's Credits, which stay too).
+
+### Part D: smooth, phone first
+
+- The profile's open tab is brought into the tab row's view (the row scrolls, the page doesn't): `Nav.tabInView()`.
+- Every button, text action, tab and badge sinks 1px when pressed; a solid one darkens. A button put out of use while
+  it saves turns (a small spinner in place of its words) once the save takes over 150ms, and comes back when done
+  (`nav.js`, for every page); every save already puts its button out of use, so nothing is sent twice (tested).
+- A profile draws at once: a skeleton the card's size, or the card as it was last time (kept in this browser a week),
+  then the real one; the feed draws three posts' worth of skeleton while its first page is read. Photos and the title
+  page's cover have their width and height before they load.
+- Search's book covers were already small and through the Worker with paper under them (5 October); unchanged.
+- **The whole flow** (`specs/flow.spec.js`, both widths): sign up → build a shelf → log a film with a review → edit it
+  → recommend it → share it as a story → search → a title's page → follow someone, with no console error or warning.
+  `watchErrors()` (every page test that uses it) now fails on warnings as well as errors.
+- Bugs found and fixed on the way: the Share menu on a title's phone action row was cut off (it now sits on the screen
+  by its button); with the numbers moved under the bio, "add a bio" and "more" were too close to them for two 44px
+  presses on a phone (32px between them now, touch screens only); search's covers now show only once whole (the paper
+  and title under them until then, never half a picture); the empty feed's line was matched twice by the tests once Log your first film was added; a new
+  profile POST in the test mock answered with the wrong person.
+
 ## Done on 5 October 2026 (design pass)
 
 No SQL, nothing for the Worker, shelf.js's drawing untouched. Each item its own commit.

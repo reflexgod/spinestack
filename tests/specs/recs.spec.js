@@ -17,7 +17,7 @@ test('without 0010: no Recommend on a post or in + ADD; a post still has Share t
   await open(page, '/feed/?everyone');
   const p = post(page, 'watched Gummo');
   await p.getByRole('button', { name: /^Share/ }).click();
-  await expect(p.getByRole('menuitem')).toHaveText(['Copy link', 'Share to WhatsApp', 'Add to Up next']);
+  await expect(p.getByRole('menuitem')).toHaveText(['Copy link', 'Share to WhatsApp', 'Share to story', 'Add to Up next']);
   await page.keyboard.press('Escape');
   await page.locator('header.top .add').click();
   await expect(dialog(page).getByRole('radiogroup', { name: 'What to do with it' }).getByRole('radio')).toHaveCount(3);
@@ -31,7 +31,7 @@ test('a post\'s share menu: Recommend opens the sheet; pick someone you both fol
   await open(page, '/feed/?everyone');
   const p = post(page, 'watched Gummo');
   await p.getByRole('button', { name: /^Share/ }).click();
-  await expect(p.getByRole('menuitem')).toHaveText(['Copy link', 'Share to WhatsApp', 'Recommend', 'Add to Up next']);
+  await expect(p.getByRole('menuitem')).toHaveText(['Copy link', 'Share to WhatsApp', 'Share to story', 'Recommend', 'Add to Up next']);
   await p.getByRole('menuitem', { name: 'Recommend' }).click();
   const s = sheet(page);
   await expect(s).toBeVisible();
@@ -315,7 +315,7 @@ test('a shelf\'s Share: Share to WhatsApp, with its name and its link', async ({
   const text = decodeURIComponent(u.split('?text=')[1]);
   expect(u).toMatch(/^https:\/\/wa\.me\/\?text=/);
   expect(text).toContain(' by @mira on shelfstackd: http');
-  expect(text.endsWith(`/u/?mira&shelf=${SHELVES[1].id}`)).toBe(true);
+  expect(text.endsWith(`/s/u/mira/${SHELVES[1].id}`)).toBe(true);   // the share link: its preview has the shelf's picture
 });
 
 // up to 5 people at once, one rec each; one the database refuses doesn't stop the rest

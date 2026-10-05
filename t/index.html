@@ -30,50 +30,63 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261019a">
+<link rel="stylesheet" href="../site.css?v=20261020a">
 <style>
-/* a title's page: the cover at the left (worn when you've logged it), what it is in the middle, what you can do with it
-   at the right; then whose shelves it's on, and the reviews */
+/* a title's page, shelf first: the thing itself standing on a short shelf line at the top (its real spine, when the
+   archive has one, beside its cover; worn when you've logged it), what it is beside it, then what you can do with it in
+   one row under them; then how people rated it, whose shelves it's on, and what people said */
 #state{margin:var(--s5) 0 0}
-.thead{display:grid;grid-template-columns:160px minmax(0,1fr) 200px;gap:var(--s5);align-items:start}
-.tcover{line-height:0}
+.thead{display:flex;align-items:flex-end;gap:var(--s5);min-width:0}
+.tshelf{display:flex;align-items:flex-end;gap:var(--s1);flex:none;width:max-content;padding:0 var(--s4) 0 0;border-bottom:1px solid var(--ink);--th:180px}
+.tspine{line-height:0}
+.tspine img{display:block;height:var(--th);width:auto;outline:1px solid var(--hair);outline-offset:-1px}
+.tcover{display:block;line-height:0;width:calc(var(--th) * 2 / 3)}
 .tcover canvas,.tcover img{display:block;width:100%;height:auto;aspect-ratio:2/3;object-fit:cover;background:var(--wash)}
 .tcover .blank{display:block;width:100%;aspect-ratio:2/3;background:var(--wash)}
-.tinfo{min-width:0}
+.tinfo{min-width:0;padding-bottom:var(--s2)}
 .tinfo h1{margin:0 0 var(--s1)}
 .tinfo h1 span{color:var(--grey)}
 .tby,.tgenres{margin:0;color:var(--grey)}
 .tgenres:empty,.tby:empty,.tabout:empty{display:none}
-.tabout{margin:var(--s4) 0 0;max-width:60ch}
-.tspine{display:flex;align-items:flex-end;gap:var(--s4);margin-top:var(--s4)}
-.tspine img{display:block;height:120px;width:auto;outline:1px solid var(--hair);outline-offset:-1px}
-/* how people rated it: the average as spines, the ten halves as a small histogram, and who watched it */
-.tstats{display:grid;gap:var(--s2);margin-top:var(--s5)}
-.tavg{display:flex;align-items:center;gap:var(--s2);margin:0}
-.tavg .grey{font-size:var(--fs-small)}
-.hist{display:flex;align-items:flex-end;gap:var(--s1);height:40px;width:160px;border-bottom:1px solid var(--ink);margin:0;padding:0;list-style:none}
-.hist li{flex:1;background:var(--ink);min-height:1px}
-.hist li[data-n="0"]{background:var(--hair)}
-.twho{margin:0;color:var(--grey);font-size:var(--fs-small)}
-/* the panel: one press each, or how it stands, in grey */
-.tpanel{display:grid;gap:var(--s2);justify-items:start}
+.tabout{margin:var(--s5) 0 0;max-width:60ch}
+/* what you can do with it: one row under the shelf */
+.tpanel{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2) var(--s5);margin-top:var(--s4)}
 .tpanel .state a{color:inherit}
 .tpanel .pmenuwrap{position:relative}
+.tpanel .tshare{display:inline-flex;align-items:center}
+.tpanel .tshare svg{width:16px;height:16px;display:block;margin:-1px 0}
+/* how people rated it: the average as spines, then a pile of books for each rating, from one spine to five, each pile as
+   tall as how many gave it, on one shelf line; then who has it */
+.tstats{display:grid;gap:var(--s2);justify-items:start}
+.tstats > h2{justify-self:stretch}
+.tavg{display:flex;align-items:center;gap:var(--s2);margin:0}
+.tavg .grey{font-size:var(--fs-small)}
+.piles{display:flex;gap:var(--s4);margin:0;padding:0 var(--s4) 0 0;list-style:none}
+.piles li{display:grid;justify-items:center;gap:var(--s1);width:48px}
+.piles .pile{display:flex;flex-direction:column-reverse;align-items:center;justify-content:flex-start;height:72px;width:100%;border-bottom:1px solid var(--ink);gap:1px}
+.piles .pile i{display:block;height:6px;border-radius:2px}
+.piles .pn{font-size:var(--fs-small);color:var(--grey);font-variant-numeric:tabular-nums;line-height:1}
+.twho{margin:0;color:var(--grey);font-size:var(--fs-small)}
 section.tsec{margin-top:var(--s6)}
-@media (max-width:640px){ section.tsec{margin-top:var(--s5)} }   /* a phone: 24px between On shelves and the reviews, as between the rest */
+@media (max-width:640px){ section.tsec{margin-top:var(--s5)} }   /* a phone: 24px between the sections, as between the rest */
 .tava{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:var(--s2)}
 .tava a{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;border:1px solid var(--ink);background:var(--wash);overflow:hidden;text-decoration:none;color:var(--ink);text-transform:uppercase}
 .tava img{width:100%;height:100%;object-fit:cover;display:block}
 .tmore{margin:var(--s2) 0 0;color:var(--grey);font-size:var(--fs-small)}
-/* your review: one press on the spines rates it; then the review, if you like, and Post */
+/* your take: one press on the spines rates it; then what you thought, if you like, and Post */
 #yours{margin-bottom:var(--s5);padding-bottom:var(--s4);border-bottom:1px solid var(--hair)}
 #yours:not(.rated) .psay,#yours:not(.rated) .popts,#yours:not(.rated) .ybar{display:none}
 #yours .ybar{display:flex;justify-content:flex-end;align-items:center;gap:var(--s4);margin-top:var(--s2)}
 #yours .ybar .note{margin:0}
 #revs{max-width:600px}
 @media (max-width:640px){
-  .thead{grid-template-columns:120px minmax(0,1fr)}
-  .tpanel{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:var(--s2) var(--s4);align-items:center}
+  .thead{gap:var(--s4)}
+  .tshelf{--th:132px;padding-right:var(--s2)}
+  /* still one row: what doesn't fit scrolls sideways inside it (as a row of tabs does), with room above and below
+     for each action's 44px press */
+  .tpanel{flex-wrap:nowrap;gap:var(--s4);overflow-x:auto;scrollbar-width:none;padding:var(--s2) var(--s4) var(--s2) 0;margin:var(--s2) 0 calc(-1 * var(--s2))}
+  .tpanel::-webkit-scrollbar{display:none}
+  .tpanel > *{flex:none}
 }
 </style>
 </head>
@@ -96,39 +109,39 @@ section.tsec{margin-top:var(--s6)}
   <p class="grey" id="state" role="status">Loading…</p>
   <article id="page" hidden>
     <div class="thead">
-      <div class="tcover" id="tCover"></div>
+      <div class="tshelf" id="tShelf"><span class="tspine" id="tSpine" hidden></span><span class="tcover" id="tCover"></span></div>
       <div class="tinfo">
         <h1 id="tName">A film or a book</h1>
         <p class="tby" id="tBy"></p>
         <p class="tgenres" id="tGenres"></p>
-        <p class="tabout" id="tAbout"></p>
-        <div class="tspine" id="tSpine" hidden><span class="lbl">Its real spine</span></div>
-        <div class="tstats" id="tStats" hidden>
-          <p class="tavg" id="tAvg"></p>
-          <ol class="hist" id="tHist" role="img"></ol>
-          <p class="twho" id="tWho"></p>
-        </div>
       </div>
-      <div class="tpanel" id="tPanel" aria-label="What to do with it" role="group"></div>
     </div>
+    <div class="tpanel" id="tPanel" aria-label="What to do with it" role="group"></div>
+    <p class="tabout" id="tAbout"></p>
+    <section class="tsec tstats" id="tStats" aria-labelledby="statsH" hidden>
+      <h2 id="statsH">How it was rated</h2>
+      <p class="tavg" id="tAvg"></p>
+      <ol class="piles" id="tHist" role="img"></ol>
+      <p class="twho" id="tWho"></p>
+    </section>
     <section class="tsec" id="onSec" aria-labelledby="onH" hidden>
       <h2 id="onH">On shelves</h2>
       <ul class="tava" id="onList"></ul>
       <p class="tmore" id="onMore" hidden></p>
     </section>
     <section class="tsec" id="revSec" aria-labelledby="revH">
-      <h2 id="revH">Reviews</h2>
+      <h2 id="revH">What people said</h2>
       <div id="yours" hidden>
-        <p class="lbl">Your review</p>
+        <p class="lbl">Your take</p>
         <div id="yFields"></div>
         <div class="ybar"><p class="note grey" id="ySay" role="status"></p><button class="btn primary" id="yPost" type="button">Post</button></div>
       </div>
-      <nav class="tabs" role="tablist" aria-label="Reviews">
-        <button type="button" role="tab" id="tabF" data-rev="friends" aria-selected="false" aria-controls="revs" hidden>Friends</button>
-        <button type="button" role="tab" id="tabPo" data-rev="popular" aria-selected="false" aria-controls="revs">Popular</button>
-        <button type="button" role="tab" id="tabR" data-rev="recent" aria-selected="false" aria-controls="revs">Recent</button>
+      <nav class="tabs" role="tablist" aria-label="What people said">
+        <button type="button" role="tab" id="tabF" data-rev="friends" aria-selected="false" aria-controls="revs" hidden>From friends</button>
+        <button type="button" role="tab" id="tabPo" data-rev="popular" aria-selected="false" aria-controls="revs">Most liked</button>
+        <button type="button" role="tab" id="tabR" data-rev="recent" aria-selected="false" aria-controls="revs">Newest</button>
       </nav>
-      <div id="revs" role="tabpanel" aria-label="Reviews">
+      <div id="revs" role="tabpanel" aria-label="What people said">
         <ol class="items" id="revList"></ol>
         <p class="grey" id="revNone" hidden></p>
       </div>
@@ -149,15 +162,16 @@ section.tsec{margin-top:var(--s6)}
 </div>
 
 <footer>
-  <p class="fnav"><a href="../privacy.html#credits">About</a><span aria-hidden="true">·</span><a href="../privacy.html">Privacy</a><span aria-hidden="true">·</span><a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a></p>
+  <p class="fnav"><a href="../about/">About</a><span aria-hidden="true">·</span><a href="../privacy.html">Privacy</a><span aria-hidden="true">·</span><a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a></p>
 </footer>
 <div class="toast" id="toast" hidden></div>
 
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../wear.js?v=20261016a"></script>
-<script src="../nav.js?v=20261019a"></script>
-<script src="../post.js?v=20261018a"></script>
+<script src="../nav.js?v=20261020a"></script>
+<script src="../badges.js?v=20261020a"></script>
+<script src="../post.js?v=20261020a"></script>
 <script>
 (() => {
 /* A film or a book: /t/?film=<TMDB id> or /t/?book=<Open Library work id>. From the Worker's /title: the cover, the
@@ -167,11 +181,11 @@ section.tsec{margin-top:var(--s6)}
    Then what people here did with it, from the logs and the spines of it that you can see (with 0011: those with its
    id, and those from before ids were kept by its kind, title and year; before 0011, all by kind, title and year), and
    your own from before get its id (fillYours()): the average rating (in spines), the ten half-points as a histogram, "watched by 12 · 3 friends", the shelves
-   it's on (people you follow first, 12 faces at most), and the reviews: Friends · Popular · Recent, each a post as the
-   feed has it (a press goes to its page). Signed in and not logged yet: Your review at the top, one press on the
-   spines to rate it, then the review if you like, and Post.
-   At the right: Log (or "Logged Oct 2"), Put on shelf (or "On your shelf"), Add to Up next (or "In Up next"),
-   Recommend (with 0010), Share. */
+   it's on (people you follow first, 12 faces at most), and what people said: From friends · Most liked · Newest, each
+   a post as the feed has it (a press goes to its page). Signed in and not logged yet: Your take at the top, one press
+   on the spines to rate it, then what you thought if you like, and Post.
+   In one row under the shelf: Log (or "Logged Oct 2"), Put on shelf (or "On your shelf"), Add to Up next (or "In Up
+   next"), Recommend (with 0010), Share. */
 const $ = s => document.querySelector(s);
 const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
 const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
@@ -260,18 +274,19 @@ function paintInfo(){
   const t = T.info, label = `${t.title}${t.year ? ` (${t.year})` : ''}`;
   document.title = `${label} · shelfstackd`;
   $('#tName').innerHTML = `${esc(t.title)}${t.year ? ` <span>${esc(t.year)}</span>` : ''}`;
-  const by = t.creator ? (t.kind === 'movie' ? `Directed by ${t.creator}` : `by ${t.creator}`) : '';
+  const by = t.creator ? (t.kind === 'movie' ? `dir. ${t.creator}` : `by ${t.creator}`) : '';
   const long = t.kind === 'movie' ? (t.runtime ? `${t.runtime} min` : '') : (t.pages ? `${t.pages} pages` : '');
   $('#tBy').textContent = [by, long].filter(Boolean).join(' · ');
   $('#tGenres').textContent = (t.genres || []).join(' · ');
   $('#tAbout').textContent = t.overview || '';
-  if (t.spine){ const im = new Image(); im.src = WORKER + t.spine; im.alt = `The spine of ${label}`; $('#tSpine').prepend(im); $('#tSpine').hidden = false; }
+  // its real spine, when the archive has one: standing on the shelf beside the cover
+  if (t.spine && !$('#tSpine img')){ const im = new Image(); im.src = WORKER + t.spine; im.alt = `The spine of ${label}`; im.decoding = 'async'; $('#tSpine').prepend(im); $('#tSpine').hidden = false; }
 }
 // the cover: worn when you've logged it (by how long ago your log was), otherwise clean
 function paintCover(){
   const t = T.info, label = `${t.title}${t.year ? ` (${t.year})` : ''}`, src = viaWorker(T.item.cover);
-  if (T.mine && window.Wear){ $('#tCover').replaceChildren(Wear.cover({src, kind: t.kind, seed: T.mine.id, at: T.mine.created_at, label: `The cover of ${label}, worn: you ${verb(t.kind)} it`, width: 160})); return; }
-  $('#tCover').innerHTML = src ? `<img class="clean" src="${esc(src)}" alt="The cover of ${esc(label)}">` : '<span class="blank" aria-hidden="true"></span>';
+  if (T.mine && window.Wear){ $('#tCover').replaceChildren(Wear.cover({src, kind: t.kind, seed: T.mine.id, at: T.mine.created_at, label: `The cover of ${label}, worn: you ${verb(t.kind)} it`, width: 120})); return; }
+  $('#tCover').innerHTML = src ? `<img class="clean" src="${esc(src)}" alt="The cover of ${esc(label)}" width="120" height="180" decoding="async">` : '<span class="blank" aria-hidden="true"></span>';
 }
 
 /* ---------- what people here did with it ---------- */
@@ -300,27 +315,38 @@ async function community(){
   T.shelves = T.spines.map(r => r.shelves).filter(s => s && s.profiles && !seen.has(s.owner) && seen.add(s.owner));
   if (!T.item.cover){ const c = rows.map(x => String(x.cover_src || '').replace(/^url:/, '')).find(u => COVER_OK.test(u)); if (c) T.item.cover = c; }
 }
+/* How it was rated: the average as spines, then a pile of books for each rating from one spine to five (a half counts
+   up: 3.5 is in the four-spine pile), each pile as tall as how many gave it (ten books for the most), on one shelf line,
+   with how many under it. Then how many logged it, and how many of the people you follow have it (logged it, or have
+   it on their shelf) */
+const PILE = ['#FFD000', '#FF2E93', '#6A4BFF', '#00D5E6'];
 function paintStats(){
   const k = T.info.kind, rated = T.logs.filter(x => x.rating >= 1 && x.rating <= 10), people = new Set(T.logs.map(x => x.owner));
-  const friends = [...people].filter(id => T.friends.has(id)).length;
+  const have = new Set([...people, ...(T.spines || []).map(r => r.shelves && r.shelves.owner).filter(Boolean)]);
+  const friends = [...have].filter(id => T.friends.has(id)).length;
   $('#tStats').hidden = !people.size;
   if (!people.size) return;
   if (rated.length){
     const avg = rated.reduce((a, x) => a + x.rating, 0) / rated.length;
     $('#tAvg').innerHTML = `${Posts.stars(Math.round(avg))}<span class="grey">${(avg / 2).toFixed(1)} of 5 · ${rated.length} rating${rated.length === 1 ? '' : 's'}</span>`;
-    const n = Array.from({length: 10}, (_, i) => rated.filter(x => x.rating === i + 1).length), most = Math.max(...n);
-    $('#tHist').innerHTML = n.map((c, i) => `<li data-n="${c}" style="height:${c ? Math.max(8, Math.round(100 * c / most)) : 2}%" title="${(i + 1) / 2} of 5: ${c}"></li>`).join('');
-    $('#tHist').setAttribute('aria-label', `Ratings, from half a spine to five: ${n.join(', ')}`);
+    const n = [1, 2, 3, 4, 5].map(l => rated.filter(x => Math.ceil(x.rating / 2) === l).length), most = Math.max(...n);
+    $('#tHist').innerHTML = n.map((c, i) => {
+      const books = c ? Math.max(1, Math.round(10 * c / most)) : 0;
+      // each book lying in the pile a little wider or narrower than the one under it, in the logo's colours
+      const pile = Array.from({length: books}, (_, b) => `<i style="width:${70 + ((b * 37 + i * 11) % 31)}%;background:${PILE[(b + i) % PILE.length]}"></i>`).join('');
+      return `<li data-n="${c}" title="${i + 1} spine${i ? 's' : ''}: ${c}"><span class="pile">${pile}</span><span class="pn">${c}</span>${Posts.stars((i + 1) * 2, 'sm')}</li>`;
+    }).join('');
+    $('#tHist').setAttribute('aria-label', `Ratings, from one spine to five: ${n.join(', ')}`);
   }
   $('#tAvg').hidden = $('#tHist').hidden = !rated.length;
-  $('#tWho').textContent = `${verb(k)} by ${people.size}${me.user ? ` · ${friends} friend${friends === 1 ? '' : 's'}` : ''}`;
+  $('#tWho').textContent = `${people.size} ${verb(k)} it${me.user ? ` · ${friends} friend${friends === 1 ? ' has' : 's have'} this` : ''}`;
 }
 function paintShelves(){
   const mine = me.user && T.shelves.some(s => s.owner === me.user.id), list = T.shelves.filter(s => !me.user || s.owner !== me.user.id)
     .sort((a, b) => (T.friends.has(b.owner) ? 1 : 0) - (T.friends.has(a.owner) ? 1 : 0));
   T.onMine = mine;
   $('#onSec').hidden = !list.length;
-  $('#onH').textContent = `On shelves (${list.length})`;
+  $('#onH').textContent = `On ${list.length} shel${list.length === 1 ? 'f' : 'ves'}`;
   $('#onList').replaceChildren(...list.slice(0, 12).map(s => {
     const li = document.createElement('li'), p = s.profiles, name = Shelf.shelfName({name: s.name, caption: s.caption});
     li.innerHTML = `<a href="../u/?${esc(p.username)}&amp;shelf=${esc(s.id)}" aria-label="@${esc(p.username)}: ${esc(name)}" title="@${esc(p.username)}: ${esc(name)}">${Posts.avaHtml(p)}</a>`;
@@ -341,9 +367,9 @@ async function paintPanel(){
     T.onMine ? state('On your shelf') : `<button class="dash" type="button" data-t="shelf">Put on shelf</button>`,
     onNext ? state('In Up next') : T.mine ? '' : `<button class="dash" type="button" data-t="watch">Add to Up next</button>`,
     recs ? `<button class="dash" type="button" data-t="rec">Recommend</button>` : '',
-    `<span class="pmenuwrap"><button class="dash" type="button" data-t="share">Share</button></span>`,
+    `<span class="pmenuwrap"><button class="dash tshare" type="button" data-t="share" aria-label="Share">${SHARE}</button></span>`,
   ].join('');
-  const url = () => new URL(addressOf(), location.href).href;
+  const url = () => Nav.shareLink(T.item);   // the share link: a preview with its title and cover (or, with no id yet, this address)
   Posts.menuOn($('#tPanel [data-t=share]'), async () => {
     const label = `${T.info.title}${T.info.year ? ` (${T.info.year})` : ''}`;
     const list = [{label: 'Copy link', run: async () => { try { await navigator.clipboard.writeText(url()); toast('Link copied.'); } catch { toast(url()); } }},
@@ -365,13 +391,13 @@ $('#tPanel').addEventListener('click', async e => {
     if (r.ok){ watchKeys.add(keyOf(m)); paintPanel(); } else { b.disabled = false; toast(r.error); }
   }
 });
-// logged here (+ ADD, or Your review): the page again, with it
+// logged here (+ ADD, or Your take): the page again, with it
 document.addEventListener('shelfstackd:added', async e => {
   const d = e.detail || {};
   if (d.what === 'watch' && d.item) watchKeys.add(keyOf(d.item));
   if (d.what === 'log'){
     await community();
-    // just posted, and not in what was read back yet: yours from what was posted, so Your review edits it from now on
+    // just posted, and not in what was read back yet: yours from what was posted, so Your take edits it from now on
     if (!T.mine && d.post && d.post.id && me.user && d.post.owner === me.user.id && Nav.sameTitle(d.post, matchOf())){ T.logs = [d.post, ...T.logs]; T.mine = d.post; }
     paintAll(); return;
   }
@@ -379,8 +405,8 @@ document.addEventListener('shelfstackd:added', async e => {
 });
 
 /* ---------- reviews ---------- */
-// a review: a log with a rating or something said. Friends: the people you follow; Popular: the most liked first;
-// Recent: the newest first. 20 a tab
+// what someone said: a log with a rating or something said. From friends: the people you follow; Most liked: the most
+// liked first; Newest: the newest first. 20 a tab
 const said = x => !!(x.rating || (x.review != null && x.review !== '' ? x.review : x.caption));
 function paintReviews(tab){
   const all = T.logs.filter(said), friendsOnes = all.filter(x => T.friends.has(x.owner));
@@ -390,7 +416,7 @@ function paintReviews(tab){
   for (const b of document.querySelectorAll('#revSec .tabs button')) b.setAttribute('aria-selected', String(b.dataset.rev === tab));
   const list = tab === 'friends' ? friendsOnes : tab === 'popular' ? all.slice().sort((a, b) => (b.likes || 0) - (a.likes || 0) || (b.at > a.at ? 1 : -1)) : all;
   $('#revList').replaceChildren(...list.slice(0, 20).map(x => Posts.item(x, {social: T.social, cover: 72, onGone: async () => { await community(); paintAll(); }})));
-  $('#revNone').textContent = tab === 'friends' ? 'Nobody you follow has reviewed it yet.' : `Nobody has reviewed it yet.`;
+  $('#revNone').textContent = tab === 'friends' ? 'Nobody you follow has said anything yet.' : 'Nobody has said anything yet.';
   $('#revNone').hidden = !!list.length;
 }
 document.querySelector('#revSec .tabs').addEventListener('click', e => { const b = e.target.closest('[data-rev]'); if (b) paintReviews(b.dataset.rev); });
@@ -399,7 +425,7 @@ document.querySelector('#revSec .tabs').addEventListener('keydown', e => {
   const next = all[(i + (e.key === 'ArrowRight' ? 1 : all.length - 1)) % all.length]; next.focus(); next.click();
 });
 
-/* Your review, signed in. Not logged yet: one press on the spines rates it, then the review and Post show, and Post
+/* Your take, signed in. Not logged yet: one press on the spines rates it, then the review and Post show, and Post
    logs it. Logged it already (with 0011, which lets a log be edited): your log's rating, review and the rest, filled
    in, and Save edits that log; so a rating first and the review later is one log. Before 0011 it's gone once logged */
 let yf = null, yfFor = '';
@@ -429,7 +455,7 @@ $('#yPost').addEventListener('click', async () => {
   if (r.error){ $('#ySay').textContent = r.error; return; }
   $('#ySay').textContent = ''; toast(editing ? 'Saved.' : `Logged ${T.item.title}. It’s on the feed.`);
 });
-// a log of yours edited here (Your review, or Edit on a review): the page with it, at once
+// a log of yours edited here (Your take, or Edit on a post): the page with it, at once
 document.addEventListener('shelfstackd:edited', e => {
   const x = (e.detail || {}).post; if (!x || !T.logs) return;
   T.logs = T.logs.map(l => l.id === x.id ? {...l, ...x} : l);
