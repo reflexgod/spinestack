@@ -350,7 +350,7 @@
   function loadSearch(){
     if (window.Search) return Promise.resolve(true);
     return searching = searching || new Promise(res => {
-      const s = document.createElement('script'); s.src = ROOT + 'search.js?v=20261018a';
+      const s = document.createElement('script'); s.src = ROOT + 'search.js?v=20261019a';
       s.onload = () => res(!!window.Search); s.onerror = () => { searching = null; s.remove(); res(false); };
       document.head.appendChild(s);
     });
