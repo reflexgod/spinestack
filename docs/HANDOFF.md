@@ -11,6 +11,10 @@ every file is and how the Worker, the accounts and the tests are set up.
 Nothing merged into `main`, nothing deployed, shelf.js's drawing untouched (story.js and the title page only use what
 it draws), no key added anywhere.
 
+- **Tested:** `cd tests && npm run test:all` on the laptop: html-validate clean, then Playwright 1040 passed, 26
+  skipped, none failed (it was 978 before; warnings now fail a page too). `cd worker && npm test`: 43 checks pass.
+  Screenshots of the changed pages at both widths: `cd tests && node shots.js shots home,home-signed-out,profile,profile-activity,profile-network,own-profile,own-profile-upnext,own-profile-recs,shelf-page,feed-social,feed-empty,title,profile-gummo,about,invite,story,search,post`.
+
 - **SQL, proposed, not run:** `docs/proposed-0012-badges.sql` and its test `docs/proposed-rls_phase9.sql` (`ALL 0012
   CHECKS PASSED` on PGlite after 0001 to 0011; 0009, 0010 and 0011's tests still pass after it; the test fails against
   five broken copies of 0012: the 101st counted, the table readable, the order wrong, a hidden profile counted, badges
