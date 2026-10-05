@@ -36,7 +36,10 @@ css.textContent = `
 .srchg ul,.srchrec ul{list-style:none;margin:0;padding:0}
 .srch .sr{display:flex;align-items:center;gap:var(--s4,16px);width:100%;box-sizing:border-box;padding:var(--s1,4px) var(--s4,16px);min-height:44px;text-decoration:none;color:inherit;background:none;border:0;font:inherit;text-align:left;cursor:pointer}
 .srch .sr:hover,.srch .sr:focus-visible{background:var(--wash,#F3F3F3);outline:0}
-.srch .sr .cv{width:32px;height:48px;flex:none;display:block;object-fit:cover;background:var(--wash,#F3F3F3);outline:1px solid var(--hair,#D9D9D9);outline-offset:-1px}
+.srch .sr .cv{position:relative;width:40px;height:60px;flex:none;display:block;overflow:hidden;background:var(--paper,#fff);outline:1px solid var(--hair,#D9D9D9);outline-offset:-1px}
+/* a cover's place: paper with the title in small type, under the picture while it comes, and all there is with none */
+.srch .sr .cv .cvt{position:absolute;inset:var(--s1,4px);font:400 8px/1.2 var(--mono,monospace);color:var(--grey,#6B6B6B);overflow:hidden;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
+.srch .sr .cv img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .srch .sr .av{width:32px;height:32px;flex:none;border-radius:50%;border:1px solid var(--ink,#000);background:var(--wash,#F3F3F3);overflow:hidden;display:grid;place-items:center;text-transform:uppercase;font-size:var(--fs-small,11px)}
 .srch .sr .av img{width:100%;height:100%;object-fit:cover;display:block}
 .srch .sr .tx{min-width:0;display:grid}
@@ -102,9 +105,12 @@ function shut(){
 
 /* ---------- what's shown ---------- */
 const avaHtml = p => p.avatar_key ? `<img src="${esc(`${worker()}/m/img?k=${encodeURIComponent(p.avatar_key)}`)}" alt="" loading="lazy">` : esc((((p.display_name || '').trim() || p.username || '·').trim()[0]) || '·');
+/* a small cover: TMDB's poster or Open Library's cover through the Worker, as + ADD has them, at the size a list needs
+   (Open Library's medium one comes twice as fast as the large); under it, paper with the title */
+const small = u => String(u || '').replace(/^(https:\/\/covers\.openlibrary\.org\/b\/id\/\d+)-L\.jpg$/, '$1-M.jpg').replace(/^(https:\/\/image\.tmdb\.org\/t\/p\/)w500\//, '$1w185/');
 const titleRow = m => {
-  const cover = m.cover ? `${worker()}/img?url=${encodeURIComponent(m.cover)}` : '', what = [m.year, m.creator].filter(Boolean).join(' · ');
-  return `<li><a class="sr" href="${esc(window.Nav && Nav.titleUrl ? Nav.titleUrl(m) : ROOT + 't/')}">${cover ? `<img class="cv" src="${esc(cover)}" alt="" loading="lazy">` : '<span class="cv" aria-hidden="true"></span>'}<span class="tx"><b>${esc(m.title)}</b>${what ? `<span>${esc(what)}</span>` : ''}</span></a></li>`;
+  const cover = m.cover ? `${worker()}/img?url=${encodeURIComponent(small(m.cover))}` : '', what = [m.year, m.creator].filter(Boolean).join(' · ');
+  return `<li><a class="sr" href="${esc(window.Nav && Nav.titleUrl ? Nav.titleUrl(m) : ROOT + 't/')}"><span class="cv" aria-hidden="true"><span class="cvt">${esc(m.title)}</span>${cover ? `<img src="${esc(cover)}" alt="" loading="lazy">` : ''}</span><span class="tx"><b>${esc(m.title)}</b>${what ? `<span>${esc(what)}</span>` : ''}</span></a></li>`;
 };
 const personRow = p => {
   const name = (p.display_name || '').trim();
@@ -183,6 +189,8 @@ box.addEventListener('keydown', e => {
   if (e.key === 'ArrowUp' && i === 0){ input.focus(); return; }
   rows[Math.max(0, Math.min(rows.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)))].focus();
 });
+// a cover that doesn't come: its paper and title stay
+res.addEventListener('error', e => { if (e.target && e.target.matches && e.target.matches('.cv img')) e.target.remove(); }, true);
 box.addEventListener('click', e => {
   if (e.target === box || e.target.closest('[data-shut]')){ shut(); return; }
   const all = e.target.closest('[data-all]');
