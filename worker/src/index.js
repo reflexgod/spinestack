@@ -34,6 +34,8 @@
         a profile photo, a wall or a PNG for the wall, kept in R2 (MEDIA). Walls and PNGs need Pro.
         Limits: 20 a minute and 200 a day per account, 20,000 a day in all.
    GET  /m/img?k=<key>  -> the picture (anyone with the key)
+   GET  /s/u/<username>[/<shelf id>], /s/t/film/<id>, /s/t/book/<id>  -> a share link: a link preview's fetcher gets a
+        page of og: tags (the person's, the shelf's or the title's, with its picture); anyone else a 302 to the page
    POST /m/delete?k=<key>  -> deletes one of your own pictures once no shelf of yours and not your profile uses it
    Every day at 03:00 UTC (cron) the Worker makes one tiny read from Supabase, so the free project isn't
    paused for being inactive.
@@ -71,6 +73,7 @@ export default {
         return json({error: 'Not found.'}, 404, cors);
       }
       if (!post && path === '/m/img') return await mediaImage(p, env, cors, ctx);
+      if (!post && path.startsWith('/s/')) return await sharePage(path, req, env, ctx);   // a share link (a preview, or straight on)
       if (post && path.startsWith('/m/')) {
         const user = await userOf(req, env);
         if (!user) return json({error: 'Sign in again to save pictures.'}, 401, cors);
@@ -296,6 +299,85 @@ async function titleInfo(p, env, cors, ctx) {
   body.spine = spine ? spine.img : '';
   ctx.waitUntil(edge.put(ekey, new Response(JSON.stringify(body), {headers: {'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${7 * DAY}`}})));
   return json(body, 200, cors, {'X-Cache': 'MISS', 'Cache-Control': 'public, max-age=3600'});
+}
+/* ---------- /s/...: share links that show a picture and a title in a link preview ----------
+   GitHub Pages serves the site as plain files, and a link preview (WhatsApp, Instagram, iMessage, X, Discord, Slack...)
+   reads only a page's own tags, before any script runs: /u/?viraaj would preview as "Profile". So the site's Share and
+   Copy link give these addresses instead. A preview fetcher is answered with a small page whose og: tags are that
+   person's, that shelf's or that title's (its title, a line, a picture); anyone else is sent straight on (302) to the
+   page on shelfstackd.com, with nothing asked of anyone on the way.
+     /s/u/<username>                  a profile (the picture: their main shelf's, otherwise their photo)
+     /s/u/<username>/<shelf id>       a shelf (its picture)
+     /s/t/film/<TMDB id>, /s/t/book/<Open Library work id>   a title (its cover)
+   What a fetcher was told is kept at the edge for 10 minutes. Only what anyone may read is read (the public key, so
+   Row Level Security leaves out private shelves and profiles: those preview as shelfstackd with the person's name). */
+const SITE = 'https://shelfstackd.com';
+const BOTS = /bot\b|bot\/|crawler|spider|facebookexternalhit|facebot|meta-externalagent|whatsapp|telegram|slack|discord|twitter|linkedin|pinterest|embedly|skype|vkshare|iframely|snapchat|viber|line\/|kakaotalk|mastodon|preview/i;
+const escHtml = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+async function sbRead(env, path, body) {
+  if (!env.SUPABASE_URL || !env.SUPABASE_KEY) return null;
+  const r = await fetch(`${env.SUPABASE_URL}/rest/v1/${path}`, body ? {method: 'POST', headers: {apikey: env.SUPABASE_KEY, 'Content-Type': 'application/json'}, body: JSON.stringify(body)} : {headers: {apikey: env.SUPABASE_KEY}});
+  return r.ok ? r.json() : null;
+}
+function shareTarget(parts) {
+  const [kind, a, b] = parts;
+  if (kind === 'u' && /^[a-z0-9_]{3,20}$/.test(a || '')) return SITE + '/u/?' + a + (b && /^[0-9a-f-]{36}$/.test(b) ? '&shelf=' + b : b === 'shelf' ? '&shelf' : '');
+  if (kind === 't' && a === 'film' && /^\d{1,9}$/.test(b || '')) return SITE + '/t/?film=' + b;
+  if (kind === 't' && a === 'book' && /^OL\d{1,10}W$/.test(b || '')) return SITE + '/t/?book=' + b;
+  return '';
+}
+const shelfLabel = s => String(s.name || s.caption || '').trim() || 'untitled shelf';
+async function shareTags(parts, origin, env) {
+  const [kind, a, b0] = parts, plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const b = kind === 't' || b0 === 'shelf' || /^[0-9a-f-]{36}$/.test(b0 || '') ? b0 : '';   // a shelf: its id, or its owner's main one
+  if (kind === 'u') {
+    const p = ((await sbRead(env, `profiles?select=id,username,display_name,bio,avatar_key,pinned_shelf_id&username=eq.${a}`)) || [])[0];
+    if (!p) {   // private, or no one: the card's name at most
+      const c = ((await sbRead(env, 'rpc/profile_card', {p_username: a})) || [])[0];
+      return c ? {title: `${(c.display_name || '').trim() || '@' + c.username} (@${c.username}) on shelfstackd`, about: 'A private profile on shelfstackd.', type: 'profile'} : null;
+    }
+    const who = (p.display_name || '').trim() ? `${p.display_name.trim()} (@${p.username})` : '@' + p.username;
+    const shelves = (await sbRead(env, `shelves?select=id,name,caption,preview_key,updated_at,created_at,shelf_items(count)&owner=eq.${p.id}&is_public=is.true&hidden=is.false&order=created_at.asc&limit=200`)) || [];
+    if (b) {
+      const s = b === 'shelf' ? shelves.find(x => x.id === p.pinned_shelf_id) || shelves[0] : shelves.find(x => x.id === b);
+      if (!s) return {title: `${who} on shelfstackd`, about: 'A shelf on shelfstackd.', type: 'website'};
+      const titles = ((await sbRead(env, `shelf_items?select=title&shelf_id=eq.${s.id}&order=position&limit=6`)) || []).map(r => r.title).filter(Boolean);
+      const n = ((s.shelf_items || [])[0] || {}).count || titles.length;
+      return {title: `${shelfLabel(s)}: a shelf by @${p.username}`, about: `${plural(n, 'spine', 'spines')}${titles.length ? ': ' + titles.slice(0, 5).join(', ') : ''}. On shelfstackd.`,
+        image: s.preview_key ? `${origin}/u/preview?k=${encodeURIComponent(s.preview_key)}&v=${encodeURIComponent(s.updated_at || '')}` : '', imageAlt: `${shelfLabel(s)}, a shelf of spines`, type: 'website', tall: true};
+    }
+    const main = shelves.find(x => x.id === p.pinned_shelf_id) || shelves[0];
+    const image = main && main.preview_key ? `${origin}/u/preview?k=${encodeURIComponent(main.preview_key)}&v=${encodeURIComponent(main.updated_at || '')}` : p.avatar_key ? `${origin}/m/img?k=${encodeURIComponent(p.avatar_key)}` : '';
+    const n = main ? ((main.shelf_items || [])[0] || {}).count || 0 : 0;
+    return {title: `${who} on shelfstackd`, about: (p.bio || '').trim().slice(0, 160) || (main ? `${plural(n, 'spine', 'spines')} on their shelf, and the films and books they log.` : 'Their shelf, and the films and books they log.'),
+      image, imageAlt: main ? `@${p.username}'s shelf` : `@${p.username}'s photo`, type: 'profile', tall: !!(main && main.preview_key)};
+  }
+  const t = a === 'film' ? await filmInfo(b, '', '', env.TMDB_TOKEN).catch(() => null) : await bookInfo(b, '', '').catch(() => null);
+  if (!t) return null;
+  const label = `${t.title}${t.year ? ` (${t.year})` : ''}`, by = t.creator ? (t.kind === 'movie' ? `dir. ${t.creator}` : `by ${t.creator}`) : '';
+  return {title: `${label} on shelfstackd`, about: [by, t.overview ? t.overview.slice(0, 150) : ''].filter(Boolean).join(' · ') || 'On shelfstackd.', image: t.cover, imageAlt: `The cover of ${label}`,
+    type: t.kind === 'movie' ? 'video.movie' : 'book', tall: true, to: `${SITE}/t/?${t.kind === 'movie' ? 'film' : 'book'}=${t.id}&title=${encodeURIComponent(t.title)}${t.year ? '&year=' + t.year : ''}`};
+}
+async function sharePage(path, req, env, ctx) {
+  const parts = path.split('/').slice(2).map(decode), target = shareTarget(parts);
+  if (!target) return Response.redirect(SITE + '/', 302);
+  if (!BOTS.test(req.headers.get('User-Agent') || '')) return new Response(null, {status: 302, headers: {Location: target, 'Cache-Control': 'no-store'}});
+  const edge = caches.default, ekey = new Request('https://share.cache' + path);
+  const held = await edge.match(ekey);
+  if (held) return new Response(held.body, {status: 200, headers: {'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=600', 'X-Cache': 'EDGE'}});
+  let tags = null;
+  try { tags = await shareTags(parts, new URL(req.url).origin, env); } catch {}
+  tags = tags || {title: 'shelfstackd', about: 'Shelve the films and books you love, with their real spines.', type: 'website'};
+  const to = tags.to || target, image = tags.image || SITE + '/og.jpg', alt = tags.image ? tags.imageAlt : 'shelfstackd: a white hedgehog with four coloured quills, on dark grey.';
+  const meta = (k, v, attr = 'property') => `<meta ${attr}="${k}" content="${escHtml(v)}">`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${escHtml(tags.title)}</title>${meta('description', tags.about, 'name')}<link rel="canonical" href="${escHtml(to)}">
+${meta('og:site_name', 'shelfstackd')}${meta('og:type', tags.type)}${meta('og:title', tags.title)}${meta('og:description', tags.about)}${meta('og:url', to)}
+${meta('og:image', image)}${meta('og:image:alt', alt)}${tags.image ? '' : meta('og:image:width', '1200') + meta('og:image:height', '630')}
+${meta('twitter:card', tags.image && tags.tall ? 'summary' : 'summary_large_image', 'name')}${meta('twitter:title', tags.title, 'name')}${meta('twitter:description', tags.about, 'name')}${meta('twitter:image', image, 'name')}
+<meta http-equiv="refresh" content="0;url=${escHtml(to)}"></head><body><p><a href="${escHtml(to)}">${escHtml(tags.title)}</a></p></body></html>`;
+  ctx.waitUntil(edge.put(ekey, new Response(html, {headers: {'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=600'}})));
+  return new Response(html, {status: 200, headers: {'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=600', 'X-Cache': 'MISS'}});
 }
 async function filmInfo(id, title, year, token) {
   if (!token) return null;
