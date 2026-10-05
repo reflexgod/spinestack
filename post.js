@@ -5,7 +5,8 @@
    Posts.fields(host, m)    the composer's fields once a title is picked: the rating (five spines, halves, optional), the review,
                             and with 0009 Spoilers, Rewatch (Reread for a book) and the day. Gives {values(), clear(), focus()}.
    Posts.composer(host, {onPosted}) "What did you watch or read?": the title search, the picked title, the fields, Post.
-   Posts.save(m, values)    posts a log of m ({kind, title, year, creator, cover}): {ok, row} or {error}.
+   Posts.save(m, values)    posts a log of m ({kind, title, year, creator, cover, tmdb or ol}): {ok, row} or {error}. With
+                            0011 the log keeps the title's id (Nav.ids()).
    Posts.stats(ids)         post_stats() for these logs (0009): a Map of id to {rating, review, likes, replies, ...}.
    Posts.item(x, opt)       one post, an <li>: photo, @name, "watched Gummo", the stars, the worn cover, the review
                             (blurred until pressed when it has spoilers), when; and the row of actions: like, reply and
@@ -344,9 +345,9 @@ async function composer(host, opt = {}){
 async function save(m, v = {}){
   const a = acct();
   if (!(a.sb && a.user && a.profile)) return {error: a.user ? 'Pick a username first.' : 'Sign in to log films and books.'};
-  const social = await ready();
+  const [social, ids] = await Promise.all([ready(), window.Nav && Nav.ids ? Nav.ids() : false]);
   const day = v.watched_on && v.watched_on <= today() ? v.watched_on : null;
-  const row = {...rowOf(m), ...(social
+  const row = {...rowOf(m), ...(ids ? Nav.idCols(m) : {}), ...(social
     ? {review: String(v.review || '').slice(0, 2000), rating: v.rating >= 1 && v.rating <= 10 ? Math.round(v.rating) : null, spoiler: !!v.spoiler, rewatch: !!v.rewatch, ...(day ? {watched_on: day} : {}), ...(v.metoo ? {metoo_of: v.metoo} : {}), ...(v.rec ? {rec: v.rec} : {})}
     : {caption: String(v.review || '').slice(0, 280)})};
   let r;
@@ -379,7 +380,8 @@ const profileUrl = name => ROOT + 'u/?' + name;
 const coverSrc = x => x.cover_src ? `${WORKER}/img?url=${encodeURIComponent(String(x.cover_src).replace(/^url:/, ''))}` : '';
 // the title's own page (/t/), from the title, as nav.js makes it
 const titleUrl = x => window.Nav && Nav.titleUrl ? Nav.titleUrl(itemOf(x)) : ROOT + 't/';
-const itemOf = x => ({kind: x.kind, title: x.title, year: x.year ? String(x.year) : '', creator: x.author || '', cover: x.cover_src ? String(x.cover_src).replace(/^url:/, '') : ''});
+const itemOf = x => ({kind: x.kind, title: x.title, year: x.year ? String(x.year) : '', creator: x.author || '', cover: x.cover_src ? String(x.cover_src).replace(/^url:/, '') : '',
+  ...(x.tmdb_id ? {tmdb: String(x.tmdb_id)} : {}), ...(x.ol_id ? {ol: x.ol_id} : {})});   // its ids, from post_stats() (0011)
 
 // a small menu under a button: items [{label, run(), disabled}], shut by Esc, a press elsewhere, or picking one
 function menuOn(btn, list){

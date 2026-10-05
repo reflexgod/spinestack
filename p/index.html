@@ -185,6 +185,8 @@ async function load(){
   $('#state').hidden = true;
   $('#thePost').replaceChildren(Posts.item(x, {social: post.social, whole: true, cover: 120, onGone: () => { location.href = '../feed/'; }}));
   if (post.social) replies();
+  // your own log from before ids were kept: its id, once the Worker finds the title (0011)
+  if (me.user && x.owner === me.user.id) Nav.fillIds([{table: 'logs', id: x.id, kind: x.kind, title: x.title, year: x.year, tmdb_id: x.tmdb_id, ol_id: x.ol_id}]);
 }
 function gone(){ $('#state').textContent = 'This post isn’t here. It was deleted, or it’s a private profile’s.'; $('#state').hidden = false; }
 

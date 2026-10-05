@@ -227,7 +227,17 @@ const noteRow = n => { const p = PEOPLE.find(x => x.id === n.actor), l = LOGS.fi
     log: n.log, log_kind: l ? l.kind : null, log_title: l ? l.title : null, reply_text: n.reply_text || null, rec: n.rec || null, rec_kind: n.rec_kind || null, rec_title: n.rec_title || null }; };
 
 /* ---------- Supabase's REST API, answered from the data above ---------- */
-function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, friends, social, recs){
+/* migration 0011 (docs/proposed-0011-ids-edits.sql), with mockNetwork's ids: true: titles keep their ids. @mira's
+   Gummo has TMDB's 106, and @longusername_twenty1 logged it as "gummo." in 1998 with the same id (two spellings, one
+   film, merged by the id); the spines and the made-up account's own logs are from before ids were kept (none). A log
+   edited answers with edited_at. */
+const IDS_OF = { [logId(0)]: { tmdb_id: 106 } };
+const IDS_LOG = { id: logId(8), owner: PEOPLE[2].id, kind: 'movie', title: 'gummo.', author: 'Harmony Korine', year: 1998, cover_src: null, caption: 'Odd.', created_at: at(2, 1), tmdb_id: 106 };
+const withIds = l => ({ tmdb_id: null, ol_id: null, edited_at: null, ...l, ...(IDS_OF[l.id] || {}) });
+function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, friends, social, recs, ids){
+  const LOGS_NOW = ids ? [...LOGS.map(withIds), IDS_LOG] : LOGS;
+  // 0011: logs.tmdb_id answers once it's there, 42703 (400) before
+  if (url.pathname.endsWith('/rest/v1/logs') && url.searchParams.get('select') === 'tmdb_id,edited_at') return ids ? [] : { __status: 400, body: { code: '42703', message: 'column logs.tmdb_id does not exist', details: null, hint: null } };
   if (fresh) ownShelf = false;
   const me = signedIn && !fresh;   // the made-up account as it is (follows @mira); fresh: nothing yet
   const what = url.pathname.replace(/^\/rest\/v1\//, ''), q = url.searchParams, eq = k => (q.get(k) || '').replace(/^eq\./, '');
@@ -246,7 +256,7 @@ function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, 
     if (what === 'rpc/rec_keep') return 'kept';
     if (what === 'rpc/rec_thread') return REC_THREAD[body.rid] || [];
     if (what === 'rpc/timeline'){
-      const rows = rest(new URL(url.href.replace('/rpc/timeline', '/rpc/activity')), method, body, signedIn, named, empty, logs, ownShelf, fresh, friends, social, recs);
+      const rows = rest(new URL(url.href.replace('/rpc/timeline', '/rpc/activity')), method, body, signedIn, named, empty, logs, ownShelf, fresh, friends, social, recs, ids);
       if (!Array.isArray(rows)) return rows;
       const all = [...rows.map(r => ({ ...r, to_username: null, to_display_name: null })), ...(body.scope === 'everyone' && !body.before_id ? [FEED_REC] : [])];
       return all.sort((a, b) => b.at.localeCompare(a.at) || b.id.localeCompare(a.id)).slice(0, body.n || 20);
@@ -262,15 +272,24 @@ function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, 
   }
   if (/^rpc\/(post_stats|replies_of|notifications_list|notifications_read)$/.test(what)){
     if (!social) return NOT_THERE;
-    if (what === 'rpc/post_stats') return (body.ids || []).filter(id => STATS[id] || id === NEW_LOG).map(id => ({ id, ...(STATS[id] || STATS[logId(3)]), ...(signedIn ? {} : { liked: false, logged: false }), ...(recs ? { rec_by: id === logId(2) ? 'tester' : null } : {}) }));
+    if (what === 'rpc/post_stats') return (body.ids || []).filter(id => STATS[id] || id === NEW_LOG || (ids && id === IDS_LOG.id)).map(id => ({ id, ...(STATS[id] || STATS[logId(3)]), ...(signedIn ? {} : { liked: false, logged: false }), ...(recs ? { rec_by: id === logId(2) ? 'tester' : null } : {}),
+      ...(ids ? { edited_at: null, tmdb_id: (IDS_OF[id] || {}).tmdb_id || (id === IDS_LOG.id ? 106 : null), ol_id: null } : {}) }));
     if (what === 'rpc/replies_of') return REPLIES.filter(r => r.log === body.lid).map(replyRow);
     if (what === 'rpc/notifications_list') return signedIn ? [...NOTES, ...(recs ? REC_NOTES : [])].sort((a, b) => b.created_at.localeCompare(a.created_at)).map(noteRow) : [];
     if (what === 'rpc/notifications_read') return NOTES.filter(n => !n.read).length;
   }
   // a log posted: the database's answer is the new row
   if (what === 'logs' && method === 'POST') return logs ? [{ id: NEW_LOG, created_at: new Date().toISOString(), owner: ME.id, ...body }] : NOT_THERE;
+  // a log edited (0011): only yours, and the row as it is then (an id filled in isn't an edit)
+  if (what === 'logs' && method === 'PATCH'){
+    if (!ids) return { __status: 403, body: { code: '42501', message: 'permission denied for table logs' } };
+    const l = LOGS_NOW.find(x => x.id === eq('id') && x.owner === ME.id) || (eq('id') === NEW_LOG ? { id: NEW_LOG, owner: ME.id } : null);
+    const edit = Object.keys(body).some(k => !/^(tmdb_id|ol_id)$/.test(k));
+    return l ? [{ ...withIds(l), ...(STATS[l.id] || {}), ...body, ...(edit ? { edited_at: new Date().toISOString() } : {}) }] : [];
+  }
+  if (what === 'shelf_items' && method === 'PATCH') return ids ? [] : { __status: 403, body: { code: '42501', message: 'permission denied for table shelf_items' } };
   if (what === 'logs' && method === 'GET' && q.get('id')){   // one log by its id (a post's own page)
-    const l = LOGS.find(x => x.id === eq('id'));
+    const l = LOGS_NOW.find(x => x.id === eq('id'));
     if (l) return [l];
   }
   if (/^(rpc\/(activity|from_friends)|logs|watchlist|friend_hides)$/.test(what)){
@@ -291,9 +310,9 @@ function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, 
     if (what === 'logs' && (q.get('title') || q.get('or'))){   // the title page: that title's logs, with whose they are
       if (/(^|[,(])profiles\(/.test(q.get('select') || '')) return AMBIGUOUS;
       const where = pgWhere(q);
-      return [...LOGS, ...(friends ? FRIEND_LOGS : [])].filter(l => where(l) && !(fresh && l.owner === ME.id)).map(l => ({ ...l, profiles: someone(l.owner) }));
+      return [...LOGS_NOW, ...(friends ? FRIEND_LOGS : [])].filter(l => where(l) && !(fresh && l.owner === ME.id)).map(l => ({ ...l, profiles: someone(l.owner) }));
     }
-    if (what === 'logs'){ const from = +(q.get('offset') || 0), n = +(q.get('limit') || 20); return LOGS.filter(l => l.owner === eq('owner') && !(fresh && l.owner === ME.id)).slice(from, from + n); }
+    if (what === 'logs'){ const from = +(q.get('offset') || 0), n = +(q.get('limit') || 20); return LOGS_NOW.filter(l => l.owner === eq('owner') && !(fresh && l.owner === ME.id)).slice(from, from + n); }
     if (what === 'watchlist') return WATCHLIST.filter(w => w.owner === eq('owner') && !(fresh && w.owner === ME.id));
     return [];
   }
@@ -337,7 +356,7 @@ function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, 
     if (/shelves\([^)]*(^|[,(])profiles\(/.test(q.get('select') || '')) return { ...AMBIGUOUS, body: { ...AMBIGUOUS.body, message: 'Could not embed because more than one relationship was found for \'shelves\' and \'profiles\'' } };
     const all = [...SHELVES, ...FRIEND_SHELVES].filter(x => !(fresh && x.owner === ME.id)), where = pgWhere(q);
     return [...ITEMS_BY_SHELF].flatMap(([id, rows]) => rows.filter(where).map(r => { const sh = all.find(x => x.id === id);
-      return sh ? { shelf_id: id, shelves: { id, owner: sh.owner, name: sh.name, caption: sh.caption, profiles: someone(sh.owner) } } : null; })).filter(Boolean);
+      return sh ? { ...r, shelf_id: id, shelves: { id, owner: sh.owner, name: sh.name, caption: sh.caption, profiles: someone(sh.owner) } } : null; })).filter(Boolean);
   }
   if (what === 'shelf_items'){   // shelf_id=in.(x,y): each shelf's own spines; shelf_id=eq.x: ITEMS
     const ids = (q.get('shelf_id') || '').startsWith('in.(') ? q.get('shelf_id').slice(4, -1).split(',') : null;
@@ -371,17 +390,18 @@ function storyPicture(layout, dark){
   return stories.get(key);
 }
 // what the Worker's /identify knows: a search finds the ones whose title or maker has what was typed, films first
-// and then books, each in this order (so the page's own ordering, closest title first, has something to do)
+// and then books, each in this order (so the page's own ordering, closest title first, has something to do), each with
+// its id as the Worker gives it (tmdb: TMDB's, ol: Open Library's work)
 const MATCHES = [
-  { kind: 'movie', title: 'Gummo', year: '1997', creator: 'Harmony Korine', cover: 'https://image.tmdb.org/t/p/w500/gummo.jpg' },
+  { kind: 'movie', tmdb: '106', title: 'Gummo', year: '1997', creator: 'Harmony Korine', cover: 'https://image.tmdb.org/t/p/w500/gummo.jpg' },
   { kind: 'movie', title: 'Waves', year: '2019', creator: 'Trey Edward Shults', cover: 'https://image.tmdb.org/t/p/w500/waves.jpg' },
   { kind: 'movie', title: 'Spy Kids', year: '2001', creator: 'Robert Rodriguez', cover: 'https://image.tmdb.org/t/p/w500/spykids.jpg' },
   { kind: 'movie', title: 'Kids in America', year: '2005', creator: 'Josh Stolberg', cover: 'https://image.tmdb.org/t/p/w500/kia.jpg' },
-  { kind: 'movie', title: 'Kids', year: '1995', creator: 'Larry Clark', cover: 'https://image.tmdb.org/t/p/w500/kids.jpg' },
+  { kind: 'movie', tmdb: '9344', title: 'Kids', year: '1995', creator: 'Larry Clark', cover: 'https://image.tmdb.org/t/p/w500/kids.jpg' },
   { kind: 'movie', title: 'The Kids Are All Right', year: '2010', creator: 'Lisa Cholodenko', cover: 'https://image.tmdb.org/t/p/w500/tkaar.jpg' },
   { kind: 'movie', title: 'Honey, I Shrunk the Kids', year: '1989', creator: 'Joe Johnston', cover: 'https://image.tmdb.org/t/p/w500/hisk.jpg' },
-  { kind: 'book', title: 'The Waves', year: '1931', creator: 'Virginia Woolf', cover: 'https://covers.openlibrary.org/b/id/1-L.jpg' },
-  { kind: 'book', title: 'Just Kids', year: '2010', creator: 'Patti Smith', cover: 'https://covers.openlibrary.org/b/id/2-L.jpg' },
+  { kind: 'book', ol: 'OL99W', title: 'The Waves', year: '1931', creator: 'Virginia Woolf', cover: 'https://covers.openlibrary.org/b/id/1-L.jpg' },
+  { kind: 'book', ol: 'OL5W', title: 'Just Kids', year: '2010', creator: 'Patti Smith', cover: 'https://covers.openlibrary.org/b/id/2-L.jpg' },
   { kind: 'book', title: 'Kids', year: '2021', creator: 'Michael Chabon', cover: 'https://covers.openlibrary.org/b/id/3-L.jpg' },
 ];
 const plain = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
@@ -396,9 +416,10 @@ const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers
    made-up account before it has saved its shelf; fresh: it has just picked its username, with nothing yet (no name,
    bio, shelf, log, watchlist or follow); friends: it follows five more people (FRIENDS), for home's row of cards;
    social: the database has migration 0009 (likes, replies, notifications; supabase/migrations/0009_social.sql).
-   recs: it has migration 0010 too (recs, their threads; supabase/migrations/0010_recs.sql).
+   recs: it has migration 0010 too (recs, their threads; supabase/migrations/0010_recs.sql). ids: and the proposed 0011
+   (ids on titles, editing a log; docs/proposed-0011-ids-edits.sql).
    Returns {unknown, asked}: requests nothing here could answer, and every search /identify was asked for. */
-async function mockNetwork(page, { signedIn = false, named = true, slow = 0, capped = false, realFonts = false, empty = false, logs = true, ownShelf = true, fresh = false, friends = false, social = false, recs = false } = {}){
+async function mockNetwork(page, { signedIn = false, named = true, slow = 0, capped = false, realFonts = false, empty = false, logs = true, ownShelf = true, fresh = false, friends = false, social = false, recs = false, ids = false } = {}){
   const unknown = [], asked = [];
   if (signedIn){
     const exp = Math.floor(Date.now() / 1000) + 3600, b64 = o => Buffer.from(JSON.stringify(o)).toString('base64url');
@@ -414,7 +435,7 @@ async function mockNetwork(page, { signedIn = false, named = true, slow = 0, cap
     if (method === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
     if (url.origin === SB_URL && url.pathname.startsWith('/rest/v1/')){
       let body = {}; try { body = JSON.parse(req.postData() || '{}'); } catch {}
-      let data = rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, friends, social, recs);
+      let data = rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, friends, social, recs, ids);
       if (data && data.__status) return route.fulfill({ status: data.__status, headers: CORS, contentType: 'application/json', body: JSON.stringify(data.body) });
       if (/vnd\.pgrst\.object/.test(req.headers().accept || '')) data = Array.isArray(data) ? data[0] || null : data;   // .single()
       return route.fulfill({ status: data === null ? 204 : 200, headers: CORS, contentType: 'application/json', body: data === null ? '' : JSON.stringify(data) });
@@ -462,6 +483,7 @@ function watchErrors(page){
     if (m.type() !== 'error') return;
     if (/\/rest\/v1\/likes\?select=log&limit=1$/.test((m.location() || {}).url || '')) return;   // post.js asking whether 0009 is there: 404 until it is
     if (/\/rest\/v1\/rpc\/rec_stats\?uid=0{8}-/.test((m.location() || {}).url || '')) return;   // recs.js asking whether 0010 is there: the same
+    if (/\/rest\/v1\/logs\?select=tmdb_id,edited_at&limit=1$/.test((m.location() || {}).url || '')) return;   // nav.js asking whether 0011 is there: 400 until it is
     errors.push(m.text());
   });
   page.on('pageerror', e => errors.push(String(e && e.message || e)));
@@ -482,4 +504,4 @@ async function open(page, pathname){
   await page.waitForLoadState('networkidle');
 }
 
-module.exports = { TITLE_INFO, NEW_LOG, STATS, REPLIES, NOTES, MUTUALS, RECS_FOR, RECS_SENT, REC_THREAD, FEED_REC, REC_NOTES, recId, ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, LOGS, FRIENDS, FRIEND_SHELVES, FRIEND_LOGS, ITEMS_BY_SHELF, WATCHLIST, FROM_FRIENDS, PICTURE, STORY, CAPTION, MADE_WITH, CORS, WORKER, SB_URL, feedRow, storyPicture, mockNetwork, watchErrors, open, putAside };
+module.exports = { IDS_LOG, TITLE_INFO, NEW_LOG, STATS, REPLIES, NOTES, MUTUALS, RECS_FOR, RECS_SENT, REC_THREAD, FEED_REC, REC_NOTES, recId, ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, LOGS, FRIENDS, FRIEND_SHELVES, FRIEND_LOGS, ITEMS_BY_SHELF, WATCHLIST, FROM_FRIENDS, PICTURE, STORY, CAPTION, MADE_WITH, CORS, WORKER, SB_URL, feedRow, storyPicture, mockNetwork, watchErrors, open, putAside };

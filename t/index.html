@@ -161,10 +161,11 @@ section.tsec{margin-top:var(--s6)}
 (() => {
 /* A film or a book: /t/?film=<TMDB id> or /t/?book=<Open Library work id>. From the Worker's /title: the cover, the
    title and year, the director or author, the runtime or pages, the genres, a short overview, and its real spine when
-   the archive has one. A link from a log or a spine (which keep no id) is /t/?kind=&title=&year=: the Worker finds the
-   id and the address becomes the id's; with no Worker, the page goes on with what the link says.
-   Then what people here did with it, read from the logs and the spines with that kind, title and year that you can
-   see: the average rating (in spines), the ten half-points as a histogram, "watched by 12 · 3 friends", the shelves
+   the archive has one. A link from a log or a spine with no id is /t/?kind=&title=&year=: the Worker finds the id and
+   the address becomes the id's; with no Worker, the page goes on with what the link says.
+   Then what people here did with it, from the logs and the spines of it that you can see (with 0011: those with its
+   id, and those from before ids were kept by its kind, title and year; before 0011, all by kind, title and year), and
+   your own from before get its id (fillYours()): the average rating (in spines), the ten half-points as a histogram, "watched by 12 · 3 friends", the shelves
    it's on (people you follow first, 12 faces at most), and the reviews: Friends · Popular · Recent, each a post as the
    feed has it (a press goes to its page). Signed in and not logged yet: Your review at the top, one press on the
    spines to rate it, then the review if you like, and Post.
@@ -182,8 +183,8 @@ const SHARE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
 
 /* ---------- which title ---------- */
 const P = new URLSearchParams(location.search);
-/* The address has its id (film, book) when it's known, and the title and year the link came with: logs and spines
-   keep no id, so what people did with it is found by that title and year (until ids are kept: 0011) */
+/* The address has its id (film, book) when it's known, and the title and year the link came with: rows from before
+   ids were kept (0011) are found by that title and year */
 const ASK = (() => {
   const film = /^\d{1,9}$/.test(P.get('film') || '') ? P.get('film') : '', book = film ? '' : /^OL\d{1,10}W$/.test(P.get('book') || '') ? P.get('book') : '';
   const title = (P.get('title') || '').trim().slice(0, 200), year = /^\d{4}$/.test(P.get('year') || '') ? P.get('year') : '';
@@ -279,10 +280,10 @@ function paintCover(){
 const matchOf = () => ({...T.match, tmdb: T.item && T.item.tmdb, ol: T.item && T.item.ol});
 const alsoTitles = () => T.info && T.info.title && T.info.title.toLowerCase() !== String(T.match.title).toLowerCase() ? [T.info.title] : [];
 async function community(){
-  const where = Nav.titleQuery(matchOf(), false, alsoTitles());
+  const ids = T.ids = await Nav.ids(), where = Nav.titleQuery(matchOf(), ids, alsoTitles()), idc = ids ? ',tmdb_id,ol_id' : '';
   const asks = [
-    Posts.rest(`logs?select=id,owner,kind,title,author,year,cover_src,caption,created_at,profiles!logs_owner_fkey(username,display_name,avatar_key)&${where}&order=created_at.desc&limit=200`).catch(() => []),
-    Posts.rest(`shelf_items?select=shelf_id,shelves(id,owner,name,caption,profiles!shelves_owner_fkey(username,display_name,avatar_key))&${where}&limit=300`).catch(() => []),
+    Posts.rest(`logs?select=id,owner,kind,title,author,year,cover_src,caption,created_at${idc},profiles!logs_owner_fkey(username,display_name,avatar_key)&${where}&order=created_at.desc&limit=200`).catch(() => []),
+    Posts.rest(`shelf_items?select=shelf_id,position,kind,title,year${idc},shelves(id,owner,name,caption,profiles!shelves_owner_fkey(username,display_name,avatar_key))&${where}&limit=300`).catch(() => []),
     me.user ? Posts.rest(`follows?select=followee&follower=eq.${me.user.id}&limit=1000`).catch(() => []) : [],
   ];
   const [logs, items, follows] = await Promise.all(asks);
@@ -294,7 +295,8 @@ async function community(){
   T.mine = me.user ? rows.find(x => x.owner === me.user.id) || null : null;
   // each shelf once, then each person once (their newest shelf with it); yours: it's on your shelf
   const seen = new Set();
-  T.shelves = (items || []).map(r => r.shelves).filter(s => s && s.profiles && !seen.has(s.owner) && seen.add(s.owner));
+  T.spines = items || [];
+  T.shelves = T.spines.map(r => r.shelves).filter(s => s && s.profiles && !seen.has(s.owner) && seen.add(s.owner));
   if (!T.item.cover){ const c = rows.map(x => String(x.cover_src || '').replace(/^url:/, '')).find(u => COVER_OK.test(u)); if (c) T.item.cover = c; }
 }
 function paintStats(){
@@ -412,6 +414,15 @@ $('#yPost').addEventListener('click', async () => {
 
 function paintAll(){ paintCover(); paintStats(); paintShelves(); paintPanel(); paintReviews(T.tab); paintYours(); }
 
+/* Your own logs and spines of it from before ids were kept (0011): once the Worker has said what it is (its id, and
+   its title as the rows have it: Nav.fillIds()), the id goes on them */
+async function fillYours(){
+  if (!me.user || !T.found || !T.ids || !T.logs) return;
+  const mine = [...T.logs.filter(x => x.owner === me.user.id).map(x => ({...x, table: 'logs'})),
+    ...T.spines.filter(r => r.shelves && r.shelves.owner === me.user.id).map(r => ({...r, table: 'shelf_items'}))];
+  await Nav.fillIds(mine, T.found);
+}
+
 /* At once, before anything is asked: what the link says (its title and year), and the Worker asked. Then, signed in
    or not, what people did with it (your log, the cover from it); the Worker's details come in when it answers. */
 let asking = null;
@@ -426,12 +437,15 @@ function first(){
 }
 // the Worker's details on top of the link's: the title as TMDB or Open Library writes it, who made it, how long, the rest
 function details(t){
-  T.info = {...t, title: t.title || T.info.title};
+  T.found = t.id ? {kind: t.kind, id: t.id, title: t.title, year: t.year} : null;   // what the Worker says it is
+  const newId = !!t.id && t.id !== (T.item && (T.item.tmdb || T.item.ol));
+  T.info = {...t, title: t.title || (T.info && T.info.title)};
   if (!T.match) T.match = {kind: t.kind, title: t.title, year: t.year || ''};
   T.item = {...T.item, kind: t.kind, title: T.item && T.item.title || t.title, year: T.item && T.item.year || t.year || '', creator: t.creator || '',
     cover: T.item && T.item.cover || (COVER_OK.test(t.cover || '') ? t.cover : ''), ...(t.kind === 'movie' ? {tmdb: t.id} : {ol: t.id})};
   history.replaceState(null, '', addressOf() + location.hash);   // the id's address, still with the title and year to match by
   paintInfo();
+  return newId;
 }
 async function load(){
   if (!ASK) return;
@@ -440,10 +454,19 @@ async function load(){
     if (!t){ $('#state').textContent = 'This title couldn’t load. Try again in a moment.'; return; }
     T.item = {}; details(t);
     $('#state').hidden = true; $('#page').hidden = false;
-  } else asking.then(t => { if (t){ details(t); if (T.logs) paintCover(); } });
+  } else asking.then(async t => {
+    if (!t) return;
+    // an id the link didn't have: what people did with it is asked for again by it (0011), then drawn
+    if (details(t) && T.logs && await Nav.ids()){ await community(); paintAll(); }
+    else if (T.logs) paintCover();
+    if (T.logs) fillYours();
+  });
+  const asked = Nav.idOf(matchOf());
   await community();
+  if (T.ids && Nav.idOf(matchOf()) !== asked) await community();   // the Worker's id came while it was asking
   watchKeys = await Posts.watched().catch(() => new Set());
   paintAll();
+  fillYours();
 }
 
 first();

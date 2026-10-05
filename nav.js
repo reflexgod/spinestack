@@ -203,6 +203,61 @@
       bell.setAttribute('aria-label', unread ? 'Notifications, some unread' : 'Notifications');
     } catch {}
   }
+  /* Is migration 0011 there (docs/proposed-0011-ids-edits.sql: ids on logs, spines, Up next and recs; editing a log)?
+     Asked as the bell asks for 0009 (logs.tmdb_id answers once it's there, 400 before): a yes kept for this tab, a no
+     for 10 minutes on this device. Until it's there no id is sent or asked for, and there's no Edit. */
+  const IDS = 'shelfstackd-0011';
+  let idsP = null;
+  function ids(){
+    if (idsP) return idsP;
+    try {
+      if (sessionStorage.getItem(IDS) === 'yes') return idsP = Promise.resolve(true);
+      if (Date.now() - (+localStorage.getItem(IDS + '-no') || 0) < 10 * 60e3) return idsP = Promise.resolve(false);
+    } catch {}
+    if (!SB_URL) return idsP = Promise.resolve(false);
+    return idsP = fetch(`${SB_URL}/rest/v1/logs?select=tmdb_id,edited_at&limit=1`, {headers: {apikey: SB_KEY}})
+      .then(r => { try { if (r.ok) sessionStorage.setItem(IDS, 'yes'); else localStorage.setItem(IDS + '-no', String(Date.now())); } catch {} return r.ok; }, () => false);
+  }
+  // a title's ids as a row keeps them (0011): {tmdb_id} for a film, {ol_id} for a book, {} with none
+  const idCols = m => { const id = idOf(m); return !id ? {} : m.kind === 'movie' ? {tmdb_id: +id} : {ol_id: id}; };
+  /* Filling in ids (0011) on your own rows from before they were kept, when you open your log or your shelf:
+     Nav.fillIds(rows, found). rows: your logs ({table: 'logs', id, kind, title, year}) or spines ({table:
+     'shelf_items', shelf_id, position, kind, title, year}); one that has an id already is passed over. found: what the
+     Worker said this title is ({kind, id, title, year}, the title page has it); without it the Worker's /title is
+     asked for each. An id goes on only when the Worker's title is the row's (whatever its capitals and stops) and its
+     year is the row's or one off, so a link or a search can't put the wrong film's id on it. 12 a page at most, one
+     at a time; a title the Worker didn't know isn't asked about again on this device for a week. Gives how many were
+     filled in, and puts each id on its row. */
+  const plainT = s => String(s || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
+  const sameAs = (t, r) => !!t && t.kind === (r.kind === 'movie' ? 'movie' : 'book') && plainT(t.title) === plainT(r.title)
+    && (!r.year || !t.year || Math.abs(+t.year - +r.year) <= 1);
+  const NOID = 'shelfstackd-noid';
+  const unknown = () => { try { return JSON.parse(localStorage.getItem(NOID) || '{}'); } catch { return {}; } };
+  async function workerTitle(r){
+    const key = [r.kind, plainT(r.title), r.year || ''].join('|'), seen = unknown();
+    if (Date.now() - (seen[key] || 0) < 7 * 864e5) return null;
+    const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
+    try {
+      const q = new URLSearchParams({kind: r.kind === 'movie' ? 'movie' : 'book', title: r.title, ...(r.year ? {year: String(r.year)} : {})});
+      const res = await fetch(`${WORKER}/title?${q}`);
+      if (res.ok){ const j = await res.json(); if (j && j.id) return j; }
+      if (res.status === 404){ seen[key] = Date.now(); try { localStorage.setItem(NOID, JSON.stringify(seen)); } catch {} }
+    } catch {}
+    return null;
+  }
+  async function fillIds(rows, found){
+    if (!state.sb || !state.user || !rows || !rows.length || !(await ids())) return 0;
+    let n = 0;
+    for (const r of rows.filter(x => !idOf(x)).slice(0, 12)){
+      const t = found && sameAs(found, r) ? found : found ? null : await workerTitle(r);
+      const cols = t && sameAs(t, r) ? idCols({kind: r.kind, tmdb: t.id, ol: t.id}) : {};
+      const col = Object.keys(cols)[0]; if (!col) continue;
+      let ask = state.sb.from(r.table).update(cols).is(col, null);
+      ask = r.table === 'logs' ? ask.eq('id', r.id).eq('owner', state.user.id) : ask.eq('shelf_id', r.shelf_id).eq('position', r.position);
+      try { const {error} = await ask; if (!error){ Object.assign(r, cols); n++; } } catch {}
+    }
+    return n;
+  }
   // the notifications page, once it has marked them read
   document.addEventListener('shelfstackd:read', () => { if (bell){ bell.querySelector('.dot').hidden = true; bell.setAttribute('aria-label', 'Notifications'); } });
 
@@ -257,6 +312,10 @@
     const col = kind === 'movie' ? 'tmdb_id' : 'ol_id', id = ids ? idOf(m) : '';
     return {kind, or: id ? `${col}.eq.${id},and(${col}.is.null,${title},${year})` : `and(${title},${year})`};
   }
+  // two titles are the same (as same_title() in 0011 has it): by their ids when both have one, otherwise by kind, title
+  // (whatever its capitals and spaces) and year
+  const keyOf0 = m => [m.kind === 'movie' ? 'movie' : 'book', String(m.title || '').trim().replace(/\s+/g, ' ').toLowerCase(), String(m.year || '')].join('|');
+  const sameTitle = (a, b) => { if (!a || !b || (a.kind === 'movie') !== (b.kind === 'movie')) return false; const x = idOf(a), y = idOf(b); return x && y ? x === y : keyOf0(a) === keyOf0(b); };
   const titleQuery = (m, ids, also) => { const w = titleWhere(m, ids, also); return `kind=eq.${w.kind}&or=${encodeURIComponent('(' + w.or + ')')}`; };
   // a title's id, when it has one: TMDB's for a film, Open Library's work for a book
   const idOf = m => !m ? '' : m.kind === 'movie' ? (/^\d{1,9}$/.test(String(m.tmdb || m.tmdb_id || '')) ? String(m.tmdb || m.tmdb_id) : '')
@@ -392,5 +451,5 @@
     else if (on.finish) on.finish(); else location.href = ROOT + 'build/';
   }
 
-  window.Nav = {paint, add: openAdd, loadAdd, loadRecs, recommend, whatsapp, titleUrl, titleWhere, titleQuery, idOf, watchable, account, signIn, needAccount, visitor, onSignIn: fn => { on.signIn = fn; }, onFinish: fn => { on.finish = fn; }, onSignOut: fn => { on.signOut = fn; }, onUpload: fn => { on.upload = fn; }};
+  window.Nav = {paint, add: openAdd, loadAdd, loadRecs, recommend, whatsapp, titleUrl, titleWhere, titleQuery, sameTitle, idOf, idCols, ids, fillIds, watchable, account, signIn, needAccount, visitor, onSignIn: fn => { on.signIn = fn; }, onFinish: fn => { on.finish = fn; }, onSignOut: fn => { on.signOut = fn; }, onUpload: fn => { on.upload = fn; }};
 })();

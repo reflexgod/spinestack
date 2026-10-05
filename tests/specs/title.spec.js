@@ -194,7 +194,7 @@ test('matching by the link\'s title and year, even when the Worker\'s differ: yo
 // refuses it the same way now; the Worker doesn't know 18415, as the live one didn't.
 test('Gummo at its live address: On your shelf, On shelves and the reviews, from rows shaped as the database gives them', async ({ page }) => {
   const refused = [];   // (the Worker's 404 for 18415 is in the console, as it is live)
-  page.on('response', r => { if (/\/rest\/v1\/(logs|shelf_items)\?/.test(r.url()) && r.status() >= 300) refused.push(r.url()); });
+  page.on('response', r => { if (/\/rest\/v1\/(logs|shelf_items)\?.*&or=/.test(r.url()) && r.status() >= 300) refused.push(r.url()); });
   await mockNetwork(page, { signedIn: true, social: true });
   const asked = [];
   page.on('request', r => { const u = new URL(r.url()); if (/^\/rest\/v1\/(logs|shelf_items)$/.test(u.pathname) && u.searchParams.get('or')) asked.push(u.searchParams.get('select')); });
