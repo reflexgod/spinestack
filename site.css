@@ -143,8 +143,9 @@ textarea{resize:vertical;line-height:1.5}
 }
 
 /* ---------- tabs ---------- */
-/* one line, always: more tabs than fit scroll sideways inside the row, never the page */
-.tabs{display:flex;gap:var(--s5);border-bottom:1px solid var(--hair);overflow-x:auto;overflow-y:hidden;scrollbar-width:none;min-width:0}
+/* one line, always: more tabs than fit scroll sideways inside the row, never the page; 16px of room after the last,
+   so scrolled to the end it isn't cut off at the edge */
+.tabs{display:flex;gap:var(--s5);border-bottom:1px solid var(--hair);overflow-x:auto;overflow-y:hidden;scrollbar-width:none;min-width:0;padding-right:var(--s4)}
 .tabs::-webkit-scrollbar{display:none}
 .tabs button{flex:none;white-space:nowrap;font:400 var(--fs-tab) var(--mono);background:none;border:0;padding:0 0 var(--s2);margin-bottom:-1px;color:var(--grey);cursor:pointer;border-bottom:1px solid transparent}
 .tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}

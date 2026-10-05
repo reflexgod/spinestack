@@ -61,7 +61,7 @@
    280px tall at most (200px on a phone), kept while the spines load. While there are no public shelves it holds the
    builder's sample shelf, so the page still shows what one is */
 .wall{margin:0;justify-self:stretch;min-width:0;display:grid;gap:var(--s2)}
-.spines{--wall:280px;height:var(--wall);display:flex;align-items:flex-end;gap:var(--s2);padding:var(--s2) 0 0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;border-bottom:1px solid var(--ink)}
+.spines{--wall:280px;height:var(--wall);display:flex;align-items:flex-end;gap:var(--s2);padding:var(--s2) var(--s4) 0 0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;border-bottom:1px solid var(--ink)}
 .spines::-webkit-scrollbar{display:none}
 .spines > :first-child{margin-left:auto}
 .spines > :last-child{margin-right:auto}   /* in the middle when they fit; when they don't, the first ones aren't cut off */
@@ -99,7 +99,7 @@
 .fmeta span{font-size:var(--fs-label);text-transform:uppercase;letter-spacing:var(--track)}
 .fmeta time{margin-left:auto;white-space:nowrap;font-variant-numeric:tabular-nums}   /* a date with its year, on a phone, goes under the word */
 @media (max-width:820px){
-  .frow{display:flex;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none}
+  .frow{display:flex;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;padding-right:var(--s4)}   /* room after the last card */
   .frow::-webkit-scrollbar{display:none}
   .frow li{flex:0 0 calc((100% - (var(--cards) - 1)*var(--card-gap))/var(--cards));scroll-snap-align:start}
   .fcard:focus-visible{outline-offset:-2px}   /* the row scrolls, so an outline outside the card would be cut off */

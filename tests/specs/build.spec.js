@@ -687,3 +687,32 @@ test('signed in with no shelf yet, the builder is Your shelf, and an empty one s
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your shelf');
   await expect(page.locator('#books .empty p').first()).toHaveText('No spines yet.');
 });
+
+// Style → Filter: one row that scrolls sideways, every filter the same width with the same gap, each name on one line
+// under its picture inside its width (cut with …), PRO on its own line, never over the name; and scrolled to either
+// end, the first and the last are wholly inside the row
+test('the Filter row: equal widths and gaps, names on one line, PRO apart, nothing cut off at either end', async ({ page }) => {
+  await mockNetwork(page, NEW);
+  await open(page, '/build/?sample');
+  await page.locator('#stylePanel summary').click();
+  const row = page.locator('#filters');
+  await expect(row.locator('.flt').first()).toBeVisible();
+  const look = () => row.evaluate(r => {
+    const rb = r.getBoundingClientRect(), items = [...r.querySelectorAll('.flt')].map(b => {
+      const x = b.getBoundingClientRect(), n = b.querySelector('.fn'), nb = n.getBoundingClientRect(), pro = b.querySelector('em.pro');
+      return { left: x.left, right: x.right, width: Math.round(x.width), nameLines: nb.height < 2 * parseFloat(getComputedStyle(n).fontSize) ? 1 : 2, nameInside: nb.left >= x.left - .5 && nb.right <= x.right + .5,
+        cut: n.scrollWidth > n.clientWidth ? getComputedStyle(n).textOverflow : 'whole', proBelow: !pro || pro.getBoundingClientRect().top >= nb.bottom - .5 };
+    });
+    return { rb: { left: rb.left, right: rb.right }, items, gaps: items.slice(1).map((it, i) => Math.round(it.left - items[i].right)), scroll: r.scrollWidth > r.clientWidth };
+  });
+  let l = await look();
+  expect(new Set(l.items.map(i => i.width))).toEqual(new Set([64]));
+  expect(new Set(l.gaps)).toEqual(new Set([8]));
+  for (const it of l.items) { expect(it.nameLines).toBe(1); expect(it.nameInside).toBe(true); expect(['whole', 'ellipsis']).toContain(it.cut); expect(it.proBelow).toBe(true); }
+  expect(l.items[0].left - l.rb.left).toBeGreaterThanOrEqual(4);   // room for the picked one's outline
+  if (l.scroll) {
+    await row.evaluate(r => { r.scrollLeft = r.scrollWidth; });
+    l = await look();
+    expect(l.rb.right - l.items[l.items.length - 1].right).toBeGreaterThanOrEqual(4);
+  }
+});
