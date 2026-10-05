@@ -1,10 +1,11 @@
--- shelfstackd, phase 8 (proposed): checks real ids and editing your own log after migration 0011
--- (docs/proposed-0011-ids-edits.sql): the ids a log, a spine, an Up next and a rec keep (and the ones they refuse),
+-- shelfstackd, phase 8: checks real ids and editing your own log after migration 0011
+-- (supabase/migrations/0011_ids_edits.sql): the ids a log, a spine, an Up next and a rec keep (and the ones they refuse),
 -- filling an id in once, matching by id (logging takes it off Up next, "you logged it too", a second Up next refused,
 -- a me-too and a kept rec carrying the id), editing your own log (what changes, edited_at, the caption, the likes and
 -- replies staying), and what nobody else can do: edit your log, change whose it is, its kind or its title, or fill in
 -- an id on your spine. Run it in the Supabase dashboard (SQL Editor -> New query -> paste -> Run), after 0011. It
--- makes throwaway users inside a transaction and rolls everything back at the end: nothing is kept.
+-- passed on the live database. It makes throwaway users inside a transaction and rolls everything back at the end:
+-- nothing is kept.
 -- The last result says "ALL 0011 CHECKS PASSED". Any failed check stops with an error that starts "FAIL:".
 -- Real accounts can be in the database, so every check looks only at the test's own rows.
 --

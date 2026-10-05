@@ -1,9 +1,8 @@
--- shelfstackd, 0011 (proposed): real ids on titles, and editing your own log.
+-- shelfstackd, 0011: real ids on titles, and editing your own log.
 --
--- Not run yet. Run once, after 0010, in the Supabase dashboard (SQL Editor -> New query -> paste all of this -> Run),
--- then run its test, docs/proposed-rls_phase8.sql: the last line says "ALL 0011 CHECKS PASSED". It all runs in one
--- transaction: if anything fails, nothing is changed. Once it has run and passed, both files move to supabase/
--- (migrations/0011_ids_edits.sql and tests/rls_phase8.sql) with only their headers changed.
+-- Run once, after 0010, in the Supabase dashboard (SQL Editor -> New query -> paste all of this -> Run), then run its
+-- test, supabase/tests/rls_phase8.sql: the last line says "ALL 0011 CHECKS PASSED". It all runs in one transaction: if
+-- anything fails, nothing is changed. It was run on the live database by the owner and its test passed.
 --
 -- The pages work without it and use what it adds only once it's there (they look for logs.tmdb_id, Nav.ids()): until
 -- then no id is sent or asked for, titles match by kind, title and year as before, and there's no Edit.
