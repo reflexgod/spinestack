@@ -16,19 +16,21 @@ const ACT = {
   acct: async p => { await p.locator('#acctBtn').click(); await p.locator('#acctMenu a').first().waitFor(); },
   more: async p => { await p.locator('#moreBtn').click(); },
   share: async p => { await p.locator('#shareBtn').click(); },
+  search: async p => { await p.locator('header.top .find').click(); await p.locator('#srchQ').fill('kids'); await p.locator('.srch .srchg .sr').first().waitFor(); },
+  recent: async p => { await p.evaluate(() => localStorage.setItem('shelfstackd-searches', JSON.stringify(['gummo', 'div']))); await p.locator('header.top .find').click(); await p.locator('.srch .srchrec').waitFor(); },
   signin: async p => { await p.locator('#signInBtn').click(); },
 };
 const RUNS = [
   ['signed out', {}, ['/', '/build/', '/feed/', '/shelves/', '/people/', '/u/?mira', '/u/?mira&shelf', '/privacy.html', '/nope/', '/feed/ signin']],
   ['signed in', { signedIn: true }, ['/', '/feed/?everyone', '/u/?tester', '/u/?tester#activity', '/u/?tester#network', '/u/?mira', '/u/?tester&shelf', '/people/?q=m', '/settings/', '/settings/#photo']],
-  ['signed in, the builder and the dialogs', { signedIn: true }, ['/build/', '/build/ style', '/build/ row', '/feed/?everyone add', '/feed/?everyone spines', '/feed/?everyone log', '/feed/?everyone acct', '/u/?mira more', '/u/?tester&shelf share']],
+  ['signed in, the builder and the dialogs', { signedIn: true }, ['/build/', '/build/ style', '/build/ row', '/feed/?everyone add', '/feed/?everyone spines', '/feed/?everyone log', '/feed/?everyone acct', '/u/?mira more', '/u/?tester&shelf share', '/feed/?everyone search', '/feed/?everyone recent']],
   ['a new account', { signedIn: true, fresh: true }, ['/u/?tester', '/feed/']],
   ['no username yet', { signedIn: true, named: false }, ['/build/']],
 ];
 
 // what's too small on the page as it is: "what it is, its size, and where a press 21px out lands instead"
 const misses = page => page.evaluate(async () => {
-  const out = [], scope = document.querySelector('dialog[open]') || document.querySelector('.sheet:not([hidden])') || document;
+  const out = [], scope = document.querySelector('dialog[open]') || document.querySelector('.sheet:not([hidden])') || document.querySelector('.srch:not([hidden])') || document;
   const menus = [...document.querySelectorAll('.navmenu:popover-open, .menu:not([hidden])')];
   const sel = 'a[href], button, input:not([type=hidden]):not([type=file]), select, textarea, summary, label, [role=tab], [role=menuitem], [role=option]', seen = new Set();
   const name = h => h ? h.tagName.toLowerCase() + (h.id ? '#' + h.id : '') + (typeof h.className === 'string' && h.className ? '.' + h.className.trim().split(/\s+/)[0] : '') : 'nothing';

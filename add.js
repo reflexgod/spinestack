@@ -869,7 +869,7 @@ const verb = m => m.kind === 'movie' ? 'watched' : 'read';
 let posting = null, postFields = null, focusFields = false, fromRec = null;
 function withPosts(fn){
   if (window.Posts){ fn(true); return; }
-  posting = posting || new Promise(res => { const sc = document.createElement('script'); sc.src = ROOT + 'post.js?v=20261016a'; sc.onload = () => res(!!window.Posts); sc.onerror = () => { posting = null; res(false); }; document.head.appendChild(sc); });
+  posting = posting || new Promise(res => { const sc = document.createElement('script'); sc.src = ROOT + 'post.js?v=20261018a'; sc.onload = () => res(!!window.Posts); sc.onerror = () => { posting = null; res(false); }; document.head.appendChild(sc); });
   posting.then(fn);
 }
 function showPost(m){

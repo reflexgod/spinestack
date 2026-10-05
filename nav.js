@@ -271,7 +271,7 @@
     if (window.Add) return Promise.resolve(true);
     if (!window.Shelf) return Promise.resolve(false);
     return adding = adding || new Promise(res => {
-      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261017a';
+      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261018a';
       s.onload = () => res(!!window.Add); s.onerror = () => { adding = null; s.remove(); res(false); };
       document.head.appendChild(s);
     });
@@ -283,7 +283,7 @@
   function loadRecs(){
     if (window.Recs) return window.Recs.ready();
     return recsP = recsP || new Promise(res => {
-      const s = document.createElement('script'); s.src = ROOT + 'recs.js?v=20261017a';
+      const s = document.createElement('script'); s.src = ROOT + 'recs.js?v=20261018a';
       s.onload = () => res(window.Recs ? window.Recs.ready() : false); s.onerror = () => { recsP = null; s.remove(); res(false); };
       document.head.appendChild(s);
     });
@@ -333,6 +333,34 @@
     e.preventDefault();
     openAdd().then(ok => { if (!ok) location.href = addLink.href; });
   });
+
+  /* ---------- search: one box for films, books and people (search.js) ----------
+     The bar's search icon opens it. search.js is loaded the first time the icon has a pointer or a finger on it, or is
+     pressed; if it isn't here yet when it's pressed, a stand-in box takes the focus in that press, so a phone's
+     keyboard comes up with it, and the search opens on it. Without the file, the icon is the link to People it was. */
+  const findLink = q('.links .find');
+  let searching = null;
+  function loadSearch(){
+    if (window.Search) return Promise.resolve(true);
+    return searching = searching || new Promise(res => {
+      const s = document.createElement('script'); s.src = ROOT + 'search.js?v=20261018a';
+      s.onload = () => res(!!window.Search); s.onerror = () => { searching = null; s.remove(); res(false); };
+      document.head.appendChild(s);
+    });
+  }
+  if (findLink){
+    findLink.setAttribute('aria-haspopup', 'dialog'); findLink.setAttribute('aria-expanded', 'false');
+    for (const ev of ['pointerenter', 'pointerdown', 'focus']) findLink.addEventListener(ev, () => { loadSearch(); }, {once: true, passive: true});
+    findLink.addEventListener('click', e => {
+      if (e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;   // a new tab or window still gets People
+      e.preventDefault();
+      if (window.Search){ window.Search.open(findLink); return; }
+      const hold = document.createElement('input');
+      hold.setAttribute('aria-hidden', 'true'); hold.tabIndex = -1; hold.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px;border:0;padding:0';
+      document.body.append(hold); hold.focus();
+      loadSearch().then(ok => { if (ok) window.Search.open(findLink); else location.href = findLink.href; hold.remove(); });
+    });
+  }
 
   /* ---------- signed out: look, don't add ---------- */
   // signed out: no one is signed in on this page and no session is kept on this device (a page signed in paints the

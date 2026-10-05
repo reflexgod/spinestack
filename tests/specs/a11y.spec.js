@@ -36,6 +36,29 @@ for (const [name, button] of [['the account menu', '#acctBtn'], ['the ▾ menu',
   });
 }
 
+// the search box open, with films, books and people found, and with recent searches; and the edit sheet (0011)
+test('axe: the search box with results, and with recent searches', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true });
+  await open(page, '/');
+  await page.locator('header.top .find').click();
+  await page.locator('#srchQ').fill('kids');
+  await expect(page.locator('.srch .srchg').first()).toBeVisible();
+  await clean(page);
+  await page.evaluate(() => localStorage.setItem('shelfstackd-searches', JSON.stringify(['gummo', 'div'])));
+  await page.locator('#srchQ').fill('');
+  await expect(page.locator('.srch .srchrec')).toBeVisible();
+  await clean(page);
+});
+test('axe: the edit sheet on your post', async ({ page }) => {
+  await mockNetwork(page, { signedIn: true, social: true, ids: true });
+  await open(page, '/feed/?everyone');
+  const p = page.locator('#items .post').filter({ hasText: 'read Just Kids' }).first();
+  await p.getByRole('button', { name: 'More for this post' }).click();
+  await p.getByRole('menuitem', { name: 'Edit' }).click();
+  await expect(page.getByRole('dialog', { name: /^Edit your post/ })).toBeVisible();
+  await clean(page);
+});
+
 // the builder with things open: a row's controls and Style
 test('axe: the builder with a row and Style open', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });

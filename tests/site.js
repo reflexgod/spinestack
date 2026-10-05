@@ -38,6 +38,8 @@ const PEOPLE = [
   { id: '22222222-2222-4222-8222-222222222222', username: 'mira', display_name: 'Mira', bio: 'Films, mostly.', avatar_key: 'avatars/mira', pinned_shelf_id: null, is_private: false, created_at: day(40) },
   { id: '33333333-3333-4333-8333-333333333333', username: 'longusername_twenty1', display_name: '', bio: '', avatar_key: null, pinned_shelf_id: null, is_private: false, created_at: day(20) },
 ];
+// someone the search finds (find_people() only): @div, with a photo
+const DIV = { id: '55555555-5555-4555-8555-555555555555', username: 'div', display_name: 'Divya', bio: '', avatar_key: 'avatars/div', pinned_shelf_id: null, is_private: false, created_at: day(10) };
 const shelfId = i => `aaaaaaaa-aaaa-4aaa-8aaa-${String(i).padStart(12, '0')}`;
 const SHELVES = Array.from({ length: 18 }, (_, i) => {
   const owner = PEOPLE[i % PEOPLE.length];
@@ -329,9 +331,9 @@ function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, 
   if (what === 'rpc/profile_stats') return [{ shelf_count: SHELVES.filter(s => s.owner === body.uid).length, spine_count: 12 }];
   if (what === 'rpc/follow_stats') return [fresh && body.uid === ME.id ? { following: 0, followers: 0 } : { following: 1, followers: 2 }];
   if (what === 'rpc/profile_card') return PEOPLE.filter(p => p.username === body.p_username).map(p => card(p, me));
-  if (what === 'rpc/find_people'){   // by the start of a username or a display name, an @ in front or not
+  if (what === 'rpc/find_people'){   // by the start of a username or a display name, an @ in front or not (and @div, found only by searching)
     const w = String(body.q || '').trim().replace(/^@+/, '').toLowerCase();
-    return w ? PEOPLE.filter(p => p.username.startsWith(w) || p.display_name.toLowerCase().startsWith(w)).map(p => card(p, me)) : [];
+    return w ? [...PEOPLE, DIV].filter(p => p.username.startsWith(w) || p.display_name.toLowerCase().startsWith(w)).map(p => card(p, me)).slice(0, 10) : [];
   }
   if (what === 'rpc/follow_list') return fresh && body.uid === ME.id ? [] : PEOPLE.filter(p => p.id !== body.uid).map(p => card(p, me));
   if (what === 'rpc/follow') return 'following';
@@ -507,4 +509,4 @@ async function open(page, pathname){
   await page.waitForLoadState('networkidle');
 }
 
-module.exports = { IDS_LOG, TITLE_INFO, NEW_LOG, STATS, REPLIES, NOTES, MUTUALS, RECS_FOR, RECS_SENT, REC_THREAD, FEED_REC, REC_NOTES, recId, ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, LOGS, FRIENDS, FRIEND_SHELVES, FRIEND_LOGS, ITEMS_BY_SHELF, WATCHLIST, FROM_FRIENDS, PICTURE, STORY, CAPTION, MADE_WITH, CORS, WORKER, SB_URL, feedRow, storyPicture, mockNetwork, watchErrors, open, putAside };
+module.exports = { DIV, MATCHES, IDS_LOG, TITLE_INFO, NEW_LOG, STATS, REPLIES, NOTES, MUTUALS, RECS_FOR, RECS_SENT, REC_THREAD, FEED_REC, REC_NOTES, recId, ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, LOGS, FRIENDS, FRIEND_SHELVES, FRIEND_LOGS, ITEMS_BY_SHELF, WATCHLIST, FROM_FRIENDS, PICTURE, STORY, CAPTION, MADE_WITH, CORS, WORKER, SB_URL, feedRow, storyPicture, mockNetwork, watchErrors, open, putAside };
