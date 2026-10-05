@@ -36,7 +36,7 @@
 .ava{grid-area:ava;width:96px;height:96px;border-radius:50%;border:1px solid var(--ink);background:var(--wash);display:grid;place-items:center;overflow:hidden;font:400 36px var(--mono);text-transform:uppercase;color:var(--ink);padding:0}
 .ava img{width:100%;height:100%;object-fit:cover;display:block}
 .ava.add{border-style:dashed;background:var(--paper)}
-.addphoto{width:100%;height:100%;border-radius:50%;display:grid;place-items:center;font:400 var(--fs-small) var(--mono);color:var(--ink);text-decoration:none}
+.addphoto{width:100%;height:100%;border-radius:50%;display:grid;place-items:center;padding:var(--s2);text-align:center;font:400 var(--fs-small)/1.3 var(--mono);color:var(--ink);text-decoration:none}   /* inside the circle, on two lines on a phone */
 .who{grid-area:who;min-width:0}
 .who h1{margin:0}
 .namerow{display:flex;gap:var(--s1) var(--s4);align-items:center;flex-wrap:wrap}
@@ -142,8 +142,11 @@ html:not(.recs-on) .recbtn{display:none}   /* Recommend: only once 0010 is there
 /* the watchlist and From friends: a row each, as On this shelf has them */
 .titles{list-style:none;margin:0;padding:0}
 .titles li{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:var(--s4);align-items:center;padding:var(--s2) 0;border-bottom:1px solid var(--hair)}
-.titles .tc{display:block;width:40px;aspect-ratio:2/3;border-radius:2px;overflow:hidden;background:var(--wash)}
-.titles .tc img{width:100%;height:100%;object-fit:cover;display:block}
+/* a title's small cover (a rec, From friends): paper with its title in small type under the picture, which is all there
+   is when it has no cover or the cover doesn't come; never a grey box */
+.titles .tc{position:relative;display:block;width:40px;aspect-ratio:2/3;border-radius:2px;overflow:hidden;background:var(--paper);outline:1px solid var(--hair);outline-offset:-1px}
+.titles .tc .tct{position:absolute;inset:var(--s1);font:400 8px/1.2 var(--mono);color:var(--grey);overflow:hidden;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
+.titles .tc img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .titles .tt{display:grid;min-width:0}
 .titles .tt b{font-weight:500;overflow-wrap:anywhere}
 .titles .tt b span{font-weight:400;color:var(--grey)}
@@ -167,7 +170,7 @@ html:not(.recs-on) .recbtn{display:none}   /* Recommend: only once 0010 is there
 .recs .rform{display:flex;gap:var(--s2);align-items:flex-end}
 .recs .rform textarea{flex:1;min-width:0;resize:vertical}
 .pmain .grey{margin:0}
-#panelA,#panelN,#viewShelf{margin-top:var(--s5)}
+#panelA,#panelN{margin-top:var(--s5)}   /* a shelf's own page (#viewShelf) starts where every page does, 24px under the bar */
 /* Activity: this person's lines (site.css draws them). Network: Following · Followers under the tabs, then the
    people, in the page */
 #acts:empty,#netPeople:empty{display:none}
@@ -212,7 +215,7 @@ html:not(.recs-on) .recbtn{display:none}   /* Recommend: only once 0010 is there
 @media (max-width:640px){ .slist{grid-template-columns:minmax(0,1fr)} }
 .slist li{min-width:0}
 .slist a{display:block;text-decoration:none;color:var(--ink);min-width:0}
-.slist .sline{display:flex;align-items:flex-end;gap:2px;height:112px;width:max-content;min-width:var(--s6);max-width:100%;padding-right:var(--s4);border-bottom:1px solid var(--ink);overflow:hidden}
+.slist .sline{display:flex;align-items:flex-end;gap:2px;height:112px;width:max-content;min-width:48px;max-width:100%;padding-right:var(--s4);border-bottom:1px solid var(--ink);overflow:hidden}
 .slist .sline canvas{display:block;flex:none}
 .slist .sn{display:block;margin-top:var(--s2);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .slist a:hover .sn,.slist a:focus-visible .sn{text-decoration:underline;text-underline-offset:3px}
@@ -873,13 +876,15 @@ async function paintRecs(box){
   $('#rList').replaceChildren(...recRows.map((r, i) => recRow(r, i)));
 }
 const STATE = {open: 'Waiting', kept: 'Kept', watched: '', dismissed: 'Passed'};
+// a small cover that doesn't come: its paper and title stay
+document.addEventListener('error', e => { if (e.target && e.target.matches && e.target.matches('.titles .tc img')) e.target.remove(); }, true);
 function recRow(r, i){
   const li = document.createElement('li'); li.dataset.i = i;
   const sent = recBox === 'sent', who = `<a href="${esc(pageUrl(r.username))}">@${esc(r.username)}</a>`, done = r.kind === 'movie' ? 'Watched' : 'Read';
   const state = sent ? `<span class="rstate state">${r.status === 'watched' ? `${done} ${CHECK}` : esc(STATE[r.status] || '')}</span>`
     : (r.status === 'open' ? '<button class="dash sm" type="button" data-r="keep">Keep</button>' : '<span class="rstate state">Kept</span>')
       + `<button class="dash sm" type="button" data-r="log">${didIt(r)}</button><button class="dash sm" type="button" data-r="dismiss">Dismiss</button>`;
-  li.innerHTML = `<span class="tc">${r.cover_src ? `<img src="${esc(coverOf(r.cover_src))}" alt="" loading="lazy">` : ''}</span>
+  li.innerHTML = `<span class="tc"><span class="tct" aria-hidden="true">${esc(r.title)}</span>${r.cover_src ? `<img src="${esc(coverOf(r.cover_src))}" alt="" loading="lazy">` : ''}</span>
     <span class="tt"><b><a href="${esc(Nav.titleUrl(asItem(r)))}">${esc(r.title)}</a>${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${sent ? 'to' : 'from'} ${who} · ${esc(ago(r.created_at))}</span>${r.note ? `<p class="rnote">${esc(r.note)}</p>` : ''}</span>
     <span class="tacts">${state}<button class="dash sm" type="button" data-r="thread" aria-expanded="false">Reply${r.replies ? ` (${r.replies})` : ''}</button></span>
     <div class="rthread" hidden><ol class="rmsgs"></ol><form class="rform"><textarea maxlength="280" rows="1" aria-label="Reply to @${esc(r.username)}" placeholder="Reply to @${esc(r.username)}"></textarea><button class="btn primary sm" type="submit">Send</button></form></div>`;
@@ -968,7 +973,7 @@ const didIt = r => `Mark ${r.kind === 'movie' ? 'watched' : 'read'}`;
 // a title: its cover, its name and year, who made it, Film or Book (and whose log it came from), and its buttons
 function titleRow(r, i, acts, from){
   const li = document.createElement('li'); li.dataset.i = i;
-  li.innerHTML = `<span class="tc">${r.cover_src ? `<img src="${esc(coverOf(r.cover_src))}" alt="" loading="lazy">` : ''}</span>
+  li.innerHTML = `<span class="tc"><span class="tct" aria-hidden="true">${esc(r.title)}</span>${r.cover_src ? `<img src="${esc(coverOf(r.cover_src))}" alt="" loading="lazy">` : ''}</span>
     <span class="tt"><b><a href="${esc(Nav.titleUrl(asItem(r)))}">${esc(r.title)}</a>${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${esc([r.author, r.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · '))}${from ? ` · from <a href="${esc(pageUrl(from))}">@${esc(from)}</a>` : ''}</span></span>
     ${acts ? `<span class="tacts">${acts}</span>` : ''}`;
   return li;

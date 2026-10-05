@@ -146,13 +146,13 @@ for (const [where, path, sel] of [['the feed', '/feed/?everyone', '.items canvas
   });
 }
 
-test('the feed shows a shelf saved as a strip of spines 80px tall, in line with the post’s text, not a card or the whole story', async ({ page }) => {
+test('the feed shows a shelf saved as a strip of spines 112px tall, in line with the post’s text, not a card or the whole story', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/feed/?everyone');
   const post = page.locator('.shelfpost').first();
   await expect(post.locator('.strip canvas').first()).toBeVisible();
   const strip = await box(post.locator('.strip')), what = await box(post.locator('.pwhat'));
-  expect(Math.round(strip.height)).toBe(80);
+  expect(Math.round(strip.height)).toBe(112);
   expect(Math.abs(strip.left - what.left)).toBeLessThanOrEqual(1);   // in line with the text above it
   expect(strip.left - (await box(post.locator('.pava'))).right).toBeGreaterThan(0);   // and clear of the photo
   await expect(page.locator('#items .pic')).toHaveCount(0);

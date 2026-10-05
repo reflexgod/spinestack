@@ -36,7 +36,7 @@
 #thePost .cover{width:120px}   /* larger than on the feed: the post is the page */
 #thePost,.replies{max-width:680px}   /* the column is the site's; the post and its replies keep to a reading width in it */
 .vh{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;padding:0}   /* the heading for screen readers: the post's line says it on screen */
-.back{display:inline-block;color:var(--grey);font-size:var(--fs-small);text-decoration:none;margin-bottom:var(--s4)}
+.back{display:block;width:max-content;color:var(--grey);font-size:var(--fs-small);text-decoration:none;margin-bottom:var(--s4)}   /* a block: 24px under the bar, as every page starts */
 .back:hover,.back:focus-visible{color:var(--ink)}
 #state{margin:var(--s5) 0 0}
 .replies{margin-top:var(--s6)}
