@@ -415,6 +415,7 @@ test('a title already on the shelf: "Already on <shelf>", and Add to shelf stays
   await d.getByRole('combobox', { name: 'Film or book name' }).fill('the waves');
   await d.getByRole('option', { name: /The Waves/ }).first().click();
   await expect(d.locator('#addDup')).toHaveText(new RegExp(`^Already on ${ALL_SHELVES[0].name}\.`));
+  await expect(d.locator('#addOnWrap')).toBeHidden();   // one line: not "On <shelf>" as well
   await expect(d.getByRole('button', { name: 'Add again' })).toHaveCount(0);
   await expect(d.getByRole('button', { name: 'Add to shelf' })).toBeDisabled();
   // from the feed: the main shelf picked has it

@@ -273,13 +273,16 @@ function paintCover(){
 }
 
 /* ---------- what people here did with it ---------- */
-// PostgREST's ilike, with % and _ taken as themselves: the same title, whatever its capitals
-const likeOf = s => String(s).replace(/[\\%_]/g, c => '\\' + c);
-const titleQuery = () => `kind=eq.${T.match.kind}&title=ilike.${encodeURIComponent(likeOf(T.match.title))}&year=${T.match.year ? 'eq.' + T.match.year : 'is.null'}`;
+/* The logs and the spines of this title (Nav.titleWhere(): its id first, when there is one, then the same title and
+   year), with whose they are. Each names its profile by the foreign key: logs and profiles also meet through likes,
+   and shelves and profiles through a profile's main shelf, so a bare profiles() is refused (PGRST201). */
+const matchOf = () => ({...T.match, tmdb: T.item && T.item.tmdb, ol: T.item && T.item.ol});
+const alsoTitles = () => T.info && T.info.title && T.info.title.toLowerCase() !== String(T.match.title).toLowerCase() ? [T.info.title] : [];
 async function community(){
+  const where = Nav.titleQuery(matchOf(), false, alsoTitles());
   const asks = [
-    Posts.rest(`logs?select=id,owner,kind,title,author,year,cover_src,caption,created_at,profiles(username,display_name,avatar_key)&${titleQuery()}&order=created_at.desc&limit=200`).catch(() => []),
-    Posts.rest(`shelf_items?select=shelf_id,shelves(id,owner,name,caption,profiles(username,display_name,avatar_key))&${titleQuery()}&limit=300`).catch(() => []),
+    Posts.rest(`logs?select=id,owner,kind,title,author,year,cover_src,caption,created_at,profiles!logs_owner_fkey(username,display_name,avatar_key)&${where}&order=created_at.desc&limit=200`).catch(() => []),
+    Posts.rest(`shelf_items?select=shelf_id,shelves(id,owner,name,caption,profiles!shelves_owner_fkey(username,display_name,avatar_key))&${where}&limit=300`).catch(() => []),
     me.user ? Posts.rest(`follows?select=followee&follower=eq.${me.user.id}&limit=1000`).catch(() => []) : [],
   ];
   const [logs, items, follows] = await Promise.all(asks);
@@ -289,7 +292,7 @@ async function community(){
   if (T.social && rows.length){ let st = new Map(); try { st = await Posts.stats(rows.map(x => x.id)); } catch {} rows = rows.map(x => st.has(x.id) ? {...x, ...st.get(x.id)} : x); }
   T.logs = rows;
   T.mine = me.user ? rows.find(x => x.owner === me.user.id) || null : null;
-  // each shelf once, then each person once (their newest shelf with it)
+  // each shelf once, then each person once (their newest shelf with it); yours: it's on your shelf
   const seen = new Set();
   T.shelves = (items || []).map(r => r.shelves).filter(s => s && s.profiles && !seen.has(s.owner) && seen.add(s.owner));
   if (!T.item.cover){ const c = rows.map(x => String(x.cover_src || '').replace(/^url:/, '')).find(u => COVER_OK.test(u)); if (c) T.item.cover = c; }

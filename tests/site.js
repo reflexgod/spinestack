@@ -174,9 +174,53 @@ const TITLE_INFO = [
 ];
 const titleFor = q => TITLE_INFO.find(t => q.get('film') ? t.kind === 'movie' && t.id === q.get('film') : q.get('book') ? t.kind === 'book' && t.id === q.get('book')
   : t.kind === q.get('kind') && t.title.toLowerCase() === String(q.get('title') || '').toLowerCase() && (!q.get('year') || t.year === q.get('year')));
-// a title's logs or spines, asked for by kind, title (ilike, whatever its capitals) and year, as the title page does
-const sameTitle = (q, x) => { const eqv = k => (q.get(k) || '').replace(/^eq\./, ''), t = (q.get('title') || '').replace(/^ilike\./, '').replace(/\\(.)/g, '$1').toLowerCase(), y = q.get('year') || '';
-  return x.kind === eqv('kind') && String(x.title).toLowerCase() === t && (y === 'is.null' ? x.year == null : String(x.year) === y.replace(/^eq\./, '')); };
+/* PostgREST's filters, as the database reads them, for the rows asked for by title: col=op.value for each column
+   (eq, neq, ilike, is, in), and or=(...) / and=(...) with and(...) and or(...) inside, a value in double quotes when it
+   has a comma or a bracket in it. ilike: % (or *) is anything, _ one character, \ takes the next as itself. */
+const RESERVED = new Set(['select', 'order', 'limit', 'offset', 'on_conflict', 'columns']);
+const splitTop = s => { const out = []; let d = 0, inQ = false, cur = '';
+  for (let i = 0; i < s.length; i++){ const c = s[i];
+    if (inQ){ cur += c; if (c === '\\'){ cur += s[++i]; continue; } if (c === '"') inQ = false; continue; }
+    if (c === '"'){ inQ = true; cur += c; continue; }
+    if (c === '(') d++; else if (c === ')') d--;
+    if (c === ',' && d === 0){ out.push(cur); cur = ''; continue; }
+    cur += c; }
+  if (cur) out.push(cur); return out; };
+const unq = v => v.startsWith('"') && v.endsWith('"') ? v.slice(1, -1).replace(/\\(.)/g, '$1') : v;
+const reEsc = c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const likeRe = v => { let re = ''; for (let i = 0; i < v.length; i++){ const c = v[i];
+  if (c === '\\'){ re += reEsc(v[++i] || ''); continue; }
+  re += c === '%' || c === '*' ? '.*' : c === '_' ? '.' : reEsc(c); }
+  return new RegExp('^' + re + '$', 'is'); };
+function opOf(col, op, v){
+  const val = r => r[col] == null ? null : String(r[col]);
+  if (op === 'eq') return r => val(r) === unq(v);
+  if (op === 'neq') return r => val(r) !== unq(v);
+  if (op === 'is') return r => v === 'null' ? r[col] == null : String(r[col]) === v;
+  if (op === 'in') { const set = splitTop(v.replace(/^\(|\)$/g, '')).map(unq); return r => set.includes(val(r)); }
+  if (op === 'ilike'){ const re = likeRe(unq(v)); return r => re.test(val(r) || ''); }
+  throw new Error('a filter the mock doesn\'t know: ' + op);
+}
+function cond(expr){
+  const g = /^(and|or)\((.*)\)$/s.exec(expr);
+  if (g){ const parts = splitTop(g[2]).map(cond); return g[1] === 'and' ? r => parts.every(f => f(r)) : r => parts.some(f => f(r)); }
+  const m = /^([a-z_]+)\.(not\.)?([a-z]+)\.(.*)$/s.exec(expr), f = opOf(m[1], m[3], m[4]);
+  return m[2] ? r => !f(r) : f;
+}
+// every filter in the address, for rows of one table (cols: the columns it has; one it hasn't is 42703, as PostgREST says)
+function pgWhere(q, cols){
+  const fs = [];
+  for (const [k, v] of q){
+    if (RESERVED.has(k)) continue;
+    if (k === 'or' || k === 'and'){ fs.push(cond(k + v)); continue; }
+    if (cols && !cols.includes(k)) throw Object.assign(new Error('column ' + k + ' does not exist'), { code: '42703' });
+    const m = /^(not\.)?([a-z]+)\.(.*)$/s.exec(v), f = opOf(k, m[2], m[3]); fs.push(m[1] ? r => !f(r) : f);
+  }
+  return r => fs.every(f => f(r));
+}
+// what PostgREST says to an embedded profiles() that two foreign keys could mean (logs: its owner, or through likes;
+// shelves: its owner, or a profile's main shelf). The page has to name one: profiles!logs_owner_fkey(...)
+const AMBIGUOUS = { __status: 300, body: { code: 'PGRST201', message: 'Could not embed because more than one relationship was found for \'logs\' and \'profiles\'', details: [], hint: 'Try changing \'profiles\' to one of the following: \'profiles!logs_owner_fkey\', \'profiles!likes\'.' } };
 const someone = id => { const p = [...PEOPLE, ...FRIENDS].find(x => x.id === id); return p ? { username: p.username, display_name: p.display_name, avatar_key: p.avatar_key } : null; };
 const noteRow = n => { const p = PEOPLE.find(x => x.id === n.actor), l = LOGS.find(x => x.id === n.log);
   return { id: n.id, kind: n.kind, created_at: n.created_at, read: n.read, actor: p.id, username: p.username, display_name: p.display_name, avatar_key: p.avatar_key,
@@ -244,7 +288,11 @@ function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, 
     if (what === 'rpc/from_friends') return me ? FROM_FRIENDS : [];
     if (method === 'DELETE') return [{ id: eq('id') }];
     if (method !== 'GET') return null;   // a log posted, a title kept, one removed: nothing is kept here
-    if (what === 'logs' && q.get('title')) return [...LOGS, ...(friends ? FRIEND_LOGS : [])].filter(l => sameTitle(q, l) && !(fresh && l.owner === ME.id)).map(l => ({ ...l, profiles: someone(l.owner) }));
+    if (what === 'logs' && (q.get('title') || q.get('or'))){   // the title page: that title's logs, with whose they are
+      if (/(^|[,(])profiles\(/.test(q.get('select') || '')) return AMBIGUOUS;
+      const where = pgWhere(q);
+      return [...LOGS, ...(friends ? FRIEND_LOGS : [])].filter(l => where(l) && !(fresh && l.owner === ME.id)).map(l => ({ ...l, profiles: someone(l.owner) }));
+    }
     if (what === 'logs'){ const from = +(q.get('offset') || 0), n = +(q.get('limit') || 20); return LOGS.filter(l => l.owner === eq('owner') && !(fresh && l.owner === ME.id)).slice(from, from + n); }
     if (what === 'watchlist') return WATCHLIST.filter(w => w.owner === eq('owner') && !(fresh && w.owner === ME.id));
     return [];
@@ -283,10 +331,12 @@ function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, 
   // follows, read from the table: @mira follows the made-up account, and that's the only one it's asked about
   if (what === 'follows') return me && eq('follower') === PEOPLE[1].id && eq('followee') === ME.id ? [{ follower: PEOPLE[1].id }] : [];
   // one shelf's spine of a title (+ ADD asking whether it's there already): that shelf's spines as its own page has them
-  if (what === 'shelf_items' && q.get('title') && eq('shelf_id')) return ITEMS.filter(r => sameTitle(q, r)).map(r => ({ item_id: r.item_id }));
-  if (what === 'shelf_items' && q.get('title')){   // the title page: every spine of that title, with its shelf and whose it is
-    const all = [...SHELVES, ...FRIEND_SHELVES].filter(x => !(fresh && x.owner === ME.id));
-    return [...ITEMS_BY_SHELF].filter(([id]) => !eq('shelf_id') || eq('shelf_id') === id).flatMap(([id, rows]) => rows.filter(r => sameTitle(q, r)).map(r => { const sh = all.find(x => x.id === id);
+  const titled = !!(q.get('title') || q.get('or'));
+  if (what === 'shelf_items' && titled && eq('shelf_id')){ const where = pgWhere(new URLSearchParams([...q].filter(([k]) => k !== 'shelf_id'))); return ITEMS.filter(where).map(r => ({ item_id: r.item_id })); }
+  if (what === 'shelf_items' && titled){   // the title page: every spine of that title, with its shelf and whose it is
+    if (/shelves\([^)]*(^|[,(])profiles\(/.test(q.get('select') || '')) return { ...AMBIGUOUS, body: { ...AMBIGUOUS.body, message: 'Could not embed because more than one relationship was found for \'shelves\' and \'profiles\'' } };
+    const all = [...SHELVES, ...FRIEND_SHELVES].filter(x => !(fresh && x.owner === ME.id)), where = pgWhere(q);
+    return [...ITEMS_BY_SHELF].flatMap(([id, rows]) => rows.filter(where).map(r => { const sh = all.find(x => x.id === id);
       return sh ? { shelf_id: id, shelves: { id, owner: sh.owner, name: sh.name, caption: sh.caption, profiles: someone(sh.owner) } } : null; })).filter(Boolean);
   }
   if (what === 'shelf_items'){   // shelf_id=in.(x,y): each shelf's own spines; shelf_id=eq.x: ITEMS

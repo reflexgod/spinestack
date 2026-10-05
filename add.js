@@ -643,7 +643,7 @@ async function findSpines(m, again){
   paintShelfChoice(cur);
   if (shelf && shelf.has(key)){
     // already on this shelf: never twice on one shelf
-    $('#addDupText').textContent = `Already on ${shelf.name ? shelf.name() : 'your shelf'}.`; $('#addDup').hidden = false; cur.busy = false; cur.dup = true; sstatus('');
+    $('#addDupText').textContent = `Already on ${shelf.name ? shelf.name() : 'your shelf'}.`; $('#addDup').hidden = false; $('#addOnWrap').hidden = true; cur.busy = false; cur.dup = true; sstatus('');
     return;
   }
   if (again && shelf) cur.key = key + '#' + (1 + shelf.count(key));
@@ -773,17 +773,17 @@ async function paintShelfChoice(cur){
   wrap.hidden = false;
   checkDup(cur);
 }
-// already on the shelf picked? Then it says so, and Add to shelf stays off
-const likeOf = s => String(s).replace(/[\\%_]/g, c => '\\' + c);
+// already on the shelf picked? Then it says so, in one line ("Already on <shelf>", in place of "On <shelf>" when
+// there's no picker), and Add to shelf stays off. The same match as the title page's (Nav.titleWhere())
 async function checkDup(cur){
   const a = account(), id = myShelves.length > 1 ? $('#addOn').value : (myShelves[0] || {}).id, m = cur && cur.m;
   if (!id || !m) return;
   let rows = [];
-  try { ({data: rows} = await a.sb.from('shelf_items').select('item_id').eq('shelf_id', id).eq('kind', m.kind === 'movie' ? 'movie' : 'book').ilike('title', likeOf(m.title))
-    .filter('year', /^\d{4}$/.test(String(m.year || '')) ? 'eq' : 'is', /^\d{4}$/.test(String(m.year || '')) ? +m.year : null).limit(1)); } catch {}
+  try { const w = Nav.titleWhere(m, false); ({data: rows} = await a.sb.from('shelf_items').select('item_id').eq('shelf_id', id).eq('kind', w.kind).or(w.or).limit(1)); } catch {}
   if (cur !== current) return;
   cur.dup = !!(rows && rows.length);
   $('#addDupText').textContent = cur.dup ? `Already on ${shelfLabel(myShelves.find(x => x.id === id) || {})}.` : ''; $('#addDup').hidden = !cur.dup;
+  if (myShelves.length < 2) $('#addOnWrap').hidden = cur.dup;
   paintGo();
 }
 $('#addOn').addEventListener('change', () => checkDup(current));

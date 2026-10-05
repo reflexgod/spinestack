@@ -233,16 +233,34 @@
       document.head.appendChild(s);
     });
   }
-  // a title's page (/t/): by its TMDB or Open Library id when there is one (a search result has it), otherwise by its
-  // kind, title and year, as a log or a spine keeps it (the page finds the id and takes that address)
+  // a title's page (/t/): by its TMDB or Open Library id when there is one (a search result has it, and a row saved
+  // since 0011), otherwise by its kind, title and year (the page finds the id and takes that address)
   function titleUrl(m){
     const kind = m && m.kind === 'movie' ? 'movie' : 'book';
-    // with the title and year too: what people did with it is found by them (logs keep no id)
-    const q = new URLSearchParams(kind === 'movie' && /^\d{1,9}$/.test(String(m.tmdb || '')) ? {film: m.tmdb} : kind === 'book' && /^OL\d{1,10}W$/.test(String(m.ol || '')) ? {book: m.ol} : {kind});
+    // with the title and year too: what people did with it is found by them too (rows from before ids were kept)
+    const id = idOf({...m, kind}), q = new URLSearchParams(id ? {[kind === 'movie' ? 'film' : 'book']: id} : {kind});
     q.set('title', String((m && m.title) || '').trim());
     if (m && /^\d{4}$/.test(String(m.year || ''))) q.set('year', String(m.year));
     return ROOT + 't/?' + q;
   }
+  /* One title, as every page asks the database for it (the title page, Put on shelf's "Already on", Up next): its kind,
+     then its id (TMDB's, or Open Library's work) when both the row and m have one, otherwise the same title, whatever
+     its capitals (any of m.title and the titles in also), and the same year. ids: the database keeps ids (0011);
+     without them it's the title and year alone. Gives {kind, or}: PostgREST's or=(...) inside, which supabase-js takes
+     as .eq('kind', kind).or(or), and titleQuery() puts in an address. */
+  const likeOf = s => String(s).replace(/[\\%_]/g, c => '\\' + c);
+  const quoted = s => '"' + String(s).replace(/["\\]/g, c => '\\' + c) + '"';
+  function titleWhere(m, ids, also = []){
+    const kind = m && m.kind === 'movie' ? 'movie' : 'book', year = /^\d{4}$/.test(String((m && m.year) || '')) ? 'year.eq.' + m.year : 'year.is.null';
+    const names = [...new Set([m && m.title, ...also].map(t => String(t || '').trim()).filter(Boolean).map(t => t.toLowerCase()))];
+    const title = names.length > 1 ? `or(${names.map(t => 'title.ilike.' + quoted(likeOf(t))).join(',')})` : 'title.ilike.' + quoted(likeOf(names[0] || ''));
+    const col = kind === 'movie' ? 'tmdb_id' : 'ol_id', id = ids ? idOf(m) : '';
+    return {kind, or: id ? `${col}.eq.${id},and(${col}.is.null,${title},${year})` : `and(${title},${year})`};
+  }
+  const titleQuery = (m, ids, also) => { const w = titleWhere(m, ids, also); return `kind=eq.${w.kind}&or=${encodeURIComponent('(' + w.or + ')')}`; };
+  // a title's id, when it has one: TMDB's for a film, Open Library's work for a book
+  const idOf = m => !m ? '' : m.kind === 'movie' ? (/^\d{1,9}$/.test(String(m.tmdb || m.tmdb_id || '')) ? String(m.tmdb || m.tmdb_id) : '')
+    : (/^OL\d{1,10}W$/.test(String(m.ol || m.ol_id || '')) ? String(m.ol || m.ol_id) : '');
   // Share to WhatsApp: a wa.me link that opens WhatsApp with the text and the address
   const whatsapp = (text, url) => `https://wa.me/?text=${encodeURIComponent([text, url].filter(Boolean).join(' '))}`;
   // Recommend: signed in, the sheet; signed out, sign in first
@@ -374,5 +392,5 @@
     else if (on.finish) on.finish(); else location.href = ROOT + 'build/';
   }
 
-  window.Nav = {paint, add: openAdd, loadAdd, loadRecs, recommend, whatsapp, titleUrl, watchable, account, signIn, needAccount, visitor, onSignIn: fn => { on.signIn = fn; }, onFinish: fn => { on.finish = fn; }, onSignOut: fn => { on.signOut = fn; }, onUpload: fn => { on.upload = fn; }};
+  window.Nav = {paint, add: openAdd, loadAdd, loadRecs, recommend, whatsapp, titleUrl, titleWhere, titleQuery, idOf, watchable, account, signIn, needAccount, visitor, onSignIn: fn => { on.signIn = fn; }, onFinish: fn => { on.finish = fn; }, onSignOut: fn => { on.signOut = fn; }, onUpload: fn => { on.upload = fn; }};
 })();
