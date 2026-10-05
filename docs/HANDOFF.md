@@ -26,6 +26,7 @@ No SQL, nothing for the Worker, shelf.js's drawing untouched. Each item its own 
 6. **Spacing:** a shelf's page and the post page start 24px under the bar like every page (were 48 and 26); "Add a
    photo" centred inside its circle; title page sections 24px apart on a phone; recs and From friends with no cover
    show paper and the title. `specs/fit.spec.js` checks every page and sheet at both widths.
+- **Tested:** `cd tests && npm run test:all`: html-validate clean, then Playwright 978 passed, 24 skipped, none failed.
 - `tests/shots.js` covers the Shelves tab, title, post, notifications, people, Style, search, + ADD's ▾ and the
   Recommend sheet now, and takes `node shots.js [folder] [names]`; its Up next shot had been broken since the rename.
 
