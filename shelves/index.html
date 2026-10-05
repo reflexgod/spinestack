@@ -41,7 +41,7 @@
 .shelves h1{margin-bottom:var(--s2)}
 .lead{display:flex;gap:var(--s4) var(--s5);align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:var(--s5)}
 .lead p{margin:0}
-.mineacts{display:flex;gap:var(--s5);align-items:center}
+.mineacts{display:flex;gap:var(--s4) var(--s5);align-items:center;flex-wrap:wrap}
 #state,#none{margin:0}
 #more{margin-top:var(--s6)}
 /* signed out: Make a shelf is the black button, and the bar's + is outlined */
@@ -65,7 +65,7 @@
 <main class="shelves">
   <h1>Shelves</h1>
   <div class="lead">
-    <span class="mineacts"><a class="btn primary" id="mine" href="../build/">Make a shelf</a><a class="dash" id="newShelf" href="../build/?new" hidden>New shelf</a></span>
+    <span class="mineacts"><a class="btn primary" id="mine" href="../build/">Make a shelf</a><a class="btn line" id="newShelf" href="../build/?new" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>New shelf</a></span>
   </div>
   <p class="grey" id="state" role="status">Loading…</p>
   <ul class="thumbs" id="grid" aria-label="Shelves"></ul>

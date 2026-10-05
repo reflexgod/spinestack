@@ -65,7 +65,8 @@
    The bottom area stays in view: the shelf's name and who can view it, with Cancel and Save (beside them
    on a wide window, under them on a phone). site.css has everything shared */
 /* the title, and New shelf beside it once you have a shelf */
-.mkhead{display:flex;align-items:baseline;gap:var(--s2) var(--s4);flex-wrap:wrap}
+.mkhead{display:flex;align-items:center;gap:var(--s2) var(--s4);flex-wrap:wrap;margin-bottom:var(--s5)}
+.mkhead h1{margin-bottom:0}
 .mkhead h1{margin-right:auto}
 .mkgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:var(--s5) var(--s6);align-items:start}
 .mkform{display:grid;gap:var(--s5);min-width:0}
@@ -256,7 +257,7 @@ footer{margin-top:0}
 </header>
 
 <main class="mk">
-  <div class="mkhead"><h1 id="pageTitle">Your shelf</h1><a class="dash sm" id="newShelf" href="./?new" hidden>New shelf</a></div>
+  <div class="mkhead"><h1 id="pageTitle">Your shelf</h1><a class="btn line" id="newShelf" href="./?new" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>New shelf</a></div>
   <div class="gate" id="gate">
     <button class="btn primary" id="gateGo" type="button">Continue with Google</button>
     <p class="note">Accounts are for people 18 or older. <a href="../privacy.html">Privacy</a></p>

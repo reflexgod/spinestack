@@ -1,5 +1,5 @@
 /* Screenshots of the pages at 1280px and 390px, with the made-up account and data the tests use and the real fonts:
-   node shots.js [folder] (tests/shots unless given). Shelf cards get real story pictures, drawn by shelf.js. The clock
+   node shots.js [folder] [names] (tests/shots unless given; names: only those, comma separated). Shelf cards get real story pictures, drawn by shelf.js. The clock
    is held at two hours after the newest made-up shelf, so the logs' covers are as worn as their dates say. */
 const { chromium } = require('@playwright/test');
 const { spawn } = require('child_process');
@@ -7,6 +7,7 @@ const path = require('path'), fs = require('fs');
 const { mockNetwork, PICTURE, SHELVES } = require('./site');
 
 const PORT = 8183, BASE = `http://127.0.0.1:${PORT}`, OUT = path.resolve(process.argv[2] || path.join(__dirname, 'shots'));
+const ONLY = process.argv[3] ? new Set(process.argv[3].split(',')) : null;
 const SHOTS = [
   { name: 'home', path: '/', signedIn: true, friends: true },   // following five more people, so the row of cards is full
   { name: 'home-signed-out', path: '/', signedIn: false },
@@ -35,7 +36,7 @@ const SHOTS = [
   { name: 'add-watchlist', path: '/feed/?everyone', signedIn: true, act: async page => {
     await page.locator('header.top .add').click();
     const d = page.locator('#addDialog');
-    await d.getByRole('radio', { name: 'Watchlist' }).check();
+    await d.getByRole('radio', { name: 'Up next' }).check();
     await d.getByRole('combobox', { name: 'Film or book name' }).fill('waves');
     await d.getByRole('option', { name: /The Waves/ }).click();
   } },
@@ -46,7 +47,25 @@ const SHOTS = [
   { name: 'not-found', path: '/no/such/page', signedIn: false },
   { name: 'settings-photo', path: '/settings/#photo', signedIn: true, photo: true },
   { name: 'settings-account', path: '/settings/#account', signedIn: true },
+  // the rest of the site, with 0009 to 0011 in the database (social, recs, ids)
+  { name: 'own-profile-shelves', path: '/u/?tester#shelves', signedIn: true, opts: { social: true, recs: true, ids: true }, full: true },
+  { name: 'profile-shelves', path: '/u/?mira#shelves', signedIn: true, opts: { social: true }, full: true },
+  { name: 'own-profile-upnext', path: '/u/?tester#upnext', signedIn: true, opts: { social: true, recs: true } },
+  { name: 'own-profile-recs', path: '/u/?tester#recs', signedIn: true, opts: { social: true, recs: true } },
+  { name: 'feed-social', path: '/feed/?everyone', signedIn: true, opts: { social: true, recs: true, ids: true }, full: true },
+  { name: 'title', path: '/t/?film=106&title=Gummo&year=1997', signedIn: true, opts: { social: true, recs: true, ids: true }, full: true },
+  { name: 'post', path: '/p/?bbbbbbbb-bbbb-4bbb-8bbb-000000000000', signedIn: true, opts: { social: true } },
+  { name: 'notifications', path: '/notifications/', signedIn: true, opts: { social: true, recs: true } },
+  { name: 'people', path: '/people/', signedIn: true },
+  { name: 'build-style', path: '/build/?sample', signedIn: true, full: true, act: async page => { await page.locator('#stylePanel summary').click(); } },
+  { name: 'add-menu', path: '/feed/?everyone', signedIn: true, act: async page => { await page.locator('#addMore').click(); } },
+  { name: 'search', path: '/feed/?everyone', signedIn: true, act: async page => { await page.locator('header.top .find').click(); await page.locator('#srchQ').fill('waves'); await page.locator('.srch .srchg').first().waitFor(); await page.waitForTimeout(500); } },
+  { name: 'recommend', path: '/feed/?everyone', signedIn: true, opts: { social: true, recs: true }, act: async page => {
+    const p = page.locator('#items .post').filter({ hasText: 'watched Gummo' }).first();
+    await p.getByRole('button', { name: /^Share/ }).click(); await p.getByRole('menuitem', { name: 'Recommend' }).click();
+  } },
 ];
+// node shots.js [folder] [name,name]: only those
 
 // in the page: a story for each card, with 1 to 20 spines, as its preview, laid out as the card's shelf is; cards.js
 // then cuts each card round its books, as it does with real previews
@@ -86,10 +105,10 @@ async function drawPreviews(page) {
   const browser = await chromium.launch();
   try {
     for (const [w, h] of [[1280, 900], [390, 844]]) {
-      for (const shot of SHOTS) {
+      for (const shot of SHOTS.filter(x => !ONLY || ONLY.has(x.name))) {
         const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: w < 500 ? 2 : 1 });
         await page.clock.setFixedTime(new Date('2026-09-30T14:00:00Z'));
-        await mockNetwork(page, { signedIn: shot.signedIn, realFonts: true, empty: !!shot.empty, logs: shot.logs !== false, ownShelf: shot.ownShelf !== false, friends: !!shot.friends });
+        await mockNetwork(page, { signedIn: shot.signedIn, realFonts: true, empty: !!shot.empty, logs: shot.logs !== false, ownShelf: shot.ownShelf !== false, friends: !!shot.friends, ...(shot.opts || {}) });
         await page.goto(BASE + shot.path); await page.waitForLoadState('networkidle');
         await page.evaluate(() => document.fonts.ready);
         await drawPreviews(page);
@@ -100,7 +119,7 @@ async function drawPreviews(page) {
         }
         await page.waitForTimeout(400);
         const file = path.join(OUT, `${shot.name}-${w}.png`);
-        await page.screenshot({ path: file });
+        await page.screenshot({ path: file, fullPage: !!shot.full });
         console.log(file);
         await page.close();
       }

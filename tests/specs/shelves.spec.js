@@ -92,14 +92,20 @@ test('Shelves, signed out: Make a shelf, then signing in, goes on to the builder
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your shelf');
 });
 
-// New shelf, to build/?new: on the Shelves page signed in, at the top of your own Shelves tab, and in + ADD's ▾
+// + New shelf, to build/?new, as the outlined button (black words on white, a 1px black line round them, its +): on the
+// Shelves page signed in, at the top of your own Shelves tab, and in + ADD's ▾
+const outlined = el => el.evaluate(e => { const s = getComputedStyle(e); return { color: s.color, bg: s.backgroundColor, line: s.boxShadow, plus: !!e.querySelector('svg') }; });
+const OUTLINED = { color: 'rgb(0, 0, 0)', bg: 'rgb(255, 255, 255)', line: 'rgb(0, 0, 0) 0px 0px 0px 1px inset', plus: true };
 test('New shelf: on Shelves, on your own Shelves tab (not someone else\'s), and in + ADD\'s menu', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/shelves/');
-  await expect(page.locator('main').getByRole('link', { name: 'New shelf' })).toHaveAttribute('href', '../build/?new');
+  const onShelves = page.locator('main').getByRole('link', { name: 'New shelf' });
+  await expect(onShelves).toHaveAttribute('href', '../build/?new');
+  expect(await outlined(onShelves)).toEqual(OUTLINED);
   await open(page, '/u/?tester#shelves');
-  const mine = page.locator('#panelS').getByRole('link', { name: 'New shelf' });
+  const mine = page.locator('#sNewRow').getByRole('link', { name: 'New shelf' });
   await expect(mine).toHaveAttribute('href', '../build/?new');
+  expect(await outlined(mine)).toEqual(OUTLINED);
   const top = await mine.boundingBox(), list = await page.locator('#sList').boundingBox();
   expect(top.y).toBeLessThan(list.y);   // at the top of the list
   await open(page, '/u/?mira#shelves');
@@ -107,7 +113,9 @@ test('New shelf: on Shelves, on your own Shelves tab (not someone else\'s), and 
   await expect(page.locator('#panelS').getByRole('link', { name: 'New shelf' })).toBeHidden();
   await open(page, '/feed/');
   await page.locator('#addMore').click();
-  await expect(page.getByRole('menu', { name: 'More ways to add' }).getByRole('menuitem', { name: 'New shelf' })).toHaveAttribute('href', /\/build\/\?new$/);
+  const inMenu = page.getByRole('menu', { name: 'More ways to add' }).getByRole('menuitem', { name: 'New shelf' });
+  await expect(inMenu).toHaveAttribute('href', /\/build\/\?new$/);
+  expect(await outlined(inMenu)).toEqual(OUTLINED);
 });
 test('signed out, the Shelves page has no New shelf', async ({ page }) => {
   await mockNetwork(page);

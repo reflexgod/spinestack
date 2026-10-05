@@ -203,16 +203,24 @@ html:not(.recs-on) .recbtn{display:none}   /* Recommend: only once 0010 is there
 .onshelf{max-width:680px;min-width:0}
 .spines{list-style:none;margin:0;padding:0}
 .sact{display:flex;align-items:center;gap:var(--s1) var(--s4)}
-/* the Shelves tab: each shelf's spines standing on a shelf line, its name under it */
-.snew{margin:var(--s5) 0 0}
-.slist{list-style:none;margin:var(--s5) 0 0;padding:0;display:grid;gap:var(--s5)}
-.slist a{display:block;text-decoration:none;color:var(--ink)}
-.slist .sline{display:flex;align-items:flex-end;gap:2px;height:64px;border-bottom:1px solid var(--ink);overflow:hidden}
+/* the Shelves tab: + New shelf, then each shelf a compact block: its spines at the feed's height standing on a shelf
+   line only as wide as they are (and a little), its name, then Main shelf or Private, how many spines, and when. Three
+   across on a wide window, two on a narrower one, one on a phone; yours end with a dashed slot to make another */
+.snew{margin:var(--s4) 0 0}
+.slist{list-style:none;margin:var(--s5) 0 0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s5)}
+@media (max-width:820px){ .slist{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width:640px){ .slist{grid-template-columns:minmax(0,1fr)} }
+.slist li{min-width:0}
+.slist a{display:block;text-decoration:none;color:var(--ink);min-width:0}
+.slist .sline{display:flex;align-items:flex-end;gap:2px;height:112px;width:max-content;min-width:var(--s6);max-width:100%;padding-right:var(--s4);border-bottom:1px solid var(--ink);overflow:hidden}
 .slist .sline canvas{display:block;flex:none}
-.slist .sn{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s1) var(--s2);margin-top:var(--s2)}
-.slist .sn b{font-weight:500}
-.slist a:hover .sn b,.slist a:focus-visible .sn b{text-decoration:underline;text-underline-offset:3px}
-.slist .sn .grey{font-size:var(--fs-small)}
+.slist .sn{display:block;margin-top:var(--s2);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slist a:hover .sn,.slist a:focus-visible .sn{text-decoration:underline;text-underline-offset:3px}
+.slist .sm{display:flex;flex-wrap:wrap;align-items:center;gap:0 var(--s2);color:var(--grey);font-size:var(--fs-small)}
+.slist .sm .state{padding:0}
+.slist .sslot{display:flex;align-items:center;justify-content:center;gap:var(--s1);height:112px;border:1px dashed var(--grey);border-radius:var(--radius);color:var(--grey);font:600 var(--fs-btn)/1.35 var(--mono)}
+.slist .sslot svg{width:16px;height:16px}
+.slist a:hover .sslot,.slist a:focus-visible .sslot{color:var(--ink);border-color:var(--ink)}
 .sact [data-log]{margin-right:var(--s4)}   /* Log and + Add to my shelf: a press apart on a touch screen */
 .spines li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:var(--s4);align-items:center;padding:var(--s2) 0;border-bottom:1px solid var(--hair)}
 .spines .sthumb{display:grid;place-items:center;height:56px}
@@ -393,7 +401,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
         </div>
       </div>
       <div id="panelS" role="tabpanel" aria-labelledby="tabS" hidden>
-        <p class="snew" id="sNewRow" hidden><a class="dash" href="../build/?new">New shelf</a></p>
+        <p class="snew" id="sNewRow" hidden><a class="btn line" href="../build/?new"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>New shelf</a></p>
         <ol class="slist" id="sList"></ol>
         <p class="grey" id="sNone" hidden>No shelves yet.</p>
       </div>
@@ -816,24 +824,30 @@ $('#bioMore').addEventListener('click', () => { $('#pbio').classList.add('open')
    standing on a shelf line with its name under it; pressing one opens its page ---------- */
 function paintShelfCount(){ $('#tabS').textContent = `Shelves (${view.shelves.length})`; }
 let shelvesRun = 0;
+const PLUS_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>';   // Lucide plus
 async function paintShelvesTab(){
   const run = ++shelvesRun, list = view.shelves.slice().sort((a, b) => new Date(savedAt(b)) - new Date(savedAt(a))), main = theShelf();
   $('#sNone').hidden = !!list.length;
   $('#sNewRow').hidden = !view.mine;   // your own: a new one, at the top
+  const slot = document.createElement('li');   // yours: one more, to make
+  slot.className = 'snewslot';
+  slot.innerHTML = `<a href="../build/?new" aria-label="New shelf"><span class="sslot">${PLUS_ICON}New shelf</span></a>`;
   $('#sList').replaceChildren(...list.map(s => {
     const li = document.createElement('li'); li.dataset.id = s.id;
     li.innerHTML = `<a href="${esc(pageUrl(view.profile.username, s.id))}"><span class="sline" aria-hidden="true"></span>
-      <span class="sn"><b>${esc(shelfName(s))}</b>${s === main ? ' <span class="tag">main</span>' : ''}${s.is_public ? '' : ' <span class="tag">private</span>'}<span class="grey">${esc(spines(countOf(s)))} · ${esc(fmtDate(s.updated_at))}</span></span></a>`;
+      <span class="sn">${esc(shelfName(s))}</span>
+      <span class="sm">${s === main ? '<span class="state">Main shelf</span><span aria-hidden="true">·</span>' : ''}${s.is_public ? '' : '<span class="state">Private</span><span aria-hidden="true">·</span>'}<span>${esc(spines(countOf(s)))}</span><span aria-hidden="true">·</span><span>${esc(fmtDate(s.updated_at))}</span></span></a>`;
     return li;
-  }));
+  }), ...(view.mine ? [slot] : []));
   if (!list.length) return;
   let rows = [];
   try { rows = await api(`shelf_items?select=${ITEM_COLS}&shelf_id=in.(${list.map(s => s.id).join(',')})&order=position`); } catch { return; }
   await fontsReady;
   for (const li of $('#sList').children){
+    if (!li.dataset.id) continue;   // the new shelf slot
     const mine = await books((rows || []).filter(r => r.shelf_id === li.dataset.id));
     if (run !== shelvesRun) return;
-    if (mine.length) li.querySelector('.sline').replaceChildren(...smallSpines(mine, 64).map(c => { c.setAttribute('aria-hidden', 'true'); return c; }));
+    if (mine.length) li.querySelector('.sline').replaceChildren(...smallSpines(mine, 112).map(c => { c.setAttribute('aria-hidden', 'true'); return c; }));
   }
 }
 
