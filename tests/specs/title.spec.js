@@ -189,6 +189,28 @@ test('matching by the link\'s title and year, even when the Worker\'s differ: yo
   await expect(page).toHaveURL(/\/t\/\?film=18415&title=Gummo&year=1997$/);
 });
 
+// The live page at this address showed Put on shelf and no On shelves: its two reads embedded profiles() bare, which
+// PostgREST refuses (PGRST201: logs meet profiles through likes too, shelves through a profile's main shelf). The mock
+// refuses it the same way now; the Worker doesn't know 18415, as the live one didn't.
+test('Gummo at its live address: On your shelf, On shelves and the reviews, from rows shaped as the database gives them', async ({ page }) => {
+  const refused = [];   // (the Worker's 404 for 18415 is in the console, as it is live)
+  page.on('response', r => { if (/\/rest\/v1\/(logs|shelf_items)\?.*&or=/.test(r.url()) && r.status() >= 300) refused.push(r.url()); });
+  await mockNetwork(page, { signedIn: true, social: true });
+  const asked = [];
+  page.on('request', r => { const u = new URL(r.url()); if (/^\/rest\/v1\/(logs|shelf_items)$/.test(u.pathname) && u.searchParams.get('or')) asked.push(u.searchParams.get('select')); });
+  await open(page, '/t/?film=18415&title=Gummo&year=1997');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Gummo 1997');
+  await expect(panel(page).locator('.state').filter({ hasText: 'On your shelf' })).toBeVisible();
+  await expect(panel(page).getByRole('button', { name: 'Put on shelf' })).toHaveCount(0);
+  await expect(page.locator('#onSec')).toBeVisible();
+  await expect(page.locator('#onList a').first()).toHaveAttribute('aria-label', /^@mira: /);
+  await expect(page.locator('#tWho')).toHaveText('watched by 1 · 1 friend');
+  await expect(page.locator('#revList .post')).toHaveCount(1);
+  expect(asked.some(s => s.includes('profiles!logs_owner_fkey('))).toBe(true);
+  expect(asked.some(s => s.includes('profiles!shelves_owner_fkey('))).toBe(true);
+  expect(refused).toEqual([]);
+});
+
 // a slow Worker: what the link says is drawn at once (the title, the year, the cover from a log, your status), and
 // the director, runtime and overview come in when it answers
 test('a slow Worker: the title, cover and your status at once; the details when it answers', async ({ page }) => {

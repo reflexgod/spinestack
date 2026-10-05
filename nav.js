@@ -203,6 +203,61 @@
       bell.setAttribute('aria-label', unread ? 'Notifications, some unread' : 'Notifications');
     } catch {}
   }
+  /* Is migration 0011 there (docs/proposed-0011-ids-edits.sql: ids on logs, spines, Up next and recs; editing a log)?
+     Asked as the bell asks for 0009 (logs.tmdb_id answers once it's there, 400 before): a yes kept for this tab, a no
+     for 10 minutes on this device. Until it's there no id is sent or asked for, and there's no Edit. */
+  const IDS = 'shelfstackd-0011';
+  let idsP = null;
+  function ids(){
+    if (idsP) return idsP;
+    try {
+      if (sessionStorage.getItem(IDS) === 'yes') return idsP = Promise.resolve(true);
+      if (Date.now() - (+localStorage.getItem(IDS + '-no') || 0) < 10 * 60e3) return idsP = Promise.resolve(false);
+    } catch {}
+    if (!SB_URL) return idsP = Promise.resolve(false);
+    return idsP = fetch(`${SB_URL}/rest/v1/logs?select=tmdb_id,edited_at&limit=1`, {headers: {apikey: SB_KEY}})
+      .then(r => { try { if (r.ok) sessionStorage.setItem(IDS, 'yes'); else localStorage.setItem(IDS + '-no', String(Date.now())); } catch {} return r.ok; }, () => false);
+  }
+  // a title's ids as a row keeps them (0011): {tmdb_id} for a film, {ol_id} for a book, {} with none
+  const idCols = m => { const id = idOf(m); return !id ? {} : m.kind === 'movie' ? {tmdb_id: +id} : {ol_id: id}; };
+  /* Filling in ids (0011) on your own rows from before they were kept, when you open your log or your shelf:
+     Nav.fillIds(rows, found). rows: your logs ({table: 'logs', id, kind, title, year}) or spines ({table:
+     'shelf_items', shelf_id, position, kind, title, year}); one that has an id already is passed over. found: what the
+     Worker said this title is ({kind, id, title, year}, the title page has it); without it the Worker's /title is
+     asked for each. An id goes on only when the Worker's title is the row's (whatever its capitals and stops) and its
+     year is the row's or one off, so a link or a search can't put the wrong film's id on it. 12 a page at most, one
+     at a time; a title the Worker didn't know isn't asked about again on this device for a week. Gives how many were
+     filled in, and puts each id on its row. */
+  const plainT = s => String(s || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
+  const sameAs = (t, r) => !!t && t.kind === (r.kind === 'movie' ? 'movie' : 'book') && plainT(t.title) === plainT(r.title)
+    && (!r.year || !t.year || Math.abs(+t.year - +r.year) <= 1);
+  const NOID = 'shelfstackd-noid';
+  const unknown = () => { try { return JSON.parse(localStorage.getItem(NOID) || '{}'); } catch { return {}; } };
+  async function workerTitle(r){
+    const key = [r.kind, plainT(r.title), r.year || ''].join('|'), seen = unknown();
+    if (Date.now() - (seen[key] || 0) < 7 * 864e5) return null;
+    const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
+    try {
+      const q = new URLSearchParams({kind: r.kind === 'movie' ? 'movie' : 'book', title: r.title, ...(r.year ? {year: String(r.year)} : {})});
+      const res = await fetch(`${WORKER}/title?${q}`);
+      if (res.ok){ const j = await res.json(); if (j && j.id) return j; }
+      if (res.status === 404){ seen[key] = Date.now(); try { localStorage.setItem(NOID, JSON.stringify(seen)); } catch {} }
+    } catch {}
+    return null;
+  }
+  async function fillIds(rows, found){
+    if (!state.sb || !state.user || !rows || !rows.length || !(await ids())) return 0;
+    let n = 0;
+    for (const r of rows.filter(x => !idOf(x)).slice(0, 12)){
+      const t = found && sameAs(found, r) ? found : found ? null : await workerTitle(r);
+      const cols = t && sameAs(t, r) ? idCols({kind: r.kind, tmdb: t.id, ol: t.id}) : {};
+      const col = Object.keys(cols)[0]; if (!col) continue;
+      let ask = state.sb.from(r.table).update(cols).is(col, null);
+      ask = r.table === 'logs' ? ask.eq('id', r.id).eq('owner', state.user.id) : ask.eq('shelf_id', r.shelf_id).eq('position', r.position);
+      try { const {error} = await ask; if (!error){ Object.assign(r, cols); n++; } } catch {}
+    }
+    return n;
+  }
   // the notifications page, once it has marked them read
   document.addEventListener('shelfstackd:read', () => { if (bell){ bell.querySelector('.dot').hidden = true; bell.setAttribute('aria-label', 'Notifications'); } });
 
@@ -216,7 +271,7 @@
     if (window.Add) return Promise.resolve(true);
     if (!window.Shelf) return Promise.resolve(false);
     return adding = adding || new Promise(res => {
-      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261017a';
+      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261018a';
       s.onload = () => res(!!window.Add); s.onerror = () => { adding = null; s.remove(); res(false); };
       document.head.appendChild(s);
     });
@@ -228,21 +283,43 @@
   function loadRecs(){
     if (window.Recs) return window.Recs.ready();
     return recsP = recsP || new Promise(res => {
-      const s = document.createElement('script'); s.src = ROOT + 'recs.js?v=20261017a';
+      const s = document.createElement('script'); s.src = ROOT + 'recs.js?v=20261018a';
       s.onload = () => res(window.Recs ? window.Recs.ready() : false); s.onerror = () => { recsP = null; s.remove(); res(false); };
       document.head.appendChild(s);
     });
   }
-  // a title's page (/t/): by its TMDB or Open Library id when there is one (a search result has it), otherwise by its
-  // kind, title and year, as a log or a spine keeps it (the page finds the id and takes that address)
+  // a title's page (/t/): by its TMDB or Open Library id when there is one (a search result has it, and a row saved
+  // since 0011), otherwise by its kind, title and year (the page finds the id and takes that address)
   function titleUrl(m){
     const kind = m && m.kind === 'movie' ? 'movie' : 'book';
-    // with the title and year too: what people did with it is found by them (logs keep no id)
-    const q = new URLSearchParams(kind === 'movie' && /^\d{1,9}$/.test(String(m.tmdb || '')) ? {film: m.tmdb} : kind === 'book' && /^OL\d{1,10}W$/.test(String(m.ol || '')) ? {book: m.ol} : {kind});
+    // with the title and year too: what people did with it is found by them too (rows from before ids were kept)
+    const id = idOf({...m, kind}), q = new URLSearchParams(id ? {[kind === 'movie' ? 'film' : 'book']: id} : {kind});
     q.set('title', String((m && m.title) || '').trim());
     if (m && /^\d{4}$/.test(String(m.year || ''))) q.set('year', String(m.year));
     return ROOT + 't/?' + q;
   }
+  /* One title, as every page asks the database for it (the title page, Put on shelf's "Already on", Up next): its kind,
+     then its id (TMDB's, or Open Library's work) when both the row and m have one, otherwise the same title, whatever
+     its capitals (any of m.title and the titles in also), and the same year. ids: the database keeps ids (0011);
+     without them it's the title and year alone. Gives {kind, or}: PostgREST's or=(...) inside, which supabase-js takes
+     as .eq('kind', kind).or(or), and titleQuery() puts in an address. */
+  const likeOf = s => String(s).replace(/[\\%_]/g, c => '\\' + c);
+  const quoted = s => '"' + String(s).replace(/["\\]/g, c => '\\' + c) + '"';
+  function titleWhere(m, ids, also = []){
+    const kind = m && m.kind === 'movie' ? 'movie' : 'book', year = /^\d{4}$/.test(String((m && m.year) || '')) ? 'year.eq.' + m.year : 'year.is.null';
+    const names = [...new Set([m && m.title, ...also].map(t => String(t || '').trim()).filter(Boolean).map(t => t.toLowerCase()))];
+    const title = names.length > 1 ? `or(${names.map(t => 'title.ilike.' + quoted(likeOf(t))).join(',')})` : 'title.ilike.' + quoted(likeOf(names[0] || ''));
+    const col = kind === 'movie' ? 'tmdb_id' : 'ol_id', id = ids ? idOf(m) : '';
+    return {kind, or: id ? `${col}.eq.${id},and(${col}.is.null,${title},${year})` : `and(${title},${year})`};
+  }
+  // two titles are the same (as same_title() in 0011 has it): by their ids when both have one, otherwise by kind, title
+  // (whatever its capitals and spaces) and year
+  const keyOf0 = m => [m.kind === 'movie' ? 'movie' : 'book', String(m.title || '').trim().replace(/\s+/g, ' ').toLowerCase(), String(m.year || '')].join('|');
+  const sameTitle = (a, b) => { if (!a || !b || (a.kind === 'movie') !== (b.kind === 'movie')) return false; const x = idOf(a), y = idOf(b); return x && y ? x === y : keyOf0(a) === keyOf0(b); };
+  const titleQuery = (m, ids, also) => { const w = titleWhere(m, ids, also); return `kind=eq.${w.kind}&or=${encodeURIComponent('(' + w.or + ')')}`; };
+  // a title's id, when it has one: TMDB's for a film, Open Library's work for a book
+  const idOf = m => !m ? '' : m.kind === 'movie' ? (/^\d{1,9}$/.test(String(m.tmdb || m.tmdb_id || '')) ? String(m.tmdb || m.tmdb_id) : '')
+    : (/^OL\d{1,10}W$/.test(String(m.ol || m.ol_id || '')) ? String(m.ol || m.ol_id) : '');
   // Share to WhatsApp: a wa.me link that opens WhatsApp with the text and the address
   const whatsapp = (text, url) => `https://wa.me/?text=${encodeURIComponent([text, url].filter(Boolean).join(' '))}`;
   // Recommend: signed in, the sheet; signed out, sign in first
@@ -256,6 +333,34 @@
     e.preventDefault();
     openAdd().then(ok => { if (!ok) location.href = addLink.href; });
   });
+
+  /* ---------- search: one box for films, books and people (search.js) ----------
+     The bar's search icon opens it. search.js is loaded the first time the icon has a pointer or a finger on it, or is
+     pressed; if it isn't here yet when it's pressed, a stand-in box takes the focus in that press, so a phone's
+     keyboard comes up with it, and the search opens on it. Without the file, the icon is the link to People it was. */
+  const findLink = q('.links .find');
+  let searching = null;
+  function loadSearch(){
+    if (window.Search) return Promise.resolve(true);
+    return searching = searching || new Promise(res => {
+      const s = document.createElement('script'); s.src = ROOT + 'search.js?v=20261018a';
+      s.onload = () => res(!!window.Search); s.onerror = () => { searching = null; s.remove(); res(false); };
+      document.head.appendChild(s);
+    });
+  }
+  if (findLink){
+    findLink.setAttribute('aria-haspopup', 'dialog'); findLink.setAttribute('aria-expanded', 'false');
+    for (const ev of ['pointerenter', 'pointerdown', 'focus']) findLink.addEventListener(ev, () => { loadSearch(); }, {once: true, passive: true});
+    findLink.addEventListener('click', e => {
+      if (e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;   // a new tab or window still gets People
+      e.preventDefault();
+      if (window.Search){ window.Search.open(findLink); return; }
+      const hold = document.createElement('input');
+      hold.setAttribute('aria-hidden', 'true'); hold.tabIndex = -1; hold.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px;border:0;padding:0';
+      document.body.append(hold); hold.focus();
+      loadSearch().then(ok => { if (ok) window.Search.open(findLink); else location.href = findLink.href; hold.remove(); });
+    });
+  }
 
   /* ---------- signed out: look, don't add ---------- */
   // signed out: no one is signed in on this page and no session is kept on this device (a page signed in paints the
@@ -374,5 +479,5 @@
     else if (on.finish) on.finish(); else location.href = ROOT + 'build/';
   }
 
-  window.Nav = {paint, add: openAdd, loadAdd, loadRecs, recommend, whatsapp, titleUrl, watchable, account, signIn, needAccount, visitor, onSignIn: fn => { on.signIn = fn; }, onFinish: fn => { on.finish = fn; }, onSignOut: fn => { on.signOut = fn; }, onUpload: fn => { on.upload = fn; }};
+  window.Nav = {paint, add: openAdd, loadAdd, loadRecs, recommend, whatsapp, titleUrl, titleWhere, titleQuery, sameTitle, idOf, idCols, ids, fillIds, watchable, account, signIn, needAccount, visitor, onSignIn: fn => { on.signIn = fn; }, onFinish: fn => { on.finish = fn; }, onSignOut: fn => { on.signOut = fn; }, onUpload: fn => { on.upload = fn; }};
 })();

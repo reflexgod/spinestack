@@ -138,10 +138,10 @@ async function open(m){
     const to = boxes().filter(b => b.checked); if (!to.length) return;
     const a = acct(); if (!signedIn()){ done(); if (window.Nav) Nav.signIn(); return; }
     send.disabled = true; say.textContent = 'Sending…';
-    const sent = [], no = [];
+    const sent = [], no = [], ids = await Nav.ids();   // with 0011 each rec keeps the title's id
     for (const b of to){
       let r;
-      try { r = await a.sb.from('recs').insert({...rowOf(m), receiver: b.value, note: ta.value.trim().slice(0, NOTE), in_feed: q('[data-feed]').checked}); } catch (err){ r = {error: err}; }
+      try { r = await a.sb.from('recs').insert({...rowOf(m), ...(ids ? Nav.idCols(m) : {}), receiver: b.value, note: ta.value.trim().slice(0, NOTE), in_feed: q('[data-feed]').checked}); } catch (err){ r = {error: err}; }
       if (r.error) no.push(friendly(r.error, b.dataset.user)); else { sent.push('@' + b.dataset.user); b.checked = false; b.closest('li').hidden = true; }
     }
     const names = sent.length > 1 ? sent.slice(0, -1).join(', ') + ' and ' + sent[sent.length - 1] : sent[0];

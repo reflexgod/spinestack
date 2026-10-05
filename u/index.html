@@ -498,7 +498,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../spinetip.js?v=20261004a"></script>
 <script src="../wear.js?v=20261016a"></script>
-<script src="../nav.js?v=20261017a"></script>
+<script src="../nav.js?v=20261018a"></script>
 <script>
 (() => {
 /* A profile: /u/?username, and its shelf on its own page: /u/?username&shelf (one shelf each), or a shelf by its id,
@@ -651,7 +651,7 @@ const wallOf = s => (s.pro || {}).wall_key ? timeout(loadImg(`${WORKER}/m/img?k=
 // ...and its PNGs, as the builder keeps them ({img, x, y, w, rot, opacity}); one that won't load is left out
 const pngsOf = s => Promise.all(((s.pro || {}).wall_items || []).map(it => timeout(loadImg(`${WORKER}/m/img?k=${encodeURIComponent(it.key)}`), 15000)
   .then(img => ({img, x: it.x, y: it.y, w: it.w, rot: +it.rot || 0, opacity: it.opacity == null ? 1 : +it.opacity})).catch(() => null))).then(a => a.filter(Boolean));
-const ITEM_COLS = 'position,item_id,kind,title,author,year,spine_src,cover_src,look';
+const ITEM_COLS = '*';   // a spine's every column: with 0011, its title's id too
 
 /* ---------- drawing: a shelf on its own, on the white page ---------- */
 // Covers stand face out, so each book needs a picture. One whose cover didn't load, or that never had one, gets a plain
@@ -828,7 +828,7 @@ async function paintShelvesTab(){
   }));
   if (!list.length) return;
   let rows = [];
-  try { rows = await api(`shelf_items?select=shelf_id,${ITEM_COLS}&shelf_id=in.(${list.map(s => s.id).join(',')})&order=position`); } catch { return; }
+  try { rows = await api(`shelf_items?select=${ITEM_COLS}&shelf_id=in.(${list.map(s => s.id).join(',')})&order=position`); } catch { return; }
   await fontsReady;
   for (const li of $('#sList').children){
     const mine = await books((rows || []).filter(r => r.shelf_id === li.dataset.id));
@@ -947,7 +947,8 @@ async function paintHero(){
    until then there's no such column, and it's seen as before, by whoever can see the profile. ---------- */
 const lists = {watch: [], friends: [], privacy: null};   // privacy: null before 0008; then true (public) or false
 const coverOf = ref => ref ? `${WORKER}/img?url=${encodeURIComponent(String(ref).replace(/^url:/, ''))}` : '';
-const asItem = r => ({kind: r.kind, title: r.title, year: r.year ? String(r.year) : '', creator: r.author || '', cover: r.cover_src ? String(r.cover_src).replace(/^url:/, '') : ''});
+const asItem = r => ({kind: r.kind, title: r.title, year: r.year ? String(r.year) : '', creator: r.author || '', cover: r.cover_src ? String(r.cover_src).replace(/^url:/, '') : '',
+  ...(r.tmdb_id ? {tmdb: String(r.tmdb_id)} : {}), ...(r.ol_id ? {ol: r.ol_id} : {})});   // with its id when the row keeps one (0011)
 // the action, not a state: it logs the title (+ ADD's Log it). The tick is left out of its name for a screen reader
 const didIt = r => `Mark ${r.kind === 'movie' ? 'watched' : 'read'}`;
 // a title: its cover, its name and year, who made it, Film or Book (and whose log it came from), and its buttons
@@ -989,7 +990,7 @@ async function watchPrivacy(){
 async function paintWatch(){
   const mine = view.mine;
   let rows = null;
-  const [got, privacy] = await Promise.all([api(`watchlist?select=id,kind,title,author,year,cover_src,from_user,created_at&owner=eq.${view.profile.id}&order=created_at.desc&limit=50`).catch(() => null), watchPrivacy()]);
+  const [got, privacy] = await Promise.all([api(`watchlist?select=*&owner=eq.${view.profile.id}&order=created_at.desc&limit=50`).catch(() => null), watchPrivacy()]);
   rows = got; lists.watch = rows || []; lists.privacy = privacy;
   // the tab and the strip: a database with the watchlist; someone else's only when it's public (once 0008 is run)
   const shown = !!rows && (mine || privacy !== false);
@@ -1111,9 +1112,8 @@ document.addEventListener('shelfstackd:added', () => {
    (signed out, it's the sign-in sheet first) ---------- */
 const shown = {shelf: null, rows: [], list: [], wall: null, pngs: [], onMine: null};   // the shelf on the page: its saved rows, the books made from them (the same order), its wall and PNGs; onMine: the titles on your own shelf (see titlesOnMine)
 /* What's already on your own shelf, so a title that's there isn't offered to it again. Your shelf is the main one if
-   one was picked, otherwise the oldest (as theShelf() has it, and the builder). A title is the same
-   title by its kind, its name and its year. */
-const titleKey = r => [r.kind, String(r.title || '').trim().toLowerCase(), r.year || ''].join('|');
+   one was picked, otherwise the oldest (as theShelf() has it, and the builder). A title is the same title by its id
+   when both spines have one (0011), otherwise by its kind, its name and its year (Nav.sameTitle()). */
 async function myShelfId(){
   if (!me.profile) return '';
   if (view.mine) return (theShelf() || {}).id || '';
@@ -1123,7 +1123,7 @@ async function myShelfId(){
 // the rows of your shelf, to compare with the rows of the shelf shown (id): null when it's that very shelf, [] with
 // no shelf or signed out, undefined when it couldn't be read (then every row offers + Add, as before)
 async function rowsOnMine(id){
-  try { const mine = await myShelfId(); return !mine ? [] : mine === id ? null : await api(`shelf_items?select=kind,title,year&shelf_id=eq.${mine}`); }
+  try { const mine = await myShelfId(); return !mine ? [] : mine === id ? null : await api(`shelf_items?select=kind,title,year${await Nav.ids() ? ',tmdb_id,ol_id' : ''}&shelf_id=eq.${mine}`); }
   catch { return undefined; }
 }
 const SAVED = 'shelfstackd-saved';   // the builder leaves the id of a shelf it has just saved here
@@ -1170,23 +1170,25 @@ async function showShelf(id){
   const list = pairs.map(x => x[1]);
   shown.rows = pairs.map(x => x[0]); shown.list = list; shown.wall = wall; shown.pngs = pngs;
   const yours = await mineRows;
-  shown.onMine = yours === undefined ? null : new Set((yours || shown.rows).map(titleKey));
+  shown.onMine = yours === undefined ? null : yours || shown.rows;   // the spines on your shelf
   const draw = () => { const c = list.length && bareShelf(list, s, wall); if (c) c.style.setProperty('--h', c.height); $('#oneShelf').replaceChildren(...(c ? [c] : [])); };
   draw(); view.drawn.push(draw);
   paintItems();
+  // your own shelf: its spines from before ids were kept get theirs, as the Worker finds them (0011)
+  if (mine) Nav.fillIds(shown.rows.map(r => ({table: 'shelf_items', shelf_id: s.id, position: r.position, kind: r.kind, title: r.title, year: r.year, tmdb_id: r.tmdb_id, ol_id: r.ol_id})));
 }
 // On this shelf: each spine small, its title and year, who made it, Film or Book, and + Add to my shelf. A title
 // that's on your shelf already isn't offered to it again: on someone else's shelf it says "On your shelf" there, and on
 // your own it says nothing (every title on your own shelf is on your shelf)
 function paintItems(){
-  const ol = $('#oneItems'), have = r => !!shown.onMine && shown.onMine.has(titleKey(r));
+  const ol = $('#oneItems'), have = r => !!shown.onMine && shown.onMine.some(y => Nav.sameTitle(y, r));   // by id when both have one (0011)
   ol.replaceChildren(...shown.rows.map((r, i) => {
     const li = document.createElement('li'); li.dataset.i = i;
     li.innerHTML = `<span class="sthumb"></span>
       <span class="st"><b>${r.title ? `<a href="${esc(Nav.titleUrl(asItem(r)))}">${esc(r.title)}</a>` : 'Untitled'}${r.year ? ` <span>${esc(r.year)}</span>` : ''}</b><span>${esc([r.author, r.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · '))}</span></span>
       <span class="sact"><button class="dash sm" type="button" data-log="${i}">Log</button><button class="dash sm recbtn" type="button" data-rec="${i}">Recommend</button>${!have(r) ? `<button class="dash sm" type="button" data-add="${i}">Add to my shelf</button>` : view.mine ? '' : '<span class="onmine state">On your shelf</span>'}</span>`;
     // someone else's shelf: each spine onto your watchlist too
-    if (!view.mine) Nav.watchable(li.querySelector('.sthumb'), {kind: r.kind, title: r.title, year: r.year ? String(r.year) : '', creator: r.author || '', cover: /^url:/.test(r.cover_src || '') ? r.cover_src.slice(4) : ''}, {moreIn: li.querySelector('.sact')});
+    if (!view.mine) Nav.watchable(li.querySelector('.sthumb'), asItem(r), {moreIn: li.querySelector('.sact')});
     return li;
   }));
   const draw = () => smallSpines(shown.list, 56).forEach((sp, i) => { const t = ol.children[i] && ol.children[i].querySelector('.sthumb'); if (!t) return; sp.setAttribute('aria-hidden', 'true'); const old = t.querySelector('canvas'); if (old) old.replaceWith(sp); else t.prepend(sp); });
@@ -1554,7 +1556,7 @@ function actLine(x){
 }
 async function moreLogs(){
   let rows = [];
-  try { rows = await api(`logs?select=id,kind,title,author,year,cover_src,caption,created_at&owner=eq.${view.profile.id}&order=created_at.desc,id.desc&limit=${ACTS}&offset=${acts.logs.length}`); }
+  try { rows = await api(`logs?select=*&owner=eq.${view.profile.id}&order=created_at.desc,id.desc&limit=${ACTS}&offset=${acts.logs.length}`); }
   catch { acts.done = true; return; }   // not in the database yet
   acts.logs.push(...rows);
   if (rows.length < ACTS) acts.done = true;

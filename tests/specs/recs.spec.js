@@ -296,8 +296,11 @@ test('notifications, with 0010: a rec for you, your rec watched, a reply in a th
     '@mira read The Waves, your rec',
     '@mira replied about Stalker',
   ]);
-  await expect(lines.nth(2).getByRole('link', { name: 'Paris, Texas' })).toHaveAttribute('href', '../u/?tester#recs');
-  await expect(lines.nth(3).getByRole('link', { name: 'The Waves' })).toHaveAttribute('href', '../u/?tester#sent');
+  // the title to its own page, with the year the rec keeps; the time to the rec on the Recs tab
+  await expect(lines.nth(2).getByRole('link', { name: 'Paris, Texas' })).toHaveAttribute('href', /\/t\/\?kind=movie&title=Paris%2C\+Texas&year=1984$/);
+  await expect(lines.nth(2).locator('.ago a')).toHaveAttribute('href', '../u/?tester#recs');
+  await expect(lines.nth(3).getByRole('link', { name: 'The Waves' })).toHaveAttribute('href', /\/t\/\?kind=book&title=The\+Waves&year=1931$/);
+  await expect(lines.nth(3).locator('.ago a')).toHaveAttribute('href', '../u/?tester#sent');
   await expect(lines.nth(4).locator('.nt')).toHaveText('Starting it tonight.');
   expect(errors).toEqual([]);
 });

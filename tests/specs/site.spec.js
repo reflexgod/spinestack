@@ -379,9 +379,9 @@ test('signed-in home: New from people you follow is a row of cards, one for each
   await expect(cards.locator('.fmeta span')).toHaveText(['watched', 'read', 'shelved', 'watched', 'shelved', 'shelved']);
   await expect(cards.locator('.fmeta time')).toHaveText(['Sep 30', 'Sep 29', 'Sep 28', 'Sep 25', 'Sep 24', 'Sep 21']);
   await expect(cards.locator('.fmeta time').first()).toHaveAttribute('datetime', LOGS[0].created_at);
-  // the card opens the shelf, or for a log the person's Activity, where it's the first line
+  // the card opens the shelf, or for a log its title's own page, as every title does
   const links = cards.locator('a.fcard');
-  await expect(links.nth(0)).toHaveAttribute('href', 'u/?mira#activity');
+  await expect(links.nth(0)).toHaveAttribute('href', /\/t\/\?kind=movie&title=Gummo&year=1997$/);
   await expect(links.nth(0)).toHaveAccessibleName('Gummo (1997), watched by @mira');
   await expect(links.nth(2)).toHaveAttribute('href', `u/?june_reads&shelf=${FRIEND_SHELVES[0].id}`);
   await expect(links.nth(2)).toHaveAccessibleName('june’s pile, shelved by @june_reads');

@@ -6,6 +6,33 @@ session"), again after the launch pass (see "Done in the second cloud session"),
 the design review was applied (see "Done in the third session"). Read this first, then `README.md`, which says what
 every file is and how the Worker, the accounts and the tests are set up.
 
+## Done on 5 October 2026 (ids, edits, one search)
+
+- **SQL, not run:** `docs/proposed-0011-ids-edits.sql` and its test `docs/proposed-rls_phase8.sql` (`ALL 0011 CHECKS
+  PASSED` on PGlite after 0001 to 0010; 0006 to 0010's tests still pass after it; the test fails against three broken
+  copies of 0011). Run 0011, then the test, in the SQL Editor; once it passes, both move to `supabase/` with only their
+  headers changed. Additive: nullable `tmdb_id`/`ol_id` on logs, shelf_items, watchlist and recs, `logs.edited_at`, an
+  update policy on your own log (rating, review, spoiler, rewatch, watched_on, and the ids once).
+- **The Worker, not deployed:** nothing changed in `worker/` this time, but Phase 5's `/identify` ids (cache key `id8`)
+  and `/title` still aren't live, and the ids depend on them: until `cd worker && npx wrangler deploy`, search results
+  have no id to save, and no old row gets one filled in.
+- **1. Ids** (with 0011; `Nav.ids()` asks): new logs, spines, Up next and recs keep the id; the title page matches by id,
+  then by kind, title and year for old rows; your own old rows get their id when you open them (`Nav.fillIds()`).
+- **2. The live Gummo bug:** the title page's two reads embedded `profiles()` bare, which PostgREST refuses (PGRST201,
+  checked against the live API with the publishable key, read only), so logs and spines both came back empty. They
+  name the foreign key now; the mock refuses a bare embed the same way, and reads PostgREST's `or=(...)` filters. The
+  sheet says "Already on <shelf>" in one line.
+- **3. Edit your own log** (with 0011): Edit beside Delete, the fields filled in on a sheet, "edited" beside the time;
+  Your review on the title page edits your log once you have one.
+- **4.** Home's follow cards and notifications' titles go to the title page; a notification's time goes to the post.
+- **5. One search** (`search.js`): the bar's icon opens it; Films, Books, People; recent searches on this device.
+- **Tested:** `cd tests && npm run test:all`: html-validate clean, then Playwright 912 passed, 24 skipped, none failed. New specs: `ids.spec.js`, `edit.spec.js`, `search.spec.js`.
+- **My calls:** the update grant includes the two ids (for filling them in; an id can't be changed once set); a log's
+  id is filled in only when the Worker's title is the row's (and the year within one), so a crafted link can't put the
+  wrong id on your rows; Up next refuses a second of the same id (a unique index); See all opens the rest of a group in
+  place (the Worker gives five films and five books, so it shows for People more often than for titles); a home card's
+  date isn't a link (a 44px press there would cover the card).
+
 ## Fixes from the live test (5 October 2026)
 
 1. A row of tabs is one line that scrolls inside itself (44px tall tabs on a touch screen); a test that no page is wider

@@ -384,8 +384,8 @@ footer{margin-top:0}
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../spinetip.js?v=20261004a"></script>
-<script src="../nav.js?v=20261017a"></script>
-<script src="../add.js?v=20261017a"></script>
+<script src="../nav.js?v=20261018a"></script>
+<script src="../add.js?v=20261018a"></script>
 <script>
 (() => {
 const $ = s => document.querySelector(s);
@@ -1259,6 +1259,9 @@ async function itemFor(b, put){
     studio:b.studio || undefined, cat:b.cat || undefined, pt:b.titleImg ? 1 : undefined, at:b.at});
   const rec = {item_id:b.id, kind:b.kind === 'movie' ? 'movie' : 'book', title:String(b.title || '').slice(0, 200), author:String(b.author || '').slice(0, 200),
     year:/^\d{4}$/.test(String(b.year || '')) ? String(b.year) : null, look};
+  // its id (TMDB's for a film, Open Library's work for a book): save_shelf() keeps it with 0011, and leaves it before
+  if (rec.kind === 'movie' && /^\d{1,9}$/.test(String(b.tmdb || ''))) rec.tmdb_id = String(b.tmdb);
+  if (rec.kind === 'book' && /^OL\d{1,10}W$/.test(String(b.ol || ''))) rec.ol_id = b.ol;
   if (isReal(b)) rec.spine_src = b.archiveId ? 'a:' + b.archiveId : await put(b.spineImg, 'spine');
   // the cover: from TMDB / Open Library when we have its address (a scan's front is kept only when there's none)
   if (b.coverUrl && COVER_HOSTS.test(b.coverUrl) && b.coverUrl.length <= 396) rec.cover_src = 'url:' + b.coverUrl;
@@ -1402,6 +1405,7 @@ async function rebuild(r){
   const t = look.pt && cover && r.kind === 'movie' ? posterTitle(cover) : null, img = cover || spine;
   const n = /^b(\d+)$/.exec(r.item_id); if (n) uid = Math.max(uid, +n[1] + 1);   // new books never reuse a saved one's id
   return newBook(clean0({id: r.item_id, title: r.title, author: r.author, kind: r.kind, year: r.year ? String(r.year) : undefined, style, font: look.font || 'oswald',
+    tmdb: r.tmdb_id ? String(r.tmdb_id) : undefined, ol: r.ol_id || undefined,   // its id (0011), kept when the shelf is saved again
     bg: look.bg, fg: look.fg, accent: look.accent, wf: look.wf, hf: look.hf, jit: look.jit, studio: look.studio, cat: look.cat, img, spineImg: spine || undefined,
     titleImg: t ? t.img : undefined, thumb: img && img.src, archiveId: r.spine_src && r.spine_src.startsWith('a:') ? r.spine_src.slice(2) : undefined,
     coverUrl: r.cover_src && r.cover_src.startsWith('url:') ? r.cover_src.slice(4) : undefined,
@@ -1448,7 +1452,7 @@ async function putOnShelf(rows, s, drafted){
 async function openShelf(id){
   const s = acct.shelves.find(x => x.id === id); if (!s) return;
   $('#saveNote').textContent = 'Opening…';
-  const {data, error} = await acct.sb.from('shelf_items').select('position,item_id,kind,title,author,year,spine_src,cover_src,look').eq('shelf_id', id).order('position');
+  const {data, error} = await acct.sb.from('shelf_items').select('*').eq('shelf_id', id).order('position');   // with 0011, each spine's id too
   if (error){ $('#saveNote').textContent = ''; toast(friendly(error)); return; }
   await putOnShelf(data || [], s);
   // its name (while it has none of its own, its caption) and who can view it

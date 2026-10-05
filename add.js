@@ -366,13 +366,13 @@ async function tmdbFilms(q){
   return Promise.all(films.slice(0,5).map(async (m,i) => {
     let creator = '';
     if (i < 3) try { const c = await getJSON(`https://api.themoviedb.org/3/movie/${m.id}/credits?` + key.slice(1), opt); creator = ((c.crew || []).find(p => p.job === 'Director') || {}).name || ''; } catch {}
-    return {kind:'movie', title:m.title || '', year:(m.release_date || '').slice(0,4), creator, cover:m.poster_path ? 'https://image.tmdb.org/t/p/w500' + m.poster_path : ''};
+    return {kind:'movie', tmdb:String(m.id), title:m.title || '', year:(m.release_date || '').slice(0,4), creator, cover:m.poster_path ? 'https://image.tmdb.org/t/p/w500' + m.poster_path : ''};
   }));
 }
 async function olBooks(q){
-  const r = await getJSON('https://openlibrary.org/search.json?limit=5&fields=title,author_name,author_alternative_name,author_key,first_publish_year,cover_i&q=' + encodeURIComponent(q));
+  const r = await getJSON('https://openlibrary.org/search.json?limit=5&fields=key,title,author_name,author_alternative_name,author_key,first_publish_year,cover_i&q=' + encodeURIComponent(q));
   const docs = r.docs || [], authors = await Promise.all(docs.map(latinAuthor));
-  return docs.map((d, i) => ({kind:'book', title:d.title || '', year:String(d.first_publish_year || ''), creator:authors[i], cover:d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-L.jpg` : ''}));
+  return docs.map((d, i) => ({kind:'book', ol:(/^\/works\/(OL\d{1,10}W)$/.exec(d.key || '') || [])[1] || '', title:d.title || '', year:String(d.first_publish_year || ''), creator:authors[i], cover:d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-L.jpg` : ''}));
 }
 // the author in Latin letters, as the Worker's /identify gives it: a name in another script (村上春樹) gives way to the
 // first Latin-script name in author_alternative_name, then in the author record's alternate_names; else it stays
@@ -532,7 +532,8 @@ const keyOf = m => [m.kind, m.title.toLowerCase(), m.year || ''].join('|');
 // what goes on the shelf for a choice: 'real:<n>' (a spine cut from a scan), 'spine' (made from the poster or cover)
 // or 'cover' (the poster or cover, face out). The builder turns these fields into a book on its shelf.
 function bookFields(cur, choice){
-  const m = cur.m, film = m.kind === 'movie', base = {title:m.title, author:m.creator || '', kind:m.kind, year:m.year || '', coverUrl:m.cover || '', font:'oswald', key:cur.key, choice};
+  const m = cur.m, film = m.kind === 'movie', base = {title:m.title, author:m.creator || '', kind:m.kind, year:m.year || '', coverUrl:m.cover || '', font:'oswald', key:cur.key, choice,
+    tmdb:m.tmdb || undefined, ol:m.ol || undefined};   // its id, which the shelf keeps with 0011
   if (choice.startsWith('real:')){
     const r = cur.real[+choice.slice(5)], front = r.front || cur.img || r.spine, pal = extractPalette(front);
     return Object.assign(base, {img:front, spineImg:r.spine, archiveId:r.archive ? r.id : undefined, source:r.archive ? 'the archive' : r.photo ? 'your photo' : hostOf(r.source), bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real'}, front.src ? {thumb:front.src} : {});
@@ -643,7 +644,7 @@ async function findSpines(m, again){
   paintShelfChoice(cur);
   if (shelf && shelf.has(key)){
     // already on this shelf: never twice on one shelf
-    $('#addDupText').textContent = `Already on ${shelf.name ? shelf.name() : 'your shelf'}.`; $('#addDup').hidden = false; cur.busy = false; cur.dup = true; sstatus('');
+    $('#addDupText').textContent = `Already on ${shelf.name ? shelf.name() : 'your shelf'}.`; $('#addDup').hidden = false; $('#addOnWrap').hidden = true; cur.busy = false; cur.dup = true; sstatus('');
     return;
   }
   if (again && shelf) cur.key = key + '#' + (1 + shelf.count(key));
@@ -773,17 +774,17 @@ async function paintShelfChoice(cur){
   wrap.hidden = false;
   checkDup(cur);
 }
-// already on the shelf picked? Then it says so, and Add to shelf stays off
-const likeOf = s => String(s).replace(/[\\%_]/g, c => '\\' + c);
+// already on the shelf picked? Then it says so, in one line ("Already on <shelf>", in place of "On <shelf>" when
+// there's no picker), and Add to shelf stays off. The same match as the title page's (Nav.titleWhere())
 async function checkDup(cur){
   const a = account(), id = myShelves.length > 1 ? $('#addOn').value : (myShelves[0] || {}).id, m = cur && cur.m;
   if (!id || !m) return;
   let rows = [];
-  try { ({data: rows} = await a.sb.from('shelf_items').select('item_id').eq('shelf_id', id).eq('kind', m.kind === 'movie' ? 'movie' : 'book').ilike('title', likeOf(m.title))
-    .filter('year', /^\d{4}$/.test(String(m.year || '')) ? 'eq' : 'is', /^\d{4}$/.test(String(m.year || '')) ? +m.year : null).limit(1)); } catch {}
+  try { const w = Nav.titleWhere(m, false); ({data: rows} = await a.sb.from('shelf_items').select('item_id').eq('shelf_id', id).eq('kind', w.kind).or(w.or).limit(1)); } catch {}
   if (cur !== current) return;
   cur.dup = !!(rows && rows.length);
   $('#addDupText').textContent = cur.dup ? `Already on ${shelfLabel(myShelves.find(x => x.id === id) || {})}.` : ''; $('#addDup').hidden = !cur.dup;
+  if (myShelves.length < 2) $('#addOnWrap').hidden = cur.dup;
   paintGo();
 }
 $('#addOn').addEventListener('change', () => checkDup(current));
@@ -868,7 +869,7 @@ const verb = m => m.kind === 'movie' ? 'watched' : 'read';
 let posting = null, postFields = null, focusFields = false, fromRec = null;
 function withPosts(fn){
   if (window.Posts){ fn(true); return; }
-  posting = posting || new Promise(res => { const sc = document.createElement('script'); sc.src = ROOT + 'post.js?v=20261016a'; sc.onload = () => res(!!window.Posts); sc.onerror = () => { posting = null; res(false); }; document.head.appendChild(sc); });
+  posting = posting || new Promise(res => { const sc = document.createElement('script'); sc.src = ROOT + 'post.js?v=20261018a'; sc.onload = () => res(!!window.Posts); sc.onerror = () => { posting = null; res(false); }; document.head.appendChild(sc); });
   posting.then(fn);
 }
 function showPost(m){
@@ -919,7 +920,7 @@ $('#addPostGo').addEventListener('click', async () => {
     if (p.error){ btn.disabled = false; sstatus(esc(p.error), true); return; }
     close(); pageToast(`Logged ${m.title}. It’s on the feed.`); return;
   }
-  try { r = await a.sb.from('logs').insert({...rowOf(m), caption: $('#addSay').value.trim().slice(0, 280)}); }
+  try { r = await a.sb.from('logs').insert({...rowOf(m), ...(await Nav.ids() ? Nav.idCols(m) : {}), caption: $('#addSay').value.trim().slice(0, 280)}); }
   catch (err){ r = {error: err}; }
   if (r.error){ btn.disabled = false; sstatus(esc(saveError(r.error, r.status, log)), true); return; }
   close();
@@ -975,7 +976,8 @@ async function watch(m, opt = {}){
   const a = account();
   if (!(a.sb && a.user && a.profile)) return {ok: false, error: a.user ? 'Pick a username first.' : 'Sign in to keep an Up next.'};
   let r;
-  try { r = await a.sb.from('watchlist').insert({...rowOf(m), ...(opt.from ? {from_user: opt.from} : {})}); }
+  const ids = await Nav.ids();
+  try { r = await a.sb.from('watchlist').insert({...rowOf(m), ...(ids ? Nav.idCols(m) : {}), ...(opt.from ? {from_user: opt.from} : {})}); }
   catch (err){ r = {error: err}; }
   if (r.error){
     const error = saveError(r.error, r.status, false), already = r.error.code === '23505', full = error === FULL;

@@ -45,7 +45,9 @@ test('/notifications/: newest first, ones about the same thing together, a reply
     '@mira said Same to your log of Just Kids',
   ]);
   await expect(lines.nth(1).locator('.nt')).toHaveText('Which train?');
-  await expect(lines.first().getByRole('link', { name: 'Just Kids' })).toHaveAttribute('href', `../p/?${LOGS[1].id}`);
+  // the title goes to its own page (with its year, read from the log), the time to the post
+  await expect(lines.first().getByRole('link', { name: 'Just Kids' })).toHaveAttribute('href', /\/t\/\?kind=book&title=Just\+Kids&year=2010$/);
+  await expect(lines.first().locator('.ago a')).toHaveAttribute('href', `../p/?${LOGS[1].id}`);
   await expect(lines.nth(2).getByRole('link', { name: '@longusername_twenty1' })).toHaveAttribute('href', '../u/?longusername_twenty1');
   // what was unread is in bold; the rest isn't
   const weights = await lines.locator('.nl').evaluateAll(ps => ps.map(p => getComputedStyle(p).fontWeight));

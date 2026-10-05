@@ -189,7 +189,7 @@
 <script src="worker-address.js?v=20261001a"></script>
 <script src="wear.js?v=20261016a"></script>
 <script src="bare.js?v=20261013a"></script>
-<script src="nav.js?v=20261017a"></script>
+<script src="nav.js?v=20261018a"></script>
 <script>
 (() => {
 /* Home. Signed out: a wall of the newest spines, one line about the site and Make a shelf, and nothing else before the
@@ -300,12 +300,12 @@ const MONTH = new Intl.DateTimeFormat(undefined, {day: 'numeric', month: 'short'
 const dated = t => (new Date(t).getFullYear() === new Date().getFullYear() ? MONTH : YEAR).format(new Date(t));
 const CARD = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card')) || 150;   // a card's width on a wide window (site.css)
 const face = x => `<span class="fa" aria-hidden="true">${x.avatar_key ? `<img src="${esc(`${WORKER}/m/img?k=${encodeURIComponent(x.avatar_key)}`)}" alt="" loading="lazy">` : esc(((x.display_name || '').trim() || x.username).trim()[0] || '·')}</span>`;
-// one card, the newest thing from one person. A log opens their Activity, where it's the first line, with its caption;
-// a shelf opens the shelf. A shelf's spines stand on their line once its books are read (Bare.lines)
+// one card, the newest thing from one person. A log opens its title's own page (/t/), as every title does; a shelf opens
+// the shelf. A shelf's spines stand on their line once its books are read (Bare.lines)
 function fcard(x){
   const li = document.createElement('li'), log = x.what === 'log', word = log ? (x.kind === 'movie' ? 'watched' : 'read') : 'shelved';
   const name = log ? `${x.title}${x.year ? ` (${x.year})` : ''}` : Shelf.shelfName({name: x.name, caption: x.caption});
-  const to = log ? profileUrl(x.username) + '#activity' : profileUrl(x.username, x.id);
+  const to = log ? Nav.titleUrl({kind: x.kind, title: x.title, year: x.year ? String(x.year) : ''}) : profileUrl(x.username, x.id);
   li.innerHTML = `<a class="fcard" href="${esc(to)}" aria-label="${esc(name)}, ${word} by @${esc(x.username)}"><span class="art${log ? '' : ' sl'}"${log ? '' : ` data-shelf="${esc(x.id)}"`}></span><span class="fby">${face(x)}<span>@${esc(x.username)}</span></span></a>
     <p class="fmeta"><span>${word}</span><time datetime="${esc(x.at)}" title="${esc(new Date(x.at).toLocaleString())}">${dated(x.at)}</time></p>`;
   if (log) li.querySelector('.art').append(Wear.cover({kind: x.kind, src: x.cover_src ? `${WORKER}/img?url=${encodeURIComponent(x.cover_src.replace(/^url:/, ''))}` : '', seed: x.id, at: x.at,
