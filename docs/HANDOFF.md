@@ -61,8 +61,8 @@ it draws), no key added anywhere.
 `themes.js` (data: `BY_USER = {viraaj: 'gummo'}`, and the theme's variables; a later Pro version reads the same from the
 database). Only the profile card changes, and it looks like a cheap photocopied flyer: flat acid yellow (#E9D63A)
 under drawn toner specks, streaks and uneven toner, no gradients anywhere; the banner a dark copied strip with the
-copier's white specks (to use a picture, put it at `assets/themes/gummo/banner.jpg` and set `banner: 'banner.jpg'` in
-themes.js, which a test checks); the photo a crooked polaroid with tape and a flash's glare, its white gone yellow; the
+copier's white specks over the owner's picture, `assets/themes/gummo/banner.jpg` (named in themes.js, which a test
+checks; set so the mattress and the chair show at both widths); the photo a crooked polaroid with tape and a flash's glare, its white gone yellow; the
 name in Permanent Marker on a torn strip of masking tape; the bio in the same marker, a little crooked; Courier Prime
 for the rest; the text black (12:1 or more on the paper, the tape and the polaroid; a test computes it, and axe runs on
 the card); bunny pink (#E7A6B4) only on the open tab's line and the links' underline; on a wide window the first four

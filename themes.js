@@ -31,7 +31,7 @@
         '--th-ink': '#000000',    // the card's text: toner black
         '--th-soft': '#1E1C12',   // the card's grey text, nearly as black: 12:1 or more on the paper, the tape and the white
       },
-      banner: '',
+      banner: 'banner.jpg',
       hand: '"Permanent Marker", "Comic Sans MS", cursive',
       effect: 'vhs',
       pins: 4,
@@ -74,7 +74,7 @@
 .pcard.theme-gummo{background:${SPECKS},${DUST},${STREAK},${TONER},var(--th-paper);background-size:240px 240px,180px 180px,480px 480px,480px 480px,auto}
 .theme-gummo .pbanner{background:#17150D;box-shadow:0 1px 0 rgba(0,0,0,.6)}
 .theme-gummo .pbanner::after{content:"";position:absolute;inset:0;background:${SNOW},${STREAK};background-size:200px 200px,480px 480px;pointer-events:none}
-.theme-gummo .pbanner.file{background-size:cover;background-position:center}
+.theme-gummo .pbanner.file{background-size:cover;background-position:50% 92%}   /* the mattress and the chair (the picture's lower left) in the strip */
 .theme-gummo .phead{grid-template-columns:96px minmax(0,1fr) auto;grid-template-areas:"ava who pins"}
 .theme-gummo .ava{position:relative;overflow:visible;width:112px;height:132px;padding:8px 8px 28px;border:0;border-radius:2px;background:var(--th-white);
   box-shadow:0 2px 5px rgba(0,0,0,.45);transform:rotate(-3deg);font-size:36px;color:var(--th-ink)}
@@ -104,6 +104,7 @@
 @media (max-width:640px){
   .theme-gummo .phead{grid-template-columns:72px minmax(0,1fr);grid-template-areas:"ava who"}
   .theme-gummo .ppins{display:none}
+  .theme-gummo .pbanner.file{background-size:166% auto;background-position:0 100%}   /* the mattress and the chair whole, to the right of the polaroid */
   .theme-gummo .ava{width:88px;height:106px;padding:6px 6px 24px;font-size:28px}
   .theme-gummo .ava img,.theme-gummo .ava .addphoto{width:76px;height:76px}
   .theme-gummo .ava::before{top:12px;left:14px;width:34px;height:22px}
