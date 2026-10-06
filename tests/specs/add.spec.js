@@ -232,14 +232,14 @@ test('while the scans load, the spine made from the cover and the Cover are ther
   await expect(d.locator('#addFound [data-use="cover"]')).toHaveAttribute('aria-checked', 'true');
   expect(errors).toEqual([]);
 });
-test('rounds kept from before are asked for at once, without a search, while round 0 searches; none is searched again', async ({ page }) => {
+test('rounds kept from before are asked for together once round 0 has answered without enough (a title cut before needs none), and none is searched again', async ({ page }) => {
   await openDialog(page, { signedIn: true });
   const d = dialog(page), asked = slowScans(page, { kept: true });
   await box(d).fill('gummo');
   await d.getByRole('option', { name: /Gummo/ }).click();
   await expect.poll(() => asked.filter(a => a.only).map(a => a.round).sort()).toEqual([1, 2, 3]);
   const first = asked.find(a => !a.only && a.round === 0);
-  expect(asked.filter(a => a.only).every(a => a.at - first.at < 500)).toBe(true);   // at the same time as round 0, not after it
+  expect(asked.filter(a => a.only).every(a => a.at >= first.at)).toBe(true);   // after round 0: its found scans may be all it needs
   await page.waitForTimeout(2500);
   expect(asked.filter(a => !a.only).map(a => a.round)).toEqual([0]);   // the others came from what was kept
 });

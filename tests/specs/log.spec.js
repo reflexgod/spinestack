@@ -123,20 +123,14 @@ test('a title picked keeps its place when the choice changes', async ({ page }) 
 });
 
 // Signed out the site is read only: + ADD is the sign-in sheet, not the Add dialog, and nothing is searched for
-test('signed out, + ADD opens the sign-in sheet ("Sign in to start your shelf."), not the Add dialog', async ({ page }) => {
+test('signed out, + ADD goes to make/ (a shelf with no account), and nothing is searched for on the way', async ({ page }) => {
   const errors = watchErrors(page), net = await mockNetwork(page);
   for (const path of ['/', '/feed/?everyone', '/shelves/', '/people/', '/u/?mira', '/u/?mira&shelf']) {
     await open(page, path);
     await page.locator('header.top .add').click();
-    await expect(page.locator('#signSheet'), path).toBeVisible();
-    await expect(page.locator('#signSheet .sheetbox p:not(.note)').first()).toHaveText('Sign in to start your shelf.');
-    await expect(page.locator('#signSheet').getByRole('button', { name: 'Continue with Google' })).toBeVisible();
-    await expect(page.locator('#addDialog')).toHaveCount(0);   // add.js isn't even loaded
-    await page.keyboard.press('Escape');
+    await expect(page, path).toHaveURL(/\/make\/$/);
+    await expect(page.locator('#signSheet, #sheet').filter({ visible: true })).toHaveCount(0);
   }
-  // the bar's own Sign in keeps the sheet's usual line
-  await page.locator('#signInBtn').click();
-  await expect(page.locator('#signSheet .sheetbox p:not(.note)').first()).toBeHidden();   // the plain Sign in says nothing more
   expect(net.asked).toEqual([]);
   expect(errors).toEqual([]);
 });

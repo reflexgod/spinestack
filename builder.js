@@ -1,0 +1,1226 @@
+/* The shelf builder: build/ (your shelf, signed in) and make/ (anyone, no account: window.SHELFSTACKD_MAKE). Both pages
+   have the same markup for it; this was build/index.html's own script. Load it after shelf.js, nav.js and add.js. */
+(() => {
+const $ = s => document.querySelector(s);
+const story = $('#story'), sctx = story.getContext('2d');
+const W = 1080, H = 1920;
+// the spines and the story are drawn by shelf.js (shared with the profile page)
+const {FONTS, STYLES, crop, loadImg, isReal, TEX, texture, isDark, posterTitle, DEFAULT_CAPTION} = Shelf;
+// the colour picking and the spine finder live in add.js (the + ADD dialog uses them on every page)
+const {extractPalette, findSpine, findSoloSpine} = Add;
+// ?new: a new shelf, empty, saved as one more of yours (New shelf, here and on your Shelves tab). Without it, the
+// builder opens your main shelf
+const FRESH = new URLSearchParams(location.search).has('new');
+// ?sample: the page opens with the sample shelf on it. Nobody is sent here: it's for the tests, and for tests/art.js,
+// which makes the picture of a shelf that home shows when the site is empty.
+const SAMPLE = new URLSearchParams(location.search).has('sample');
+// make/: the shelf maker anyone can use, with no account and nothing asked. The shelf is kept on this device (this
+// browser) as it's made, and stays until Save to a profile moves it into an account. It holds 12 spines; the picture
+// is downloaded or shared from the page itself.
+const MAKE = window.SHELFSTACKD_MAKE === true, MAKE_MAX = 12;
+let books = [], isSample = true, uid = 0, server = false;
+const settings = {caption:'', theme:'paper', layout:'row', varied:true, wood:false, plank:false, shelfColour:'#FFFFFF'};
+
+const API = String(window.SPINESTACK_API || '').replace(/\/+$/, '');
+
+/* ---------- sample shelf (drawn covers, no real artwork): only with ?sample. A new shelf starts empty. ---------- */
+function drawCover(fn){ const c = document.createElement('canvas'); c.width = 400; c.height = 600; fn(c.getContext('2d')); return c; }
+function samples(){
+  const waves = drawCover(x => { x.fillStyle = '#161616'; x.fillRect(0,0,400,600); x.strokeStyle = '#EDE7D6'; x.lineWidth = 3; for (let r = 0; r < 9; r++){ x.beginPath(); for (let i = 0; i <= 400; i += 8) x.lineTo(i, 300+r*22+Math.sin(i/30+r)*10); x.stroke(); } });
+  const venus = drawCover(x => { const g = x.createLinearGradient(0,0,0,600); g.addColorStop(0,'#F4C3CF'); g.addColorStop(.7,'#EFA5B8'); g.addColorStop(1,'#E8588A'); x.fillStyle = g; x.fillRect(0,0,400,600); x.fillStyle = 'rgba(160,110,120,.35)'; x.beginPath(); x.ellipse(120,380,110,190,.3,0,7); x.fill(); x.fillStyle = '#1F2E26'; x.beginPath(); x.moveTo(170,0); x.quadraticCurveTo(230,120,190,220); x.lineTo(215,225); x.quadraticCurveTo(250,110,210,0); x.fill(); });
+  const moon = drawCover(x => { x.fillStyle = '#1C1B21'; x.fillRect(0,0,400,600); x.fillStyle = '#E8D23C'; x.beginPath(); x.arc(270,190,70,0,7); x.fill(); x.fillStyle = '#1C1B21'; x.beginPath(); x.arc(295,175,62,0,7); x.fill(); });
+  const kuasa = drawCover(x => { x.fillStyle = '#EFE7D6'; x.fillRect(0,0,400,600); x.fillStyle = '#A3542E'; for (let i = 0; i < 12; i++){ x.beginPath(); x.moveTo(i*36,600); x.lineTo(i*36+18,540); x.lineTo(i*36+36,600); x.fill(); } });
+  return [
+    {title:'The Waves', author:'Virginia Woolf', img:waves, bg:'#161616', fg:'#F1EEE6', accent:'#EDE7D6', style:'classic', font:'oswald'},
+    {title:'delta of venus', author:'anaïs nin', img:venus, bg:'#F2B6C5', fg:'#1F2E26', accent:'#E8588A', style:'strip', font:'black'},
+    {title:'Journey by Moonlight', author:'Antal Szerb', img:moon, bg:'#1C1B21', fg:'#E8D23C', accent:'#E8D23C', style:'solid', font:'oswald'},
+    {title:'Kuasa Rahim', author:'Barbara Watson Andaya', img:kuasa, bg:'#EFE7D6', fg:'#3B2E25', accent:'#A3542E', style:'solid', font:'serif'},
+  ].map((b,i) => newBook(Object.assign(b, {wf:[.96,1.08,.9,1.15][i], hf:[1.02,.98,1,.95][i]})));
+}
+function newBook(b){
+  const i = uid++;
+  return Object.assign({id:'b'+i, cat:'D'+String(10000+Math.floor(Math.random()*89999)), wf:.86+Math.random()*.32, hf:.9+Math.random()*.14, jit:Math.random()*2-1, kind:'book', author:'', studio:'', status:'',
+    thumb: b.img && b.img.toDataURL ? b.img.toDataURL('image/jpeg', .8) : b.thumb}, b);
+}
+
+/* ---------- filters: what happens to the books. The background is its own control; filters never touch it. ---------- */
+const SHELFSTACKD_PRO_REQUIRED = false;   // paywall off: Pro filters work for everyone and just carry a PRO tag
+const FILTERS = [
+  {id:'clean', name:'Clean'},
+  {id:'faded', name:'Faded'},
+  {id:'glossy', name:'Glossy'},
+  {id:'grain', name:'Grain'},
+  {id:'vhs', name:'Worn VHS', pro:true},
+  {id:'rental', name:'Rental Shop', pro:true},
+  {id:'library', name:'Library Copy', pro:true},
+  {id:'secondhand', name:'Secondhand Bookshop', pro:true},
+  {id:'cloth', name:'Clothbound', pro:true},
+  {id:'flash', name:'Flash', pro:true},
+  {id:'film', name:'Film Roll', pro:true},
+  {id:'riso', name:'Riso Print', pro:true},
+  {id:'xerox', name:'Xerox Zine', pro:true},
+  {id:'night', name:'Night Shelf', pro:true},
+];
+settings.filter = 'clean'; settings.intensity = 70;
+// Free shelves hold 6 spines, Pro 20. While SHELFSTACKD_PRO_REQUIRED is false everyone is Pro; with it on, the database
+// says who is (am_i_pro, checked after sign-in). Its twin in the database is app_config.pro_required: flip both together.
+const SPINES_FREE = 6, SPINES_PRO = 20;
+let proAccount = false;
+const isPro = () => !SHELFSTACKD_PRO_REQUIRED || proAccount;
+const spineMax = () => MAKE ? MAKE_MAX : isPro() ? SPINES_PRO : SPINES_FREE;
+const PRO_TAG = '<em class="pro">PRO</em>';
+const proNote = (el, msg) => { el.innerHTML = PRO_TAG + esc(msg); };
+function proToast(msg){ toast(msg); $('#toast').insertAdjacentHTML('afterbegin', PRO_TAG); }
+/* Your own wall and PNGs (Pro). They stay in this page while you make the shelf and go to the Worker only when you
+   save it (nothing is uploaded before that), and they're deleted from storage once no saved shelf of yours uses them. */
+const media = {wall: null, pngs: []};   // wall: {img, blob, name, small, dark, key}; pngs: [{img, blob, key, x, y, w, rot, opacity}]
+const art = () => ({wall: media.wall && media.wall.img, wallDark: !!(media.wall && media.wall.dark), pngs: media.pngs});
+const walled = () => settings.theme === 'wall' && !!media.wall;
+// the Pro settings a shelf keeps (in shelves.pro); the pictures' keys exist once they're uploaded
+const r4 = v => Math.round(v*1e4)/1e4;
+// a PNG's turn and opacity are kept only when they're not the plain 0° and 100 %
+const itemOf = p => { const rot = Math.round((p.rot || 0)*10)/10, opacity = Math.round((p.opacity == null ? 1 : p.opacity)*100)/100;
+  return clean0({key: p.key, x: r4(p.x), y: r4(p.y), w: r4(p.w), rot: rot || undefined, opacity: opacity < 1 ? opacity : undefined}); };
+const proSettings = () => clean0({plank: settings.plank || undefined, shelf_colour: settings.plank && settings.shelfColour !== '#FFFFFF' ? settings.shelfColour : undefined, wall_key: walled() && media.wall.key || undefined,
+  wall_items: media.pngs.length ? media.pngs.map(itemOf) : undefined});
+const usesPro = () => !!settings.plank || walled() || media.pngs.length > 0;
+const keysOf = pro => [pro && pro.wall_key, ...((pro && pro.wall_items) || []).map(p => p.key)].filter(Boolean);
+// this page's shelf, drawn by shelf.js
+let layout = {captionBottom: 150, booksTop: null, spots: []};   // where the preview's caption ends, its books begin, and each book is
+const renderStory = (x = sctx, f = settings.filter, fast = false) => {
+  const r = Shelf.renderStory(x, f, fast, books, settings, false, art());
+  if (x === sctx){ layout = r; if (!settings.caption.trim()) captionHint(x); }
+  return r;
+};
+// With no name yet, the preview says where it will go, lightly. Only this preview: never the story that's saved or
+// shared, or the picture kept with a saved shelf.
+function captionHint(x){
+  const dark = walled() ? !!media.wall.dark : ['ink', 'dark', 'forest'].includes(settings.theme);
+  x.save();
+  x.fillStyle = dark ? 'rgba(255,255,255,.3)' : 'rgba(0,0,0,.2)'; x.font = '500 52px "Geist Mono", ui-monospace, monospace'; x.textBaseline = 'alphabetic'; x.textAlign = 'left';
+  x.fillText('your shelf', 90, 290);
+  x.restore();
+}
+const sizes = (H0, U, list = books) => Shelf.sizes(H0, U, list, settings);
+Shelf.onTextureLoaded(() => redraw());
+/* the Filter row: a live thumbnail of this shelf in each look */
+function renderFilterRow(){
+  $('#filters').innerHTML = FILTERS.map(fl => `<button type="button" class="flt" data-v="${fl.id}" aria-pressed="${settings.filter === fl.id}"><canvas width="128" height="228" aria-hidden="true"></canvas><span class="fn" title="${fl.name}">${fl.name}</span>${fl.pro ? '<em class="pro">PRO</em>' : ''}</button>`).join('');
+}
+let thumbT = 0;
+function renderThumbs(){
+  clearTimeout(thumbT);
+  thumbT = setTimeout(() => document.querySelectorAll('#filters .flt').forEach(bt => {
+    const c = bt.querySelector('canvas'), x = c.getContext('2d'); x.setTransform(c.width/W, 0, 0, c.height/H, 0, 0); renderStory(x, bt.dataset.v, true); x.setTransform(1, 0, 0, 1, 0, 0);
+  }), 250);
+}
+let raf = 0; const redraw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { renderStory(); if ($('#stylePanel').open) renderThumbs(); paintStyleLine(); scheduleDraft(); }); };
+$('#stylePanel').addEventListener('toggle', () => { if ($('#stylePanel').open) renderThumbs(); });   // the filter thumbnails are drawn only while they show
+// Style's one line: what's picked now, e.g. Spines · Clean · Paper · Wood shelf
+function paintStyleLine(){
+  const label = (id, v) => { const b = document.querySelector(`${id} button[data-v="${v}"]`); return b ? b.firstChild.textContent.trim() : ''; };
+  const f = FILTERS.find(x => x.id === settings.filter);
+  $('#styleLine').textContent = [label('#layout', settings.layout), f ? f.name : '', label('#theme', settings.theme), settings.wood ? 'Wood shelf' : settings.plank ? 'Floating shelf' : ''].filter(Boolean).join(' · ');
+}
+addEventListener('resize', redraw);
+
+/* ---------- shelf list ---------- */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';   // Lucide chevron-down
+const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+const TRY = ['Gummo', 'The Waves', 'Kids'];
+let openId = null;   // the spine whose controls show: press a row to open it, and the one that was open shuts
+const byLine = b => [b.author, b.kind === 'movie' ? 'Film' : 'Book'].filter(Boolean).join(' · ');
+function renderList(){
+  paintLimit();
+  stage.classList.toggle('canpull', books.length > 1);
+  $('#sampleNote').hidden = !isSample || !books.length;
+  $('#clear').hidden = !books.length;
+  const ol = $('#books');
+  // an empty shelf says so, with three titles to try: each opens the Add dialog on that search
+  if (!books.length){ ol.innerHTML = `<li class="empty"><p>No spines yet.</p><p class="try"><span>Try:</span>${TRY.map(t => `<button class="chip" type="button" data-try="${esc(t)}">${esc(t)}</button>`).join('')}</p></li>`; redraw(); return; }
+  if (!books.some(b => b.id === openId)) openId = null;
+  ol.innerHTML = books.map((b,i) => { const open = b.id === openId; return `
+  <li class="book${open ? ' open' : ''}" data-id="${b.id}">
+    <div class="bhead">
+      <span class="grip" title="Drag to reorder" aria-hidden="true"></span>
+      <button class="bopen" type="button" aria-expanded="${open}" aria-controls="${b.id}-body">
+        <img class="thumb" src="${b.thumb || BLANK}" alt="">
+        <span class="bwho"><span class="bt" id="${b.id}-head">${esc(b.title) || 'Untitled'}</span><span class="bby" id="${b.id}-by">${esc(byLine(b))}</span></span>${CHEV}
+      </button>
+    </div>
+    <div class="bbody" id="${b.id}-body"${open ? '' : ' hidden'}>
+      <div class="fields">
+        <div class="row2">
+          <input type="text" class="t" id="${b.id}-title" data-f="title" value="${esc(b.title)}" placeholder="Title" aria-label="Title">
+          <input type="text" id="${b.id}-author" data-f="author" value="${esc(b.author)}" placeholder="${b.kind === 'movie' ? 'Director' : 'Author'}" aria-label="Author or director">
+        </div>
+        <div class="row3">
+          <select id="${b.id}-kind" data-f="kind" aria-label="Book or film"><option value="book"${b.kind!=='movie'?' selected':''}>Book</option><option value="movie"${b.kind==='movie'?' selected':''}>Film</option></select>
+          <select id="${b.id}-style" data-f="style" aria-label="Spine style">${Object.entries(STYLES).filter(([k]) => k !== 'real' || b.spineImg).map(([k,v]) => `<option value="${k}"${b.style===k?' selected':''}>${v}</option>`).join('')}</select>
+          <select id="${b.id}-font" data-f="font" aria-label="Lettering">${Object.entries(FONTS).map(([k,v]) => `<option value="${k}"${b.font===k?' selected':''}>${v.label}</option>`).join('')}</select>
+          <label class="sw"><input type="color" id="${b.id}-bg" data-f="bg" value="${b.bg.toLowerCase()}">Spine</label>
+          <label class="sw"><input type="color" id="${b.id}-fg" data-f="fg" value="${b.fg.toLowerCase()}">Text</label>
+        </div>
+        <div class="note" id="${b.id}-note"></div>
+      </div>
+      <div class="acts">
+        <button class="ib" type="button" data-a="up" aria-label="Move up"${i===0?' disabled':''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
+        <button class="ib" type="button" data-a="down" aria-label="Move down"${i===books.length-1?' disabled':''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
+        <button class="ib" type="button" data-a="del" aria-label="Remove ${esc(b.title || 'item')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+      </div>
+    </div>
+  </li>`; }).join('');
+  books.forEach(setNote); redraw();
+}
+// how many spines are on the shelf, of how many it holds; when it's full, Add and upload are off and say why
+function paintLimit(){
+  const n = books.length, max = spineMax(), full = !isSample && n >= max, note = $('#findNote');   // the sample shelf goes when a title is added
+  $('#count').textContent = `(${n} of ${max})`;
+  $('#findQ').disabled = full; $('#findForm button').disabled = full; $('#file').disabled = full; $('#drop').classList.toggle('off', full);
+  if (!full) note.textContent = '';
+  else if (isPro()) note.textContent = `A shelf holds ${max} spines. Remove one to add another.`;
+  else proNote(note, `Free shelves hold ${max} spines. Pro holds ${SPINES_PRO}. Remove one to add another.`);
+}
+function paintOpen(){
+  for (const li of document.querySelectorAll('#books .book')){
+    const on = li.dataset.id === openId;
+    li.classList.toggle('open', on); li.querySelector('.bopen').setAttribute('aria-expanded', String(on)); li.querySelector('.bbody').hidden = !on;
+  }
+}
+// a row's top line: its title, and who it's by
+function paintHead(b){
+  const t = document.getElementById(b.id + '-head'), by = document.getElementById(b.id + '-by');
+  if (t) t.textContent = b.title || 'Untitled'; if (by) by.textContent = byLine(b);
+}
+/* Dragging a row by its dots puts the spine somewhere else on the shelf (SortableJS, which works with a finger too).
+   If the library can't load, the dots stay hidden and the ↑ ↓ in an open row, there for the keyboard, do it all. */
+const SORTABLE = {src:'../vendor/sortablejs@1.15.7/Sortable.min.js', integrity:'sha384-DgmC6Xe2bSN2WjTDXzWYbUbxyhNP+NNkGDR/g78pCXV7E7rcVTGxVg0uIVCUUcBc'};
+(() => {
+  const el = document.createElement('script'); el.src = SORTABLE.src; el.integrity = SORTABLE.integrity; el.crossOrigin = 'anonymous';
+  el.onerror = () => el.remove();
+  el.onload = () => {
+    if (!window.Sortable) return;
+    document.documentElement.classList.add('sortable');
+    new window.Sortable($('#books'), {handle:'.grip', draggable:'.book', animation:150, forceFallback:true, fallbackTolerance:3,
+      onEnd: e => { if (e.oldIndex == null || e.newIndex == null || e.oldIndex === e.newIndex) return; const [b] = books.splice(e.oldIndex, 1); books.splice(e.newIndex, 0, b); renderList(); }});
+  };
+  document.head.appendChild(el);
+})();
+function setNote(b){
+  const el = document.getElementById(b.id + '-note'); if (!el) return; el.classList.remove('warn');
+  if (b.status === 'reading'){ el.innerHTML = 'Reading the cover…'; return; }
+  if (!b.title.trim() && !isReal(b)){ el.textContent = 'Needs a title.'; el.classList.add('warn'); return; }
+  el.textContent = isReal(b) ? (b.source ? 'Real spine · from ' + b.source : 'Real spine, cut from your scan') : '';
+  // a clean cut from the user's own scan can go to the archive, where it's checked before anyone sees it
+  if (isReal(b) && b.file && WORKER && b.cutScore >= ARCHIVE_SCORE){
+    if (b.archived) el.textContent += '. Sent to the archive for a check.';
+    else if (!b.title.trim()) el.textContent += '. Type the title to add it to the archive.';
+    else el.insertAdjacentHTML('beforeend', ' <button class="dash sm" type="button" data-a="archive">Add to the archive</button>');
+  }
+}
+const ARCHIVE_SCORE = 70;
+async function archiveSpine(b){
+  // a PNG of the spine, made smaller until it fits the archive's 300 KB
+  let blob, k = Math.min(1, 1600/b.spineImg.height);
+  for (let tries = 0; tries < 6; tries++, k *= .8){
+    const c = document.createElement('canvas'); c.width = Math.max(8, Math.round(b.spineImg.width*k)); c.height = Math.round(b.spineImg.height*k);
+    c.getContext('2d').drawImage(b.spineImg, 0, 0, c.width, c.height);
+    blob = await new Promise(r => c.toBlob(r, 'image/png'));
+    if (blob && blob.size <= 300*1024) break;
+  }
+  if (!blob || blob.size > 300*1024){ toast('That spine is too large to send.'); return; }
+  const q = new URLSearchParams({kind:b.kind, title:b.title.trim(), author:(b.author || '').trim()});
+  try {
+    const r = await fetch(`${WORKER}/archive?${q}`, {method:'POST', headers:{'Content-Type':'image/png'}, body:blob}), j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || 'The archive didn’t answer. Try again later.');
+    b.archived = true; setNote(b); toast('Sent. It shows up in search once it’s checked.');
+  } catch (err){ toast(err.message || 'The archive didn’t answer. Try again later.'); }
+}
+$('#books').addEventListener('input', e => {
+  const li = e.target.closest('.book'), f = e.target.dataset.f; if (!li || !f) return;
+  const b = books.find(b => b.id === li.dataset.id); b[f] = e.target.value; b.touched = true;
+  if (f === 'title') delete b.titleImg;   // an edited title can't come from the poster any more
+  paintHead(b);
+  if (f === 'kind' && !isReal(b)){
+    if (b.kind === 'movie'){ b.style = 'dvd'; b.bg = '#111111'; b.fg = '#F4F4F2'; } else { b.style = 'art'; Object.assign(b, extractPalette(b.img)); }
+    renderList(); return;
+  }
+  setNote(b); redraw();
+});
+$('#books').addEventListener('click', e => {
+  const chip = e.target.closest('[data-try]');
+  if (chip){ Add.open({query: chip.dataset.try}); return; }
+  const head = e.target.closest('.bopen');
+  if (head){ const id = head.closest('.book').dataset.id; openId = openId === id ? null : id; paintOpen(); return; }
+  const btn = e.target.closest('[data-a]'); if (!btn) return;
+  const i = books.findIndex(b => b.id === btn.closest('.book').dataset.id), a = btn.dataset.a;
+  if (a === 'archive'){ btn.disabled = true; archiveSpine(books[i]); return; }
+  if (a === 'del'){
+    const b = books[i];
+    sure(`Take ${b.title ? '“' + b.title + '”' : 'this spine'} off?`, acct.shelfId ? 'Your saved shelf stays as it was until you press Save.' : 'It comes off the list.', 'Remove')
+      .then(ok => { if (!ok) return; const at = books.indexOf(b); if (at >= 0){ books.splice(at, 1); renderList(); } });
+    return;
+  }
+  if (a === 'up' && i > 0) [books[i-1], books[i]] = [books[i], books[i-1]];
+  if (a === 'down' && i < books.length-1) [books[i+1], books[i]] = [books[i], books[i+1]];
+  renderList();
+});
+/* Anything that loses something asks first, on this page's own sheet: sure(title, text, yes) is true only when its
+   button is pressed (Cancel, Esc and a press outside are no). Clear (every spine off the list), a spine's ✕, a PNG's ✕
+   and the wall's Remove. The sample shelf isn't yours to lose, so Clear just clears it. */
+let asking = null, askFrom = null;
+function sure(title, text, yes){
+  if (asking) asking(false);
+  askFrom = document.activeElement;
+  $('#confirmTitle').textContent = title; $('#confirmText').textContent = text; $('#confirmYes').textContent = yes;
+  $('#confirmSheet').hidden = false; $('#confirmYes').focus();
+  return new Promise(res => { asking = res; });
+}
+const closeConfirm = yes => {
+  if ($('#confirmSheet').hidden) return;
+  $('#confirmSheet').hidden = true;
+  const r = asking; asking = null; if (r) r(!!yes);
+  if (askFrom && askFrom.isConnected && askFrom.focus) askFrom.focus();
+};
+$('#confirmYes').addEventListener('click', () => closeConfirm(true));
+$('#confirmSheet').addEventListener('click', e => { if (e.target.id === 'confirmSheet' || e.target.closest('[data-close]')) closeConfirm(false); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeConfirm(false); });
+const clearShelf = () => { books = []; isSample = false; renderList(); };
+$('#clear').addEventListener('click', async () => {
+  if (isSample){ clearShelf(); return; }
+  const n = books.length, mine = !!acct.profile;
+  const ok = await sure(mine ? 'Clear your shelf?' : 'Clear this shelf?', (n === 1 ? 'The spine comes off the list. ' : `All ${n} spines come off the list. `) + (acct.shelfId ? 'Your saved shelf stays as it was until you press Save.' : 'This can’t be undone.'), 'Clear');
+  if (ok) clearShelf();
+});
+// the same title on one shelf twice: never (a shelf saved with one already keeps it, but nothing adds another)
+const sameTitle = (b, m) => (b.kind || 'book') === (m.kind || 'book') && String(b.title || '').trim().toLowerCase() === String(m.title || '').trim().toLowerCase() && String(b.year || '') === String(m.year || '');
+// the shelf open here, by its name ("your shelf" for one with none yet)
+function shelfNow(){ const s = acct.shelfId && acct.shelves.find(x => x.id === acct.shelfId); return s ? Shelf.shelfName({name: s.name, caption: s.caption}) : 'your shelf'; }
+function shelve(b){
+  if (!isSample && b.title && books.some(x => sameTitle(x, b))){ toast(`Already on ${shelfNow()}.`); return false; }
+  if (isSample){ books = []; isSample = false; }
+  if (books.length >= spineMax()){ if (isPro()) toast(`A shelf holds up to ${spineMax()} spines. Remove one first.`); else proToast('Free shelves hold 6 spines. Pro holds 20.'); return false; }
+  books.push(b); renderList(); return true;
+}
+
+/* ---------- Add: the same dialog + ADD opens (add.js) ---------- */
+const TMDB = String(window.SPINESTACK_TMDB || '').trim();
+const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
+const direct = !window.claude;   // the Claude preview can't reach other sites
+const viaWorker = u => WORKER ? WORKER + '/img?url=' + encodeURIComponent(u) : u;
+const timeout = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('timeout')), ms))]);
+// what the dialog needs to know about this shelf, and where its Add to shelf puts a spine
+Add.setShelf({only: MAKE, has: key => !isSample && books.some(b => [b.kind || 'book', String(b.title || '').trim().toLowerCase(), b.year || ''].join('|') === key), count: key => books.filter(b => (b.key || '').split('#')[0] === key).length, name: shelfNow,
+  add: f => { const ok = shelve(newBook(f)); if (ok) toast(f.title + ' added to your shelf.'); return ok; }});
+$('#findForm').addEventListener('submit', e => { e.preventDefault(); const q = $('#findQ').value.trim(); $('#findQ').value = ''; Add.open({query: q}); });
+// typing here is typing in the Add dialog's search: it opens with what's typed so far and suggests titles as you go
+// on typing there, the same search as + ADD's (Enter here still searches at once)
+$('#findQ').addEventListener('input', () => { const q = $('#findQ').value; if (!q.trim()) return; $('#findQ').value = ''; Add.open({query: q, typed: true}); });
+Nav.onUpload(() => $('#file').click());   // "Upload a scan" in the ▾ next to + ADD
+
+/* ---------- uploads ---------- */
+function titleFromName(name){ let t = (name||'').replace(/\.[a-z0-9]+$/i,'').replace(/[_\-+]+/g,' ').replace(/\s+/g,' ').trim(); if (/^(image|img|download|images|screenshot|photo|unnamed|pasted)\b/i.test(t) || /^[\d\s]+$/.test(t) || t.length > 60) t = ''; return t; }
+function addFiles(files){
+  const imgs = [...files].filter(f => f.type.startsWith('image/'));
+  if (!imgs.length){ toast('That wasn’t an image. Copy the image itself, or save it and drop the file.'); return; }
+  imgs.slice(0, spineMax()).forEach(f => {
+    const fr = new FileReader();
+    fr.onload = async () => {
+      let im; try { im = await loadImg(fr.result); } catch { toast('Couldn’t read ' + f.name + '.'); return; }
+      let b;
+      const cut = im.width/im.height > 1.15 ? findSpine(im) : null, solo = !cut && im.height/im.width >= 4 ? findSoloSpine(im) : null;
+      if (solo){
+        const spineImg = crop(im, solo.x, solo.y, solo.w, solo.h), pal = extractPalette(spineImg);
+        b = newBook({title:titleFromName(f.name), kind:'book', img:spineImg, spineImg, bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real', font:'oswald', file:f, cutScore:solo.score});
+      } else if (cut){
+        const spineImg = crop(im, cut.x, cut.y, cut.w, cut.h), front = crop(im, cut.frontX, cut.y, im.width - cut.frontX, cut.h), pal = extractPalette(front);
+        b = newBook({title:titleFromName(f.name), kind:im.width/im.height < 1.7 ? 'movie' : 'book', img:front, spineImg, bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'real', font:'oswald', file:f, cutScore:cut.score});
+      } else if (im.width/im.height >= 1.3 && im.width/im.height <= 1.9){
+        // shaped like a DVD or Blu-ray wrap (or a photo of a case) with no clean spine in it: the DVD case spine a
+        // film gets from its poster, not a book-wide one with the whole picture shrunk into its top
+        const pal = extractPalette(im);
+        b = newBook({title:titleFromName(f.name), kind:'movie', img:im, thumb:fr.result, bg:'#111111', fg:'#F4F4F2', accent:pal.accent, style:'dvd', font:'oswald', file:f});
+      } else {
+        const pal = extractPalette(im);
+        b = newBook({title:titleFromName(f.name), img:im, thumb:fr.result, bg:pal.bg, fg:pal.fg, accent:pal.accent, style:'art', font:'oswald', file:f});
+      }
+      if (shelve(b)){
+        identify(b);
+        if (!b.title){ openId = b.id; paintOpen(); const el = document.getElementById(b.id + '-title'); if (el) el.focus(); }   // its row opens for the title
+      }
+    };
+    fr.readAsDataURL(f);
+  });
+}
+$('#file').addEventListener('change', e => { addFiles(e.target.files); e.target.value = ''; });
+const drop = $('#drop');
+['dragenter','dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => { if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files); else toast('Images dragged from another site can’t be read. Right-click it, Copy image, then paste here.'); });
+document.addEventListener('paste', e => { const files = [...(e.clipboardData?.files || [])].filter(f => f.type.startsWith('image/')); if (files.length){ e.preventDefault(); addFiles(files); } });
+
+/* Title recognition for uploads: only where Claude can look at images (the Claude preview). */
+const samplerP = (window.claude && window.claude.use) ? window.claude.use('sample').catch(() => null) : Promise.resolve(null);
+let canSee = null;
+async function identify(b){
+  const s = await samplerP; if (!s) return;
+  if (canSee === null){ const l = await s.limits().catch(() => null); canSee = !!(l && l.images); }
+  if (!canSee || !b.file) return;
+  b.status = 'reading'; setNote(b);
+  try {
+    const r = await s.json('The attached image is a book cover, a film poster, or a full DVD/book wrap scan. Identify the work. Reply with only a JSON object: {"title": string, "creator": string, "kind": "book" or "movie", "studio": string}. "creator" is the author for a book and the director for a film; "studio" is the film distributor (empty for books). Use the usual published capitalisation. Use empty strings if unsure.', {images: b.file});
+    if (books.includes(b) && r && typeof r === 'object'){
+      const set = (f, v) => { if (typeof v === 'string' && v.trim() && !(b.touched && b[f])){ b[f] = v.trim().slice(0,80); const el = document.getElementById(b.id + '-' + f); if (el) el.value = b[f]; } };
+      set('title', r.title); set('author', r.creator); if (typeof r.studio === 'string') b.studio = r.studio.trim().slice(0,40);
+      paintHead(b);
+      if (r.kind === 'movie' && b.kind !== 'movie'){ b.kind = 'movie'; if (!isReal(b) && !b.touched){ b.style = 'dvd'; b.bg = '#111111'; b.fg = '#F4F4F2'; } b.status = ''; renderList(); return; }
+    }
+  } catch (err){ if (err && (err.code === 'not_granted' || err.code === 'images_unavailable')) canSee = false; }
+  b.status = ''; setNote(b); redraw();
+}
+
+/* ---------- controls ---------- */
+function bindSeg(id, key, after){
+  const seg = $(id), sync = () => seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === settings[key])));
+  seg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; settings[key] = b.dataset.v; sync(); after && after(); redraw(); }); sync();
+}
+bindSeg('#theme', 'theme', () => { if (settings.theme === 'shelf'){ settings.wood = true; $('#woodShelf').checked = true; } });   // Shelf has always come with its shelf
+$('#woodShelf').addEventListener('change', e => { settings.wood = e.target.checked; redraw(); });
+renderFilterRow();
+function syncFilter(){
+  document.querySelectorAll('#filters .flt').forEach(bt => bt.setAttribute('aria-pressed', String(bt.dataset.v === settings.filter)));
+}
+$('#filters').addEventListener('click', e => { const bt = e.target.closest('.flt'); if (!bt) return; settings.filter = bt.dataset.v; syncFilter(); redraw(); });
+$('#intensity').addEventListener('input', e => { settings.intensity = +e.target.value; redraw(); });
+syncFilter();
+['cardboard', 'cracks', 'crumpled', 'paper', 'fabric', 'wood', 'scratches-1', 'scratches-2', 'scratches-3'].forEach(texture);   // small, and needed by the first thumbnails
+bindSeg('#layout', 'layout', () => { $('#variedWrap').hidden = settings.layout === 'covers'; });
+$('#plank').addEventListener('change', e => {
+  $('#plankNote').textContent = '';
+  if (e.target.checked && !isPro()){ e.target.checked = false; proNote($('#plankNote'), 'The floating shelf comes with Pro.'); return; }
+  settings.plank = e.target.checked;
+  if (settings.plank){ settings.wood = false; $('#woodShelf').checked = false; }
+  redraw();
+});
+const woodTakesOver = () => { if (settings.wood && settings.plank){ settings.plank = false; $('#plank').checked = false; } paintColour(); };
+// the Floating shelf's colour: one colour, and its top, front edge and shadows are shaded from it
+function paintColour(){
+  $('#colourWrap').hidden = !settings.plank;
+  $('#swatches').querySelectorAll('.swatch').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.c === settings.shelfColour)));
+  if (document.activeElement !== $('#colourHex')) $('#colourHex').value = settings.shelfColour;
+}
+function setColour(c){
+  $('#plankNote').textContent = '';
+  if (!isPro()){ proNote($('#plankNote'), 'The shelf colour comes with Pro.'); return; }
+  settings.shelfColour = c; paintColour(); redraw();
+}
+$('#swatches').addEventListener('click', e => { const b = e.target.closest('.swatch'); if (b) setColour(b.dataset.c); });
+$('#colourHex').addEventListener('input', e => { const v = e.target.value.trim().replace(/^#?/, '#').toUpperCase(); if (/^#[0-9A-F]{6}$/.test(v)) setColour(v); });
+$('#colourHex').addEventListener('blur', paintColour);
+$('#plank').addEventListener('change', paintColour);
+$('#woodShelf').addEventListener('change', woodTakesOver);
+$('#theme').addEventListener('click', woodTakesOver);
+$('#varied').addEventListener('change', e => { settings.varied = e.target.checked; redraw(); });
+
+/* ---------- Your PNG: the wall behind the shelf (Pro) ---------- */
+const MAX_PICKED = 5*1024*1024, MAX_STORED = 2*1024*1024;
+async function readPicture(file){
+  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) throw new Error('Pick a PNG, JPG or WEBP picture.');
+  if (file.size > MAX_PICKED) throw new Error('That picture is larger than 5 MB.');
+  const url = URL.createObjectURL(file);
+  try { return await loadImg(url); } catch { throw new Error('That picture couldn’t be read.'); } finally { URL.revokeObjectURL(url); }
+}
+// a picture made small enough to keep, drawn again (which drops EXIF and location): WebP where the browser can, under 2 MB
+async function under2mb(c, alpha){
+  for (const q of [.9, .82, .72, .6, .5]){
+    let b = await blobOf(c, 'image/webp', q);
+    if (!b || b.type !== 'image/webp') b = await blobOf(c, alpha ? 'image/png' : 'image/jpeg', q);   // Safari before 17 has no WebP encoder
+    if (b && b.size <= MAX_STORED) return b;
+  }
+  throw new Error('That picture couldn’t be made small enough.');
+}
+// dark pictures get light lettering (caption, watermark) and deeper shadows, as the dark backgrounds do
+// the wall: cover-fitted to the 1080 x 1920 story, the middle kept
+async function makeWall(file){
+  const im = await readPicture(file), w = im.naturalWidth, h = im.naturalHeight, k = Math.max(W/w, H/h);
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d'); x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, H); x.imageSmoothingQuality = 'high';
+  x.drawImage(im, (W - w*k)/2, (H - h*k)/2, w*k, h*k);
+  return {img: c, blob: await under2mb(c, false), name: file.name, small: w < 720 || h < 1280, dark: isDark(c), key: null};
+}
+let wallPicking = false;
+const syncTheme = () => document.querySelectorAll('#theme button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === settings.theme)));
+function paintWall(){
+  const w = media.wall;
+  $('#wallBox').hidden = !(settings.theme === 'wall' || wallPicking);
+  $('#wallName').textContent = w ? w.name : ''; $('#wallName').hidden = !w;
+  $('#wallPick').textContent = w ? 'Replace' : 'Choose picture';
+  $('#wallRemove').hidden = !w;
+  $('#wallWarn').textContent = w && w.small ? 'This picture is smaller than 720 × 1280, so it may look soft.' : '';
+}
+// before the Background buttons do their usual thing: Your PNG is Pro, and asks for a picture the first time
+$('#theme').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  $('#themeNote').textContent = '';
+  if (b.dataset.v !== 'wall'){ wallPicking = false; return; }
+  if (!isPro()){ e.stopPropagation(); proNote($('#themeNote'), 'Your own wall comes with Pro.'); return; }
+  if (!media.wall){ e.stopPropagation(); wallPicking = true; paintWall(); $('#wallFile').click(); }
+}, true);
+$('#theme').addEventListener('click', paintWall);
+$('#wallPick').addEventListener('click', () => $('#wallFile').click());
+$('#wallFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  $('#themeNote').textContent = 'Reading the picture…';
+  try { media.wall = await makeWall(f); settings.theme = 'wall'; wallPicking = false; $('#themeNote').textContent = ''; }
+  catch (err){ $('#themeNote').textContent = err.message; }
+  syncTheme(); paintWall(); redraw();
+});
+$('#wallRemove').addEventListener('click', async () => {
+  if (!(await sure('Remove the wall?', 'The shelf goes back on Paper.', 'Remove'))) return;
+  media.wall = null; settings.theme = 'paper'; wallPicking = false; syncTheme(); paintWall(); redraw();
+});
+
+/* ---------- PNGs on the wall (Pro): as many as you like, always behind the books ---------- */
+// a new PNG goes on the open wall between the caption and the books, as big as fits there (up to 45 % of the width),
+// so it shows straight away; a few added at once fan out a little. With no books it goes in the middle.
+function landing(aspect, nth){
+  const top = layout.captionBottom + 30, bottom = (layout.booksTop == null ? H*.75 : layout.booksTop) - 30, band = bottom - top;
+  const h = Math.min(Math.max(band, 160), .45*W/aspect), w = h*aspect;
+  const cy = layout.booksTop == null ? H/2 : band >= 160 ? (top + bottom)/2 : bottom - h/2;
+  return {x: clamp(.5 + ((nth % 5) - 2)*.06, 0, 1), y: clamp(cy/H, 0, 1), w: clamp(w/W, .02, 2)};
+}
+// long side 1080 at most, drawn again (EXIF gone, transparency kept), under 2 MB
+async function makePng(file, nth = 2){
+  const im = await readPicture(file), w0 = im.naturalWidth, h0 = im.naturalHeight;
+  for (let k = Math.min(1, 1080/Math.max(w0, h0)), tries = 0; tries < 5; tries++, k *= .8){
+    const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w0*k)); c.height = Math.max(1, Math.round(h0*k));
+    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+    try {
+      const blob = await under2mb(c, true), a = c.width/c.height;
+      return {img: c, blob, key: null, ...landing(a, nth), rot: 0, opacity: 1};
+    } catch {}
+  }
+  throw new Error('That picture couldn’t be made small enough.');
+}
+let sel = -1;          // the PNG picked on the preview
+const stage = $('#stage'), pointers = new Map(); let grab = null;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rectOf = p => { const w = p.w*W, h = w*p.img.height/p.img.width; return {x: p.x*W - w/2, y: p.y*H - h/2, w, h}; };   // before its turn
+const atStory = e => { const r = story.getBoundingClientRect(), k = W/r.width; return {x: (e.clientX - r.left)*k, y: (e.clientY - r.top)*k}; };
+// is the point on the PNG, turned as it is?
+const onPng = (p, pt) => { const r = rectOf(p), a = -(p.rot || 0)*Math.PI/180, dx = pt.x - p.x*W, dy = pt.y - p.y*H;
+  return Math.abs(dx*Math.cos(a) - dy*Math.sin(a)) <= r.w/2 && Math.abs(dx*Math.sin(a) + dy*Math.cos(a)) <= r.h/2; };
+// a turn in degrees, -180 to 180, straight again when it comes within 4° of straight
+const turn = d => { d = ((d % 360) + 540) % 360 - 180; return Math.abs(d) < 4 ? 0 : d; };
+const heading = (a, b) => Math.atan2(b.y - a.y, b.x - a.x)*180/Math.PI;
+function paintPngs(){
+  stage.classList.toggle('arranging', media.pngs.length > 0);
+  const p = media.pngs[sel], box = $('#pngBox');
+  $('#pngOpWrap').hidden = !p;
+  if (!p){ box.hidden = true; return; }
+  const r = rectOf(p), k = story.clientWidth/W, op = Math.round((p.opacity == null ? 1 : p.opacity)*100);
+  box.hidden = false; Object.assign(box.style, {left: r.x*k + 'px', top: r.y*k + 'px', width: r.w*k + 'px', height: r.h*k + 'px', transform: p.rot ? `rotate(${p.rot}deg)` : ''});
+  $('#pngOp').value = op; $('#pngOpV').textContent = op + '%';
+}
+addEventListener('resize', paintPngs);
+$('#pngAdd').addEventListener('click', () => {
+  $('#pngNote').textContent = '';
+  if (!isPro()){ proNote($('#pngNote'), 'PNGs on the wall come with Pro.'); return; }
+  $('#pngFile').click();
+});
+$('#pngFile').addEventListener('change', async e => {
+  const files = [...e.target.files]; e.target.value = ''; if (!files.length) return;
+  $('#pngNote').textContent = files.length > 1 ? 'Reading the pictures…' : 'Reading the picture…';
+  let failed = '';
+  for (const [i, f] of files.entries()){ try { media.pngs.push(await makePng(f, files.length > 1 ? i : 2)); sel = media.pngs.length - 1; } catch (err){ failed = err.message; } }
+  $('#pngNote').textContent = failed || 'Drag it on the preview to move it. Pull its corner, or pinch, to resize. Turn it with the dot above it, or with two fingers.';
+  paintPngs(); redraw();
+});
+// tap a PNG to pick it and drag it; pull the corner or pinch to resize; turn it with the dot above it or two
+// fingers; tap the wall to let go
+stage.addEventListener('pointerdown', e => {
+  if (!media.pngs.length || e.target.closest('#pngX')) return;
+  const pt = atStory(e); pointers.set(e.pointerId, pt);
+  const p = media.pngs[sel], mid = p && {x: p.x*W, y: p.y*H};
+  if (pointers.size === 2 && p){ const [a, b] = [...pointers.values()]; grab = {mode: 'pinch', w0: p.w, d0: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), rot0: p.rot || 0, a0: heading(a, b)}; }
+  else if (e.target.closest('#pngH') && p) grab = {mode: 'size', w0: p.w, d0: Math.max(1, Math.hypot(pt.x - mid.x, pt.y - mid.y))};
+  else if (e.target.closest('#pngR') && p) grab = {mode: 'turn', off: (p.rot || 0) - heading(mid, pt)};
+  else {
+    sel = -1;
+    for (let i = media.pngs.length - 1; i >= 0; i--) if (onPng(media.pngs[i], pt)){ sel = i; break; }
+    const q = media.pngs[sel]; grab = q ? {mode: 'move', dx: pt.x - q.x*W, dy: pt.y - q.y*H} : null;
+  }
+  if (grab){ e.preventDefault(); try { stage.setPointerCapture(e.pointerId); } catch {} }
+  if (media.pngs[sel] && document.activeElement && typing(document.activeElement)) document.activeElement.blur();   // so Delete goes to the PNG
+  paintPngs();
+});
+stage.addEventListener('pointermove', e => {
+  if (!grab || !pointers.has(e.pointerId)) return;
+  const pt = atStory(e), p = media.pngs[sel]; pointers.set(e.pointerId, pt); if (!p) return;
+  if (grab.mode === 'move'){ p.x = clamp((pt.x - grab.dx)/W, 0, 1); p.y = clamp((pt.y - grab.dy)/H, 0, 1); }
+  else if (grab.mode === 'size') p.w = clamp(grab.w0*Math.hypot(pt.x - p.x*W, pt.y - p.y*H)/grab.d0, .02, 2);
+  else if (grab.mode === 'turn') p.rot = turn(heading({x: p.x*W, y: p.y*H}, pt) + grab.off);
+  else if (pointers.size === 2){ const [a, b] = [...pointers.values()]; p.w = clamp(grab.w0*Math.hypot(a.x - b.x, a.y - b.y)/grab.d0, .02, 2); p.rot = turn(grab.rot0 + heading(a, b) - grab.a0); }
+  paintPngs(); redraw();
+});
+const letGo = e => { pointers.delete(e.pointerId); if (!pointers.size || (grab && grab.mode === 'pinch')) grab = null; };
+stage.addEventListener('pointerup', letGo); stage.addEventListener('pointercancel', letGo);
+function dropPng(){ if (sel < 0) return; media.pngs.splice(sel, 1); sel = -1; $('#pngNote').textContent = ''; paintPngs(); redraw(); }
+$('#pngX').addEventListener('click', async () => { if (await sure('Remove this PNG?', 'It comes off the wall.', 'Remove')) dropPng(); });
+$('#pngOp').addEventListener('input', e => { const p = media.pngs[sel]; if (!p) return; p.opacity = clamp(+e.target.value/100, .1, 1); $('#pngOpV').textContent = e.target.value + '%'; redraw(); });
+// Delete or Backspace removes the picked PNG and Escape lets go of it, never while typing in a box
+const typing = t => t.isContentEditable || /^(TEXTAREA|SELECT)$/.test(t.tagName) || (t.tagName === 'INPUT' && !/^(range|checkbox|radio|button|submit|reset|file|color)$/.test(t.type));
+addEventListener('keydown', e => {
+  if (!media.pngs[sel] || e.ctrlKey || e.metaKey || e.altKey || typing(e.target)) return;
+  if (e.key === 'Delete' || e.key === 'Backspace'){ e.preventDefault(); dropPng(); }
+  else if (e.key === 'Escape'){ sel = -1; paintPngs(); }
+});
+// a click anywhere off the preview lets go of the picked PNG too (the controls, the list, the rest of the page);
+// on the preview, the handler above picks what's under it. Its Opacity slider is one of its tools.
+// On click, not pointerdown: hiding the slider moves what's below it, and a button that moves mid-press never gets its click.
+document.addEventListener('click', e => { if (sel >= 0 && !e.target.closest('#stage, #pngOpWrap')){ sel = -1; paintPngs(); } });
+
+/* ---------- dragging a spine on the preview moves it on the shelf ----------
+   shelf.js says where it drew each book (layout.spots, in story pixels). With a mouse, press a spine and drag. With a
+   finger, hold it for a moment first, so a finger passing over the preview still scrolls the page. As the spine
+   passes the others the shelf is drawn again in the new order, and the list follows. A spine is in front of any PNG
+   behind it, so pressing one never picks the PNG. */
+const HOLD = 250, SLOP = 6;
+let pull = null;   // the spine being pressed or dragged: {id, pid, x0, y0, active, touch, timer}
+const spotAt = pt => { const sp = layout.spots || []; for (let i = sp.length - 1; i >= 0; i--){ const s = sp[i]; if (pt.x >= s.x && pt.x <= s.x + s.w && pt.y >= s.y && pt.y <= s.y + s.h) return s; } return null; };
+function paintPull(){
+  const box = $('#spineBox'), at = pull && pull.active ? books.findIndex(b => b.id === pull.id) : -1, s = (layout.spots || []).find(x => x.i === at);
+  stage.classList.toggle('pulling', !!(pull && pull.active));
+  if (!s){ box.hidden = true; return; }
+  const k = story.clientWidth/W;
+  box.hidden = false; Object.assign(box.style, {left: s.x*k - 2 + 'px', top: s.y*k - 2 + 'px', width: s.w*k + 4 + 'px', height: s.h*k + 4 + 'px'});
+}
+function startPull(){ if (!pull) return; pull.active = true; if (navigator.vibrate) try { navigator.vibrate(8); } catch {} paintPull(); }
+let pulledAt = 0;   // when a drag last ended: the click that follows it isn't a press on the spine
+function endPull(){
+  if (!pull) return;
+  if (pull.active) pulledAt = Date.now();
+  clearTimeout(pull.timer); try { stage.releasePointerCapture(pull.pid); } catch {}
+  pull = null; paintPull();
+}
+// where the dragged spine goes: its place among the others, from where the pointer is
+function movePull(pt){
+  const spots = layout.spots || [], from = books.findIndex(b => b.id === pull.id); if (from < 0) return;
+  const others = spots.filter(s => s.i !== from);
+  let to;
+  if (settings.layout === 'stack') to = others.filter(s => s.y + s.h/2 > pt.y).length;   // a pile: the first book is at the bottom
+  else {
+    // spines in one row or two, or covers in a grid: the row the pointer is nearest (books in a row stand on one line),
+    // then how many of that row's others it has passed
+    const foot = s => Math.round(s.y + s.h);
+    const rows = [...new Set(spots.map(foot))].map(bot => ({bot, top: Math.min(...spots.filter(s => foot(s) === bot).map(s => s.y))}));
+    const row = rows.reduce((best, r) => Math.abs(pt.y - (r.top + r.bot)/2) < Math.abs(pt.y - (best.top + best.bot)/2) ? r : best);
+    to = others.filter(s => foot(s) < row.bot || (foot(s) === row.bot && s.x + s.w/2 < pt.x)).length;
+  }
+  if (to === from) return;
+  const [b] = books.splice(from, 1); books.splice(to, 0, b);
+  renderStory();   // at once: the next move reads where everything is now
+  renderList();
+  paintPull();
+}
+stage.addEventListener('pointerdown', e => {
+  if (e.button || pull || books.length < 2 || e.target.closest('#pngBox')) return;
+  const s = spotAt(atStory(e)), b = s && books[s.i]; if (!b) return;
+  e.stopPropagation();   // the PNG editor's own pointerdown, below this one, doesn't see it
+  if (sel >= 0){ sel = -1; paintPngs(); }
+  pull = {id: b.id, pid: e.pointerId, x0: e.clientX, y0: e.clientY, active: false, touch: e.pointerType === 'touch', timer: 0};
+  if (pull.touch) pull.timer = setTimeout(startPull, HOLD);
+  try { stage.setPointerCapture(e.pointerId); } catch {}
+}, true);
+stage.addEventListener('pointermove', e => {
+  if (!pull || e.pointerId !== pull.pid) return;
+  if (!pull.active){
+    const far = Math.hypot(e.clientX - pull.x0, e.clientY - pull.y0) > SLOP;
+    if (pull.touch){ if (far) endPull(); return; }   // moved before the hold was up: that's the page being scrolled
+    if (!far) return;
+    startPull();
+  }
+  e.preventDefault();
+  movePull(atStory(e));
+});
+stage.addEventListener('touchmove', e => { if (pull && pull.active) e.preventDefault(); }, {passive: false});   // the page stays still while a spine is dragged
+stage.addEventListener('pointerup', e => { if (pull && e.pointerId === pull.pid) endPull(); });
+stage.addEventListener('pointercancel', e => { if (pull && e.pointerId === pull.pid) endPull(); });
+addEventListener('resize', paintPull);
+// a spine on the preview: hovering it says what it is ("Title (year) · creator"), and a press (not a drag) goes to its
+// row in the list
+const spineLabel = b => b ? (b.title || 'Untitled') + (b.year ? ` (${b.year})` : '') + (b.author ? ' · ' + b.author : '') : '';
+if (window.SpineTip) SpineTip.attach(stage, {canvas: () => story, spots: () => layout.spots, label: i => spineLabel(books[i]),
+  quiet: () => !!(pull && pull.active) || !!grab || Date.now() - pulledAt < 400, skip: e => !!e.target.closest('#pngBox'),
+  pick: i => { const b = books[i]; if (b) SpineTip.flash(document.querySelector(`#books .book[data-id="${b.id}"]`)); }});
+
+let toastT = 0; function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 4200); }
+
+// Edition (English or Any): which scans a search looks for first. Kept on this device, where the dialog reads it.
+const edition = () => { try { return localStorage.getItem(Add.EDITION) === 'any' ? 'any' : 'english'; } catch { return 'english'; } };
+document.querySelectorAll('input[name=ed]').forEach(r => { r.checked = r.value === edition(); r.addEventListener('change', () => { if (r.checked) try { localStorage.setItem(Add.EDITION, r.value); } catch {} }); });
+
+/* ---------- the shelf's name, and who can view it ---------- */
+// A shelf has one name, and it's the caption on its story too: what's in Name is what the picture says (with no name
+// there's no caption). Style used to have a Caption box as well, so the page could call a shelf one thing and its
+// picture another; a shelf saved like that takes its name for both the next time it's saved here.
+const shelfNameNow = () => $('#shelfName').value.replace(/\s+/g, ' ').trim().slice(0, 60);
+const nameIt = () => { settings.caption = shelfNameNow(); };
+$('#shelfName').addEventListener('input', () => { nameIt(); redraw(); });
+const isPublicNow = () => ($('input[name=vis]:checked') || {}).value !== 'private';
+const setVisible = pub => { for (const r of document.querySelectorAll('input[name=vis]')) r.checked = (r.value === 'public') === !!pub; };
+document.querySelectorAll('input[name=vis]').forEach(r => r.addEventListener('change', () => scheduleDraft()));
+
+/* ---------- boot ---------- */
+async function boot(){
+  if (SAMPLE) books = samples(); else { books = []; isSample = false; }
+  renderList();
+  // the old self-hosted backend: only looked for when its address is set, or when there's no Worker to use
+  // (asking for /api/health on a plain site, like shelfstackd.com, only gets a 404)
+  if (API || !WORKER) try {
+    const ctl = new AbortController(); setTimeout(() => ctl.abort(), 2500);
+    if (location.protocol === 'file:') throw 0;
+    const h = await fetch(API + '/api/health', {signal:ctl.signal}).then(r => r.ok ? r.json() : null);
+    server = !!(h && h.ok);
+  } catch { server = false; }
+  let recent = [];
+  if (server){
+    try { const r = await fetch(API + '/api/recent').then(r => r.json()); recent = r.recent.map(x => x.title); } catch {}
+  }
+  Add.setServer(server, recent);
+}
+
+/* ---------- accounts (Supabase): sign in with Google, save shelves, open them again ----------
+   Only for people who use them: the Supabase library loads the first time it's needed (a click on Sign in or
+   Save shelf, or a session already on this device), so nothing changes for anyone else.
+   Text goes to Supabase (every table has Row Level Security); images a shelf needs go to the Worker. */
+const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
+const EMAIL_LOGIN = window.SPINESTACK_EMAIL_LOGIN === true;
+const SB_LIB = {src:'../vendor/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
+const accounts = !!(SB_URL && SB_KEY && WORKER);
+const acct = {sb:null, user:null, profile:null, shelfId:null, shelves:[], pendingSave:false, watching:false, openAsked:null, unreachable:false};   // unreachable: signed in, but the account couldn't be read
+let sbLoading = null;
+function supa(){
+  if (!accounts) return Promise.reject(new Error('Accounts aren’t set up on this copy of the site.'));
+  return sbLoading || (sbLoading = new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = SB_LIB.src; s.integrity = SB_LIB.integrity; s.crossOrigin = 'anonymous';
+    s.onload = () => { acct.sb = window.supabase.createClient(SB_URL, SB_KEY, {auth:{flowType:'pkce', persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}}); res(acct.sb); };
+    s.onerror = () => { sbLoading = null; s.remove(); rej(new Error('Sign-in couldn’t load. Check your connection and try again.')); };
+    document.head.appendChild(s);
+  }));
+}
+const hasSession = () => { try { return Object.keys(localStorage).some(k => /^sb-.+-auth-token$/.test(k)); } catch { return false; } };
+const returning = () => /[?&](code|error|error_description)=/.test(location.search);
+const here = () => location.origin + location.pathname;
+const clean0 = o => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null));
+const blobOf = (c, type, q) => new Promise(r => c.toBlob(r, type, q));
+function friendly(e){
+  const m = (e && e.message) || '';
+  if (e && e.code === '23505') return 'That username is taken.';
+  if (e && e.code === 'P0001' && m) return m;
+  if (/fetch|network/i.test(m)) return 'Couldn’t reach your account. Check your connection and try again.';
+  return m || 'Something went wrong. Try again in a moment.';
+}
+
+/* the account, and what the page shows for it */
+async function startAccounts(){
+  if (!accounts) return;
+  // signed out: the line and Continue with Google, and nothing else loads (no shelf is made or kept before signing in)
+  if (!hasSession() && !returning()){ if (MAKE) return 'local'; gate(); return false; }
+  $('#saveShelf').hidden = false; paintAcct();
+  // Your shelf, as it's being changed, waits as a draft (in this tab, while you're signed in). It gives way to another
+  // saved shelf asked for by an old link (?open=<id>).
+  const openId = MAKE ? null : new URLSearchParams(location.search).get('open');
+  let draft = MAKE ? null : takeDraft();
+  if (draft && !returning() && openId && draft.shelfId !== openId){ dropDraft(); draft = null; }
+  if (draft && !returning() && FRESH && draft.shelfId){ dropDraft(); draft = null; }   // New shelf: not the one that was being changed
+  // then that one opens, not your main one: ?open=<id>, a new shelf, or the shelf the draft is
+  acct.openAsked = MAKE ? 'local' : openId && !draft ? openId : FRESH && !draft ? 'new' : draft ? 'draft' : null;
+  if (draft) await restoreDraft(draft);
+  if (FRESH) history.replaceState(null, '', here() + location.hash);
+  try {
+    const sb = await supa(), {data:{session}} = await sb.auth.getSession();   // finishes a Google sign-in coming back with ?code=
+    const err = new URLSearchParams(location.search).get('error_description');
+    if (returning()) history.replaceState(null, '', here() + location.hash);
+    if (err) toast('Sign-in didn’t finish: ' + err);
+    await setUser(session && session.user);
+    watchAuth();
+    if (openId && !draft){
+      history.replaceState(null, '', here() + location.hash);
+      if (acct.shelves.some(s => s.id === openId)) await openShelf(openId);
+      else { toast('Couldn’t open that shelf.'); acct.openAsked = null; await openYours(); }
+    }
+  } catch (e){ toast(friendly(e)); }
+}
+function gate(){
+  document.documentElement.classList.add('gated');
+  $('#pageTitle').textContent = 'Sign in to make your shelf.'; document.title = 'Sign in · shelfstackd';
+  dropDraft(); try { sessionStorage.removeItem(ADD_ROW); } catch {}   // anything left from before isn't made into a shelf
+}
+$('#gateGo').addEventListener('click', () => $('#googleBtn').click());
+function watchAuth(){
+  if (acct.watching) return; acct.watching = true;
+  // (no Supabase calls inside this callback: they'd wait on the lock it holds)
+  acct.sb.auth.onAuthStateChange((ev, s) => { if (ev === 'SIGNED_IN' || ev === 'SIGNED_OUT' || ev === 'USER_UPDATED') setTimeout(() => setUser(s && s.user), 0); });
+}
+async function setUser(user){
+  const same = (user && user.id) === (acct.user && acct.user.id);
+  if (same && (acct.profile || !user)) return;
+  acct.user = user || null; acct.profile = null; acct.unreachable = false;
+  if (!user){ acct.shelfId = null; acct.shelves = []; acct.pendingSave = false; proAccount = false; paintAcct(); if (!MAKE) gate(); return; }   // signed out here: the builder closes
+  const {data, error} = await acct.sb.from('profiles').select('id,username,is_private,display_name,avatar_key,pinned_shelf_id').eq('id', user.id).maybeSingle();
+  if (error){ acct.unreachable = true; toast('Couldn’t load your account. Check your connection and try again.'); paintAcct(); return; }
+  acct.profile = data;
+  if (SHELFSTACKD_PRO_REQUIRED && data){ const r = await acct.sb.rpc('am_i_pro'); proAccount = r.data === true; }
+  paintAcct();
+  if (!data){ if (!same) openSheet('name'); return; }
+  await loadMine();
+  await openYours();
+  if (acct.pendingSave){ acct.pendingSave = false; saveShelf(); }
+}
+function paintAcct(){
+  if (!accounts) return;
+  const p = acct.profile;
+  Nav.paint({sb: acct.sb, user: acct.user, profile: p, unreachable: acct.unreachable});   // the bar (nav.js): Sign in, Finish sign-up, or you and the account menu
+  paintLimit();   // Pro holds more
+  paintMade();
+}
+Nav.onSignIn(() => { sheetSays('Sign in', ''); openSheet('signin'); });
+// the sign-in sheet's heading and line: plain Sign in from the bar; on make/, Save to a profile says what it's for
+const SHEET_LINE = $('#signinPane > p:not(.note)').textContent;
+function sheetSays(h, line){ $('#signinPane h2').textContent = h; $('#signinPane > p:not(.note)').textContent = line == null ? SHEET_LINE : line; }
+Nav.onFinish(() => openSheet('name'));
+
+/* the sign-in and username sheet */
+let sheetFrom = null;
+function openSheet(which){
+  sheetFrom = document.activeElement;
+  $('#signinPane').hidden = which !== 'signin'; $('#namePane').hidden = which !== 'name'; $('#emailForm').hidden = !EMAIL_LOGIN;
+  $('#sheet').hidden = false;
+  if (which === 'name') prefillName();
+  (which === 'name' ? $('#uname') : $('#googleBtn')).focus();
+}
+function closeSheet(){ if (!$('#signinPane').hidden){ acct.pendingSave = false; scheduleDraft(); } $('#sheet').hidden = true; if (sheetFrom && sheetFrom.focus) sheetFrom.focus(); }
+$('#sheetClose').addEventListener('click', closeSheet);
+$('#sheet').addEventListener('click', e => { if (e.target.id === 'sheet') closeSheet(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#sheet').hidden) closeSheet(); });
+$('#googleBtn').addEventListener('click', async () => {
+  const btn = $('#googleBtn'); btn.disabled = true;
+  try {
+    const sb = await supa(); await stashDraft();      // the page reloads after Google: keep this shelf for when it's back
+    const {error} = await sb.auth.signInWithOAuth({provider:'google', options:{redirectTo: here()}});
+    if (error) throw error;
+  } catch (e){ btn.disabled = false; toast(friendly(e)); }
+});
+$('#emailForm').addEventListener('submit', async e => {       // off until the site can send email (SPINESTACK_EMAIL_LOGIN)
+  e.preventDefault(); if (!EMAIL_LOGIN) return;
+  const email = $('#email').value.trim(); if (!email) return;
+  try {
+    const sb = await supa(); await stashDraft();
+    const {error} = await sb.auth.signInWithOtp({email, options:{emailRedirectTo: here(), shouldCreateUser:true}});
+    if (error) throw error;
+    toast('Check your email for a sign-in link.'); closeSheet();
+  } catch (err){ toast(friendly(err)); }
+});
+// usernames: 3-20 lowercase letters, numbers or _; the database has the final say (reserved names, taken names)
+const NAME_OK = /^[a-z0-9_]{3,20}$/;
+let nameT = 0, nameFree = false;
+function prefillName(){
+  const u = acct.user || {}, m = u.user_metadata || {};
+  const guess = String(m.preferred_username || m.name || m.full_name || (u.email || '').split('@')[0] || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 20);
+  if (!$('#uname').value && guess.length >= 3) $('#uname').value = guess;
+  checkName();
+}
+function paintName(msg, ok){ const n = $('#unameNote'); n.textContent = msg; n.classList.toggle('warn', !ok && !!msg); $('#nameBtn').disabled = !(nameFree && $('#adult').checked); $('#nameBtn').removeAttribute('aria-busy'); }
+function checkName(){
+  const el = $('#uname'), v = el.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20);
+  if (el.value !== v) el.value = v;
+  nameFree = false; clearTimeout(nameT);
+  if (!v){ paintName('3 to 20 letters, numbers or _.', true); return; }
+  if (!NAME_OK.test(v)){ paintName('At least 3 characters: letters, numbers or _.', false); return; }
+  paintName('Checking…', true);
+  nameT = setTimeout(async () => {
+    const {data, error} = await acct.sb.rpc('username_available', {name: v});
+    if (el.value !== v) return;
+    if (error){ paintName('Couldn’t check that name. Try again.', false); return; }
+    nameFree = !!data; paintName(data ? '@' + v + ' is free.' : 'That username is taken.', !!data);
+  }, 350);
+}
+$('#uname').addEventListener('input', checkName);
+$('#adult').addEventListener('change', () => paintName($('#unameNote').textContent, nameFree || !$('#unameNote').classList.contains('warn')));
+$('#nameBtn').addEventListener('click', async () => {
+  const v = $('#uname').value, btn = $('#nameBtn');
+  if (!nameFree || !$('#adult').checked || !acct.user) return;
+  btn.disabled = true;
+  const {data, error} = await acct.sb.from('profiles').insert({id: acct.user.id, username: v}).select('id,username,is_private,display_name,avatar_key,pinned_shelf_id').single();
+  if (error){ nameFree = false; paintName(friendly(error), false); return; }
+  acct.profile = data; closeSheet(); paintAcct(); toast('Welcome, @' + data.username + '.');
+  // came through someone's invite link: you follow them now, and they hear of it
+  const inviter = await Nav.acceptInvite(acct.sb, data);
+  if (inviter) toast(`Welcome, @${data.username}. You follow @${inviter} now.`);
+  // FOLLOW was pressed on a profile before there was a username: back to that profile, which finishes it
+  try {
+    const pf = JSON.parse(sessionStorage.getItem('shelfstackd-follow') || 'null');
+    if (pf && Date.now() - pf.at < 30*60e3 && /^[a-z0-9_]{3,20}$/.test(pf.username)){ location.href = '../u/?' +pf.username; return; }
+  } catch {}
+  await loadMine();
+  if (acct.pendingSave){ acct.pendingSave = false; saveShelf(); }
+});
+async function signOut(){
+  try { await (await supa()).auth.signOut({scope: 'local'}); } catch {}
+  await setUser(null); closeSheet(); toast('Signed out.');
+}
+$('#nameOut').addEventListener('click', signOut);   // no username yet, so no account menu: the way out is here
+Nav.onSignOut(signOut);
+
+/* a shelf as rows: each spine points at its images (a:archive id, u:saved image, url:TMDB / Open Library cover) */
+const COVER_HOSTS = /^https:\/\/(image\.tmdb\.org|covers\.openlibrary\.org)\/\S+$/;
+async function itemFor(b, put){
+  // at: when the spine was first saved (seconds), kept as it was ever after, so the feed can say what a save added
+  if (!b.at) b.at = Math.floor(Date.now() / 1000);
+  const look = clean0({style:b.style, font:b.font, bg:b.bg, fg:b.fg, accent:b.accent, wf:+(+b.wf).toFixed(3), hf:+(+b.hf).toFixed(3), jit:+(+b.jit).toFixed(3),
+    studio:b.studio || undefined, cat:b.cat || undefined, pt:b.titleImg ? 1 : undefined, at:b.at});
+  const rec = {item_id:b.id, kind:b.kind === 'movie' ? 'movie' : 'book', title:String(b.title || '').slice(0, 200), author:String(b.author || '').slice(0, 200),
+    year:/^\d{4}$/.test(String(b.year || '')) ? String(b.year) : null, look};
+  // its id (TMDB's for a film, Open Library's work for a book): save_shelf() keeps it with 0011, and leaves it before
+  if (rec.kind === 'movie' && /^\d{1,9}$/.test(String(b.tmdb || ''))) rec.tmdb_id = String(b.tmdb);
+  if (rec.kind === 'book' && /^OL\d{1,10}W$/.test(String(b.ol || ''))) rec.ol_id = b.ol;
+  if (isReal(b)) rec.spine_src = b.archiveId ? 'a:' + b.archiveId : await put(b.spineImg, 'spine');
+  // the cover: from TMDB / Open Library when we have its address (a scan's front is kept only when there's none)
+  if (b.coverUrl && COVER_HOSTS.test(b.coverUrl) && b.coverUrl.length <= 396) rec.cover_src = 'url:' + b.coverUrl;
+  else if (b.img && b.img !== b.spineImg) rec.cover_src = await put(b.img, 'cover');
+  return rec;
+}
+// an image made small enough to keep: spines up to 1400px tall, covers up to 800px, WebP where the browser can
+async function encode(src, kind){
+  const w0 = src.naturalWidth || src.width, h0 = src.naturalHeight || src.height, max = kind === 'spine' ? 1400 : 800;
+  for (let k = Math.min(1, max/Math.max(w0, h0)), tries = 0; tries < 6; tries++, k *= .8){
+    const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w0*k)); c.height = Math.max(1, Math.round(h0*k));
+    c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+    let blob = await blobOf(c, 'image/webp', .88);
+    if (!blob || blob.type !== 'image/webp') blob = await blobOf(c, 'image/jpeg', .86);     // Safari before 17 has no WebP encoder
+    if (blob && blob.size <= 190*1024) return blob;
+  }
+  throw new Error('One image on this shelf is too large to save.');
+}
+const PUT = new WeakMap();   // image -> the key it's saved under, so saving again doesn't send it again
+async function putImage(src, kind){
+  const memo = PUT.get(src); if (memo && memo.user === acct.user.id) return memo.ref;
+  const r = await workerPost('/u/blob', await encode(src, kind)), ref = 'u:' + r.key;
+  PUT.set(src, {user: acct.user.id, ref}); return ref;
+}
+async function workerPost(path, body){
+  const {data:{session}} = await acct.sb.auth.getSession();
+  if (!session) throw new Error('Sign in again to save shelves.');
+  const r = await fetch(WORKER + path, {method:'POST', headers:{Authorization:'Bearer ' + session.access_token, 'Content-Type': body ? body.type : 'text/plain'}, body: body || ''});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(j.error || 'Saving didn’t work. Try again in a moment.'), {status: r.status});
+  return j;
+}
+// the shelf's picture for lists: the story, 360 x 640
+async function previewBlob(){
+  await Promise.all(Object.values(TEX).map(t => t.ready).filter(Boolean));
+  const c = document.createElement('canvas'); c.width = W; c.height = H; renderStory(c.getContext('2d'));
+  const p = document.createElement('canvas'); p.width = 360; p.height = 640;
+  const x = p.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(c, 0, 0, 360, 640);
+  for (const q of [.82, .7, .55]){
+    let b = await blobOf(p, 'image/webp', q);
+    if (!b || b.type !== 'image/webp') b = await blobOf(p, 'image/jpeg', q);
+    if (b && b.size <= 110*1024) return b;
+  }
+  throw new Error('Couldn’t make the shelf’s picture. Try again.');
+}
+let saving = false;
+// a save that failed on the way (no connection, a timeout, the server busy): worth trying again
+const passing = e => !!e && (e.status >= 500 || e.status === 429 || (!e.status && !e.code && /fetch|network|load|timed? ?out|reach|in a moment/i.test(e.message || '')));
+// Save: your one shelf, saved over (or made, the first time)
+async function saveShelf(){
+  if (saving) return;
+  if (!books.length || isSample){ toast('Add your own titles first.'); return; }
+  // signed in, but the account is still loading (a slow connection): wait for it, saying Saving…, rather than fail
+  if (hasSession() && !acct.user && !acct.unreachable){
+    saving = true; $('#saveShelf').disabled = true; $('#saveNote').textContent = 'Saving…';
+    await stashDraft(); await Promise.race([acctReady, sleepMs(10000)]);
+    saving = false; $('#saveShelf').disabled = false; $('#saveNote').textContent = '';
+  }
+  // the account couldn't be read: ask again, up to 3 times over about 10 seconds
+  for (let i = 0; i < 3 && acct.user && !acct.profile && acct.unreachable; i++){
+    $('#saveNote').textContent = 'Saving…'; await sleepMs(i ? 4000 : 1500);
+    const u = acct.user; acct.user = null; await setUser(u);
+    $('#saveNote').textContent = '';
+  }
+  if (!acct.user){ if (MAKE){ acct.pendingSave = true; sheetSays('Save to a profile', 'Your shelf moves into your new profile.'); } openSheet('signin'); return; }
+  if (!acct.profile && acct.unreachable){ toast('Couldn’t load your account. Check your connection and try again.'); return; }   // not "no username yet"
+  if (!acct.profile){ acct.pendingSave = true; openSheet('name'); return; }
+  if (books.length > spineMax()){ proToast('Free shelves hold 6 spines. Pro holds 20.'); return; }
+  if (usesPro() && !isPro()){ proToast('Your own wall, PNGs and the floating shelf come with Pro.'); return; }
+  nameIt();   // the story's caption is the Name
+  const updating = !!acct.shelfId;
+  saving = true; $('#saveShelf').disabled = true; $('#saveNote').textContent = 'Saving…';
+  const id = updating ? acct.shelfId : crypto.randomUUID(), was = acct.shelves.find(s => s.id === id);
+  await stashDraft();   // kept on this device until the save is through
+  try {
+    let pro;
+    for (let i = 0; ; i++){
+      try {
+        const items = await Promise.all(books.map(b => itemFor(b, putImage)));
+        await uploadArt();
+        pro = proSettings();
+        const pv = await workerPost('/u/preview?shelf=' + id, await previewBlob());
+        const {error, status} = await acct.sb.rpc('save_shelf', {items, shelf:{id, caption: settings.caption.slice(0, 60), filter: settings.filter, intensity: settings.intensity,
+          background: settings.theme === 'wall' ? 'paper' : settings.theme, wood: settings.wood, layout: settings.layout, varied: settings.varied, is_public: isPublicNow(), preview_key: pv.key, pro}});
+        if (error) throw Object.assign(error, {status: error.status || status});
+        break;
+      } catch (e){ if (i >= 2 || !passing(e)) throw e; await sleepMs(i ? 4000 : 2000); }   // 3 tries over about 10 seconds
+    }
+    // its name, when that isn't simply its caption: shelves.name, which a rename on the profile writes too
+    const cap = settings.caption.slice(0, 60).trim(), shown = was && was.name != null ? was.name : cap === DEFAULT_CAPTION ? '' : cap, want = shelfNameNow();
+    if (want !== shown){ const r = await acct.sb.from('shelves').update({name: want}).eq('id', id); if (r.error) throw r.error; }
+    forgetArt(keysOf(was && was.pro).filter(k => !keysOf(pro).includes(k)));
+    acct.shelfId = id; toast(updating ? 'Shelf updated.' : 'Shelf saved.');
+    await loadMine();
+    // saved: this shelf is no longer being made, and its own page is the place to see it (and to share it from: the
+    // page says so once, when it's told the shelf was just saved)
+    try { sessionStorage.setItem('shelfstackd-saved', id); } catch {}
+    booted = false; clearTimeout(draftT); dropDraft(); location.href = '../u/?' + acct.profile.username + '&shelf=' + id;
+  } catch (e){ $('#saveNote').textContent = ''; toast(friendly(e) + (passing(e) ? ' Your shelf is kept on this device.' : '')); }
+  finally { saving = false; $('#saveShelf').disabled = false; paintAcct(); }
+}
+const sleepMs = ms => new Promise(r => setTimeout(r, ms));
+let readyNow = null; const acctReady = new Promise(r => { readyNow = r; });   // the account, as far as it can be read
+// the wall and PNGs this shelf needs, uploaded once (a picture keeps its key while it stays on the shelf)
+async function uploadArt(){
+  const mine = k => k && k.startsWith(acct.user.id + '/');
+  if (walled() && !mine(media.wall.key)){
+    if (!media.wall.blob) throw new Error('The wall couldn’t be saved. Pick it again.');
+    media.wall.key = (await workerPost('/m/upload?kind=wall', media.wall.blob)).key;
+  }
+  for (const p of media.pngs) if (!mine(p.key)){
+    if (!p.blob) throw new Error('A PNG couldn’t be saved. Add it again.');
+    p.key = (await workerPost('/m/upload?kind=png', p.blob)).key;
+  }
+}
+// pictures no shelf needs any more: the Worker deletes each one unless another of your shelves still uses it
+const forgetArt = keys => { for (const k of keys) workerPost('/m/delete?k=' + encodeURIComponent(k)).catch(() => {}); };
+$('#saveShelf').addEventListener('click', () => saveShelf());
+// Cancel: this shelf is dropped (a saved shelf stays as it was saved), and you go back to your profile, or home
+$('#cancelBtn').addEventListener('click', e => {
+  const b = e.currentTarget;
+  if (!isSample && books.length && !b.dataset.sure){
+    b.dataset.sure = '1'; b.textContent = 'Discard changes?';
+    setTimeout(() => { if (b.dataset.sure){ delete b.dataset.sure; b.textContent = 'Cancel'; } }, 4000);
+    return;
+  }
+  booted = false; clearTimeout(draftT); dropDraft();
+  location.href = acct.profile ? '../u/?' + acct.profile.username : '../';
+});
+
+/* your saved shelves. The builder opens your main one: the one you made main (profiles.pinned_shelf_id), otherwise
+   your oldest, as your profile's hero has it. ?open=<id> opens another; ?new makes a new one. */
+const SHELF_COLS = 'id,caption,name,filter,intensity,background,wood,layout,varied,is_public,preview_key,pro,created_at,updated_at,saved_at,shelf_items(count)';
+async function loadMine(){
+  if (!acct.profile) return;
+  // own shelves only: since phase 2, other people's public shelves are readable too
+  const {data, error} = await acct.sb.from('shelves').select(SHELF_COLS).eq('owner', acct.user.id).order('updated_at', {ascending:false}).limit(60);
+  if (error){ toast('Couldn’t load your shelves. Try again in a moment.'); return; }
+  acct.shelves = data || [];
+}
+const yourShelf = () => acct.shelves.find(s => s.id === (acct.profile || {}).pinned_shelf_id) || acct.shelves.slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at))[0] || null;
+// the page's title: Your shelf (your main one), the shelf's name (another of yours), or New shelf; and New shelf to
+// press once you have one
+function paintTitle(){
+  if (!acct.profile || MAKE) return;
+  const main = yourShelf(), s = acct.shelfId && acct.shelves.find(x => x.id === acct.shelfId);
+  const t = !acct.shelfId ? (acct.shelves.length ? 'New shelf' : 'Your shelf') : !main || s === main || !s ? 'Your shelf' : (s.name || (s.caption && s.caption !== DEFAULT_CAPTION ? s.caption : 'Untitled shelf'));
+  $('#pageTitle').textContent = t; document.title = t + ' · shelfstackd';
+  $('#newShelf').hidden = !acct.shelves.length || !acct.shelfId;
+}
+// signed in, and not already on a saved shelf: yours opens
+async function openYours(){
+  if (!acct.profile || acct.shelfId || acct.openAsked) return;
+  const s = yourShelf(); if (s) await openShelf(s.id);
+}
+// a saved item back into a book on the shelf
+const srcOf = ref => ref.startsWith('a:') ? `${WORKER}/archive/img?id=${ref.slice(2)}` : ref.startsWith('u:') ? `${WORKER}/u/blob?k=${encodeURIComponent(ref.slice(2))}`
+  : ref.startsWith('url:') ? viaWorker(ref.slice(4)) : ref.startsWith('data:image/') ? ref : '';
+async function rebuild(r){
+  const [spine, cover] = await Promise.all([r.spine_src, r.cover_src].map(ref => ref && srcOf(ref) ? timeout(loadImg(srcOf(ref)), 15000).catch(() => null) : null));
+  const look = r.look || {}, style = look.style || 'art';
+  if ((style === 'real' && !spine) || (style === 'cover' && !cover)) return null;
+  for (const [im, ref] of [[spine, r.spine_src], [cover, r.cover_src]]) if (im && acct.user && ref && ref.startsWith('u:' + acct.user.id + '/')) PUT.set(im, {user: acct.user.id, ref});
+  const t = look.pt && cover && r.kind === 'movie' ? posterTitle(cover) : null, img = cover || spine;
+  const n = /^b(\d+)$/.exec(r.item_id); if (n) uid = Math.max(uid, +n[1] + 1);   // new books never reuse a saved one's id
+  return newBook(clean0({id: r.item_id, title: r.title, author: r.author, kind: r.kind, year: r.year ? String(r.year) : undefined, style, font: look.font || 'oswald',
+    tmdb: r.tmdb_id ? String(r.tmdb_id) : undefined, ol: r.ol_id || undefined,   // its id (0011), kept when the shelf is saved again
+    bg: look.bg, fg: look.fg, accent: look.accent, wf: look.wf, hf: look.hf, jit: look.jit, studio: look.studio, cat: look.cat, img, spineImg: spine || undefined,
+    titleImg: t ? t.img : undefined, thumb: img && img.src, archiveId: r.spine_src && r.spine_src.startsWith('a:') ? r.spine_src.slice(2) : undefined,
+    coverUrl: r.cover_src && r.cover_src.startsWith('url:') ? r.cover_src.slice(4) : undefined,
+    at: 'at' in look ? look.at : 1,   // saved before spines were marked: long ago (1), never new; a row brought over from another shelf has none: new
+    source: style === 'real' ? (r.spine_src.startsWith('a:') ? 'the archive' : 'your saved shelf') : undefined}));
+}
+function applySettings(s){
+  Object.assign(settings, {caption: s.caption, filter: s.filter, intensity: s.intensity, theme: s.background || s.theme, wood: !!s.wood, layout: s.layout, varied: s.varied !== false,
+    plank: !!(s.pro ? s.pro.plank : s.plank), shelfColour: (s.pro ? s.pro.shelf_colour : s.shelfColour) || '#FFFFFF'});   // a saved shelf keeps these in pro, a draft in its settings
+  $('#plank').checked = settings.plank; paintColour();
+  $('#intensity').value = settings.intensity; $('#woodShelf').checked = settings.wood; $('#varied').checked = settings.varied;
+  for (const [id, key] of [['#theme', 'theme'], ['#layout', 'layout']]) document.querySelectorAll(id + ' button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === settings[key])));
+  $('#variedWrap').hidden = settings.layout === 'covers';
+  syncFilter();
+}
+// a saved shelf's wall comes from the Worker; a draft's from this browser (see stashDraft)
+async function restoreArt(s, drafted){
+  media.wall = null; media.pngs = [];
+  const pro = s.pro || {}, w = drafted ? drafted.wall : pro.wall_key ? {key: pro.wall_key, name: 'Your saved wall'} : null;
+  if (w){
+    const url = w.blob ? URL.createObjectURL(w.blob) : `${WORKER}/m/img?k=${encodeURIComponent(w.key)}`;
+    try {
+      const img = await timeout(loadImg(url), 15000);
+      media.wall = {img, blob: w.blob || null, name: w.name, small: !!w.small, dark: 'dark' in w ? w.dark : isDark(img), key: w.key || null};
+    } catch { toast('The wall couldn’t load, so this shelf is on Paper for now.'); }
+    finally { if (w.blob) URL.revokeObjectURL(url); }
+  }
+  const items = drafted ? drafted.pngs || [] : pro.wall_items || [];
+  const got = await Promise.all(items.map(async it => {
+    const url = it.blob ? URL.createObjectURL(it.blob) : `${WORKER}/m/img?k=${encodeURIComponent(it.key)}`;
+    try { return {img: await timeout(loadImg(url), 15000), blob: it.blob || null, key: it.key || null, x: it.x, y: it.y, w: it.w, rot: +it.rot || 0, opacity: it.opacity == null ? 1 : +it.opacity}; }
+    catch { return null; } finally { if (it.blob) URL.revokeObjectURL(url); }
+  }));
+  media.pngs = got.filter(Boolean);
+  if (media.pngs.length < got.length) toast(`${got.length - media.pngs.length} of the PNGs couldn’t load.`);
+  if (media.wall) settings.theme = 'wall'; else if (settings.theme === 'wall') settings.theme = 'paper';
+  wallPicking = false; sel = -1; syncTheme(); paintWall(); paintPngs();
+}
+async function putOnShelf(rows, s, drafted){
+  const got = await Promise.all(rows.map(rebuild)), ok = got.filter(Boolean);
+  books = ok; isSample = false; applySettings(s); await restoreArt(s, drafted); renderList();
+  if (ok.length < rows.length) toast(`${rows.length - ok.length} of the spines couldn’t load. The rest are on your shelf.`);
+}
+async function openShelf(id){
+  const s = acct.shelves.find(x => x.id === id); if (!s) return;
+  $('#saveNote').textContent = 'Opening…';
+  const {data, error} = await acct.sb.from('shelf_items').select('*').eq('shelf_id', id).order('position');   // with 0011, each spine's id too
+  if (error){ $('#saveNote').textContent = ''; toast(friendly(error)); return; }
+  await putOnShelf(data || [], s);
+  // its name (while it has none of its own, its caption) and who can view it
+  const named = s.name != null, shown = named ? s.name : s.caption && s.caption !== DEFAULT_CAPTION ? s.caption : '';
+  $('#shelfName').value = shown; nameIt(); redraw(); setVisible(s.is_public);   // the preview's caption is that name, whatever caption it was saved with
+  acct.shelfId = id; paintAcct(); paintTitle(); $('#saveNote').textContent = '';
+}
+
+/* The shelf being made waits in this tab: while Google signs you in (the page leaves and comes back), and while
+   you're on another page, so + ADD there adds to it. It's kept again shortly after each change, for an hour. */
+const DRAFT = MAKE ? 'shelfstackd-make' : 'spinestack-draft', DRAFT_FOR = MAKE ? Infinity : 7 * 864e5;
+const kept = (() => { try { return localStorage; } catch { return null; } })();
+const idb = (() => {
+  let db = null;
+  const open = () => db || (db = new Promise((res, rej) => { const r = indexedDB.open('spinestack', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }));
+  const run = async (mode, fn) => { const d = await open(); return new Promise((res, rej) => { const t = d.transaction('kv', mode), r = fn(t.objectStore('kv')); t.oncomplete = () => res(r.result); t.onerror = () => rej(t.error); }); };
+  return {put: (k, v) => run('readwrite', st => st.put(v, k)), get: k => run('readonly', st => st.get(k)), del: k => run('readwrite', st => st.delete(k))};
+})();
+const INLINE = new WeakMap();   // image -> its data: address, so keeping the draft again doesn't encode it again
+async function stashDraft(){
+  try {
+    if (isSample || !books.length){ dropDraft(); return; }
+    const inline = async (src, kind) => {
+      const hit = INLINE.get(src); if (hit) return hit;
+      const b = await encode(src, kind), url = await new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); });
+      INLINE.set(src, url); return url;
+    };
+    const items = await Promise.all(books.map(b => itemFor(b, inline)));
+    // the spines and pictures go to IndexedDB, which has the room; if it can't be used, the spines go with the rest
+    let stored = false;
+    try { await idb.put(DRAFT, {items, wall: media.wall && {blob: media.wall.blob, key: media.wall.key, name: media.wall.name, small: media.wall.small, dark: media.wall.dark},
+      pngs: media.pngs.map(p => ({blob: p.blob, key: p.key, x: p.x, y: p.y, w: p.w, rot: p.rot, opacity: p.opacity}))}); stored = true; } catch {}
+    kept.setItem(DRAFT, JSON.stringify({at: Date.now(), settings: {...settings}, shelfId: acct.shelfId, save: acct.pendingSave, name: shelfNameNow(), isPublic: isPublicNow(), done: !!madeIt, ...(stored ? {} : {items})}));
+  } catch { try { kept.removeItem(DRAFT); } catch {} }
+}
+function dropDraft(){ try { kept.removeItem(DRAFT); sessionStorage.removeItem(DRAFT); } catch {} idb.del(DRAFT).catch(() => {}); }
+let draftT = 0, booted = false;   // booted: the page has finished opening (a draft restored, a waiting spine added)
+function scheduleDraft(){ if (!booted) return; clearTimeout(draftT); draftT = setTimeout(stashDraft, 500); }
+function takeDraft(){
+  try { const d = JSON.parse(kept.getItem(DRAFT) || 'null'); if (!MAKE) kept.removeItem(DRAFT); return d && Date.now() - d.at < DRAFT_FOR ? d : null; } catch { return null; }
+}
+async function restoreDraft(d){
+  let drafted = null;
+  try { drafted = await idb.get(DRAFT); if (!MAKE) idb.del(DRAFT).catch(() => {}); } catch {}
+  await putOnShelf(d.items || (drafted && drafted.items) || [], d.settings || {}, drafted || {});
+  // Save to a profile was on its way (Google sign-in, then back here): it goes on, if that was in the last 15 minutes
+  acct.shelfId = d.shelfId || null; acct.pendingSave = !!d.save && (!MAKE || Date.now() - d.at < 15 * 60e3);
+  if (d.done) madeIt = true;
+  $('#shelfName').value = d.name || ''; nameIt(); redraw(); setVisible(d.isPublic !== false);
+}
+
+/* ---------- make/: download or share the picture; then, if wanted, a profile ---------- */
+let madeIt = false;   // the picture was downloaded or shared: the shelf is done
+function paintMade(){ const n = $('#afterNote'); if (n) n.hidden = !(MAKE && madeIt && !acct.profile); }
+if (MAKE){
+  const fileName = () => (shelfNameNow().toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'my-shelf') + '.png';
+  // the story as the preview shows it (without its faint "your shelf"), 1080 x 1920
+  async function picture(){
+    await Promise.all(Object.values(TEX).map(t => t.ready).filter(Boolean));
+    const c = document.createElement('canvas'); c.width = W; c.height = H; renderStory(c.getContext('2d'));
+    return new Promise((res, rej) => { try { c.toBlob(b => b ? res(b) : rej(new Error('The picture couldn’t be made.')), 'image/png'); } catch { rej(new Error('One picture on the shelf can’t be saved.')); } });
+  }
+  const done = () => { madeIt = true; paintMade(); scheduleDraft(); };
+  const ready = () => { if (!books.length || isSample){ toast('Add a film or a book first.'); return false; } nameIt(); return true; };
+  $('#downloadBtn').addEventListener('click', async () => {
+    if (!ready()) return;
+    let blob; try { blob = await picture(); } catch (e){ toast(e.message); return; }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileName();
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast('Saved as ' + a.download + '.'); done();
+  });
+  // Share: only where the browser can share a picture (a phone, mostly). The sheet's own Share press hands it over,
+  // which iPhone Safari asks for (story.js)
+  const canShare = (() => { try { return !!(navigator.canShare && navigator.canShare({files: [new File([new Blob(['x'], {type: 'image/png'})], 'x.png', {type: 'image/png'})]})); } catch { return false; } })();
+  $('#shareBtn').hidden = !canShare;
+  $('#shareBtn').addEventListener('click', async () => {
+    if (!ready()) return;
+    let blob; try { blob = await picture(); } catch (e){ toast(e.message); return; }
+    if (window.Story && Story.offer) Story.offer(blob, {title: shelfNameNow() || 'My shelf', file: fileName()});
+    done();
+  });
+  $('#afterGo').addEventListener('click', () => saveShelf());
+  addEventListener('pagehide', () => { if (booted) stashDraft(); });
+}
+
+Add.setToast(toast);
+// a spine picked on a shelf's page (u/: + Add to my shelf): the saved row itself, so it's the same pictures and nothing
+// is searched for again
+const ADD_ROW = 'shelfstackd-add-row';
+function takeRow(){
+  try { const v = JSON.parse(sessionStorage.getItem(ADD_ROW) || 'null'); sessionStorage.removeItem(ADD_ROW); return v && v.row && Date.now() - v.at < 10*60e3 ? v.row : null; } catch { return null; }
+}
+/* opening: an empty shelf, then a draft or ?open=<id>, then a spine picked with + ADD on another page, or with
+   + Add to my shelf on a shelf's page, which was waiting to be put on */
+(async () => {
+  boot();
+  if (MAKE && !SAMPLE){ const d = takeDraft(); if (d) await restoreDraft(d); paintMade(); }   // the shelf kept on this device
+  const st = await startAccounts(); readyNow();
+  if (st === false) return;   // signed out: the builder is closed
+  const p = MAKE ? null : Add.takePending();
+  // + ADD on another page picked one of your shelves (Put on shelf asks which when you have more than one)
+  if (p && p.shelfId && p.shelfId !== acct.shelfId && acct.shelves.some(x => x.id === p.shelfId)) await openShelf(p.shelfId);
+  paintTitle();
+  if (p){
+    $('#saveNote').textContent = 'Adding ' + p.m.title + '…';
+    let f = null; try { f = await Add.resolve(p); } catch {}
+    $('#saveNote').textContent = ''; paintAcct();
+    if (f){ if (shelve(newBook(f))) toast(p.m.title + ' added to ' + (acct.shelfId && acct.shelfId !== (yourShelf() || {}).id ? $('#pageTitle').textContent : 'your shelf') + '.'); }
+    else { toast('Couldn’t add ' + p.m.title + '. Search for it again.'); Add.open({query: p.m.title}); }
+  }
+  const row = MAKE ? null : takeRow();
+  if (row){
+    const name = row.title || 'That spine';
+    $('#saveNote').textContent = 'Adding ' + name + '…';
+    let b = null; try { b = await rebuild({...row, item_id: undefined, look: {...(row.look || {}), at: undefined}}); } catch {}   // a book of its own here, with a new id, and new on this shelf
+    $('#saveNote').textContent = '';
+    if (!b) toast('Couldn’t add ' + name + '. Its picture didn’t load.');
+    else { if (b.source === 'your saved shelf') b.source = 'a saved shelf'; if (shelve(b)) toast(name + ' added to your shelf.'); }
+  }
+  booted = true; scheduleDraft();
+})();
+const faces = ['600 40px Oswald','400 40px Oswald','600 40px "Cormorant Garamond"','italic 500 40px "Cormorant Garamond"','40px "Archivo Black"','40px "Gochi Hand"','500 40px "IBM Plex Mono"','400 40px "IBM Plex Mono"','600 40px "IBM Plex Sans"','500 40px "Geist Mono"','400 40px "Geist Mono"'];
+if (document.fonts){ Promise.all(faces.map(f => document.fonts.load(f).catch(() => {}))).then(redraw); document.fonts.ready.then(redraw); }
+})();

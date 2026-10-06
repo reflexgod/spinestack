@@ -191,13 +191,11 @@ test('signed out, /build/ is "Sign in to make your shelf." with Continue with Go
   await expect(go).toBeVisible();
   for (const hidden of ['#findQ', '#books', '#stage', '.mkbar', '#stylePanel']) await expect(page.locator(hidden).first()).toBeHidden();
   expect(await page.locator('main').innerText()).not.toMatch(/Add to shelf|Save|Spines|Style/i);   // what shows
-  // + ADD here is the sign-in sheet too, and the Add box is nowhere to type in
-  await page.locator('header.top .add').click();
-  await expect(page.locator('#sheet')).toBeVisible();
-  await expect(page.locator('#signinPane > p').first()).toHaveText('Sign in to start your shelf.');
-  await expect(page.getByRole('dialog', { name: /^add to/i })).toHaveCount(0);
   expect(worker).toBe(0);
   expect(net.asked).toEqual([]);
+  // + ADD here goes to make/, where a shelf is made with no account
+  await page.locator('header.top .add').click();
+  await expect(page).toHaveURL(/\/make\/$/);
   expect(errors).toEqual([]);
 });
 
@@ -356,7 +354,7 @@ test('your shelf, being changed, is still being changed after another page; New 
   await open(page, '/build/');
   await page.locator('header.top .add').click();
   await addGummo(page);
-  await page.waitForFunction(() => !!sessionStorage.getItem('spinestack-draft'));
+  await page.waitForFunction(() => !!localStorage.getItem('spinestack-draft'));
   await page.waitForTimeout(700);
   await open(page, '/build/');               // back again: still being changed
   expect(await titles(page)).toEqual(['The Waves', 'Journey by Moonlight', 'Gummo']);
@@ -375,7 +373,7 @@ test('the shelf being made is still there after leaving the page and coming back
   await page.locator('header.top .add').click();
   await addGummo(page);
   await page.getByRole('textbox', { name: 'Name' }).fill('my films');
-  await page.waitForFunction(() => !!sessionStorage.getItem('spinestack-draft'));
+  await page.waitForFunction(() => !!localStorage.getItem('spinestack-draft'));
   await page.waitForTimeout(700);   // the draft is kept shortly after the last change
   await open(page, '/feed/?everyone');
   await page.locator('header.top .add').click();
@@ -396,7 +394,7 @@ test('Cancel asks first, then drops the shelf being made', async ({ page }) => {
   await open(page, '/build/');
   await page.locator('header.top .add').click();
   await addGummo(page);
-  await page.waitForFunction(() => !!sessionStorage.getItem('spinestack-draft'));
+  await page.waitForFunction(() => !!localStorage.getItem('spinestack-draft'));
   await page.getByRole('button', { name: 'Cancel' }).click();
   await page.getByRole('button', { name: 'Discard changes?' }).click();
   await expect(page).toHaveURL(/\/u\/\?tester$/);   // back to your profile

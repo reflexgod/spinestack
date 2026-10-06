@@ -20,8 +20,8 @@
   /* Floating UI keeps a menu on screen (it flips and shifts it). Only someone signed in has menus, so only they load
      it; until it arrives, or if it can't, a menu sits under its button, held inside the window. */
   const LIBS = [
-    {src: 'https://cdn.jsdelivr.net/npm/@floating-ui/core@1.8.0/dist/floating-ui.core.umd.min.js', integrity: 'sha384-HNCdK6HYLs4EKIDg2Ml3NdfNMVD/LcFbGXnagRABpWmpJjiEuhrtSIckScRnqDOD'},
-    {src: 'https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.8.0/dist/floating-ui.dom.umd.min.js', integrity: 'sha384-h02fHnOrZRtL8NvKyMkr2vfTxUr0lTnQdZexzrbPfME4nd74qGfOZ97tbiroJo1Y'},
+    {src: ROOT + 'vendor/@floating-ui/core@1.8.0/dist/floating-ui.core.umd.min.js', integrity: 'sha384-HNCdK6HYLs4EKIDg2Ml3NdfNMVD/LcFbGXnagRABpWmpJjiEuhrtSIckScRnqDOD'},
+    {src: ROOT + 'vendor/@floating-ui/dom@1.8.0/dist/floating-ui.dom.umd.min.js', integrity: 'sha384-h02fHnOrZRtL8NvKyMkr2vfTxUr0lTnQdZexzrbPfME4nd74qGfOZ97tbiroJo1Y'},
   ];
   let libsAsked = false;
   function loadLibs(){
@@ -353,7 +353,7 @@
     if (window.Add) return Promise.resolve(true);
     if (!window.Shelf) return Promise.resolve(false);
     return adding = adding || new Promise(res => {
-      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261018a';
+      const s = document.createElement('script'); s.src = ROOT + 'add.js?v=20261021a';
       s.onload = () => res(!!window.Add); s.onerror = () => { adding = null; s.remove(); res(false); };
       document.head.appendChild(s);
     });
@@ -363,7 +363,7 @@
   let storyP = null;
   function story(spec){
     if (!storyP) storyP = window.Story ? Promise.resolve(true) : new Promise(res => {
-      const s = document.createElement('script'); s.src = ROOT + 'story.js?v=20261020a';
+      const s = document.createElement('script'); s.src = ROOT + 'story.js?v=20261021a';
       s.onload = () => res(!!window.Story); s.onerror = () => { storyP = null; s.remove(); res(false); };
       document.head.appendChild(s);
     });
@@ -439,7 +439,8 @@
     loadRecs().then(ok => { if (ok) window.Recs.open(item); });
   }
   addLink.addEventListener('click', e => {
-    if (visitor()){ e.preventDefault(); needAccount('add'); return; }   // signed out: nothing is added, or searched for
+    // signed out: + ADD is make/, where a shelf is made with no account (on make/ itself, its Add dialog)
+    if (visitor()){ e.preventDefault(); if (window.Add && Add.local && Add.local()) openAdd(); else location.href = ROOT + 'make/'; return; }
     if (e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;   // a new tab or window still gets the builder
     e.preventDefault();
     openAdd().then(ok => { if (!ok) location.href = addLink.href; });

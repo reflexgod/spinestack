@@ -162,7 +162,7 @@
 
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
-<script src="../nav.js?v=20261020a"></script>
+<script src="../nav.js?v=20261021a"></script>
 <script>
 (() => {
 /* Settings: /settings/ (#photo and #account pick the tab). Yours only: signed out, it asks you to sign in.
@@ -172,12 +172,12 @@
 const $ = s => document.querySelector(s);
 const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
 const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
-const SB_LIB = {src:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
+const SB_LIB = {src:'../vendor/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
 // the photo's tools, loaded when a photo is first chosen
 const PHOTO_LIBS = [
-  {href:'https://cdn.jsdelivr.net/npm/cropperjs@1.6.3/dist/cropper.min.css', integrity:'sha384-4B0iRmDz7QrXJK2xob77YvAC46zoUOJDr2MOKrkWWR7QoJg9i63rGSnCwIjGYGHs'},
-  {src:'https://cdn.jsdelivr.net/npm/cropperjs@1.6.3/dist/cropper.min.js', integrity:'sha384-aKBOyDyHi7nysLl4xSArmbTpotGkhOQNGnSQaljyIveY3ofQZ3GWak4U9F5NcPxI'},
-  {src:'https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js', integrity:'sha384-dHP9fwqd9BAiDh9uJ0p10khgbbcFMh34bVEiCnJ1Ah/AT2T2k4t572VEo3WXzxXp'},
+  {href:'../vendor/cropperjs@1.6.3/dist/cropper.min.css', integrity:'sha384-4B0iRmDz7QrXJK2xob77YvAC46zoUOJDr2MOKrkWWR7QoJg9i63rGSnCwIjGYGHs'},
+  {src:'../vendor/cropperjs@1.6.3/dist/cropper.min.js', integrity:'sha384-aKBOyDyHi7nysLl4xSArmbTpotGkhOQNGnSQaljyIveY3ofQZ3GWak4U9F5NcPxI'},
+  {src:'../vendor/browser-image-compression@2.0.2/dist/browser-image-compression.js', integrity:'sha384-dHP9fwqd9BAiDh9uJ0p10khgbbcFMh34bVEiCnJ1Ah/AT2T2k4t572VEo3WXzxXp'},
 ];
 const PROFILE_COLS = 'id,username,display_name,bio,avatar_key,pinned_shelf_id,is_private,created_at';
 

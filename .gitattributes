@@ -1,0 +1,2 @@
+# vendor/: npm's files as they are, byte for byte (the pages check them with integrity hashes)
+vendor/** -text

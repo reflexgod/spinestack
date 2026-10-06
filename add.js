@@ -253,6 +253,7 @@ css.textContent = `
 #addDialog .addby{margin-right:auto;font-size:var(--fs-small,11px);color:var(--grey,#6B6B6B)}
 /* what to do with it: three choices in a row, as the tabs are (the one picked black, a line under it) */
 #addDialog .addwhat{display:flex;flex-wrap:wrap;gap:var(--s2,8px) var(--s5,24px);margin:0 0 var(--s4,16px);border-bottom:1px solid var(--hair,#D9D9D9)}
+#addDialog .addwhat[hidden]{display:none}
 #addDialog .addwhat label{position:relative;cursor:pointer}
 #addDialog .addwhat input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
 #addDialog .addwhat span{display:block;padding:0 0 var(--s2,8px);margin-bottom:-1px;color:var(--grey,#6B6B6B);border-bottom:1px solid transparent;white-space:nowrap}
@@ -442,7 +443,7 @@ function rank(results, q){
 async function lookUp(q, want, typed, signal){
   if (server) return (await fetch(API + '/api/identify?q=' + encodeURIComponent(q), {signal}).then(r => r.json())).results;
   // suggest=1: an answer for a half-typed title isn't kept by the Worker the way a finished search is
-  if (WORKER) return getJSON(`${WORKER}/identify?want=${want}&q=${encodeURIComponent(q)}${typed ? '&suggest=1' : ''}`, {signal}).then(r => r.results)
+  if (WORKER) return getJSON(`${WORKER}/identify?want=${want}&q=${encodeURIComponent(q)}${typed ? '&suggest=1' : ''}`, {signal}).then(r => Object.assign(r.results || [], {partial: !!r.partial}))
     .catch(err => { if (err && err.name === 'AbortError') throw err; return identifyDirect(q, want); });
   return identifyDirect(q, want);
 }
@@ -459,7 +460,7 @@ function showMatches(){
   active = matches.length ? 0 : -1; paintActive();
 }
 // typed: asked for by the typing itself, not by Enter
-async function search(typed){
+async function search(typed, again){
   clearTimeout(typing);
   const q = $('#addQ').value.trim(), want = wanted(), key = want + '|' + q.toLowerCase(), mine = ++run;
   if (asking){ asking.abort(); asking = null; }
@@ -472,16 +473,19 @@ async function search(typed){
   if (!results){
     sstatus('Searching…');
     const ctl = asking = new AbortController();
+    let late = false; const timer = setTimeout(() => { late = true; ctl.abort(); }, 6000);   // never "Searching…" for ever
     try { results = await lookUp(q, want, typed, ctl.signal); }
     catch (err){
-      if (mine !== run || (err && err.name === 'AbortError')) return;   // a newer search took over
+      if (mine !== run || (err && err.name === 'AbortError' && !late)) return;   // a newer search took over
       matches = []; shownFor = null; showMatches();   // the last search's titles go, so Enter can't pick one for this
       sstatus((server ? 'The search server' : 'The search') + ' didn’t answer. Try again in a moment.', true); return;
     }
-    finally { if (asking === ctl) asking = null; }
+    finally { clearTimeout(timer); if (asking === ctl) asking = null; }
     if (mine !== run) return;
+    const partial = !!(results && results.partial);
     results = (results || []).filter(m => want === 'all' || m.kind === want);
-    seen.set(key, results);
+    if (partial && !again) setTimeout(() => { if (mine === run && !picked && $('#addQ').value.trim() === q) search(typed, true); }, 2000);   // the rest, in a moment
+    else seen.set(key, results);
   }
   matches = rank(results, q); shownFor = key;
   showMatches();
@@ -556,8 +560,10 @@ function showTiles(cur){
     tiles.unshift(`<div class="pick" data-c="photo"><button type="button" class="art snap" id="addSnap">${ICON('<path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/>')}Have it? Photograph the spine</button><span class="lbl">Your copy</span></div>`);
   if (cur.img){
     tiles.push(tile('spine', '', 'Generated', 'A spine made from the ' + noun));
-    tiles.push('<span class="rule" aria-hidden="true"></span>');
-    tiles.push(tile('cover', `<img class="cov" src="${esc(cur.img.src)}" crossorigin="anonymous" alt="">`, 'Cover', 'The ' + noun + ', face out'));
+    if (!cur.plain){
+      tiles.push('<span class="rule" aria-hidden="true"></span>');
+      tiles.push(tile('cover', `<img class="cov" src="${esc(cur.img.src)}" crossorigin="anonymous" alt="">`, 'Cover', 'The ' + noun + ', face out'));
+    }
   }
   $('#addFound').innerHTML = tiles.join('') || (cur.busy ? '' : '<p class="grey">No scans and no ' + noun + ' found for this title. Upload a scan on the builder.</p>');
   const H0 = parseFloat(getComputedStyle($('#addFound')).getPropertyValue('--th')) || 300;
@@ -595,38 +601,69 @@ async function cutOne(s, kind){
    then the dust jacket full wrap) and asks for the next only while it still has no clean spine to show: each one
    after round 0 is a paid search, and most books have no scan to find (docs/BOOK-SPINES.md). */
 const LIVE = 1, roundsFor = kind => kind === 'book' ? 3 : 4;
+const titleId = m => m.kind === 'movie' ? (/^\d{1,9}$/.test(m.tmdb || '') ? m.tmdb : '') : (/^OL\d{1,10}W$/.test(m.ol || '') ? m.ol : '');
+const wait = ms => new Promise(r => setTimeout(r, ms));
 async function cutScans(cur, english, onCut){
-  const ROUNDS = roundsFor(cur.m.kind), book = cur.m.kind === 'book';
-  const q = `${WORKER}/scans?kind=${cur.m.kind}&title=${encodeURIComponent(cur.m.title)}&year=${encodeURIComponent(cur.m.year || '')}&creator=${encodeURIComponent(cur.m.creator || '')}`;
+  const ROUNDS = roundsFor(cur.m.kind), book = cur.m.kind === 'book', id = titleId(cur.m);
+  const q = `${WORKER}/scans?kind=${cur.m.kind}&title=${encodeURIComponent(cur.m.title)}&year=${encodeURIComponent(cur.m.year || '')}&creator=${encodeURIComponent(cur.m.creator || '')}${id ? '&id=' + id : ''}`;
   const get = (round, cacheOnly) => timeout(getJSON(q + '&round=' + round + (cacheOnly ? '&cacheonly=1' : '')), 20000);
-  const kept = [Promise.resolve(null)];   // per round: what's kept, or null (a Worker from before cached= says nothing, so it's asked)
-  for (let r = 1; r < ROUNDS; r++) kept.push(get(r, true).then(x => x && x.cached === true ? x : null, () => null));
+  // per round: what's kept, or null (a Worker from before cached= says nothing, so it's asked). Asked once round 0 is
+  // back without enough: a title cut before needs none of them
+  const kept = [Promise.resolve(null)], keptOf = r => kept[r] || (kept[r] = get(r, true).then(x => x && x.cached === true ? x : null, () => null));
   const live = [], ask = round => live[round] || (live[round] = get(round, false));
-  const seen = new Set(), cuts = []; let scans = 0, rounds = 0, busy = false, capped = false;
+  const seen = new Set(), cuts = []; let scans = 0, rounds = 0, busy = false, capped = false, pending = false;
+  const enough = need => cuts.filter(c => c.score >= AUTO_SCORE && (!english || isEnglish(c))).length >= need || (book && bestCuts('book', cuts, english).length > 0);
+  // cut at once, each shown as it's done; kept in the order they came
+  async function cutAll(list, round, hint){
+    const got = new Array(list.length);
+    await Promise.all(list.map((s, i) => cutOne(s, cur.m.kind).then(c => { if (c){ c.round = s.round != null ? s.round : round; c.hint = hint; } got[i] = c; if (c && onCut && cur === current) onCut(bestCuts(cur.m.kind, [...cuts, ...got.filter(Boolean)], english)); })));
+    cuts.push(...got.filter(Boolean));
+  }
   for (let round = 0; round < ROUNDS && cur === current; round++){
     if (round) sstatus(`Looking for more scans (${round + 1} of ${ROUNDS})…`);
-    let r = await kept[round];
+    if (round === 1) for (let k = 1; k < ROUNDS; k++) keptOf(k);
+    let r = round ? await keptOf(round) : null;
     if (!r){
-      for (let k = round + 1; k < Math.min(ROUNDS, round + LIVE); k++) if (!(await kept[k])) ask(k);   // the next ones that would search, together
+      for (let k = round + 1; k < Math.min(ROUNDS, round + LIVE); k++) if (!(await keptOf(k))) ask(k);   // the next ones that would search, together
       try { r = await ask(round); }
       catch (err){ if (!cuts.length && !rounds) throw err; busy = /429/.test(err.message); break; }   // keep what the earlier rounds found
     }
+    // pending: a search for this round is under way (someone else's, or this one past the Worker's 1.8 s). What it
+    // keeps is asked for twice, 3 seconds apart; the spine made from the cover is there to pick meanwhile
+    for (let t = 0; r.pending && t < 2 && cur === current; t++){ await wait(3000); const again = await get(round, true).catch(() => null); if (again && again.cached) r = again; }
+    if (r.pending){ pending = true; break; }
     rounds++;
+    // found: the scans someone cut this title's spines from before, best first. Cut those (and the archive's) first;
+    // when that's enough, the rest of the round isn't loaded at all
+    if (round === 0 && r.found && r.found.length){
+      const first = [...(r.results || []).filter(s => s.archive), ...r.found].filter(s => !seen.has(s.img) && seen.add(s.img));
+      scans += first.length;
+      if (cur === current) sstatus(`Cutting spines from ${scans} scan${scans > 1 ? 's' : ''}…`);
+      await cutAll(first, round, true);
+      if (enough(1)) break;
+    }
     const fresh = (r.results || []).filter(s => !seen.has(s.img) && seen.add(s.img));
     scans += fresh.length;
-    // capped: today's Brave searches are used up, so this round held only archive spines and scans kept from before.
+    // capped: today's searches are used up, so this round held only archive spines and scans kept from before.
     // With nothing in it there's no more to ask for.
     if (r.capped){ capped = true; if (!fresh.length) break; }
     if (fresh.length && cur === current) sstatus(`Cutting spines from ${scans} scan${scans > 1 ? 's' : ''}…`);
-    // cut at once, each shown as it's done; kept in the order they came, as before
-    const got = new Array(fresh.length);
-    await Promise.all(fresh.map((s, i) => cutOne(s, cur.m.kind).then(c => { got[i] = c; if (c && onCut && cur === current) onCut(bestCuts(cur.m.kind, [...cuts, ...got.filter(Boolean)], english)); })));
-    cuts.push(...got.filter(Boolean));
-    if (cuts.filter(c => c.score >= AUTO_SCORE && (!english || isEnglish(c))).length >= 2 || !r.more) break;
-    if (book && bestCuts('book', cuts, english).length) break;   // a book: one clean spine is enough, no more searches
+    await cutAll(fresh, round, false);
+    if (enough(2) || !r.more) break;   // a book: one clean spine is enough, no more searches
   }
-  return {scans, rounds, busy, capped, cuts: bestCuts(cur.m.kind, cuts, english)};
+  return {scans, rounds, busy, capped, pending, all: cuts, cuts: bestCuts(cur.m.kind, cuts, english)};
 }
+/* The scans this page cut clean spines from, told to the Worker (POST /found), so the next person to pick this title
+   loads those first. Only scans the Worker gave (not the archive's, not your photo), and not ones it said were found */
+function tellFound(m, cuts){
+  const good = cuts.filter(c => c.round != null && !c.archive && !c.photo && !c.hint && c.score >= (m.kind === 'book' ? 20 : SHOW_SCORE) && c.spine.width <= c.spine.height / 5)
+    .sort((a, b) => b.score - a.score).slice(0, 6);
+  if (!good.length || !WORKER) return;
+  const body = JSON.stringify({kind: m.kind, id: titleId(m), title: m.title, year: m.year || '', creator: m.creator || '', cuts: good.map(c => ({img: c.img, round: c.round, score: c.score}))});
+  try { fetch(WORKER + '/found', {method: 'POST', headers: {'Content-Type': 'text/plain'}, body, keepalive: true}).catch(() => {}); } catch {}   // text/plain: no preflight
+}
+// what a generated spine is drawn from while the real cover is still coming: plain paper
+function plainCover(){ const c = document.createElement('canvas'); c.width = 400; c.height = 600; const x = c.getContext('2d'); x.fillStyle = '#E9E4DA'; x.fillRect(0, 0, 400, 600); return c; }
 // one option per page, best first: the same scan often comes at several sizes (reddit previews, eBay listings)
 function bestCuts(kind, cuts, english){
   const best = new Map();
@@ -659,14 +696,17 @@ async function findSpines(m, again){
     if (was){ const at = list.indexOf(was); cur.choice = at >= 0 ? 'real:' + at : cur.img ? 'spine' : null; }
     showTiles(cur);
   };
+  // the cover slower than 2 seconds: a spine on plain paper to pick meanwhile, drawn again from the cover when it comes
+  const plainT = setTimeout(() => { if (cur === current && !cur.img){ cur.img = plainCover(); cur.plain = true; if (!cur.choice) cur.choice = 'spine'; showTiles(cur); } }, 2000);
   const posterIn = poster.then(img => {
+    clearTimeout(plainT);
     if (cur !== current) return;
-    if (img && canvasSafe(img)){ cur.img = img; if (m.kind === 'movie') cur.title = posterTitle(img); if (!cur.choice) cur.choice = 'spine'; if (cur.busy) showTiles(cur); }
+    if (img && canvasSafe(img)){ const was = cur.plain; cur.img = img; cur.plain = false; cur.preview = null; if (m.kind === 'movie') cur.title = posterTitle(img); if (!cur.choice) cur.choice = 'spine'; if (cur.busy || was) showTiles(cur); }
     else if (m.cover) toast('The ' + noun + ' from ' + hostOf(m.cover) + ' can’t be used in a story. Try another match.');
   });
   if (!server && WORKER){
     sstatus('Searching ' + (m.kind === 'movie' ? 'DVD' : 'book') + ' scans of “' + esc(m.title) + '”…');
-    try { found = await cutScans(cur, english, repaint); } catch (err){ failed = /429/.test(err.message) ? 'busy' : true; }
+    try { found = await cutScans(cur, english, repaint); tellFound(m, found.all); } catch (err){ failed = /429/.test(err.message) ? 'busy' : true; }
   }
   await posterIn;
   if (cur !== current) return;
@@ -698,6 +738,7 @@ async function findSpines(m, again){
   else if (cur.img){
     if (!cur.touched) cur.choice = 'spine';   // the grey line under the tiles asks for a photo of a real one (books)
     if (found.capped) sstatus('Spine search is resting for today. Here’s one made from the cover.');
+    else if (found.pending) sstatus('Spine search is busy. Here’s one made from the cover.');
     else sstatus(!WORKER ? 'Pick Cover to show the ' + noun + ' face out instead.' : failed === 'busy' ? 'Scan search is busy. This spine is made from the ' + noun + '; try again in a minute.'
       : failed ? 'Scan search didn’t answer, so this spine is made from the ' + noun + '.' : 'No clean spine in the scans found online, so this one is made from the ' + noun + '.', !!WORKER);
   }
@@ -943,8 +984,10 @@ function open(opt){
   opt = opt || {};
   if (!dlg.open){ reset(); if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', ''); }
   fromRec = opt.rec && opt.rec.id ? opt.rec : null;   // Mark watched on a rec: {id, by}
-  if (window.Nav && Nav.loadRecs) Nav.loadRecs().then(ok => { $('#addRecWrap').hidden = !ok; });
-  const mode = TITLES[opt.mode] ? opt.mode : firstMode();
+  if (window.Nav && Nav.loadRecs && !(shelf && shelf.only)) Nav.loadRecs().then(ok => { $('#addRecWrap').hidden = !ok; });   // (make/: no account, no recs)
+  const only = !!(shelf && shelf.only);
+  $('.addwhat').hidden = only;
+  const mode = only ? 'shelf' : TITLES[opt.mode] ? opt.mode : firstMode();
   for (const r of dlg.querySelectorAll('input[name=addWhat]')) r.checked = r.value === mode;
   paintWhat(false);
   if (!$('#addFind').hidden && opt.item && opt.item.title){
@@ -1038,6 +1081,6 @@ function attachSearch({input, list, onPick, say: tell = () => {}}){
   return {clear};
 }
 
-window.Add = {open, close, watch, attachSearch, WATCH_CAP, isOpen: () => dlg.open, setShelf: s => { shelf = s; }, setToast: fn => { say = fn; }, setServer, takePending, resolve,
+window.Add = {local: () => !!(shelf && shelf.only), open, close, watch, attachSearch, WATCH_CAP, isOpen: () => dlg.open, setShelf: s => { shelf = s; }, setToast: fn => { say = fn; }, setServer, takePending, resolve,
   extractPalette, findSpine, findSoloSpine, lettering, cutOne, personName, rank, EDITION};
 })();

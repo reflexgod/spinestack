@@ -34,7 +34,7 @@ test('a profile says it couldn\'t reach shelfstackd', async ({ page }) => {
 });
 
 test('the builder: Save says the account couldn\'t load, and doesn\'t ask for a username', async ({ page }) => {
-  test.setTimeout(60000);
+  test.setTimeout(120000);
   await mockNetwork(page, { signedIn: true });
   await offline(page);
   await open(page, '/build/');
@@ -47,7 +47,9 @@ test('the builder: Save says the account couldn\'t load, and doesn\'t ask for a 
   await d.getByRole('option', { name: /Gummo/ }).click();
   await d.getByRole('button', { name: 'Add to shelf' }).click();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.locator('#toast')).toHaveText('Couldn’t load your account. Check your connection and try again.');
+  // it asks for the account again, 3 times over about 10 seconds, saying Saving… meanwhile, before it says so
+  await expect(page.locator('#saveNote')).toHaveText('Saving…');
+  await expect(page.locator('#toast')).toHaveText('Couldn’t load your account. Check your connection and try again.', { timeout: 60000 });
   await expect(page.locator('#namePane')).toBeHidden();
   await expect(page.locator('#sheet')).toBeHidden();
 });

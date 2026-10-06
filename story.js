@@ -126,8 +126,8 @@
     return c;
   }
   const toBlob = c => new Promise((res, rej) => { try { c.toBlob(b => b ? res(b) : rej(new Error('One picture in it can’t be put in a story.')), 'image/png'); } catch { rej(new Error('One picture in it can’t be put in a story.')); } });
-  function save(blob){
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = FILE;
+  function save(blob, name = FILE){
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   }
   function say(msg){ const t = document.getElementById('toast'); if (!t) return; t.textContent = msg; t.hidden = false; clearTimeout(say.t); say.t = setTimeout(() => { t.hidden = true; }, 4200); }
@@ -145,10 +145,10 @@
     const shut = () => { sheet.remove(); sheet = null; URL.revokeObjectURL(url); if (from && from.focus && from.isConnected) from.focus(); };
     sheet.addEventListener('click', async e => {
       if (e.target === sheet || e.target.closest('[data-close]')){ shut(); return; }
-      if (e.target.closest('[data-save]')){ save(blob); say('Saved as ' + FILE + '.'); return; }
+      if (e.target.closest('[data-save]')){ save(blob, file.name); say('Saved as ' + file.name + '.'); return; }
       const b = e.target.closest('[data-share]'); if (!b) return;
       try { await navigator.share({files: [file], title}); shut(); }
-      catch (err){ if (!err || err.name !== 'AbortError'){ save(blob); say('Saved as ' + FILE + '. Add it to your story from your photos.'); shut(); } }
+      catch (err){ if (!err || err.name !== 'AbortError'){ save(blob, file.name); say('Saved as ' + file.name + '. Add it to your story from your photos.'); shut(); } }
     });
     sheet.addEventListener('keydown', e => { if (e.key === 'Escape'){ e.stopPropagation(); shut(); } });
     sheet.querySelector('[data-share]').focus();
@@ -164,5 +164,11 @@
     else { save(blob); say('Saved as ' + FILE + '. Add it to your Instagram story.'); }
     return blob;
   }
-  window.Story = {make, share, FILE};
+  // a picture made on the page (make/'s shelf): the sheet and its Share where the browser can share it, otherwise saved
+  function offer(blob, {title = 'shelfstackd', file = FILE} = {}){
+    const f = new File([blob], file, {type: 'image/png'});
+    if (navigator.canShare && navigator.canShare({files: [f]})) shareSheet(blob, f, title);
+    else { save(blob, file); say('Saved as ' + file + '.'); }
+  }
+  window.Story = {make, share, offer, FILE};
 })();

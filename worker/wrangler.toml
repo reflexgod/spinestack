@@ -65,22 +65,23 @@ namespace_id = "1003"
 binding = "SPINE_CACHE"
 id = "5025e1e9a6f94d8bb1d91f90de9f9954"
 
-# About 30 searches a minute per visitor (identify + scans).
+# Searches (identify + scans + found) a minute per address. 120, not 30: a campus or a phone network puts many
+# people behind one address, and a person adding titles makes about 10 a minute (docs/LOAD.md).
 [[ratelimits]]
 name = "LIMITER"
 namespace_id = "1001"
 
   [ratelimits.simple]
-  limit = 30
+  limit = 120
   period = 60
 
-# Images: one search loads up to ~12, so this one is looser.
+# Images a minute per address: one search loads up to ~12, so this one is looser (300, for shared addresses too).
 [[ratelimits]]
 name = "IMG_LIMITER"
 namespace_id = "1002"
 
   [ratelimits.simple]
-  limit = 150
+  limit = 300
   period = 60
 
 # The archive's moderation state (status, reports, lists, daily upload counts). SQLite-backed,

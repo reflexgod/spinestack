@@ -4,11 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <script>
-  /* Signed out the builder is closed: only a line and Continue with Google (the site is read only until you sign in).
-     Said now, before anything is drawn. A Google sign-in on its way back (?code=) isn't signed out. */
-  try {
-    if (!Object.keys(localStorage).some(function(k){ return /^sb-.+-auth-token$/.test(k); }) && !/[?&](code|error|error_description)=/.test(location.search)) document.documentElement.classList.add('gated');
-  } catch (e) {}
+  /* make/: anyone makes a shelf here with no account; it's kept on this device until Save to a profile (builder.js) */
+  window.SHELFSTACKD_MAKE = true;
   /* Only for the old self-hosted backend (backend/, not used now): its address, e.g. "http://localhost:8000" when it
      serves this page. Empty: the page uses the Worker below and doesn't look for a backend (with no Worker either, it
      looks on its own site, as a backend serving this page would answer there). */
@@ -28,28 +25,18 @@
   window.SPINESTACK_SUPABASE_KEY = "sb_publishable_cZeUDJXk-nCbSJ4VZWn_GQ_6xNFyBo2";
   /* Sign-in by email link: off until the site has its own domain to send email from. */
   window.SPINESTACK_EMAIL_LOGIN = false;
-  /* The builder used to open inside a profile page as well (?embed, in a frame over it). It's this page alone now, and
-     links of that kind come here without it: ?embed&open=<id> is ?open=<id>, ?embed&new is ?new. */
-  (function(){
-    var q = new URLSearchParams(location.search);
-    if (!q.has('embed')) return;
-    q.delete('embed');
-    var rest = q.toString().replace(/=(&|$)/g, '$1');
-    document.documentElement.hidden = true;
-    (window.top === window ? location : window.top.location).replace(location.pathname + (rest ? '?' + rest : '') + location.hash);
-  })();
 </script>
-<title>Your shelf · shelfstackd</title>
-<meta name="description" content="Build a shelf of real film and book spines and save it to your profile, where you can share it.">
+<title>Make a shelf · shelfstackd</title>
+<meta name="description" content="Make a shelf of real film and book spines and download it or share it. No account needed.">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
 <meta name="theme-color" content="#FFFFFF">
 <meta property="og:site_name" content="shelfstackd">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Your shelf · shelfstackd">
-<meta property="og:description" content="Build a shelf of real film and book spines and save it to your profile, where you can share it.">
-<meta property="og:url" content="https://shelfstackd.com/build/">
+<meta property="og:title" content="Make a shelf · shelfstackd">
+<meta property="og:description" content="Make a shelf of real film and book spines and download it or share it. No account needed.">
+<meta property="og:url" content="https://shelfstackd.com/make/">
 <meta property="og:image" content="https://shelfstackd.com/og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -244,6 +231,11 @@ footer{margin-top:0}
 .gated .gate{display:grid;justify-items:start;gap:var(--s4)}
 .gated .gate .note{margin:0}
 .gated .mkgrid,.gated .mkbar{display:none}
+/* make/: no who-can-view (a shelf saved to a profile is public, and can be made private there), and none of the
+   pictures of your own (they're uploaded when saved); the line about a profile, once the picture is made */
+.who[hidden]{display:none}
+#theme button[data-v="wall"],.pngadd,#wallBox{display:none}
+.after{margin:0;text-align:center}
 </style>
 </head>
 <body>
@@ -258,11 +250,11 @@ footer{margin-top:0}
     <a class="bell" id="bell" href="../notifications/" aria-label="Notifications" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="dot" hidden></span></a>
   </nav>
   <a class="signin" id="signInBtn" href="#" hidden>Sign in</a>
-  <span class="addwrap"><a class="btn primary add" href="#search" aria-current="page" aria-label="Add a film or a book"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Add</span></a><button class="btn addmore" id="addMore" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More ways to add" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></span>
+  <span class="addwrap"><a class="btn primary add" href="#search" aria-label="Add a film or a book"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Add</span></a><button class="btn addmore" id="addMore" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More ways to add" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></span>
 </header>
 
 <main class="mk">
-  <div class="mkhead"><h1 id="pageTitle">Your shelf</h1><a class="btn line" id="newShelf" href="./?new" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>New shelf</a></div>
+  <div class="mkhead"><h1 id="pageTitle">Make a shelf</h1><a class="btn line" id="newShelf" href="./?new" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>New shelf</a></div>
   <div class="gate" id="gate">
     <button class="btn primary" id="gateGo" type="button">Continue with Google</button>
     <p class="note">Accounts are for people 18 or older. <a href="../privacy.html">Privacy</a></p>
@@ -328,19 +320,22 @@ footer{margin-top:0}
       <div class="phone"><div class="stage" id="stage"><canvas id="story" width="1080" height="1920" role="img" aria-label="Story preview"></canvas>
         <div class="spinebox" id="spineBox" hidden></div>
         <div class="pngbox" id="pngBox" hidden><button class="pngx" id="pngX" type="button" aria-label="Remove this PNG"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button><span class="pngh" id="pngH" aria-hidden="true"></span><span class="pngr" id="pngR" aria-hidden="true"></span></div></div></div>
+      <p class="note after" id="afterNote" hidden>Make a profile to follow friends and log what you watch and read. It’s optional. <button class="dash sm" id="afterGo" type="button">Make a profile</button></p>
     </div>
   </div>
 
   <!-- the bottom area, always in view: what the shelf is called and who can view it, with Cancel and Save -->
   <div class="mkbar">
     <label class="field barname"><span class="lbl">Name</span><input type="text" id="shelfName" placeholder="e.g. 2am films" maxlength="60" autocomplete="off" spellcheck="false"></label>
-    <fieldset class="field who"><legend class="lbl">Who can view</legend>
+    <fieldset class="field who" hidden><legend class="lbl">Who can view</legend>
       <div class="seg2"><label><input type="radio" name="vis" value="public" checked>Public</label><label><input type="radio" name="vis" value="private">Private</label></div>
     </fieldset>
     <span class="barleft"><span class="note" id="saveNote" role="status"></span></span>
     <span class="baracts">
-      <button class="dash sm" id="cancelBtn" type="button">Cancel</button>
-      <button class="btn primary" id="saveShelf" type="button" hidden>Save</button>
+      <button class="dash sm" id="cancelBtn" type="button" hidden>Cancel</button>
+      <button class="dash sm" id="saveShelf" type="button">Save to a profile</button>
+      <button class="dash sm" id="shareBtn" type="button" hidden>Share</button>
+      <button class="btn primary" id="downloadBtn" type="button">Download</button>
     </span>
   </div>
 </main>
@@ -392,6 +387,7 @@ footer{margin-top:0}
 <script src="../spinetip.js?v=20261004a"></script>
 <script src="../nav.js?v=20261021a"></script>
 <script src="../add.js?v=20261021a"></script>
+<script src="../story.js?v=20261021a"></script>
 <script src="../builder.js?v=20261021a"></script>
 
 </body>

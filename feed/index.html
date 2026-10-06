@@ -136,7 +136,7 @@
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../wear.js?v=20261016a"></script>
 <script src="../bare.js?v=20261013a"></script>
-<script src="../nav.js?v=20261020a"></script>
+<script src="../nav.js?v=20261021a"></script>
 <script src="../badges.js?v=20261020a"></script>
 <script src="../post.js?v=20261020a"></script>
 <script>
@@ -150,7 +150,7 @@
 const $ = s => document.querySelector(s);
 const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
 const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
-const SB_LIB = {src:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
+const SB_LIB = {src:'../vendor/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
 const PAGE = 20;
 const params = new URLSearchParams(location.search);
 // ?you, from when there was a You tab (your own are on your profile's Activity now), is Following
