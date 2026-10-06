@@ -67,7 +67,7 @@ test('+ Add to my shelf puts that same spine on the shelf being built, with no n
   await expect(row.getByLabel('Spine', { exact: true })).toHaveValue('#1c1b21');
   await expect(row.getByLabel('Text', { exact: true })).toHaveValue('#e8d23c');
   // a second one, from the shelf's page again: it joins the shelf being made
-  await page.waitForFunction(() => !!sessionStorage.getItem('spinestack-draft'));
+  await page.waitForFunction(() => !!localStorage.getItem('spinestack-draft'));
   await page.waitForTimeout(700);
   await open(page, `/u/?mira&shelf=${theirs.id}`);
   await rows(page).first().getByRole('button', { name: 'Add to my shelf' }).click();

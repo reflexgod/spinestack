@@ -6,6 +6,35 @@ session"), again after the launch pass (see "Done in the second cloud session"),
 the design review was applied (see "Done in the third session"). Read this first, then `README.md`, which says what
 every file is and how the Worker, the accounts and the tests are set up.
 
+## Later still on 6 October 2026: launch prep (make/, a busy day) and two live bugs
+
+Nothing merged into `main`, nothing deployed, no SQL, shelf.js's drawing untouched, no key added anywhere.
+**The Worker needs a deploy** for all of it: `cd worker && npm test && npx wrangler deploy` (no new binding: R2
+`MEDIA`, KV and the `Archive` Durable Object are all there already; the Durable Object makes its two new tables itself).
+Deploy the Worker before merging this branch: the pages send `id=` to /scans and POST /found, which the live Worker
+answers with 404 (harmless, but nothing is kept).
+
+- **make/ (no sign-up wall):** `shelfstackd.com/make/`. Search, up to 12 spines, Style, Download (1080 x 1920 PNG),
+  Share (where the browser can share a picture). No sign-in asked anywhere on it, and Supabase is never loaded. The
+  shelf is kept on this device (localStorage + IndexedDB) until Save to a profile, the only sign-in: Google, a
+  username, then the shelf is saved as a new shelf of that account and dropped from the device. After a download or a
+  share one line offers a profile, as optional. Signed out, + ADD (every page) and Make a shelf (home, Shelves, About)
+  go to make/ instead of the sign-in sheet. The builder's script moved to `builder.js` (build/ and make/ share it).
+- **Bug 1, saving on /build/:** the libraries (supabase-js, Floating UI, SortableJS, Cropper.js,
+  browser-image-compression) are in `vendor/`, npm's own files at the same pinned versions and integrity hashes, so
+  nothing waits on jsDelivr. Save waits for the account when it's still loading ("Saving…"), asks again for an account
+  that couldn't be read, and tries the save itself 3 times over about 10 seconds; the shelf being made is kept on the
+  device (localStorage, a week) until a save goes through, not only in the tab.
+- **Bug 2, /img 503:** not reproducible from here today (the Worker answered the Manic cover with a 200; from this
+  laptop's network api.shelfstackd.com resets the connection, which is what worker-address.js falls back for). The
+  Worker never answers 503 itself; Cloudflare does when a Worker copy runs out of memory or CPU (1102). /img held each
+  picture whole (up to 8 MB, twice with the cache's copy) and a shelf page asks for a dozen at once. Now: pictures with
+  a size are streamed; the upstream fetch gives up after 8 s (504); every TMDB or Open Library cover is kept in R2 the
+  first time it passes through and served from there when its host fails (Manic is a generated DVD spine drawn from its
+  TMDB cover, so this is what keeps it). Saved shelves' own pictures (/u/blob, /u/preview) are written to R2 (older
+  ones still read from KV), and the day's cap in all goes from 600 (KV's 1,000 writes a day) to 20,000.
+- **A busy day:** see `docs/LOAD.md` (what breaks, what each fix costs, what to pay for).
+
 ## Later on 6 October 2026: no theme, no Founder, no hedgehog in the bar
 
 - **No theme on anyone:** `themes.js` keeps Gummo (its CSS, its data, `assets/themes/gummo/banner.jpg`) for Pro, but

@@ -32,8 +32,11 @@ const answer = (name, title) => {
 };
 const jpegHead = (w, h) => { const b = new Uint8Array(64); b.set([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10]); b.set([0xFF, 0xC0, 0x00, 0x11, 0x08, h >> 8, h & 255, w >> 8, w & 255, 3], 20); return b; };
 const json = (o, status = 200) => new Response(JSON.stringify(o), {status, headers: {'Content-Type': 'application/json'}});
+const pause = ms => new Promise(r => setTimeout(r, ms));
 async function outbound(request) {
   const url = new URL(request.url);
+  const slowFor = {'google.serper.dev': 'serper', 'openlibrary.org': 'openlibrary'}[url.hostname];
+  if (slowFor && plan.slow && plan.slow[slowFor]) await pause(plan.slow[slowFor]);
   if (url.hostname === 'google.serper.dev') {
     calls.push('serper');
     if (request.headers.get('X-API-KEY') !== KEYS.SERPER_KEY) return json({message: 'Unauthorized.'}, 401);
@@ -73,6 +76,14 @@ async function outbound(request) {
     if (url.pathname.startsWith('/metadata/')) return json({result: [{name: 'full wrap.jpg', source: 'original', size: '300000'}, {name: '__ia_thumb.jpg', source: 'original', size: '30000'}, {name: 'full wrap_thumb.jpg', source: 'derivative', size: '9000'}]});
     if (url.pathname.startsWith('/download/')) { assert.equal(request.headers.get('Range'), 'bytes=0-65535'); return new Response(jpegHead(1500, 1000), {status: 206, headers: {'Content-Type': 'image/jpeg'}}); }
   }
+  // a cover on TMDB's image host (plan.cover: 'ok', a status, or 'hang'), and a large scan elsewhere
+  if (url.hostname === 'image.tmdb.org') {
+    calls.push('cover ' + url.pathname);
+    if (plan.cover === 'hang') await pause(9000);
+    if (typeof plan.cover === 'number') return new Response('no', {status: plan.cover});
+    return new Response(jpegHead(300, 450), {headers: {'Content-Type': 'image/jpeg'}});
+  }
+  if (url.hostname === 'scans.example') return new Response(new Uint8Array(5 * 1024 * 1024), {headers: {'Content-Type': 'image/jpeg', 'Content-Length': String(5 * 1024 * 1024)}});
   // /title's book: The Waves, by its work id or by its title
   if (url.hostname === 'openlibrary.org' && url.pathname === '/works/OL99W.json') return json({title: 'The Waves', description: {value: 'Six friends, from childhood on, in soliloquies. ([source][1])'}, covers: [7], subjects: ['Fiction']});
   if (url.hostname === 'openlibrary.org' && url.pathname === '/search.json' && (url.searchParams.get('title') || /^key:/.test(url.searchParams.get('q') || ''))) {
@@ -151,7 +162,8 @@ async function ask(mf, path, init) {
   said.push(text, JSON.stringify([...r.headers]));
   return {status: r.status, from: r.headers.get('X-Cache'), body: JSON.parse(text)};
 }
-const scans = (mf, title, round = 0) => { fresh(); return ask(mf, `/scans?kind=movie&title=${encodeURIComponent(title)}&year=1999&round=${round}`); };
+// (and a moment after: what a search keeps is written once its answer is out)
+const scans = async (mf, title, round = 0) => { fresh(); const r = await ask(mf, `/scans?kind=movie&title=${encodeURIComponent(title)}&year=1999&round=${round}`); await pause(60); return r; };
 const usage = async mf => Object.fromEntries((await ask(mf, '/admin/usage', {headers: {Authorization: 'Bearer ' + ADMIN}})).body.providers.map(p => [p.name, p]));
 let n = 0; const ok = what => console.log(`  ok ${++n}  ${what}`);
 
@@ -168,8 +180,8 @@ try {
   ok('Serper is asked first, and a usable scan from it is the answer: nobody else is asked');
 
   r = await scans(mf, 'alpha one');
-  assert.deepEqual([r.from, calls, r.body.results.length], ['raw', [], 1]);
-  ok('the same title again comes from what was kept: no search');
+  assert.deepEqual([r.from, calls, r.body.results.length], ['EDGE', [], 1]);
+  ok('the same title again comes from what was kept (the edge, then KV): no search');
 
   fresh();
   r = await ask(mf, `/scans?kind=movie&title=${encodeURIComponent('alpha one')}&year=1999&round=0&cacheonly=1`);
@@ -329,7 +341,7 @@ try {
   r = await book(2);
   assert.deepEqual([queries.serper, r.body.round, r.body.more], [['psi twenty-three Some Writer dust jacket full wrap'], 2, false]);
   r = await book(3);
-  assert.deepEqual([queries.serper, r.body.round, r.from], [[], 2, 'raw']);   // there is no round 3 for a book: it's round 2, kept
+  assert.deepEqual([queries.serper, r.body.round, r.from], [[], 2, 'EDGE']);   // there is no round 3 for a book: it's round 2, kept
   fresh();
   r = await ask(mf, '/scans?kind=movie&title=psi%20twenty-three&year=1950&round=3');
   assert.deepEqual([r.body.round, r.body.more], [3, false]);
@@ -457,6 +469,100 @@ try {
   assert.deepEqual([r.status, r.to], [302, 'https://shelfstackd.com/']);
   assert.ok(!said.join('\n').includes('sb_publishable_test'));
   ok('a private profile previews with its name only, no one with the site\'s own picture, and a bad link goes home');
+} finally { await mf.dispose(); }
+
+/* ---------- a busy day: answers within BUDGET (1.8 s), one search per title, and caps that answer at once ---------- */
+mf = worker({SERPER_DAILY_CAP: '20', TMDB_TOKEN: 'tmdb-test-token-0000'});
+try {
+  plan = {serper: 'wrap', slow: {serper: 2600}};
+  fresh();
+  let t = Date.now();
+  const path = `/scans?kind=movie&title=${encodeURIComponent('slow one')}&year=1999&round=0`;
+  const [a, b] = await Promise.all([ask(mf, path), (async () => { await pause(100); return ask(mf, path); })()]);
+  assert.ok(Date.now() - t < 2500, 'both answered within the budget');
+  assert.deepEqual([a.body.pending, b.body.pending, a.body.results, a.from, b.from], [true, true, [], 'pending', 'pending']);
+  await pause(1500);
+  assert.deepEqual(calls, ['serper']);
+  ok('a search slower than 1.8 s: the page is told it is under way (pending) at 1.8 s, and a second ask for the same title doesn’t search again');
+  const c = await ask(mf, path + '&cacheonly=1');
+  assert.deepEqual([c.body.cached, c.body.results.length, c.from], [true, 1, 'raw']);
+  ok('the slow search finished in the background and was kept: asked again (cacheonly), it is there');
+
+  plan = {serper: 'wrap', slow: {openlibrary: 2600}};
+  t = Date.now();
+  let r = await ask(mf, '/identify?want=all&q=gumm&suggest=1');
+  assert.ok(Date.now() - t < 2500);
+  assert.equal(r.body.partial, true);
+  assert.ok(r.body.results.length > 0 && r.body.results.every(x => x.kind === 'movie'));
+  await pause(4500);   // Open Library is slow twice here: the search, then the author record
+  r = await ask(mf, '/identify?want=all&q=gumm&suggest=1');
+  assert.deepEqual([r.from, r.body.partial, r.body.results.some(x => x.kind === 'book')], ['EDGE', undefined, true]);
+  ok('/identify with Open Library slow: the films at 1.8 s (partial), and the whole answer kept at the edge for the next ask');
+} finally { await mf.dispose(); }
+
+mf = worker({SERPER_DAILY_CAP: '0', SERPAPI_DAILY_CAP: '0', BRAVE_DAILY_CAP: '0', ARCHIVE_ORG_DAILY_CAP: '0'});
+try {
+  plan = {serper: 'wrap', serpapi: 'wrap', brave: 'wrap', archiveorg: 'wrap'};
+  let r = await scans(mf, 'capped one');
+  assert.deepEqual([r.body.capped, calls], [true, []]);
+  const t = Date.now();
+  r = await scans(mf, 'capped two');
+  assert.deepEqual([r.body.capped, r.from, calls], [true, 'capped', []]);
+  assert.ok(Date.now() - t < 500);
+  ok('every cap reached: a new title is told capped at once (the page makes its spine from the cover), nothing asked of anyone');
+} finally { await mf.dispose(); }
+
+/* ---------- found: the scans a page cut clean spines from, for the next visitor ---------- */
+mf = worker({SERPER_DAILY_CAP: '20'});
+try {
+  plan = {serper: 'wrap'};
+  const base = `kind=movie&title=${encodeURIComponent('found one')}&year=1999`;
+  let r = await ask(mf, `/scans?${base}&round=0&id=555`);
+  await pause(60);
+  const img = r.body.results[0].img;
+  assert.equal(r.body.found, undefined);
+  const post = body => ask(mf, '/found', {method: 'POST', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(body)});
+  r = await post({kind: 'movie', id: '555', title: 'found one', year: '1999', cuts: [{img, round: 0, score: 88}, {img: 'https://evil.example/anything.jpg', round: 0, score: 100}]});
+  assert.deepEqual([r.status, r.body.kept], [200, 1]);
+  ok('POST /found keeps a scan /scans gave for that title, and not a picture it never gave');
+  r = await ask(mf, `/scans?${base}&round=0&id=555`);
+  assert.deepEqual([r.body.found.length, r.body.found[0].img, r.body.found[0].score, r.body.found[0].round], [1, img, 88, 0]);
+  r = await ask(mf, `/scans?${base}&round=0&id=556`);
+  assert.equal(r.body.found, undefined);
+  ok('round 0 then brings it (found), under that title and id only');
+  r = await post({kind: 'movie', id: '9', title: 'never searched', year: '1999', cuts: [{img, round: 0, score: 90}]});
+  assert.equal(r.body.kept, 0);
+  assert.equal((await post({kind: 'movie', title: 'x'})).status, 400);
+  assert.equal((await ask(mf, '/found', {method: 'POST', body: 'not json'})).status, 400);
+  ok('a title nobody searched keeps nothing, and a POST that isn’t a list of cuts is refused');
+} finally { await mf.dispose(); }
+
+/* ---------- /img: covers kept on our side, scans streamed ---------- */
+mf = worker();
+try {
+  const img = async u => { const r = await mf.dispatchFetch('http://worker/img?url=' + encodeURIComponent(u)); const b = new Uint8Array(await r.arrayBuffer()); return {status: r.status, from: r.headers.get('X-Cache'), size: b.byteLength, b}; };
+  plan = {cover: 'ok'};
+  let r = await img('https://image.tmdb.org/t/p/w500/manic.jpg');
+  assert.deepEqual([r.status, r.size], [200, 64]);
+  await pause(100);
+  const kept = await (await mf.getR2Bucket('MEDIA')).list({prefix: 'c/'});
+  assert.equal(kept.objects.length, 1);
+  ok('/img keeps a copy of a TMDB or Open Library cover in R2 the first time it passes through');
+  plan = {cover: 503};
+  r = await img('https://image.tmdb.org/t/p/w500/manic.jpg?again');   // not at the edge: the host is asked, and fails
+  assert.equal(r.status, 502);
+  await (await mf.getR2Bucket('MEDIA')).put('c/' + [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('https://image.tmdb.org/t/p/w500/manic.jpg?again')))].map(x => x.toString(16).padStart(2, '0')).join(''), jpegHead(300, 450));
+  r = await img('https://image.tmdb.org/t/p/w500/manic.jpg?again');
+  assert.deepEqual([r.status, r.from, r.b[0], r.b[1]], [200, 'SAVED', 0xFF, 0xD8]);
+  ok('the cover’s host answers 503: our saved copy is served instead');
+  plan = {cover: 'hang'};
+  const t = Date.now();
+  r = await img('https://image.tmdb.org/t/p/w500/never.jpg');
+  assert.ok(r.status === 504 && Date.now() - t < 9000);
+  ok('a host that never answers is given up on after 8 s (504), not held open');
+  r = await img('https://scans.example/big.jpg');
+  assert.deepEqual([r.status, r.size], [200, 5 * 1024 * 1024]);
+  ok('a 5 MB scan with its size given is streamed through');
 } finally { await mf.dispose(); }
 
 /* ---------- no key ever comes back ---------- */

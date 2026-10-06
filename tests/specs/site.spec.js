@@ -175,7 +175,7 @@ test.describe('account menu', () => {
 test('every sign-out is for this device only', () => {
   test.skip(isPhone(), 'reads files, no browser: once is enough');
   const fs = require('fs'), path = require('path'), { ROOT } = require('../site');
-  for (const f of ['index.html', 'build/index.html', 'feed/index.html', 'u/index.html', 'settings/index.html', 'shelves/index.html', 'people/index.html', 'admin.html']) {
+  for (const f of ['index.html', 'builder.js', 'feed/index.html', 'u/index.html', 'settings/index.html', 'shelves/index.html', 'people/index.html', 'admin.html']) {
     const calls = fs.readFileSync(path.join(ROOT, f), 'utf8').match(/auth\.signOut\([^)]*\)/g) || [];
     expect(calls.length, f).toBeGreaterThan(0);
     for (const c of calls) expect(c, f).toBe("auth.signOut({scope: 'local'})");
@@ -257,7 +257,7 @@ test('signed-out home: a wall of the newest spines from different shelves on a s
   // Make a shelf: solid black, at the left, on the first screen
   const make = hero.getByRole('link', { name: 'Make a shelf' });
   await expect(make).toBeVisible();
-  await expect(make).toHaveAttribute('href', 'build/');
+  await expect(make).toHaveAttribute('href', 'make/');
   const bg = el => getComputedStyle(el).backgroundColor, at = await make.boundingBox();
   expect(await make.evaluate(bg)).toBe('rgb(0, 0, 0)');
   expect(Math.abs(at.x - main.x)).toBeLessThanOrEqual(1);
@@ -280,8 +280,7 @@ test('signed-out home: a wall of the newest spines from different shelves on a s
   await expect(page).toHaveURL(new RegExp(`/u/\\?mira&shelf=${SHELVES[1].id}$`));
   await page.goBack();
   await page.getByRole('link', { name: 'Make a shelf' }).click();
-  await expect(page.locator('#signSheet')).toBeVisible();   // signed out: sign in first (the site is read only)
-  await expect(page.locator('#signSheet .sheetbox p:not(.note)').first()).toHaveText('Sign in to start your shelf.');
+  await expect(page).toHaveURL(/\/make\/$/);   // signed out: make/, a shelf with no account (no sign-in asked)
   expect(errors).toEqual([]);
 });
 
@@ -320,28 +319,7 @@ test('signed-out home\'s spine wall: with only a few spines on the site, they st
 });
 
 // Signed out the site is read only; signing in from Make a shelf goes on to the builder, and from + ADD to the Add dialog
-test('signed out, Make a shelf asks to sign in, and once signed in the builder opens', async ({ page }) => {
-  await mockNetwork(page, { signedIn: true, ownShelf: false });
-  const signBack = await putAside(page);
-  await open(page, '/');
-  await page.getByRole('link', { name: 'Make a shelf' }).click();
-  await expect(page.locator('#signSheet')).toBeVisible();
-  await signBack(); await page.reload();
-  await expect(page).toHaveURL(/\/build\/$/);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your shelf');
-});
-test('signed out, + ADD asks to sign in, and once signed in the Add dialog opens where you were', async ({ page }) => {
-  await mockNetwork(page, { signedIn: true });
-  const signBack = await putAside(page);
-  await open(page, '/feed/?everyone');
-  await page.locator('header.top .add').click();
-  await expect(page.locator('#signSheet')).toBeVisible();
-  await signBack(); await page.reload();
-  await expect(page.getByRole('dialog', { name: 'What did you watch or read?' })).toBeVisible();
-  await expect(page).toHaveURL(/\/feed\//);
-  await page.keyboard.press('Escape'); await page.reload();
-  await expect(page.getByRole('dialog', { name: 'What did you watch or read?' })).toBeHidden();   // once, not every time
-});
+// Signed out, Make a shelf and + ADD go to make/ (a shelf with no account): specs/make.spec.js
 
 test('signed-in home: a welcome by name, the row from people you follow with See all, then Just shelved', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });

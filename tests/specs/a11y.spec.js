@@ -147,11 +147,13 @@ test('axe: + ADD on Log it, with a title picked', async ({ page }) => {
   await clean(page);
 });
 
-test('axe: + ADD signed out (the sign-in sheet), and the closed builder', async ({ page }) => {
+test('axe: + ADD signed out (make/, with its dialog open), and the closed builder', async ({ page }) => {
   await mockNetwork(page);
   await open(page, '/feed/?everyone');
   await page.locator('header.top .add').click();
-  await expect(page.locator('#signSheet')).toBeVisible();
+  await expect(page).toHaveURL(/\/make\/$/);
+  await page.locator('header.top .add').click();
+  await expect(page.locator('#addDialog')).toBeVisible();
   await clean(page);
   await open(page, '/build/');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sign in to make your shelf.');

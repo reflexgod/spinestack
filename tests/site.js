@@ -13,6 +13,7 @@ const SESSION_KEY = `sb-${new URL(SB_URL).hostname.split('.')[0]}-auth-token`;  
 const PAGES = [
   { name: 'home', path: '/' },
   { name: 'build', path: '/build/' },
+  { name: 'make', path: '/make/' },
   { name: 'feed', path: '/feed/?everyone' },
   { name: 'profile', path: '/u/?mira' },
   { name: 'settings', path: '/settings/' },

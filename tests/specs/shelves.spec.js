@@ -8,7 +8,7 @@ test('Shelves, signed out: the title, Make a shelf, and every public shelf as it
   await open(page, '/shelves/');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Shelves');
   const start = page.locator('main').getByRole('link', { name: 'Make a shelf' });
-  await expect(start).toHaveAttribute('href', '../build/');
+  await expect(start).toHaveAttribute('href', '../make/');
   await expect(page.locator('header.top .links').getByRole('link', { name: 'Shelves', exact: true })).toHaveAttribute('aria-current', 'page');
   const cards = page.locator('#grid li');
   await expect(cards).toHaveCount(18);
@@ -24,10 +24,7 @@ test('Shelves, signed out: the title, Make a shelf, and every public shelf as it
   expect(await line.evaluate(el => { const s = getComputedStyle(el); return [Math.round(el.getBoundingClientRect().height), s.borderBottomWidth, s.borderBottomColor, s.backgroundColor].join(' '); }))
     .toBe('96 1px rgb(0, 0, 0) rgba(0, 0, 0, 0)');   // the line inside the 96px
   expect(await first.locator('a').evaluate(el => getComputedStyle(el).borderTopWidth)).toBe('0px');
-  await start.click();
-  await expect(page.locator('#signSheet')).toBeVisible();   // signed out: sign in first (the site is read only)
-  await expect(page.locator('#signSheet .sheetbox p:not(.note)').first()).toHaveText('Sign in to start your shelf.');
-  await expect(page).toHaveURL(/\/shelves\/$/);
+  await expect(start).toHaveAttribute('href', '../make/');   // signed out: make/, a shelf with no account
   expect(errors).toEqual([]);
   expect(net.unknown).toEqual([]);
 });
@@ -81,16 +78,6 @@ test('Shelves: 24 at a time; Load more asks for the ones after the last shown', 
   expect(sideways).toBeLessThanOrEqual(0);
 });
 
-test('Shelves, signed out: Make a shelf, then signing in, goes on to the builder', async ({ page }) => {
-  await mockNetwork(page, { signedIn: true, ownShelf: false });
-  const signBack = await putAside(page);
-  await open(page, '/shelves/');
-  await page.locator('main').getByRole('link', { name: 'Make a shelf' }).click();
-  await expect(page.locator('#signSheet')).toBeVisible();
-  await signBack(); await page.reload();
-  await expect(page).toHaveURL(/\/build\/$/);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your shelf');
-});
 
 // + New shelf, to build/?new, as the outlined button (black words on white, a 1px black line round them, its +): on the
 // Shelves page signed in, at the top of your own Shelves tab, and in + ADD's ▾

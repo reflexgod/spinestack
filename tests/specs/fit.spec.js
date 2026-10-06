@@ -29,6 +29,8 @@ const PLACES = [
   ['settings', '/settings/', ALL],
   ['settings, photo', '/settings/#photo', ALL],
   ['the builder', '/build/?sample', ALL],
+  ['make a shelf, signed out', '/make/?sample', {}],
+  ['make a shelf, Style open', '/make/?sample', {}, async p => { await p.locator('#stylePanel summary').click(); }],
   ['the builder, Style open', '/build/?sample', ALL, async p => { await p.locator('#stylePanel summary').click(); }],
   ['+ ADD', '/feed/?everyone', ALL, async p => { await p.locator('header.top .add').click(); await p.locator('#addQ').fill('kids'); await p.locator('#addRows li').first().waitFor(); }],
   ['+ ADD, Log it', '/feed/?everyone', ALL, async p => { await p.locator('header.top .add').click(); await p.locator('#addQ').fill('gummo'); await p.locator('#addRows li').first().click(); await p.locator('#addPostGo').waitFor(); }],

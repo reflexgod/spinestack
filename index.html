@@ -145,7 +145,7 @@
       </figure>
       <p class="invited" id="invited" hidden></p>
       <h1>Shelve the films and books you love, with their real spines.</h1>
-      <a class="btn primary" id="start" href="build/">Make a shelf</a>
+      <a class="btn primary" id="start" href="make/">Make a shelf</a>
     </section>
     <section id="outJust">
       <h2>Just shelved <a class="more" href="shelves/" aria-label="See all shelves">See all</a></h2>
@@ -198,7 +198,7 @@
 <script src="worker-address.js?v=20261001a"></script>
 <script src="wear.js?v=20261016a"></script>
 <script src="bare.js?v=20261013a"></script>
-<script src="nav.js?v=20261020a"></script>
+<script src="nav.js?v=20261021a"></script>
 <script>
 (() => {
 /* Home. Signed out: a wall of the newest spines, one line about the site and Make a shelf, and nothing else before the
@@ -207,7 +207,7 @@
 const $ = s => document.querySelector(s);
 const WORKER = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
 const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
-const SB_LIB = {src:'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
+const SB_LIB = {src:'vendor/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', integrity:'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'};
 const ROW = 6, GRID = 12, ASK = 50;   // ROW: people you follow, a card each, from the newest ASK things they did
 const WALL = 24, EACH = 3;           // the spine wall: this many spines at most, at first no more than EACH from a person
 
@@ -384,8 +384,7 @@ function paintWall(){
   }
   wall.w = innerWidth;
 }
-// Make a shelf, signed out: the sign-in sheet, then the builder (nothing is made before signing in)
-$('#start').addEventListener('click', e => { if (Nav.visitor()){ e.preventDefault(); Nav.needAccount('build'); } });
+// Make a shelf, signed out: make/, where a shelf is made with no account
 // no public shelf to show: the builder's sample shelf, so the page still shows what one is
 function sample(){ $('#sample').hidden = false; $('#wallCap').hidden = false; }
 
