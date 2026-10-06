@@ -2,15 +2,21 @@
    moderated archive of spines people cut from their own scans. Keys live in Worker secrets
    (TMDB_TOKEN, SERPER_KEY, SERPAPI_KEY, BRAVE_API_KEY, ADMIN_TOKEN), never in the page, and are never logged or sent back.
 
-   GET  /identify?q=&want=all|movie|book[&suggest=1]  -> {results:[{kind,title,year,creator,cover}]}
-        suggest=1 is a half-typed title (the page suggests as you type): answered the same, but not kept in KV.
-   GET  /scans?title=&year=&kind=movie|book&creator=&round=0-3 (a book 0-2)[&cacheonly=1]
-        -> {results:[{img,source,title,width,height, archive?,id?}], round, more, capped?, cached? (with cacheonly)}
+   GET  /identify?q=&want=all|movie|book[&suggest=1]  -> {results:[{kind,title,year,creator,cover}], partial?}
+        suggest=1 is a half-typed title (the page suggests as you type). Answered within BUDGET: when TMDB or Open
+        Library is slower, what has come is the answer (partial: true) and the whole one is kept at the edge for the next ask.
+   GET  /scans?title=&year=&kind=movie|book&creator=&round=0-3 (a book 0-2)[&id=][&cacheonly=1]
+        -> {results:[{img,source,title,width,height, archive?,id?}], round, more, found?, capped?, pending?, cached? (with cacheonly)}
         One query per round, so the page asks for the next round only when it still needs spines.
-        Round 0 starts with approved spines from the archive. What isn't already kept is looked for with Serper, then
-        SerpApi, then Brave, then archive.org, stopping at the first that gives a usable scan. Each has a cap on
-        searches a day, across everyone (wrangler.toml). capped: true means nothing usable was found and at least one
-        of them was at its cap or out for the day.
+        Round 0 starts with approved spines from the archive, and found: the scans someone's page cut a clean spine
+        from before (POST /found), best first, so a popular title loads one or two scans instead of a search's worth.
+        What isn't already kept is looked for with Serper, then SerpApi, then Brave, then archive.org, stopping at the
+        first that gives a usable scan. Each has a cap on searches a day, across everyone (wrangler.toml). capped: true
+        means nothing usable was found and at least one of them was at its cap or out for the day (when all are, that's
+        said at once, with nothing asked). pending: true means the search is still going (someone else's, or this one
+        past BUDGET): it's kept when it's done, and the page asks again with cacheonly=1.
+   POST /found  (body, as text: {kind, id, title, year, creator, cuts:[{img, round, score}]})  -> {ok, kept}
+        the scans this page cut clean spines from. Only scans /scans gave for that title and round are kept.
    GET  /img?url=  -> the image, with CORS
    POST /archive?kind=&title=&year=&author=  (body: PNG of one spine) -> {ok, id, status:'pending'}
    GET  /archive/img?id=  -> an approved spine (pending ones only with the admin token)
@@ -95,6 +101,7 @@ export default {
       if (!post && path === '/identify') return await identify(p, env, cors, ctx);
       if (!post && path === '/title') return await titleInfo(p, env, cors, ctx);
       if (!post && path === '/scans') return await scans(p, env, cors, ctx);
+      if (post && path === '/found') return await foundPost(req, env, cors);
       if (post && path === '/archive') return await upload(req, p, ip, env, cors);
       if (post && path === '/report') return await report(p.get('id'), ip, env, cors);
       if (!post && (path === '/' || path === '/health')) return json({ok: true, tmdb: !!env.TMDB_TOKEN, brave: !!env.BRAVE_API_KEY, braveDailyCap: braveCap(env), scans: Object.fromEntries(PROVIDERS.map(pv => [pv.name, !!pv.key(env)])), archive: !!(env.ADMIN_TOKEN && env.ARCHIVE), accounts: !!(env.SUPABASE_URL && env.SUPABASE_KEY), userStore: env.USER_R2 ? 'r2' : 'kv'}, 200, cors);
@@ -111,6 +118,24 @@ export default {
 };
 
 const json = (body, status, cors, extra = {}) => new Response(JSON.stringify(body), {status, headers: {'Content-Type': 'application/json; charset=utf-8', ...cors, ...extra}});
+/* No answer the page waits on (/identify, /scans) takes longer than this. What's still coming after it goes on in the
+   background (ctx.waitUntil) and is kept, so the next ask has it. */
+const BUDGET = 1800;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+/* What this copy of the Worker has learned lately. A copy serves many requests in a row, so a busy minute asks TMDB,
+   Open Library and Wikidata once for what many searches share: a film's director, an author's name, a book's year.
+   Only finished answers are kept (never a promise: a request mustn't wait on another request's fetch), never a key,
+   nothing about a person. */
+const MEMO = new Map();
+async function memo(key, ms, make) {
+  const hit = MEMO.get(key);
+  if (hit && hit.until > Date.now()) return hit.value;
+  const value = await make();
+  if (MEMO.size > 3000) MEMO.clear();
+  MEMO.set(key, {value, until: Date.now() + ms});
+  return value;
+}
+const edgeKeep = (key, body, ttl) => caches.default.put(key, new Response(JSON.stringify(body), {headers: {'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${ttl}`}}));
 async function allowed(limiter, ip) {
   if (!limiter) return true;   // binding not configured: no limit
   try { return (await limiter.limit({key: ip})).success; } catch { return true; }
@@ -119,20 +144,10 @@ const clean = (s, max) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, m
 const words = s => String(s || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/&/g, ' and ').split(/[^a-z0-9]+/).filter(Boolean);
 const decode = u => { try { return decodeURIComponent(u.replace(/\+/g, ' ')); } catch { return u; } };
 
-/* KV cache: each title costs one upstream lookup, then it's served from here for 30 days. */
-async function cached(env, ctx, key, ttl, make) {
-  if (env.SPINE_CACHE) {
-    const hit = await env.SPINE_CACHE.get(key, 'json');
-    if (hit) return {body: hit, hit: true};
-  }
-  const body = await make();
-  if (env.SPINE_CACHE && body) ctx.waitUntil(env.SPINE_CACHE.put(key, JSON.stringify(body), {expirationTtl: body.results && body.results.length ? ttl : DAY}));
-  return {body, hit: false};
-}
-
 /* ---------- /identify ---------- */
-async function getJSON(url, init) {
-  const r = await fetch(url, init);
+// one GET to TMDB, Open Library or Wikidata, given up on after `wait` ms (a hung host never holds a request open)
+async function getJSON(url, init, wait = 6000) {
+  const r = await fetch(url, {...init, signal: AbortSignal.timeout(wait)});
   if (!r.ok) throw new Error(`${new URL(url).hostname} answered ${r.status}`);
   return r.json();
 }
@@ -165,7 +180,7 @@ async function tmdbFilms(q, token) {
   const films = (r.results || []).map((m, i) => ({m, i, c: closeness(m.title || '', q)})).sort((a, b) => a.c - b.c || (b.m.vote_count || 0) - (a.m.vote_count || 0) || a.i - b.i).map(x => x.m);
   return Promise.all(films.slice(0, 5).map(async (m, i) => {
     let creator = '';
-    if (i < 3) try { const c = await getJSON(`https://api.themoviedb.org/3/movie/${m.id}/credits?` + key.slice(1), init); creator = ((c.crew || []).find(p => p.job === 'Director') || {}).name || ''; } catch {}
+    if (i < 3) try { creator = await memo('dir:' + m.id, DAY * 1000, async () => (((await getJSON(`https://api.themoviedb.org/3/movie/${m.id}/credits?` + key.slice(1), init)).crew || []).find(p => p.job === 'Director') || {}).name || ''); } catch {}
     return {kind: 'movie', tmdb: String(m.id), title: m.title || '', year: (m.release_date || '').slice(0, 4), creator, cover: m.poster_path ? 'https://image.tmdb.org/t/p/w500' + m.poster_path : ''};
   }));
 }
@@ -206,7 +221,7 @@ async function authorName(d) {
   if (alts.length) return personName(alts) || name;
   const key = (d.author_key || [])[0];
   if (!key) return name;
-  try { const a = await getJSON(`https://openlibrary.org/authors/${encodeURIComponent(key)}.json`, {headers: {'User-Agent': UA}}); return personName((a.alternate_names || []).filter(latin)) || name; }
+  try { return await memo('au:' + key, DAY * 1000, async () => personName(((await getJSON(`https://openlibrary.org/authors/${encodeURIComponent(key)}.json`, {headers: {'User-Agent': UA}})).alternate_names || []).filter(latin))) || name; }
   catch { return name; }
 }
 async function olBooks(q) {
@@ -228,16 +243,19 @@ function olYear(d) {
   return next && next - first > 2 && ys.length > 3 ? '' : String(first);   // unsure: show no year
 }
 async function wikidataYear(title, author) {
+  const want = words(title).join(' '), last = words(author).slice(-1)[0] || '', init = {headers: {'User-Agent': UA}};
+  if (!want || !last) return null;
+  // kept a day by this copy of the Worker (an error isn't kept: the next ask tries again)
   try {
-    const want = words(title).join(' '), last = words(author).slice(-1)[0] || '', init = {headers: {'User-Agent': UA}};
-    if (!want || !last) return null;
-    const s = await getJSON('https://www.wikidata.org/w/api.php?action=wbsearchentities&format=json&language=en&type=item&limit=7&search=' + encodeURIComponent(title), init);
-    // same title, and the author's surname in the description ("2016 novel by Colleen Hoover")
-    const hit = (s.search || []).find(x => words(x.label).join(' ') === want && words(x.description).includes(last));
-    if (!hit) return null;
-    const e = (await getJSON(`https://www.wikidata.org/wiki/Special:EntityData/${hit.id}.json`, init)).entities[hit.id];
-    const ys = ((e.claims || {}).P577 || []).map(c => c.mainsnak.datavalue && parseInt(c.mainsnak.datavalue.value.time.slice(1, 5), 10)).filter(y => y > 1000);
-    return ys.length ? Math.min(...ys) : null;
+    return await memo(`wd:${want}|${words(author).join(' ')}`, DAY * 1000, async () => {
+      const s = await getJSON('https://www.wikidata.org/w/api.php?action=wbsearchentities&format=json&language=en&type=item&limit=7&search=' + encodeURIComponent(title), init, 3000);
+      // same title, and the author's surname in the description ("2016 novel by Colleen Hoover")
+      const hit = (s.search || []).find(x => words(x.label).join(' ') === want && words(x.description).includes(last));
+      if (!hit) return null;
+      const e = (await getJSON(`https://www.wikidata.org/wiki/Special:EntityData/${hit.id}.json`, init, 3000)).entities[hit.id];
+      const ys = ((e.claims || {}).P577 || []).map(c => c.mainsnak.datavalue && parseInt(c.mainsnak.datavalue.value.time.slice(1, 5), 10)).filter(y => y > 1000);
+      return ys.length ? Math.min(...ys) : null;
+    });
   } catch { return null; }
 }
 async function identify(p, env, cors, ctx) {
@@ -246,25 +264,31 @@ async function identify(p, env, cors, ctx) {
   // id8: each with its id (tmdb, or ol: Open Library's work), for the title page (/t/); id7: the closest titles first, ranked before five are kept, and 1984 finding Nineteen Eighty-Four;
   // id6: an author's name as they write it ("Haruki Murakami", not "MURAKAMI HARUKI"); id5: a book's author in Latin letters when Open Library has them (id4 answers could have 村上春樹); id4: books only
   // when the title or author has what was typed, each once (id3 answers had the rest; id2 the reports)
-  const key = `id8:${want}:${q.toLowerCase()}`, make = async () => {
-    const [f, b] = await Promise.allSettled([want !== 'book' ? tmdbFilms(q, env.TMDB_TOKEN) : [], want !== 'movie' ? olBooks(q) : []]);
+  // Kept at the edge for a day (an empty answer an hour), half-typed or not. Answers kept in KV before 6 October 2026
+  // are still read; none is written there now: KV's free plan allows 1,000 writes a day, and saved shelves' pictures
+  // and scan searches need them more (an answer costs nothing but a TMDB and an Open Library ask to make again).
+  const key = `id8:${want}:${q.toLowerCase()}`, ekey = new Request('https://identify.cache/' + encodeURIComponent(key));
+  const hold = body => edgeKeep(ekey, body, body.results.length ? DAY : 3600);
+  const held = await caches.default.match(ekey);
+  if (held) return json(await held.json(), 200, cors, {'X-Cache': 'EDGE'});
+  const kept = env.SPINE_CACHE ? await env.SPINE_CACHE.get(key, 'json').catch(() => null) : null;
+  if (kept) { ctx.waitUntil(hold(kept)); return json(kept, 200, cors, {'X-Cache': 'HIT'}); }
+  // TMDB and Open Library side by side. Whatever has come by BUDGET is the answer (partial: true, so the page asks again
+  // in a moment); the whole answer is kept at the edge when it comes.
+  const sides = [want !== 'book' ? tmdbFilms(q, env.TMDB_TOKEN) : [], want !== 'movie' ? olBooks(q) : []].map(x => Promise.resolve(x));
+  const got = sides.map(s => { const o = {done: false, value: []}; s.then(v => { o.done = true; o.value = v; }, () => { o.done = true; }); return o; });
+  const all = Promise.allSettled(sides).then(([f, b]) => {
     if (f.status === 'rejected' && b.status === 'rejected') throw new Error('TMDB and Open Library did not answer');
     return {results: [...(f.value || []), ...(b.value || [])]};
-  };
-  if (p.get('suggest') === '1') {
-    // a half-typed title, from the suggestions: a kept answer is used when there is one, but this one isn't kept in
-    // KV (its free plan allows 1,000 writes a day, and every few letters would be one). The edge holds it for a day.
-    const kept = env.SPINE_CACHE ? await env.SPINE_CACHE.get(key, 'json') : null;
-    if (kept) return json(kept, 200, cors, {'X-Cache': 'HIT'});
-    const edge = caches.default, ekey = new Request('https://identify.cache/' + encodeURIComponent(key));
-    const held = await edge.match(ekey);
-    if (held) return json(await held.json(), 200, cors, {'X-Cache': 'EDGE'});
-    const body = await make();
-    ctx.waitUntil(edge.put(ekey, new Response(JSON.stringify(body), {headers: {'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${body.results.length ? DAY : 3600}`}})));
+  });
+  const late = await Promise.race([all.then(() => false, () => false), sleep(BUDGET).then(() => true)]);
+  if (!late) {
+    const body = await all;
+    ctx.waitUntil(hold(body));
     return json(body, 200, cors, {'X-Cache': 'MISS'});
   }
-  const {body, hit} = await cached(env, ctx, key, MONTH, make);
-  return json(body, 200, cors, {'X-Cache': hit ? 'HIT' : 'MISS'});
+  ctx.waitUntil(all.then(hold, () => {}));
+  return json({results: got.flatMap(o => o.done ? o.value : []), partial: true}, 200, cors, {'X-Cache': 'LATE', 'Cache-Control': 'no-store'});
 }
 
 /* ---------- /title: one film or book, for its page (/t/) ----------
@@ -474,20 +498,32 @@ const PROVIDERS = [
   {name: 'archiveorg', key: () => 'none needed', cap: env => capOf(env.ARCHIVE_ORG_DAILY_CAP, 100), search: archiveOrg, firstRoundOnly: true},
 ];
 const OUT_FOR_TODAY = [401, 402, 403, 429];
+const PROVIDER_WAIT = 8000;   // ms: a provider that hasn't answered by then has, for this search, said nothing
 // what went wrong with a provider: its name and the status it answered with, nothing else (never an address, which may hold a key)
 class ProviderError extends Error { constructor(name, status) { super(`${name} answered ${status}`); this.status = status; } }
 async function provJSON(name, url, init) {
   let r;
-  try { r = await fetch(url, init); } catch { throw new ProviderError(name, 'nothing'); }
+  try { r = await fetch(url, {...init, signal: AbortSignal.timeout(PROVIDER_WAIT)}); } catch { throw new ProviderError(name, 'nothing'); }
   if (!r.ok) throw new ProviderError(name, r.status);
   try { return await r.json(); } catch { throw new ProviderError(name, 'something unreadable'); }
 }
-// one search by a provider, counted first: {ok: true}, or {ok: false, why: 'cap' | 'blocked' | 'total' | 'uncounted'}
+/* A provider that's done for the day (at its cap, out of credits, or out after a 401/402/403/429) stays done until
+   midnight UTC: this copy of the Worker remembers it, so on a busy day with every cap reached, a title that isn't
+   kept is told "capped" at once, with nothing asked of the counter (the Durable Object) or anyone else. */
+const OUT = {day: '', names: new Set()};
+const isOut = name => OUT.day === today() && OUT.names.has(name);
+function markOut(name) { if (OUT.day !== today()) { OUT.day = today(); OUT.names = new Set(); } OUT.names.add(name); }
+// one search by a provider, counted first: {ok: true}, or {ok: false, why: 'cap' | 'blocked' | 'total' | 'out' | 'uncounted'}
 async function spendOn(env, pv) {
+  if (isOut(pv.name)) return {ok: false, why: 'out'};
   if (!env.ARCHIVE) return {ok: false, why: 'uncounted'};
-  try { return await store(env).spendSearch(pv.name, today(), pv.cap(env), pv.total ? pv.total(env) : null, pv.cost || 1); }
+  let r;
+  try { r = await store(env).spendSearch(pv.name, today(), pv.cap(env), pv.total ? pv.total(env) : null, pv.cost || 1); }
   catch { return {ok: false, why: 'uncounted'}; }
+  if (!r.ok) markOut(pv.name);
+  return r;
 }
+async function blockFor(env, name) { markOut(name); await store(env).blockSearch(name, today()).catch(() => {}); }
 /* Serper answers 400 to a search with double quotes in it ("gummo" 1997 dvd cover), and 200 to the same one without
    them. So the quotes come out before it's asked: the filters in pick() look for the whole title in each result
    anyway. If it still answers 400, it's asked once more with the plainest search there is (the title, a film's year,
@@ -539,7 +575,7 @@ async function archiveOrg(q, key, {title}) {
 }
 // a JPEG's or PNG's width and height, from its first 64 KB
 async function imageSize(url, init) {
-  const r = await fetch(url, {...init, headers: {...(init && init.headers), Range: 'bytes=0-65535'}});
+  const r = await fetch(url, {...init, headers: {...(init && init.headers), Range: 'bytes=0-65535'}, signal: AbortSignal.timeout(4000)});
   if (!r.ok || !r.body) return null;
   const reader = r.body.getReader(), parts = []; let n = 0;
   while (n < 65536) { const {done, value} = await reader.read(); if (done) break; parts.push(value); n += value.byteLength; }
@@ -566,52 +602,80 @@ const slim = list => list.map(r => ({title: r.title || '', url: r.url || '',
   properties: {url: r.properties && r.properties.url, width: (r.properties && +r.properties.width) || 0, height: (r.properties && +r.properties.height) || 0},
   thumbnail: r.thumbnail ? {width: +r.thumbnail.width || 0, height: +r.thumbnail.height || 0} : null}));
 async function rawScans(env, ctx, kind, title, year, creator, round, cacheOnly) {
+  const t0 = Date.now();
   // book searches don't use the year (and book years get corrected), so a book's key has none
   const ckey = `raw1:${kind}:${words(title).join(' ')}:${kind === 'book' ? '' : year}:${roundKey(kind, round)}`, keep = n => ({expirationTtl: n ? 365 * DAY : 7 * DAY});
-  const hit = await env.SPINE_CACHE.get(ckey, 'json');
+  const hit = await env.SPINE_CACHE.get(ckey, 'json').catch(() => null);
   if (hit) return {list: hit, from: 'raw'};
-  // before raw1, only the filtered results were kept (sc6-sc11). They still carry everything the filters read,
-  // so they stand in for the raw answer instead of a new search, and are copied to raw1 for next time.
-  for (const v of kind === 'book' && round === 2 ? [] : LEGACY) {
-    let old = await env.SPINE_CACHE.get(`${v}:${kind}:${title.toLowerCase()}:${year}:${creator.toLowerCase()}:${round}`, 'json');
-    if (!old && kind === 'book') {   // stored under whatever year the book had then
-      const k = (await env.SPINE_CACHE.list({prefix: `${v}:book:${title.toLowerCase()}:`, limit: 50})).keys.find(x => x.name.endsWith(':' + round));
-      if (k) old = await env.SPINE_CACHE.get(k.name, 'json');
-    }
-    if (!old || !old.results) continue;
-    const list = old.results.map(r => ({title: r.title || '', url: r.source || '', properties: {url: r.img, width: r.width || 0, height: r.height || 0}, thumbnail: null}));
-    ctx.waitUntil(env.SPINE_CACHE.put(ckey, JSON.stringify(list), keep(list.length)));
-    return {list, from: v};
-  }
+  // cacheonly: what's kept under raw1 and nothing more. The page asks it for three rounds of every title it opens, so
+  // the older keys below (more KV reads, and for a book KV lists, 1,000 a day on the free plan) are only looked
+  // through when they'd save a search
   if (cacheOnly) return {list: [], from: 'miss'};
-  // each provider in turn, until one gives a scan the filters keep
-  const q = queryFor(kind, round, title, year, creator), all = [];
-  let asked = 0, capped = false, failed = false;
-  for (const pv of PROVIDERS) {
-    const key = pv.key(env);
-    if (!key || (pv.firstRoundOnly && round > 0)) continue;
-    if (!(await spendOn(env, pv)).ok) { capped = true; continue; }   // today's searches (or its credits) are used up, or it's out for the day
-    let got;
-    try { got = await pv.search(q, key, {kind, title, year, creator, round}); }
-    catch (e) {
-      if (OUT_FOR_TODAY.includes(e && e.status)) { capped = true; ctx.waitUntil(store(env).blockSearch(pv.name, today()).catch(() => {})); }
-      else failed = true;   // it didn't answer, or not sensibly: the next one is asked, and this title is tried again tomorrow
-      continue;
+  // before raw1, only the filtered results were kept (sc6-sc11). They still carry everything the filters read,
+  // so they stand in for the raw answer instead of a new search, and are copied to raw1 for next time. (They were
+  // kept a month: the last go by 29 October 2026, and this can go then.)
+  try {
+    for (const v of kind === 'book' && round === 2 ? [] : LEGACY) {
+      let old = await env.SPINE_CACHE.get(`${v}:${kind}:${title.toLowerCase()}:${year}:${creator.toLowerCase()}:${round}`, 'json');
+      if (!old && kind === 'book') {   // stored under whatever year the book had then
+        const k = (await env.SPINE_CACHE.list({prefix: `${v}:book:${title.toLowerCase()}:`, limit: 50})).keys.find(x => x.name.endsWith(':' + round));
+        if (k) old = await env.SPINE_CACHE.get(k.name, 'json');
+      }
+      if (!old || !old.results) continue;
+      const list = old.results.map(r => ({title: r.title || '', url: r.source || '', properties: {url: r.img, width: r.width || 0, height: r.height || 0}, thumbnail: null}));
+      ctx.waitUntil(env.SPINE_CACHE.put(ckey, JSON.stringify(list), keep(list.length)).catch(() => {}));
+      return {list, from: v};
     }
-    if (pv.total && Number.isFinite(got.credits) && got.credits !== pv.cost) ctx.waitUntil(store(env).addCredits(pv.name, got.credits - pv.cost).catch(() => {}));
-    asked++;
-    const list = slim(got.list || []);
-    all.push(...list);
-    if (pick(list, kind, title, year, creator).length) {
-      ctx.waitUntil(env.SPINE_CACHE.put(ckey, JSON.stringify(all), keep(all.length)));
-      return {list: all, from: pv.name};
-    }
+  } catch {}   // KV's reads or lists for the day are used up: on to a search
+  // who could be asked for this round. When every one of them is done for the day, that's the answer, at once
+  const open = PROVIDERS.filter(pv => pv.key(env) && !(pv.firstRoundOnly && round > 0));
+  if (open.length && open.every(pv => isOut(pv.name))) return {list: [], from: 'capped'};
+  // one search for a title's round at a time, whoever asks: anyone else is told it's under way (pending) and asks
+  // again in a moment, so a title a thousand people add in the same minute is searched once
+  if (open.length && env.ARCHIVE) {
+    const c = await store(env).claimSearch(ckey, Date.now()).catch(() => ({go: true}));
+    if (!c.go) return {list: [], from: 'pending'};
   }
-  // Nothing usable. When every provider that's set up was asked, that's the answer, and it's kept as before. When one
-  // was at its cap, out for the day or not answering, what there is is kept for a day only, so the title gets its
-  // turn with that provider tomorrow.
-  if (asked) ctx.waitUntil(env.SPINE_CACHE.put(ckey, JSON.stringify(all), capped || failed ? {expirationTtl: DAY} : keep(all.length)));
-  return {list: all, from: capped ? 'capped' : asked ? 'none' : 'miss'};
+  const run = searchRound(env, kind, title, year, creator, round, ckey, keep);
+  ctx.waitUntil(run.work);
+  const late = await Promise.race([run.answer.then(() => false), sleep(Math.max(300, BUDGET - (Date.now() - t0))).then(() => true)]);
+  return late ? {list: [], from: 'pending'} : run.answer;
+}
+/* Each provider in turn, until one gives a scan the filters keep. answer: what to tell the page, as soon as it's known;
+   work: that, then keeping it (KV, the counts, the claim), which may go on after the page has had its answer (and,
+   past BUDGET, the search itself does). */
+function searchRound(env, kind, title, year, creator, round, ckey, keep) {
+  let say;
+  const answer = new Promise(r => { say = r; }), later = [];
+  const work = (async () => {
+    const q = queryFor(kind, round, title, year, creator), all = [], started = Date.now();
+    let asked = 0, capped = false, failed = false, found = '';
+    for (const pv of PROVIDERS) {
+      const key = pv.key(env);
+      if (!key || (pv.firstRoundOnly && round > 0)) continue;
+      if (Date.now() - started > 20000) { failed = true; break; }   // waitUntil gives 30 seconds: leave room to keep what there is
+      if (!(await spendOn(env, pv)).ok) { capped = true; continue; }   // today's searches (or its credits) are used up, or it's out for the day
+      let got;
+      try { got = await pv.search(q, key, {kind, title, year, creator, round}); }
+      catch (e) {
+        if (OUT_FOR_TODAY.includes(e && e.status)) { capped = true; later.push(blockFor(env, pv.name)); }
+        else failed = true;   // it didn't answer, or not sensibly: the next one is asked, and this title is tried again tomorrow
+        continue;
+      }
+      if (pv.total && Number.isFinite(got.credits) && got.credits !== pv.cost) later.push(store(env).addCredits(pv.name, got.credits - pv.cost).catch(() => {}));
+      asked++;
+      const list = slim(got.list || []);
+      all.push(...list);
+      if (pick(list, kind, title, year, creator).length) { found = pv.name; break; }
+    }
+    say({list: all, from: found || (capped ? 'capped' : asked ? 'none' : 'miss')});
+    // Kept: what a search found, a year (nothing usable in it: a week). Nothing usable while a provider was at its cap,
+    // out for the day or not answering: a day only, so the title gets its turn with that provider tomorrow.
+    if (asked) later.push(env.SPINE_CACHE.put(ckey, JSON.stringify(all), found || !(capped || failed) ? keep(all.length) : {expirationTtl: DAY}).catch(() => {}));
+    await Promise.all(later);
+    if (env.ARCHIVE) await store(env).searchDone(ckey, Date.now()).catch(() => {});
+  })();
+  return {answer, work: work.catch(() => say({list: [], from: 'none'}))};
 }
 /* The filters: which of the pictures found are a scan of this title, best first (10 at most). */
 function pick(found, kind, title, year, creator) {
@@ -648,18 +712,70 @@ function pick(found, kind, title, year, creator) {
   out.sort((a, b) => b.rank - a.rank);
   return out.slice(0, 10).map(({rank, ...r}) => r);
 }
+const idFor = (kind, v) => kind === 'movie' ? (/^\d{1,9}$/.test(v || '') ? v : '') : (/^OL\d{1,10}W$/.test(v || '') ? v : '');
+// a title's found scans are kept under its id and its title together, so a wrong id can only name a key nobody reads
+const foundKey = (kind, id, title, year) => `f:${kind}:${id}:${words(title).join(' ')}:${kind === 'movie' ? year : ''}`;
+// where a /scans answer is kept at the edge (this data centre's cache)
+const scansEdge = (kind, title, year, creator, round, cacheOnly, id) => new Request(`https://scans.cache/${kind}/${encodeURIComponent(words(title).join(' '))}/${year}/${encodeURIComponent(words(creator).join(' '))}/${roundKey(kind, round)}/${cacheOnly ? 'c' : 's'}/${id}`);
 async function scans(p, env, cors, ctx) {
   const title = clean(p.get('title'), 120), year = clean(p.get('year'), 4).replace(/\D/g, ''), creator = clean(p.get('creator'), 80);
   const kind = p.get('kind') === 'book' ? 'book' : 'movie', rounds = roundsFor(kind), round = Math.max(0, Math.min(rounds - 1, parseInt(p.get('round'), 10) || 0));
   if (!title) return json({error: 'A title is needed.'}, 400, cors);
-  const archived = round === 0 ? await archiveFor(env, kind, title, year, creator) : [];
   // cacheonly=1: never search, answer from what's stored. The page asks this for the later rounds while the first is
   // searching, so a round kept from before costs nothing and comes at once; cached says whether there was one
-  const cacheOnly = p.get('cacheonly') === '1';
+  const cacheOnly = p.get('cacheonly') === '1', id = idFor(kind, p.get('id'));
+  // the same ask, answered here a moment ago: no KV, no Durable Object, nothing upstream
+  const ekey = scansEdge(kind, title, year, creator, round, cacheOnly, id), held = await caches.default.match(ekey);
+  if (held) return json(await held.json(), 200, cors, {'X-Cache': 'EDGE'});
+  // round 0: approved archive spines and the scans this title's spines were cut from before, in one ask
+  const kept = round === 0 ? await titleSpines(env, kind, title, year, creator, id) : {archived: [], found: []};
   const {list: found, from} = await rawScans(env, ctx, kind, title, year, creator, round, cacheOnly);
-  // capped: nothing usable was found and a provider was at its cap or out for the day; the page makes a spine from the cover
-  return json({results: [...archived, ...pick(found, kind, title, year, creator)], round, more: round < rounds - 1, ...(from === 'capped' ? {capped: true} : {}),
-    ...(cacheOnly ? {cached: from !== 'miss'} : {})}, 200, cors, {'X-Cache': from});
+  // capped: nothing usable was found and a provider was at its cap or out for the day; pending: a search is under way.
+  // Either way the page makes a spine from the cover, and asks again for a pending one in a moment
+  const body = {results: [...kept.archived, ...pick(found, kind, title, year, creator)], round, more: round < rounds - 1, ...(kept.found.length ? {found: kept.found} : {}),
+    ...(from === 'capped' ? {capped: true} : {}), ...(from === 'pending' ? {pending: true} : {}), ...(cacheOnly ? {cached: from !== 'miss'} : {})};
+  // at the edge: a round 0 five minutes (its found scans grow), a later round a day; capped five minutes, a round
+  // nobody has kept yet a minute, one under way not at all
+  const ttl = from === 'pending' ? 0 : from === 'capped' ? 300 : from === 'miss' ? 60 : round === 0 ? 300 : DAY;
+  if (ttl) ctx.waitUntil(edgeKeep(ekey, body, ttl).catch(() => {}));
+  return json(body, 200, cors, {'X-Cache': from});
+}
+/* round 0's spines that need no search: approved archive spines (a title's own, the same year, a book by the same
+   author) and found, the scans whose spine a page cut cleanly before, best first */
+async function titleSpines(env, kind, title, year, creator, id) {
+  if (!env.ARCHIVE) return {archived: [], found: []};
+  try {
+    const got = await store(env).titleSpines(titleKey(kind, title), foundKey(kind, id, title, year));
+    return {archived: archivedOf(got.archived, kind, year, creator), found: got.found};
+  } catch { return {archived: [], found: []}; }
+}
+/* POST /found: the scans a page cut clean spines from, for the next visitor to load first. Only a scan /scans gave
+   for that title and round is kept (so a page can't put any picture it likes here), with the place and size /scans
+   gave it; the page says only which, from which round, and how well it cut (0-100). The cut itself is always made
+   again by each page, from the scan. */
+const FOUND_MAX = 6;
+async function foundPost(req, env, cors) {
+  if (!env.ARCHIVE) return json({ok: true, kept: 0}, 200, cors);
+  const text = req.body ? new TextDecoder().decode(await readCapped(req.body, 8192) || new Uint8Array()) : '';
+  let b; try { b = JSON.parse(text); } catch { return json({error: 'That isn’t a list of cuts.'}, 400, cors); }
+  const kind = b && b.kind === 'book' ? 'book' : 'movie', title = clean(b && b.title, 120), year = clean(b && b.year, 4).replace(/\D/g, ''), creator = clean(b && b.creator, 80), id = idFor(kind, String((b && b.id) || ''));
+  const cuts = Array.isArray(b && b.cuts) ? b.cuts.slice(0, 12) : [];
+  if (!title || !cuts.length) return json({error: 'Which title, and which cuts?'}, 400, cors);
+  const keepIt = [], lists = new Map();
+  for (const c of cuts) {
+    const round = Number.isInteger(c && c.round) && c.round >= 0 && c.round < roundsFor(kind) ? c.round : -1, score = Math.round(+(c && c.score));
+    if (round < 0 || !(score >= 0 && score <= 100) || typeof c.img !== 'string') continue;
+    if (!lists.has(round)) {
+      const raw = await env.SPINE_CACHE.get(`raw1:${kind}:${words(title).join(' ')}:${kind === 'book' ? '' : year}:${roundKey(kind, round)}`, 'json').catch(() => null);
+      lists.set(round, raw ? pick(raw, kind, title, year, creator) : []);
+    }
+    const s = lists.get(round).find(x => x.img === c.img);
+    if (s && !keepIt.some(x => x.img === s.img)) keepIt.push({...s, round, score});
+  }
+  if (keepIt.length) await store(env).addFound(foundKey(kind, id, title, year), keepIt, Date.now());
+  // this data centre's kept round 0 has no found yet: let the next ask read it
+  if (keepIt.length) await Promise.all(['c', 's'].map(m => caches.default.delete(scansEdge(kind, title, year, creator, 0, m === 'c', id)).catch(() => {})));
+  return json({ok: true, kept: keepIt.length}, 200, cors);
 }
 /* ---------- admin: today's searches, and one provider's raw answer ---------- */
 async function usage(env) {
@@ -680,7 +796,7 @@ async function rawFrom(name, q, env, cors) {
   let got;
   try { got = await pv.search(q, key, {kind: 'movie', title: q, year: '', creator: '', round: 0, raw: true}); }
   catch (e) {
-    if (OUT_FOR_TODAY.includes(e && e.status)) await store(env).blockSearch(pv.name, today()).catch(() => {});
+    if (OUT_FOR_TODAY.includes(e && e.status)) await blockFor(env, pv.name);
     return json({error: e instanceof ProviderError ? e.message : `${pv.name} didn’t answer.`}, 502, cors);
   }
   if (pv.total && Number.isFinite(got.credits) && got.credits !== pv.cost) await store(env).addCredits(pv.name, got.credits - pv.cost).catch(() => {});
@@ -779,6 +895,11 @@ export class Archive extends DurableObject {
     // and credits spent in all by a provider that has only so many
     this.sql.exec(`CREATE TABLE IF NOT EXISTS searches (name TEXT, day TEXT, n INTEGER DEFAULT 0, blocked INTEGER DEFAULT 0, PRIMARY KEY (name, day))`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS credits (name TEXT PRIMARY KEY, n INTEGER DEFAULT 0)`);
+    // one scan search at a time for a title's round (at: when it started, or finished once done is 1)
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS claims (key TEXT PRIMARY KEY, at INTEGER, done INTEGER DEFAULT 0)`);
+    this.sql.exec(`CREATE INDEX IF NOT EXISTS claims_at ON claims (at)`);
+    // the scans a page cut a title's spines from cleanly (POST /found), best first: a JSON list, FOUND_MAX at most
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS found (key TEXT PRIMARY KEY, list TEXT, at INTEGER)`);
     // Brave's searches used to be counted on their own (bravecalls): today's count carries over
     this.sql.exec(`INSERT OR IGNORE INTO searches (name, day, n) SELECT 'brave', day, n FROM bravecalls`);
   }
@@ -805,6 +926,28 @@ export class Archive extends DurableObject {
   // a search cost more or fewer credits than was counted for it
   addCredits(name, extra) {
     this.sql.exec('INSERT INTO credits (name, n) VALUES (?, ?) ON CONFLICT (name) DO UPDATE SET n = MAX(0, n + ?)', name, Math.max(0, extra), extra);
+    return {ok: true};
+  }
+  // may this request search for this title's round? Not while another started less than 30 seconds ago, or finished
+  // less than 2 minutes ago (KV, where it was kept, can take a minute to say so everywhere)
+  claimSearch(key, now) {
+    const row = this.one('SELECT at, done FROM claims WHERE key = ?', key);
+    if (row && now - row.at < (row.done ? 120e3 : 30e3)) return {go: false};
+    this.sql.exec('DELETE FROM claims WHERE at < ?', now - DAY * 1000);
+    this.sql.exec('INSERT INTO claims (key, at, done) VALUES (?, ?, 0) ON CONFLICT (key) DO UPDATE SET at = excluded.at, done = 0', key, now);
+    return {go: true};
+  }
+  searchDone(key, now) { this.sql.exec('UPDATE claims SET at = ?, done = 1 WHERE key = ?', now, key); return {ok: true}; }
+  // round 0's spines that need no search: approved ones from the archive, and the scans found before
+  titleSpines(tkey, fkey) {
+    const row = this.one('SELECT list FROM found WHERE key = ?', fkey);
+    return {archived: this.approvedFor(tkey), found: row ? JSON.parse(row.list) : []};
+  }
+  addFound(fkey, cuts, now) {
+    const row = this.one('SELECT list FROM found WHERE key = ?', fkey), list = row ? JSON.parse(row.list) : [];
+    for (const c of cuts) { const had = list.find(x => x.img === c.img); if (had) had.score = Math.max(had.score, c.score); else list.push(c); }
+    list.sort((a, b) => b.score - a.score);
+    this.sql.exec('INSERT INTO found (key, list, at) VALUES (?, ?, ?) ON CONFLICT (key) DO UPDATE SET list = excluded.list, at = excluded.at', fkey, JSON.stringify(list.slice(0, FOUND_MAX)), now);
     return {ok: true};
   }
   searchUsage(day) {
@@ -894,8 +1037,12 @@ async function upload(req, p, ip, env, cors) {
 }
 async function archiveFor(env, kind, title, year, creator) {
   if (!env.ARCHIVE) return [];
+  return archivedOf(await store(env).approvedFor(titleKey(kind, title)), kind, year, creator);
+}
+// a title's approved spines, as /scans gives them: not another film of the same name, not another author's book
+function archivedOf(rows, kind, year, creator) {
   const last = words(creator).slice(-1)[0], out = [];
-  for (const m of await store(env).approvedFor(titleKey(kind, title))) {
+  for (const m of rows) {
     if (year && m.year && m.year !== year) continue;                              // another film with the same name
     if (kind === 'book' && last && m.author && !words(m.author).includes(last)) continue;
     out.push({img: `/archive/img?id=${m.id}`, source: 'archive', title: m.title, width: m.w, height: m.h, archive: true, id: m.id, en: true, vhs: false});
