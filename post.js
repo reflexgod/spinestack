@@ -458,7 +458,17 @@ function menuOn(btn, list){
       return b;
     }));
     menu.hidden = false; btn.setAttribute('aria-expanded', 'true');
-    menu.classList.remove('up'); if (menu.getBoundingClientRect().bottom > innerHeight - 8) menu.classList.add('up');
+    menu.classList.remove('up'); menu.style.position = menu.style.left = menu.style.top = menu.style.right = menu.style.bottom = '';
+    // in a row that scrolls sideways (a title's actions on a phone) the menu would be cut off: it's put by the button
+    // on the screen itself instead, and shuts when the page moves
+    let clip = false; for (let el = wrap.parentElement; el && el !== document.body; el = el.parentElement){ const o = getComputedStyle(el); if (o.overflowX !== 'visible' || o.overflowY !== 'visible'){ clip = true; break; } }
+    if (clip){
+      const r = btn.getBoundingClientRect(), w = menu.offsetWidth, h = menu.offsetHeight;
+      menu.style.position = 'fixed'; menu.style.right = 'auto'; menu.style.bottom = 'auto';
+      menu.style.left = Math.max(8, Math.min(r.right - w, innerWidth - w - 8)) + 'px';
+      menu.style.top = (r.bottom + h > innerHeight - 8 && r.top - h > 8 ? r.top - h : r.bottom) + 'px';
+      addEventListener('scroll', shut, {once: true, passive: true});
+    } else if (menu.getBoundingClientRect().bottom > innerHeight - 8) menu.classList.add('up');
     const first = menu.querySelector('button:not(:disabled)'); if (first) first.focus();
   });
   document.addEventListener('click', e => { if (!wrap.contains(e.target)) shut(); });
@@ -484,7 +494,7 @@ function item(x, opt = {}){
     : `<p class="say">${esc(review)}</p>`;
   li.innerHTML = `<a class="pava" href="${esc(profileUrl(x.username))}" tabindex="-1" aria-hidden="true">${avaHtml(x)}</a>
     <div class="pbody">
-      <p class="phead"><a class="pwho" href="${esc(profileUrl(x.username))}">${name ? `<b>${esc(name)}</b> ` : ''}<span>@${esc(x.username)}</span></a><span class="ago">· <a href="${esc(url)}"><time datetime="${esc(at)}" title="${esc(new Date(at).toLocaleString())}">${ago(at)}</time></a></span>${x.edited_at ? `<span class="edited" title="Edited ${esc(new Date(x.edited_at).toLocaleString())}">edited</span>` : ''}<span class="pmenuwrap pmore"></span></p>
+      <p class="phead"><a class="pwho" href="${esc(profileUrl(x.username))}">${name ? `<b>${esc(name)}</b> ` : ''}<span>@${esc(x.username)}</span></a>${window.Badges ? Badges.one(x.username) : ''}<span class="ago">· <a href="${esc(url)}"><time datetime="${esc(at)}" title="${esc(new Date(at).toLocaleString())}">${ago(at)}</time></a></span>${x.edited_at ? `<span class="edited" title="Edited ${esc(new Date(x.edited_at).toLocaleString())}">edited</span>` : ''}<span class="pmenuwrap pmore"></span></p>
       <p class="pwhat">${verb(x.kind)} <a href="${esc(titleUrl(x))}">${esc(x.title)}</a>${x.year ? ` (${esc(x.year)})` : ''}${social && x.rewatch ? ` <span class="tag">${x.kind === 'movie' ? 'rewatch' : 'reread'}</span>` : ''}${x.rec_by ? ` <span class="recby">· recommended by <a href="${esc(profileUrl(x.rec_by))}">@${esc(x.rec_by)}</a></span>` : ''}</p>
       ${social && x.rating ? `<p class="prating">${stars(x.rating, 'sm')}</p>` : ''}
       ${say}
@@ -508,7 +518,7 @@ const REPEAT = '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><p
 const SHARE = '<path d="M12 2v13"/><path d="m16 6-4-4-4 4"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>';
 const count = (n, one, many) => `${n || 0} ${n === 1 ? one : many}`;
 function acts(row, x, {mine, social, opt, li}){
-  const m = itemOf(x), name = x.title;
+  const m = itemOf(x), name = x.title, at = x.at || x.created_at, review = x.review != null && x.review !== '' ? x.review : (x.caption || '');
   const btn = (cls, html, label, extra = '') => `<button type="button" class="${cls}" aria-label="${esc(label)}" ${extra}>${html}</button>`;
   let h = '';
   if (social){
@@ -553,6 +563,9 @@ function acts(row, x, {mine, social, opt, li}){
     const list = [{label: 'Copy link', run: async () => { try { await navigator.clipboard.writeText(url()); toast('Link copied.'); } catch { toast(url()); } }}];
     list.push({label: 'Share to WhatsApp', run: () => { window.open(Nav.whatsapp(`@${x.username} ${verb(x.kind)} ${name}${x.year ? ` (${x.year})` : ''} on shelfstackd:`, url()), '_blank', 'noopener'); }});
     if (navigator.share) list.push({label: 'Share…', run: async () => { try { await navigator.share({url: url(), title: `@${x.username} ${verb(x.kind)} ${name}`}); } catch {} }});
+    // the story card (story.js): the worn cover, the rating, the start of the review, @username
+    if (window.Nav && Nav.story && window.Wear) list.push({label: 'Share to story', run: () => Nav.story({kind: 'log', cover: Wear.cover({kind: x.kind, src: coverSrc(x), seed: x.id, at, width: 560}),
+      title: x.title, year: x.year, verb: verb(x.kind), rating: social ? x.rating : null, review: x.spoiler ? '' : review, username: x.username})});
     if (signedIn() && window.Nav && Nav.loadRecs && await Nav.loadRecs()) list.push({label: 'Recommend', run: () => Nav.recommend(m)});
     if (!mine){
       const keys = opt.watch || await watched(), on = keys.has(keyOf(m));

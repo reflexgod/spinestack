@@ -30,7 +30,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Geist+Mono:wght@400;500&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261019a">
+<link rel="stylesheet" href="../site.css?v=20261020a">
 <style>
 /* the feed: a timeline, one column of 600px in the middle of the page's. The composer, the tabs (staying under the
    bar as you scroll), then the posts (post.js) and shelves saved, each with a thin rule under it and no box */
@@ -45,9 +45,22 @@
 .shelfpost .strip canvas{display:block;flex:none}
 .fnone{display:grid;justify-items:start;gap:var(--s4);margin:var(--s5) 0 0}
 .fnone > p{margin:0}
+.fnone .flog{margin:0}
 .linkish{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-decoration:none;text-decoration-thickness:1px;text-underline-offset:3px}
 .linkish:hover,.linkish:focus-visible{text-decoration:underline;text-underline-offset:3px}
 #state{margin:var(--s5) 0 0}
+/* the skeleton: a post's photo, three lines and its cover, in the wash */
+.fsk{display:grid;grid-template-columns:40px minmax(0,1fr) var(--cover);gap:var(--s4);padding:var(--s4) 0;border-bottom:1px solid var(--hair)}
+.fsk .sk{display:block;background:var(--wash);border-radius:var(--radius)}
+.fsk .a{width:40px;height:40px;border-radius:50%}
+.fsk .w{display:grid;gap:var(--s2);align-content:start}
+.fsk .l1{width:45%;height:16px}
+.fsk .l2{width:70%;height:16px}
+.fsk .l3{width:55%;height:16px}
+.fsk .c{width:var(--cover);aspect-ratio:2/3}
+@media (max-width:520px){ .fsk{grid-template-columns:40px minmax(0,1fr) 56px} .fsk .c{width:56px} }
+@media (prefers-reduced-motion:no-preference){ .fsk .sk{animation:skpulse 1.2s ease-in-out infinite alternate} }
+@keyframes skpulse{to{opacity:.55}}
 #more{margin-top:var(--s6)}
 /* a log's ••• (a touch screen: Add to watchlist) at the top right of the log, so the caption keeps its width */
 .items .item.log{position:relative}
@@ -92,7 +105,9 @@
   </nav>
   <div id="panel" role="tabpanel">
     <button class="newpill" id="newPill" type="button" hidden></button>
-    <p class="grey" id="state" role="status">Loading…</p>
+    <p class="grey vh" id="state" role="status">Loading…</p>
+    <!-- three posts' worth of grey, the size of real ones, while the first page is read -->
+    <div class="fskel" id="fskel" aria-hidden="true"><div class="fsk"><span class="sk a"></span><span class="w"><span class="sk l1"></span><span class="sk l2"></span><span class="sk l3"></span></span><span class="sk c"></span></div><div class="fsk"><span class="sk a"></span><span class="w"><span class="sk l1"></span><span class="sk l2"></span><span class="sk l3"></span></span><span class="sk c"></span></div><div class="fsk"><span class="sk a"></span><span class="w"><span class="sk l1"></span><span class="sk l2"></span><span class="sk l3"></span></span><span class="sk c"></span></div></div>
     <ol class="items" id="items"></ol>
     <div class="fnone" id="none" hidden></div>
     <button class="dash sm" id="more" type="button" hidden>Load more</button>
@@ -113,7 +128,7 @@
 </div>
 
 <footer>
-  <p class="fnav"><a href="../privacy.html#credits">About</a><span aria-hidden="true">·</span><a href="../privacy.html">Privacy</a><span aria-hidden="true">·</span><a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a></p>
+  <p class="fnav"><a href="../about/">About</a><span aria-hidden="true">·</span><a href="../privacy.html">Privacy</a><span aria-hidden="true">·</span><a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a></p>
 </footer>
 <div class="toast" id="toast" hidden></div>
 
@@ -121,8 +136,9 @@
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../wear.js?v=20261016a"></script>
 <script src="../bare.js?v=20261013a"></script>
-<script src="../nav.js?v=20261019a"></script>
-<script src="../post.js?v=20261018a"></script>
+<script src="../nav.js?v=20261020a"></script>
+<script src="../badges.js?v=20261020a"></script>
+<script src="../post.js?v=20261020a"></script>
 <script>
 (() => {
 /* The feed: /feed/ (?friends, or ?following as it was, or ?everyone picks the tab: Friends · Everyone). A line for each shelf saved and each film or book
@@ -277,7 +293,7 @@ function shelfPost(x){
     : `${x.updated ? 'updated' : 'started'} ${shelf}`;
   li.innerHTML = `<a class="pava" href="${esc(profileUrl(x.username))}" tabindex="-1" aria-hidden="true">${window.Posts ? Posts.avaHtml(x) : ''}</a>
     <div class="pbody">
-      <p class="phead"><a class="pwho" href="${esc(profileUrl(x.username))}">${name ? `<b>${esc(name)}</b> ` : ''}<span>@${esc(x.username)}</span></a><span class="ago">· <a href="${esc(to)}"><time datetime="${esc(x.at)}" title="${esc(new Date(x.at).toLocaleString())}">${ago(x.at)}</time></a></span></p>
+      <p class="phead"><a class="pwho" href="${esc(profileUrl(x.username))}">${name ? `<b>${esc(name)}</b> ` : ''}<span>@${esc(x.username)}</span></a>${window.Badges ? Badges.one(x.username) : ''}<span class="ago">· <a href="${esc(to)}"><time datetime="${esc(x.at)}" title="${esc(new Date(x.at).toLocaleString())}">${ago(x.at)}</time></a></span></p>
       <p class="pwhat">${what}${x.is_public === false ? ' <span class="tag">private</span>' : ''}</p>
       <a class="strip" href="${esc(to)}" tabindex="-1" aria-label="${esc(added.length ? `The ${added.length === 1 ? 'spine' : added.length + ' spines'} @${x.username} added` : `@${x.username}'s shelf`)}"></a>
     </div>`;
@@ -294,7 +310,7 @@ function recPost(x){
   li.className = 'post recpost'; li.dataset.id = x.id;
   li.innerHTML = `<a class="pava" href="${esc(profileUrl(x.username))}" tabindex="-1" aria-hidden="true">${window.Posts ? Posts.avaHtml(x) : ''}</a>
     <div class="pbody">
-      <p class="phead"><a class="pwho" href="${esc(profileUrl(x.username))}">${name ? `<b>${esc(name)}</b> ` : ''}<span>@${esc(x.username)}</span></a><span class="ago">· <time datetime="${esc(x.at)}" title="${esc(new Date(x.at).toLocaleString())}">${ago(x.at)}</time></span></p>
+      <p class="phead"><a class="pwho" href="${esc(profileUrl(x.username))}">${name ? `<b>${esc(name)}</b> ` : ''}<span>@${esc(x.username)}</span></a>${window.Badges ? Badges.one(x.username) : ''}<span class="ago">· <time datetime="${esc(x.at)}" title="${esc(new Date(x.at).toLocaleString())}">${ago(x.at)}</time></span></p>
       <p class="pwhat">recommended <a href="${esc(Nav.titleUrl({kind: x.kind, title: x.title, year: x.year}))}">${esc(x.title)}</a>${x.year ? ` (${esc(x.year)})` : ''} to <a href="${esc(profileUrl(x.to_username))}">@${esc(x.to_username)}</a></p>
     </div>
     <span class="cover">${x.cover_src ? `<img class="clean" src="${esc(`${WORKER}/img?url=${encodeURIComponent(x.cover_src.replace(/^url:/, ''))}`)}" alt="The cover of ${esc(label)}" loading="lazy">` : ''}</span>`;
@@ -315,14 +331,27 @@ async function page(){
   }
   return (await rpc('feed', {scope: feed.scope, before: last ? last.at : null, before_id: last ? last.id : null, n: PAGE})).map(fromFeed);
 }
+/* An empty tab pulls you in: Friends with nobody posting says so, then Log your first film (while you've logged
+   nothing) and Follow these people, then Everyone under them; an empty Everyone has Log your first film too */
 function none(kind){
   const box = $('#none');
   if (kind === 'signin') box.innerHTML = `<p><button class="linkish" type="button" data-signin>Sign in</button> to see who you follow.</p>`;
-  else if (kind === 'following'){ box.innerHTML = '<p>Nobody you follow has posted.</p>'; toFollow(); }
-  else box.innerHTML = '<p>Nothing on the feed yet.</p>';
+  else if (kind === 'following'){ box.innerHTML = '<p>Nobody you follow has posted.</p>'; firstLog(box); toFollow(); }
+  else { box.innerHTML = '<p>Nothing on the feed yet.</p>'; firstLog(box); }
   box.hidden = false;
 }
+// Log your first film: signed in with nothing logged yet (a log of yours would be on your profile)
+async function firstLog(box){
+  if (!me.user || !me.profile) return;
+  const run = feed.run;
+  let mine = [1]; try { mine = await api(`logs?select=id&owner=eq.${me.user.id}&limit=1`); } catch {}
+  if (run !== feed.run || (mine && mine.length) || box.querySelector('[data-log1]')) return;
+  const p = document.createElement('p'); p.className = 'flog';
+  p.innerHTML = '<button class="btn primary" type="button" data-log1>Log your first film</button>';
+  box.querySelector('p').after(p);
+}
 $('#none').addEventListener('click', e => {
+  if (e.target.closest('[data-log1]')){ Nav.add({mode: 'log'}); return; }
   if (e.target.closest('[data-signin]')) signIn();
   const b = e.target.closest('[data-scope]'); if (b) show(b.dataset.scope);
 });
@@ -332,13 +361,15 @@ async function show(scope){
   document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.scope === scope)));
   history.replaceState(null, '', location.pathname + '?' + (scope === 'following' ? 'friends' : scope) + location.hash);   // back from a shelf lands on the same tab
   $('#items').replaceChildren(); $('#none').hidden = true; $('#more').hidden = true;
-  if (scope !== 'everyone' && !me.user){ $('#state').hidden = true; none('signin'); return; }
-  $('#state').textContent = 'Loading…'; $('#state').hidden = false;
+  if (scope !== 'everyone' && !me.user){ $('#state').hidden = true; loading(false); none('signin'); return; }
+  $('#state').textContent = 'Loading…'; $('#state').hidden = false; loading(true);
   await more(run);
 }
 // what a page of rows needs before it's drawn: with 0009 each log's rating, review, counts and what you've done to it
 // (post_stats()); each shelf's spines, in one ask, for its strip. null when another tab was picked meanwhile
 async function enrich(rows, run){
+  // each name's badges, in one ask (badges.js; with 0012 only)
+  if (window.Badges) await Badges.load(rows.map(x => x.username));
   // with 0009, each log's rating, review, counts and what you've done to it (post_stats())
   if (window.Posts){
     feed.social = await Posts.ready();
@@ -357,6 +388,8 @@ async function enrich(rows, run){
   }
   return rows;
 }
+// while the first page is read: the skeleton, and "Loading…" for a screen reader only
+function loading(on){ $('#fskel').hidden = !on; $('#state').classList.toggle('vh', on); }
 async function more(run = feed.run){
   const btn = $('#more');
   btn.disabled = true;
@@ -364,13 +397,13 @@ async function more(run = feed.run){
   try { rows = await page(); }
   catch (e){
     if (run !== feed.run) return;
-    btn.disabled = false;
+    btn.disabled = false; loading(false);
     if ($('#items').children.length) toast(friendly(e)); else $('#state').textContent = friendly(e);
     return;
   }
   if (run !== feed.run) return;   // another tab was picked meanwhile
   rows = await enrich(rows, run); if (!rows) return;
-  btn.disabled = false; $('#state').hidden = true;
+  btn.disabled = false; $('#state').hidden = true; loading(false);
   for (const x of rows) $('#items').append(item(x));
   const end = rows[rows.length - 1];
   if (end) feed.last = {at: end.at, id: end.id};
@@ -418,8 +451,8 @@ const page0 = async scope => rpc((await recsThere()) ? 'timeline' : 'activity', 
   return rpc('feed', {scope, before: null, before_id: null, n: PAGE}).then(r => r.map(fromFeed));
 });
 
-/* ---------- an empty Friends tab: People to follow, then Everyone ---------- */
-// People to follow: the people behind the newest public shelves and posts, not you and not anyone you follow, as rows
+/* ---------- an empty Friends tab: Follow these people, then Everyone ---------- */
+// Follow these people: the people behind the newest public shelves and posts, not you and not anyone you follow, as rows
 // like posts (photo, name and @name, what they did last, Follow at the right). Then the Everyone timeline under it,
 // with a way to the tab itself
 async function toFollow(){
@@ -432,7 +465,7 @@ async function toFollow(){
   for (const x of rows){ if (skip.has(x.owner) || seen.has(x.owner)) continue; seen.add(x.owner); people.push(x); }
   if (people.length){
     const box = document.createElement('section'); box.className = 'tofollow'; box.setAttribute('aria-labelledby', 'tofollowH');
-    box.innerHTML = '<h2 id="tofollowH">People to follow</h2><ul class="tfl"></ul>';
+    box.innerHTML = '<h2 id="tofollowH">Follow these people</h2><ul class="tfl"></ul>';
     box.querySelector('ul').append(...people.slice(0, 6).map(x => {
       const li = document.createElement('li'), name = (x.display_name || '').trim(), href = profileUrl(x.username);
       const last = x.what === 'log' ? `${x.kind === 'movie' ? 'watched' : 'read'} ${x.title}` : x.what === 'rec' ? `recommended ${x.title}` : `${x.updated ? 'updated' : 'started'} ${Shelf.shelfName({name: x.name, caption: x.caption})}`;

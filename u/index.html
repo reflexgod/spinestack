@@ -29,10 +29,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Geist+Mono:wght@400;500&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261019a">
+<link rel="stylesheet" href="../site.css?v=20261020a">
 <style>
 /* the profile (site.css has the cards, the tabs, the sheets and everything shared) */
-.phead{display:grid;grid-template-columns:96px minmax(0,1fr) auto;grid-template-areas:"ava who stats";gap:0 var(--s5);align-items:center}
+/* the profile card: photo, name, badges, bio, one plain line of numbers, the buttons. A theme (themes.js) dresses this
+   card and nothing else on the site */
+.pcard{position:relative}
+.phead{display:grid;grid-template-columns:96px minmax(0,1fr);grid-template-areas:"ava who";gap:0 var(--s5);align-items:center}
 .ava{grid-area:ava;width:96px;height:96px;border-radius:50%;border:1px solid var(--ink);background:var(--wash);display:grid;place-items:center;overflow:hidden;font:400 36px var(--mono);text-transform:uppercase;color:var(--ink);padding:0}
 .ava img{width:100%;height:100%;object-fit:cover;display:block}
 .ava.add{border-style:dashed;background:var(--paper)}
@@ -60,26 +63,27 @@
 .who .addbio{display:inline-block;margin-top:var(--s2)}
 .who .mutual{margin-top:var(--s2)}
 .since{margin:var(--s1) 0 0;font-size:var(--fs-small);color:var(--grey)}
-/* the numbers: bold, their labels tiny under them, a thin line between each */
-.statcol{grid-area:stats;display:grid;justify-items:end;gap:var(--s2)}
-.stats{display:flex;margin:0}
-.stats div{padding:0 var(--s4);text-align:center;border-left:1px solid var(--hair);display:flex;flex-direction:column-reverse}
-.stats div:first-child{border-left:0}
-.stats div:last-child{padding-right:0}
-.stats dd{margin:0;font-size:var(--fs-stat);font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums}
-.stats dt{font-size:var(--fs-label);color:var(--grey);text-transform:uppercase;letter-spacing:var(--track);margin-top:var(--s1)}
-/* FOLLOWING and FOLLOWERS open their lists: the whole number-and-label is the target, the label is the button */
-.statlink{cursor:pointer}
-.statlink button{font:inherit;color:inherit;text-transform:inherit;letter-spacing:inherit;background:none;border:0;padding:0;cursor:pointer;outline-offset:4px}
-.statlink:hover dd,.statlink:focus-within dd{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px}
-/* on a phone the numbers are one small line under the name instead ("2 spines · 1 following · 2 followers"), each a
-   link: the shelf's page, Following, Followers. A band of three big numbers there is a stats bar */
-.counts{display:none;margin:var(--s1) 0 0;font-size:var(--fs-card);color:var(--grey)}
+/* the numbers: one plain line under the bio, at every width ("9 spines · 3 following · 3 followers"), each a link: the
+   shelf's page, Following, Followers. No row of big numbers */
+.counts{margin:var(--s2) 0 0;font-size:var(--fs-card);color:var(--grey)}
 .counts a{display:inline-block;text-decoration:none}
 .counts a:hover,.counts a:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .counts b{font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
 @media (pointer:coarse){ .counts a{position:relative} .counts a::before{content:"";position:absolute;top:min(0px,calc(50% - 22px));right:min(0px,calc(50% - 22px));bottom:min(0px,calc(50% - 22px));left:min(0px,calc(50% - 22px))} }   /* 44px to press (see site.css) */
 @media (pointer:coarse) and (max-width:640px){ .pbtns{margin-top:var(--s5)} }   /* and the buttons under the line a press away from it */
+@media (pointer:coarse){ .addbio:not([hidden]) + .counts, .pbio:has(.bmore:not([hidden])) ~ .counts{margin-top:calc(2 * var(--s4))} }   /* "add a bio" and "more" a press away from the line under them */
+/* the skeleton, while the profile is read: the card's own size (the photo, the name, two lines), so nothing jumps */
+.pskel{display:grid;grid-template-columns:96px minmax(0,1fr);gap:var(--s5);align-items:center}
+.pskel .sk{display:block;background:var(--wash);border-radius:var(--radius)}
+.pskel .ska{width:96px;height:96px;border-radius:50%}
+.pskel .skw{display:grid;gap:var(--s2)}
+.pskel .skn{width:40%;height:28px}
+.pskel .skh{width:20%;height:16px}
+.pskel .skl{width:70%;height:16px}
+.pskel .skl.short{width:50%}
+@media (prefers-reduced-motion:no-preference){ .pskel .sk{animation:skpulse 1.2s ease-in-out infinite alternate} }
+@keyframes skpulse{to{opacity:.55}}
+@media (max-width:640px){ .pskel{grid-template-columns:72px minmax(0,1fr);gap:var(--s4)} .pskel .ska{width:72px;height:72px} }
 #privNote{margin:var(--s4) 0 0}
 .privmsg{margin:var(--s6) 0 0}
 #people{padding-right:var(--s1);max-height:min(60vh,520px);overflow:auto}   /* in the Requests sheet the list scrolls */
@@ -99,9 +103,13 @@
 .hero .none{justify-self:stretch}
 .pgrid{display:grid;gap:var(--s6);margin-top:var(--s6)}
 .pmain{display:grid;gap:var(--s6);min-width:0}
-/* the watchlist on the Profile tab: up to four of its covers, and See all */
-.wstrip{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,var(--wcov));justify-content:start;gap:var(--s4);--wcov:100px}   /* up to four in one row: 100px covers, 80px on a phone */
+/* Up next on the Profile tab: its covers leaning on each other on one short shelf line, as cases stand waiting to be
+   watched (100px covers, 80px on a phone), and See all */
+.wstrip{list-style:none;margin:0;padding:0 var(--s4) 0 0;display:flex;align-items:flex-end;width:max-content;max-width:100%;border-bottom:1px solid var(--ink);--wcov:100px}
 .wstrip:empty{display:none}
+.wstrip li{flex:none;width:var(--wcov);position:relative}
+.wstrip li + li{margin-left:calc(var(--wcov) * -.22)}   /* each keeps a 44px press on a phone */
+.wstrip li + li a{box-shadow:-3px 0 6px rgba(0,0,0,.22)}
 .wstrip a{display:block;line-height:0;position:relative}
 .wstrip canvas{display:block;width:100%;height:auto;aspect-ratio:2/3}
 /* a watchlist cover, still sealed: a faint diagonal sheen of plastic wrap and a hairline at its edge. Nothing drawn on
@@ -119,9 +127,11 @@
 .wsugg li[aria-selected="true"]{background:var(--ink);color:var(--paper)}
 .wsugg .y,.wsugg .k,.wsugg .by{color:var(--grey);font-size:var(--fs-small)}
 .wsugg li[aria-selected="true"] :is(.y,.k,.by){color:inherit}
-.wgrid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(var(--cards),minmax(0,1fr));gap:var(--s4) var(--card-gap)}
+.wgrid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(var(--cards),minmax(0,1fr));gap:var(--s5) var(--card-gap);overflow-x:clip}   /* a row's line stops at the column's edge */
 .wt{min-width:0;display:grid;gap:var(--s1);align-content:start}
-.wc{display:block;position:relative;aspect-ratio:2/3;line-height:0}
+.wc{display:block;position:relative;aspect-ratio:2/3;line-height:0;border-bottom:1px solid var(--ink)}
+/* every cover stands on the shelf line, which runs on through the gap to the next, so a row is one shelf */
+.wgrid > li:not(:last-child) .wc::before{content:"";position:absolute;left:100%;bottom:-1px;width:var(--card-gap);height:1px;background:var(--ink)}
 .wc canvas{display:block;width:100%;height:100%}
 .wcap{font-size:var(--fs-small);overflow-wrap:anywhere}
 .wcap b{font-weight:500}
@@ -133,12 +143,6 @@ html:not(.recs-on) .recbtn{display:none}   /* Recommend: only once 0010 is there
 .wplus:hover{background:var(--wash)}
 .wplus svg{width:20px;height:20px}
 #moreBtn svg{width:16px;height:16px;display:block}
-@media (hover:hover) and (pointer:fine){   /* over the cover, at its foot: the two share the tile's first row */
-  .wt .wc,.wt .wcap{grid-row:1;grid-column:1}
-  .wt .wcap{align-self:end;z-index:1;padding:var(--s1) var(--s2);background:var(--ink);color:var(--paper);line-height:1.4;opacity:0;transition:opacity .12s;pointer-events:none}
-  .wt .wcap span{color:inherit}
-  .wt:hover .wcap,.wt:focus-within .wcap{opacity:1}
-}
 /* the watchlist and From friends: a row each, as On this shelf has them */
 .titles{list-style:none;margin:0;padding:0}
 .titles li{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:var(--s4);align-items:center;padding:var(--s2) 0;border-bottom:1px solid var(--hair)}
@@ -158,6 +162,8 @@ html:not(.recs-on) .recbtn{display:none}   /* Recommend: only once 0010 is there
    title, and the thread under the row when it's open */
 #panelR{margin-top:var(--s5)}
 .rstats{margin:0 0 var(--s4);color:var(--grey)}
+#rNone{margin:var(--s4) 0 var(--s2)}
+.rgo{margin:0}
 .recs li{grid-template-columns:40px minmax(0,1fr)}
 .recs .tacts{grid-column:2;justify-content:flex-start}
 .recs .rnote{margin:var(--s1) 0 0;overflow-wrap:anywhere}
@@ -170,8 +176,8 @@ html:not(.recs-on) .recbtn{display:none}   /* Recommend: only once 0010 is there
 .recs .rform{display:flex;gap:var(--s2);align-items:flex-end}
 .recs .rform textarea{flex:1;min-width:0;resize:vertical}
 .pmain .grey{margin:0}
-#panelA,#panelN{margin-top:var(--s5)}   /* a shelf's own page (#viewShelf) starts where every page does, 24px under the bar */
-/* Activity: this person's lines (site.css draws them). Network: Following · Followers under the tabs, then the
+#panelA,#panelN,#panelW{margin-top:var(--s5)}   /* a shelf's own page (#viewShelf) starts where every page does, 24px under the bar */
+/* Posts: this person's lines (site.css draws them). People: Following · Followers under the tabs, then the
    people, in the page */
 #acts:empty,#netPeople:empty{display:none}
 .tabs.sub{margin-top:0;border-bottom:0;gap:var(--s4)}
@@ -265,15 +271,10 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
   .featmeta .name{z-index:1;padding-top:13px;padding-bottom:13px;margin-top:-13px;margin-bottom:-13px}   /* the hero's, in the small line under the shelf */
 }
 @media (max-width:640px){
-  .phead{grid-template-columns:72px minmax(0,1fr);grid-template-areas:"ava who" "stats stats";gap:var(--s4)}
+  .phead{grid-template-columns:72px minmax(0,1fr);gap:var(--s4)}
   .ava{width:72px;height:72px;font-size:28px}
-  .statcol{justify-items:stretch}
-  .stats{display:none}                              /* the numbers are the one small line under the name */
-  .counts{display:block}
-  .statcol:has(> #reqBtn[hidden]){display:none}     /* with no requests waiting, nothing is left in it */
-  #reqBtn{justify-self:start}
   #featWrap{--sh:180px}
-  .wstrip{--wcov:80px;gap:var(--s2)}
+  .wstrip{--wcov:80px}
   .titles li{grid-template-columns:40px minmax(0,1fr)}
   .tacts{grid-column:2;justify-content:flex-start}
 }
@@ -301,50 +302,49 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 </header>
 
 <main class="prof">
-  <p class="grey" id="state" role="status">Loading…</p>
+  <p class="grey vh" id="state" role="status">Loading…</p>
+  <!-- drawn at once, the size of the card to come, while the profile is read (nothing moves when it comes) -->
+  <div class="pskel" id="skel" aria-hidden="true"><span class="sk ska"></span><span class="skw"><span class="sk skn"></span><span class="sk skh"></span><span class="sk skl"></span><span class="sk skl short"></span></span></div>
   <div id="page" hidden>
-    <div class="phead">
-      <div class="ava" id="ava"></div>
-      <div class="who">
-        <div class="namerow">
-          <!-- [html-validate-disable-next empty-heading -- the name is filled in once the profile loads; the page is hidden until then] -->
-          <h1 id="name"></h1>
-          <span class="tag" id="followsYou" hidden>Follows you</span>
-        </div>
-        <p class="handle" id="handle"></p>
-        <div class="pbio" id="pbio" hidden><p class="bio" id="bio"></p><button class="dash sm grey bmore" id="bioMore" type="button" hidden>more</button></div>
-        <a class="addbio" id="addBio" href="../settings/" hidden>add a bio</a>
-        <p class="mutual" id="mutual" hidden></p>
-        <p class="since" id="since"></p>
-        <!-- the numbers on a phone, in one small line (on a wide window they stand at the right: .stats) -->
-        <p class="counts" id="counts"><a id="cSpines" href="#"><b>0</b> spines</a> · <a id="cFollowing" href="#network"><b>0</b> following</a> · <a id="cFollowers" href="#followers"><b>0</b> followers</a></p>
-        <div class="pbtns">
-          <a class="btn ghost sm" id="editBtn" href="../settings/" hidden>Edit profile</a>
-          <button class="btn ghost sm follow" id="followBtn" type="button" hidden>Follow</button>
-          <button class="btn ghost sm" id="moreBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
-          <div class="menu" id="menu" role="menu" hidden><button type="button" role="menuitem" id="copyLink">Copy link</button><button type="button" role="menuitem" id="reportProfile" hidden>Report</button></div>
+    <section class="pcard" id="pcard" aria-label="Profile">
+      <div class="pbanner" id="pbanner" aria-hidden="true" hidden></div>
+      <div class="phead">
+        <div class="ava" id="ava"></div>
+        <div class="who">
+          <div class="namerow">
+            <!-- [html-validate-disable-next empty-heading -- the name is filled in once the profile loads; the page is hidden until then] -->
+            <h1 id="name"></h1>
+            <span class="tag" id="followsYou" hidden>Follows you</span>
+          </div>
+          <ul class="badges" id="badges" aria-label="Badges" hidden></ul>
+          <p class="handle" id="handle"></p>
+          <div class="pbio" id="pbio" hidden><p class="bio" id="bio"></p><button class="dash sm grey bmore" id="bioMore" type="button" hidden>more</button></div>
+          <a class="addbio" id="addBio" href="../settings/" hidden>add a bio</a>
+          <!-- the numbers, one plain line under the bio -->
+          <p class="counts" id="counts"><a id="cSpines" href="#"><b>0</b> spines</a> · <a id="cFollowing" href="#people"><b>0</b> following</a> · <a id="cFollowers" href="#followers"><b>0</b> followers</a></p>
+          <p class="mutual" id="mutual" hidden></p>
+          <p class="since" id="since"></p>
+          <div class="pbtns">
+            <a class="btn ghost sm" id="editBtn" href="../settings/" hidden>Edit profile</a>
+            <button class="btn ghost sm follow" id="followBtn" type="button" hidden>Follow</button>
+            <button class="dash sm" id="reqBtn" type="button" hidden>Requests</button>
+            <button class="btn ghost sm" id="moreBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+            <div class="menu" id="menu" role="menu" hidden><button type="button" role="menuitem" id="shareStory">Share to story</button><button type="button" role="menuitem" id="copyLink">Copy link</button><button type="button" role="menuitem" id="reportProfile" hidden>Report</button></div>
+          </div>
         </div>
       </div>
-      <div class="statcol" id="statCol">
-        <dl class="stats">
-          <div><dt>Spines</dt><dd id="nSpines">0</dd></div>
-          <div class="statlink" data-list="following"><dt><button type="button">Following</button></dt><dd id="nFollowing">0</dd></div>
-          <div class="statlink" data-list="followers"><dt><button type="button">Followers</button></dt><dd id="nFollowers">0</dd></div>
-        </dl>
-        <button class="dash sm" id="reqBtn" type="button" hidden>Requests</button>
-      </div>
-    </div>
+    </section>
     <p class="note" id="privNote" hidden>Your profile is private.</p>
     <p class="privmsg" id="privateMsg" hidden>This profile is private.</p>
 
     <div id="viewProfile">
       <nav class="tabs" role="tablist" aria-label="Profile">
         <button type="button" role="tab" id="tabP" data-tab="profile" aria-selected="true" aria-controls="panelP">Profile</button>
-        <button type="button" role="tab" id="tabA" data-tab="activity" aria-selected="false" aria-controls="panelA">Activity</button>
+        <button type="button" role="tab" id="tabA" data-tab="activity" aria-selected="false" aria-controls="panelA">Posts</button>
         <button type="button" role="tab" id="tabW" data-tab="watchlist" aria-selected="false" aria-controls="panelW">Up next</button>
         <button type="button" role="tab" id="tabR" data-tab="recs" aria-selected="false" aria-controls="panelR" hidden>Recs</button>
         <button type="button" role="tab" id="tabS" data-tab="shelves" aria-selected="false" aria-controls="panelS">Shelves</button>
-        <button type="button" role="tab" id="tabN" data-tab="network" aria-selected="false" aria-controls="panelN">Network</button>
+        <button type="button" role="tab" id="tabN" data-tab="network" aria-selected="false" aria-controls="panelN">People</button>
       </nav>
       <div id="panelP" role="tabpanel" aria-labelledby="tabP">
         <section class="hero" id="hero" aria-label="Shelf">
@@ -400,6 +400,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
           <div id="rPanel" role="tabpanel" aria-label="Recs">
             <ol class="titles recs" id="rList"></ol>
             <p class="grey" id="rNone" hidden></p>
+            <p class="rgo"><button class="btn primary" id="rGo" type="button" hidden>Recommend</button></p>
           </div>
         </div>
       </div>
@@ -409,7 +410,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
         <p class="grey" id="sNone" hidden>No shelves yet.</p>
       </div>
       <div id="panelN" role="tabpanel" aria-labelledby="tabN" hidden>
-        <nav class="tabs sub" role="tablist" aria-label="Network">
+        <nav class="tabs sub" role="tablist" aria-label="People">
           <button type="button" role="tab" id="tabNg" data-net="following" aria-selected="true" aria-controls="netPanel">Following</button>
           <button type="button" role="tab" id="tabNr" data-net="followers" aria-selected="false" aria-controls="netPanel">Followers</button>
         </nav>
@@ -501,7 +502,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 </div>
 
 <footer>
-  <p class="fnav"><a href="../privacy.html#credits">About</a><span aria-hidden="true">·</span><a href="../privacy.html">Privacy</a><span aria-hidden="true">·</span><a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a></p>
+  <p class="fnav"><a href="../about/">About</a><span aria-hidden="true">·</span><a href="../privacy.html">Privacy</a><span aria-hidden="true">·</span><a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a></p>
 </footer>
 <div class="toast" id="toast" hidden></div>
 
@@ -509,7 +510,9 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../spinetip.js?v=20261004a"></script>
 <script src="../wear.js?v=20261016a"></script>
-<script src="../nav.js?v=20261019a"></script>
+<script src="../nav.js?v=20261020a"></script>
+<script src="../badges.js?v=20261020a"></script>
+<script src="../themes.js?v=20261020a"></script>
 <script>
 (() => {
 /* A profile: /u/?username, and its shelf on its own page: /u/?username&shelf (one shelf each), or a shelf by its id,
@@ -749,11 +752,13 @@ function redrawAll(){ clearTimeout(redrawT); redrawT = setTimeout(() => { for (c
 Shelf.onTextureLoaded(() => redrawAll());
 
 async function load(){
+  cachedCard();   // last time's card, at once, while the profile is read
   await startSession();
   paintAcct();
   // Recommend, on a spine, a cover in Up next and From friends: signed in, once 0010 is there (recs.js)
   Nav.loadRecs().then(ok => {
     view.recs = !!ok; $('#tabR').hidden = !ok;
+    Nav.tabInView(document.querySelector('#viewProfile > .tabs [aria-selected="true"]'));   // the Recs tab came after: the open one back in view
     document.documentElement.classList.toggle('recs-on', !!ok && !!(me.user && me.profile));
     if (ok && /^#(recs|sent)$/.test(location.hash) && view.profile) paintTabs();   // landed on it before 0010 was known to be there
   });
@@ -768,7 +773,7 @@ async function load(){
     // a private profile you don't follow: only its card
     const card = (await rpc('profile_card', {p_username: NAME}).catch(() => []))[0];
     if (card && card.is_private) return showPrivate(card);
-    $('#state').innerHTML = `No one by that name. <a href="../build/">Make your own shelf</a>.`; return;
+    $('#page').hidden = true; $('#state').innerHTML = `No one by that name. <a href="../build/">Make your own shelf</a>.`; return;
   }
   view.profile = p; view.mine = !!(me.user && me.user.id === p.id);
   titled(person(p), `${person(p)} on shelfstackd: their shelf, and the films and books they log.`);
@@ -777,7 +782,7 @@ async function load(){
   paintHead();
   paintFollow().then(async () => { if (await finishFollow()) paintFollow(); });
   paintKnown();
-  $('#state').hidden = true; $('#page').hidden = false;
+  $('#state').hidden = true; $('#skel').hidden = true; $('#page').hidden = false;
   if (ONE) return showShelf(SHELF || (theShelf() || {}).id || '');
   $('#viewProfile').hidden = false; $('#viewShelf').hidden = true;
   paintTabs();
@@ -796,13 +801,13 @@ async function refresh(){
   paintHero();
   if (!$('#panelA').hidden) paintActivity();
 }
-// SPINES: on their shelf (the one shown). The numbers are said twice in the page: big, at the right, for a wide
-// window, and as one small line of links under the name for a phone ("2 spines · 1 following · 2 followers")
+// spines: on their shelf (the one shown). The numbers are one plain line of links under the bio, at every width
+// ("2 spines · 1 following · 2 followers")
 const counted = (n, one, many) => `<b>${n}</b> ${n === 1 ? one : many}`;
 function paintStats(){
   const n = countOf(theShelf() || {});
-  $('#nSpines').textContent = n;
   $('#cSpines').innerHTML = counted(n, 'spine', 'spines'); $('#cSpines').href = pageUrl(view.profile.username) + '&shelf';
+  keepCard({spines: n});
 }
 function paintHead(){
   const p = view.profile, name = p.display_name.trim(), mine = view.mine;
@@ -810,7 +815,7 @@ function paintHead(){
   $('#handle').textContent = '@' + p.username;
   $('#handle').hidden = !name;
   const ava = $('#ava');
-  if (p.avatar_key){ ava.className = 'ava'; ava.innerHTML = `<img src="${esc(WORKER + '/m/img?k=' + encodeURIComponent(p.avatar_key))}" alt="${esc(name || p.username)}">`; }
+  if (p.avatar_key){ ava.className = 'ava'; ava.innerHTML = `<img src="${esc(WORKER + '/m/img?k=' + encodeURIComponent(p.avatar_key))}" alt="${esc(name || p.username)}" width="96" height="96">`; }
   else if (mine){ ava.className = 'ava add'; ava.innerHTML = '<a class="addphoto" href="../settings/#photo">Add a photo</a>'; }   // Settings, on its Photo tab
   else { ava.className = 'ava'; ava.textContent = (name || p.username).trim()[0] || '·'; ava.setAttribute('aria-hidden', 'true'); }
   $('#editBtn').hidden = !mine;
@@ -821,6 +826,48 @@ function paintHead(){
   $('#addBio').hidden = !(mine && !p.bio);
   requestAnimationFrame(() => { const b = $('#bio'); $('#bioMore').hidden = !p.bio || b.scrollHeight <= b.clientHeight + 1; });
   $('#since').textContent = 'on shelfstackd since ' + new Date(p.created_at).toLocaleDateString('en-US', {month:'short', year:'numeric'});
+  paintBadges(p);
+  dress(p);
+}
+/* Badges (badges.js): a row of small square icons under the name, on every profile, themed or not. Each says its
+   name and one line in a tooltip on hover, or on a tap on a phone */
+function paintBadges(p){
+  if (!window.Badges) return;
+  Badges.of(p).then(list => { if (view.profile && view.profile.id === p.id) Badges.row($('#badges'), list); }).catch(() => {});
+}
+/* A theme (themes.js): only the profile card, for the people the data names */
+function dress(p){
+  if (!window.Themes) return;
+  Themes.apply($('#pcard'), Themes.of(p.username), {root: '../'});
+}
+/* ---------- drawn at once: what this profile looked like last time, kept in this browser (the card's name, photo,
+   bio and numbers), so the page has something real on it straight away. What's read now replaces it ---------- */
+const CARD_KEY = name => 'shelfstackd-card:' + name;
+function keepCard(more){
+  if (!view.profile) return;
+  try {
+    const p = view.profile, was = JSON.parse(localStorage.getItem(CARD_KEY(p.username)) || '{}');
+    localStorage.setItem(CARD_KEY(p.username), JSON.stringify({...was, at: Date.now(), p: {id: p.id, username: p.username, display_name: p.display_name, bio: p.bio, avatar_key: p.avatar_key, created_at: p.created_at}, ...more}));
+  } catch {}
+}
+function cachedCard(){
+  if (!NAME || ONE) return false;
+  let c = null; try { c = JSON.parse(localStorage.getItem(CARD_KEY(NAME)) || 'null'); } catch {}
+  if (!c || !c.p || c.p.username !== NAME || Date.now() - c.at > 7 * 864e5) return false;
+  const p = c.p, name = (p.display_name || '').trim();
+  $('#name').textContent = name || '@' + p.username; $('#handle').textContent = '@' + p.username; $('#handle').hidden = !name;
+  const ava = $('#ava');
+  if (p.avatar_key) ava.innerHTML = `<img src="${esc(avatarSrc(p.avatar_key))}" alt="${esc(name || p.username)}" width="96" height="96">`;
+  else { ava.textContent = (name || p.username).trim()[0] || '·'; ava.setAttribute('aria-hidden', 'true'); }
+  $('#bio').textContent = p.bio || ''; $('#pbio').hidden = !p.bio;
+  $('#cSpines').innerHTML = counted(c.spines || 0, 'spine', 'spines');
+  $('#cFollowing').innerHTML = counted(c.following || 0, 'following', 'following'); $('#cFollowers').innerHTML = counted(c.followers || 0, 'follower', 'followers');
+  $('#since').textContent = p.created_at ? 'on shelfstackd since ' + new Date(p.created_at).toLocaleDateString('en-US', {month:'short', year:'numeric'}) : '';
+  $('#viewProfile').hidden = true;   // the tabs come with the profile itself
+  $('#skel').hidden = true; $('#page').hidden = false;
+  if (window.Badges) Badges.of(p).then(list => { if (!view.profile) Badges.row($('#badges'), list); }).catch(() => {});
+  if (window.Themes) Themes.apply($('#pcard'), Themes.of(p.username), {root: '../', quiet: true});
+  return true;
 }
 $('#bioMore').addEventListener('click', () => { $('#pbio').classList.add('open'); $('#bioMore').hidden = true; });
 /* ---------- Shelves (N): every shelf of theirs (public ones; yours, private ones too), newest first, each its spines
@@ -871,8 +918,9 @@ async function paintRecs(box){
   if (run !== recRun) return;
   recRows = rows || [];
   if (recBox === 'for') $('#tabRf').textContent = `For you (${recRows.length})`;
-  $('#rNone').textContent = recBox === 'for' ? 'Nothing recommended to you right now.' : 'You haven’t recommended anything yet.';
-  $('#rNone').hidden = !!recRows.length;
+  // empty, either way: a nudge to send one, with Recommend (+ ADD's Recommend: find the title, then who to)
+  $('#rNone').textContent = 'Recommend something to a friend.';
+  $('#rNone').hidden = $('#rGo').hidden = !!recRows.length;
   $('#rList').replaceChildren(...recRows.map((r, i) => recRow(r, i)));
 }
 const STATE = {open: 'Waiting', kept: 'Kept', watched: '', dismissed: 'Passed'};
@@ -914,6 +962,7 @@ $('#rList').addEventListener('click', async e => {
     paintRecs(recBox);
   } catch (err){ toast(Recs.friendly(err)); if (b.isConnected) b.disabled = false; }
 });
+$('#rGo').addEventListener('click', () => Nav.add({mode: 'rec'}));
 $('#rList').addEventListener('submit', async e => {
   e.preventDefault();
   const form = e.target, li = form.closest('li[data-i]'), r = li && recRows[+li.dataset.i], ta = form.querySelector('textarea'), text = ta.value.trim();
@@ -995,11 +1044,11 @@ function cleanCover(r, width = 150){
   img.src = src;
   return c;
 }
-// "You want to see 4 films and read 2 books." / "@mira wants to see 1 film."
+// "4 films and 2 books waiting." / "1 film waiting for @mira."
 function wantLine(rows, mine){
   const films = rows.filter(r => r.kind === 'movie').length, books = rows.length - films, n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
-  const parts = [films && 'see ' + n(films, 'film', 'films'), books && 'read ' + n(books, 'book', 'books')].filter(Boolean);
-  return parts.length ? `${mine ? 'You want' : '@' + view.profile.username + ' wants'} to ${parts.join(' and ')}.` : '';
+  const parts = [films && n(films, 'film', 'films'), books && n(books, 'book', 'books')].filter(Boolean);
+  return parts.length ? `${parts.join(' and ')} waiting${mine ? '' : ' for @' + view.profile.username}.` : '';
 }
 // 0008 run? (profiles.watchlist_public). Without it the database says the column isn't there
 async function watchPrivacy(){
@@ -1017,7 +1066,7 @@ async function paintWatch(){
   $('#watchSec').hidden = !shown || (!lists.watch.length && !mine);
   $('#watchCount').textContent = mine && lists.watch.length ? `${lists.watch.length} of ${window.Add ? Add.WATCH_CAP : 6}` : '';
   $('#watchAll').hidden = !lists.watch.length;
-  $('#watchStrip').replaceChildren(...lists.watch.slice(0, 4).map(r => {
+  $('#watchStrip').replaceChildren(...lists.watch.slice(0, 6).map(r => {
     const li = document.createElement('li'), a = document.createElement('a');
     a.href = '#upnext'; a.className = 'sealed'; a.setAttribute('aria-label', `${r.title}${r.year ? ` (${r.year})` : ''}, up next`); a.append(cleanCover(r, 100));
     li.append(a); return li;
@@ -1148,7 +1197,7 @@ async function rowsOnMine(id){
 const SAVED = 'shelfstackd-saved';   // the builder leaves the id of a shelf it has just saved here
 async function showShelf(id){
   $('#viewProfile').hidden = true; $('#viewShelf').hidden = false;
-  document.querySelector('.phead').hidden = true; $('#privNote').hidden = true;   // the shelf has its own heading, and its maker is in it
+  $('#pcard').hidden = true; $('#privNote').hidden = true;   // the shelf has its own heading, and its maker is in it
   const p = view.profile, s = view.shelves.find(x => x.id === id), mine = view.mine;
   $('#backLink').href = pageUrl(p.username);
   $('#backLink').textContent = 'Back to @' + p.username;
@@ -1250,28 +1299,25 @@ function saveFile(blob){
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
 async function shareShelf(what){
-  if (what === 'whatsapp'){   // WhatsApp, with the shelf's name and its link
-    const url = location.origin + pageUrl(view.profile.username, shown.shelf.id);
+  if (what === 'whatsapp'){   // WhatsApp, with the shelf's name and its share link (a preview with its picture)
+    const url = Nav.shareLink({username: view.profile.username, shelf: shown.shelf.id});
     window.open(Nav.whatsapp(`${shelfName(shown.shelf)} by @${view.profile.username} on shelfstackd:`, url), '_blank', 'noopener');
     return;
   }
   if (what === 'link'){
-    const url = location.origin + pageUrl(view.profile.username, shown.shelf.id);
+    const url = Nav.shareLink({username: view.profile.username, shelf: shown.shelf.id});
     try { await navigator.clipboard.writeText(url); toast('Link copied.'); } catch { toast(url); }
+    return;
+  }
+  if (what === 'story'){
+    // the story card (story.js): this shelf's spines on their line, its name, @username and shelfstackd.com
+    const pic = $('#oneShelf canvas');
+    if (!pic){ toast('This shelf’s pictures haven’t loaded. Try again in a moment.'); return; }
+    await Nav.story({kind: 'shelf', picture: pic, title: shelfName(shown.shelf), username: view.profile.username});
     return;
   }
   toast('Making the picture…');   // a browser can take a few seconds over it
   let blob; try { blob = await storyBlob(); } catch (err){ toast(friendly(err)); return; }
-  if (what === 'story'){
-    // a phone has a share sheet for pictures (pick Instagram, then Story); a computer doesn't, so the picture is saved
-    const file = new File([blob], STORY_FILE, {type: 'image/png'});
-    if (navigator.canShare && navigator.canShare({files: [file]}) && matchMedia('(pointer:coarse)').matches){
-      $('#toast').hidden = true;
-      try { await navigator.share({files: [file]}); return; } catch (err){ if (err && err.name === 'AbortError') return; }
-    }
-    saveFile(blob); toast('Saved as ' + STORY_FILE + '. Add it to your Instagram story.');
-    return;
-  }
   saveFile(blob); toast('Downloaded ' + STORY_FILE + '.');
 }
 $('#oneActs').addEventListener('click', e => { const act = e.target.closest('[data-act]'); if (act) cardAction(act); });
@@ -1463,8 +1509,8 @@ async function paintKnown(){
 }
 async function paintFollowStats(){
   const st = (await rpc('follow_stats', {uid: view.profile.id}).catch(() => []))[0] || {};
-  $('#nFollowing').textContent = st.following || 0; $('#nFollowers').textContent = st.followers || 0;
   $('#cFollowing').innerHTML = counted(st.following || 0, 'following', 'following'); $('#cFollowers').innerHTML = counted(st.followers || 0, 'follower', 'followers');
+  keepCard({following: st.following || 0, followers: st.followers || 0});
 }
 async function paintRequests(){
   const list = await rpc('request_list', {n: 31}).catch(() => []), b = $('#reqBtn');
@@ -1477,17 +1523,18 @@ async function showPrivate(card){
   titled(person(card), `${person(card)} is on shelfstackd. This profile is private.`);
   $('#name').textContent = name || '@' + card.username; $('#handle').textContent = '@' + card.username; $('#handle').hidden = !name;
   ava.className = 'ava';
-  if (card.avatar_key) ava.innerHTML = `<img src="${esc(avatarSrc(card.avatar_key))}" alt="${esc(name || card.username)}">`;
+  if (card.avatar_key) ava.innerHTML = `<img src="${esc(avatarSrc(card.avatar_key))}" alt="${esc(name || card.username)}" width="96" height="96">`;
   else { ava.textContent = (name || card.username).trim()[0] || '·'; ava.setAttribute('aria-hidden', 'true'); }
-  $('#editBtn').hidden = true; $('#reportProfile').hidden = false; $('#statCol').hidden = true; $('#counts').hidden = true; $('#pbio').hidden = true; $('#addBio').hidden = true; $('#since').hidden = true;
+  $('#editBtn').hidden = true; $('#reportProfile').hidden = false; $('#counts').hidden = true; $('#pbio').hidden = true; $('#addBio').hidden = true; $('#since').hidden = true;
   paintKnown();   // "Follows you" shows on a private profile's card too
   $('#viewProfile').hidden = true; $('#viewShelf').hidden = true; $('#privateMsg').hidden = false; $('#followBtn').hidden = false;
-  $('#state').hidden = true; $('#page').hidden = false;
+  paintBadges(card); dress(card);
+  $('#state').hidden = true; $('#skel').hidden = true; $('#page').hidden = false;
   if (await finishFollow()) card = (await rpc('profile_card', {p_username: card.username}).catch(() => []))[0] || card;
   followButton($('#followBtn'), card, () => {});
 }
 
-/* ---------- the lists of people: Following and Followers in the Network tab, the requests waiting for you in a sheet;
+/* ---------- the lists of people: Following and Followers in the People tab, the requests waiting for you in a sheet;
    30 at a time ---------- */
 const LIST_NONE = {followers: 'No followers yet.', following: 'Not following anyone yet.', requests: 'No requests waiting.'};
 // your own lists say what to do next
@@ -1539,12 +1586,9 @@ function peopleList(ul, noneEl, moreEl){
   return list;
 }
 const netList = peopleList($('#netPeople'), $('#netNone'), $('#netMore')), reqList = peopleList($('#people'), $('#peopleNone'), $('#peopleMore'));
-let netShown = '';   // which of the two the Network tab has now: 'following' or 'followers'
+let netShown = '';   // which of the two the People tab has now: 'following' or 'followers'
 $('#reqBtn').addEventListener('click', () => { openSheet('#listSheet', '#listSheet .x'); reqList.open('requests'); });
-// FOLLOWING and FOLLOWERS, the numbers at the top, open the Network tab on that list
-document.querySelectorAll('.statlink').forEach(d => {
-  d.addEventListener('click', () => goTab(d.dataset.list === 'followers' ? '#followers' : '#network'));   // its button too: Enter and Space click it
-});
+// following and followers, in the line of numbers, open the People tab on that list
 for (const a of document.querySelectorAll('#cFollowing, #cFollowers')) a.addEventListener('click', e => { e.preventDefault(); goTab(a.getAttribute('href')); });
 $('#watchSec').addEventListener('click', e => { const a = e.target.closest('a[href="#upnext"]'); if (a){ e.preventDefault(); goTab('#upnext'); scrollTo(0, 0); } });   // the phone's line does the same
 
@@ -1614,16 +1658,16 @@ $('#acts').addEventListener('click', async e => {
   } catch (err){ toast(friendly(err)); if (b.isConnected) b.disabled = false; }
 });
 
-/* ---------- tabs: Profile · Activity (#activity) · Up next (#upnext; #watchlist, its old name, too) · Shelves (#shelves) · Network (#network is Following, #followers is Followers). The
+/* ---------- tabs: Profile · Posts (#posts; #activity, its old name, too) · Up next (#upnext; #watchlist too) · Shelves (#shelves) · People (#people is Following, #followers is Followers; #network, its old name, too). The
    address has the tab, so a reload lands on it, and so do the account menu's links. #shelves, from when there was a
    Shelves tab, is Profile. ---------- */
-const HASH = {'': ['profile'], '#recs': ['recs', 'for'], '#sent': ['recs', 'sent'], '#shelves': ['shelves'], '#activity': ['activity'], '#upnext': ['watchlist'], '#watchlist': ['watchlist'], '#network': ['network', 'following'], '#following': ['network', 'following'], '#followers': ['network', 'followers']};
+const HASH = {'': ['profile'], '#recs': ['recs', 'for'], '#sent': ['recs', 'sent'], '#shelves': ['shelves'], '#posts': ['activity'], '#activity': ['activity'], '#people': ['network', 'following'], '#upnext': ['watchlist'], '#watchlist': ['watchlist'], '#network': ['network', 'following'], '#following': ['network', 'following'], '#followers': ['network', 'followers']};
 const PANEL = {profile: '#panelP', activity: '#panelA', watchlist: '#panelW', recs: '#panelR', shelves: '#panelS', network: '#panelN'};
 function paintTabs(){
   let [tab, net] = HASH[location.hash] || HASH[''];
   if (tab === 'watchlist' && $('#tabW').hidden) tab = 'profile';   // a watchlist that isn't shown (private, or no database for it)
   if (tab === 'recs' && $('#tabR').hidden) tab = 'profile';        // no recs in the database yet
-  for (const b of document.querySelectorAll('#viewProfile > .tabs button')){ const on = b.dataset.tab === tab; b.setAttribute('aria-selected', String(on)); $(PANEL[b.dataset.tab]).hidden = !on; }
+  for (const b of document.querySelectorAll('#viewProfile > .tabs button')){ const on = b.dataset.tab === tab; b.setAttribute('aria-selected', String(on)); $(PANEL[b.dataset.tab]).hidden = !on; if (on) Nav.tabInView(b); }
   if (tab === 'activity') paintActivity();
   if (tab === 'watchlist') paintWatchTab();
   if (tab === 'shelves') paintShelvesTab();
@@ -1635,24 +1679,31 @@ function paintTabs(){
 }
 function goTab(hash){ history.replaceState(null, '', location.pathname + location.search + hash); paintTabs(); }
 document.querySelector('#viewProfile > .tabs').addEventListener('click', e => {
-  const b = e.target.closest('[data-tab]'); if (b) goTab({profile: '', activity: '#activity', watchlist: '#upnext', recs: '#recs', shelves: '#shelves', network: '#network'}[b.dataset.tab]);
+  const b = e.target.closest('[data-tab]'); if (b) goTab({profile: '', activity: '#posts', watchlist: '#upnext', recs: '#recs', shelves: '#shelves', network: '#people'}[b.dataset.tab]);
 });
-document.querySelector('#panelN .tabs.sub').addEventListener('click', e => { const b = e.target.closest('[data-net]'); if (b) goTab(b.dataset.net === 'followers' ? '#followers' : '#network'); });
+document.querySelector('#panelN .tabs.sub').addEventListener('click', e => { const b = e.target.closest('[data-net]'); if (b) goTab(b.dataset.net === 'followers' ? '#followers' : '#people'); });
 document.querySelector('#panelR .tabs.sub').addEventListener('click', e => { const b = e.target.closest('[data-rbox]'); if (b) goTab(b.dataset.rbox === 'sent' ? '#sent' : '#recs'); });
 // ← → move between the tabs of a row
 for (const row of document.querySelectorAll('#viewProfile .tabs')) row.addEventListener('keydown', e => {
   const all = [...row.querySelectorAll('button:not([hidden])')], i = all.indexOf(document.activeElement);   // not a tab that isn't there (Up next private, Recs before 0010) if (i < 0 || (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft')) return;
   const next = all[(i + (e.key === 'ArrowRight' ? 1 : all.length - 1)) % all.length]; next.focus(); next.click();
 });
-// a link to another tab of this same page (the account menu's Activity and Network on your own profile)
+// a link to another tab of this same page (the account menu's Posts and People on your own profile)
 addEventListener('hashchange', () => { if (view.profile && !$('#viewProfile').hidden) paintTabs(); });
 
 /* the ··· menu */
 function closeMenu(){ $('#menu').hidden = true; $('#moreBtn').setAttribute('aria-expanded', 'false'); }
 $('#moreBtn').addEventListener('click', e => { e.stopPropagation(); const open = $('#menu').hidden; $('#menu').hidden = !open; $('#moreBtn').setAttribute('aria-expanded', String(open)); if (open) $('#menu button').focus(); });
 document.addEventListener('click', e => { if (!e.target.closest('#menu')) closeMenu(); });
+// Share to story: this profile as a story picture (story.js): the photo, the name, the line of numbers, their shelf
+$('#shareStory').addEventListener('click', async () => {
+  closeMenu();
+  const p = view.profile, name = (p.display_name || '').trim();
+  await Nav.story({kind: 'profile', avatar: p.avatar_key ? avatarSrc(p.avatar_key) : '', name: name || '@' + p.username, username: p.username,
+    line: $('#counts').textContent.replace(/\s+/g, ' ').trim(), picture: $('#featLink canvas')});
+});
 $('#copyLink').addEventListener('click', async () => {
-  const url = location.origin + pageUrl(view.profile.username);
+  const url = Nav.shareLink({username: view.profile.username});   // its preview shows their name and shelf
   closeMenu();
   try { await navigator.clipboard.writeText(url); toast('Link copied.'); } catch { toast(url); }
 });
@@ -1684,6 +1735,9 @@ $('#reportSend').addEventListener('click', async () => {
   note.textContent = !r ? 'Couldn’t reach shelfstackd. Check your connection and try again.' : j.code === '23505' ? 'You’ve already reported this. Thanks.' : j.code === 'P0001' && j.message ? j.message : 'Couldn’t send the report. Try again in a moment.';
 });
 
+/* While the profile is read, its skeleton shows and "Loading…" is for a screen reader only; anything else the line
+   says (no such person, no connection) shows in place of the skeleton */
+new MutationObserver(() => { if ($('#state').textContent !== 'Loading…'){ $('#state').classList.remove('vh'); $('#skel').hidden = true; } }).observe($('#state'), {childList: true, characterData: true, subtree: true});
 load().catch(e => { $('#state').hidden = false; $('#state').textContent = friendly(e); });
 if (document.fonts) document.fonts.ready.then(() => redrawAll());
 })();

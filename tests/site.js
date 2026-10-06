@@ -25,6 +25,7 @@ const PAGES = [
 /* pages without it */
 const OTHER_PAGES = [
   { name: 'privacy', path: '/privacy.html' },
+  { name: 'about', path: '/about/' },
   { name: 'admin', path: '/admin.html' },
   { name: 'not found', path: '/404.html' },
 ];
@@ -40,6 +41,11 @@ const PEOPLE = [
 ];
 // someone the search finds (find_people() only): @div, with a photo
 const DIV = { id: '55555555-5555-4555-8555-555555555555', username: 'div', display_name: 'Divya', bio: '', avatar_key: 'avatars/div', pinned_shelf_id: null, is_private: false, created_at: day(10) };
+// @viraaj, whose profile wears the Gummo theme (themes.js) and has the Founder and Early 100 badges (badges.js): only a
+// profile read by its username or id knows them, and their one shelf, so nothing else counts them
+const VIRAAJ = { id: '66666666-6666-4666-8666-666666666666', username: 'viraaj', display_name: 'Viraaj', bio: 'Shelving what I watch. Xenia, Ohio, in spirit.', avatar_key: 'avatars/viraaj', pinned_shelf_id: null, is_private: false, created_at: day(100) };
+const VIRAAJ_SHELF = { id: 'aaaaaaaa-aaaa-4aaa-8aaa-0000000000ff', owner: VIRAAJ.id, caption: 'films for the bathtub', name: null, filter: 'clean', intensity: 70, background: 'paper', wood: false, layout: 'row', varied: true, is_public: true, hidden: false,
+  preview_key: `${VIRAAJ.id}/p/aaaaaaaa-aaaa-4aaa-8aaa-0000000000ff`, pro: {}, created_at: day(99), updated_at: day(5), saved_at: day(5), shelf_items: [{ count: 2 }] };
 const shelfId = i => `aaaaaaaa-aaaa-4aaa-8aaa-${String(i).padStart(12, '0')}`;
 const SHELVES = Array.from({ length: 18 }, (_, i) => {
   const owner = PEOPLE[i % PEOPLE.length];
@@ -330,12 +336,14 @@ function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, 
   }
   if (what === 'rpc/profile_stats') return [{ shelf_count: SHELVES.filter(s => s.owner === body.uid).length, spine_count: 12 }];
   if (what === 'rpc/follow_stats') return [fresh && body.uid === ME.id ? { following: 0, followers: 0 } : { following: 1, followers: 2 }];
-  if (what === 'rpc/profile_card') return PEOPLE.filter(p => p.username === body.p_username).map(p => card(p, me));
+  if (what === 'rpc/profile_card') return [...PEOPLE, VIRAAJ].filter(p => p.username === body.p_username).map(p => card(p, me));
   if (what === 'rpc/find_people'){   // by the start of a username or a display name, an @ in front or not (and @div, found only by searching)
     const w = String(body.q || '').trim().replace(/^@+/, '').toLowerCase();
     return w ? [...PEOPLE, DIV].filter(p => p.username.startsWith(w) || p.display_name.toLowerCase().startsWith(w)).map(p => card(p, me)).slice(0, 10) : [];
   }
   if (what === 'rpc/follow_list') return fresh && body.uid === ME.id ? [] : PEOPLE.filter(p => p.id !== body.uid).map(p => card(p, me));
+  // 0012's badges_of(): @viraaj the founder, and the live site's first people in the first 100
+  if (what === 'rpc/badges_of') return (body.names || []).filter(n => ['viraaj', 'prathmesh', 'rudra', 'hardik', 'div'].includes(n)).map(n => ({ username: n, badges: n === 'viraaj' ? ['founder', 'early-100'] : ['early-100'] }));
   if (what === 'rpc/follow') return 'following';
   if (what === 'rpc/unfollow') return 'none';
   if (what === 'rpc/username_available') return true;
@@ -344,9 +352,13 @@ function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, 
   if (what.startsWith('rpc/')) return [];
   // a change to a profile answers with the row as it would be then (nothing here is kept)
   if (what === 'profiles' && method === 'PATCH') return PEOPLE.filter(p => p.id === eq('id')).map(p => ({ ...p, ...body }));
+  // a new profile (picking a username): the database's answer is the new row
+  if (what === 'profiles' && method === 'POST') return [{ ...PEOPLE[0], display_name: '', bio: '', pinned_shelf_id: null, ...body, created_at: new Date().toISOString() }];
+  if (what === 'profiles' && (eq('username') === VIRAAJ.username || eq('id') === VIRAAJ.id)) return [VIRAAJ];
   if (what === 'profiles') return PEOPLE.filter(p => (named || p.id !== ME.id) && (!q.has('id') || p.id === eq('id')) && (!q.has('username') || p.username === eq('username')))
     .map(p => fresh && p.id === ME.id ? { ...p, display_name: '', bio: '', created_at: new Date().toISOString() } : p);   // a new account: no name or bio yet
   if (what === 'shelves'){
+    if (eq('owner') === VIRAAJ.id || eq('id') === VIRAAJ_SHELF.id) return [VIRAAJ_SHELF];
     const ids = (q.get('id') || '').startsWith('in.(') ? q.get('id').slice(4, -1).split(',') : q.has('id') ? [eq('id')] : null;   // id=eq.x or id=in.(x,y)
     return [...SHELVES, ...(ids ? FRIEND_SHELVES : [])].filter(s => (!q.has('owner') || s.owner === eq('owner')) && (!ids || ids.includes(s.id)) && (ownShelf || s.owner !== ME.id));
   }
@@ -423,9 +435,11 @@ const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers
    social: the database has migration 0009 (likes, replies, notifications; supabase/migrations/0009_social.sql).
    recs: it has migration 0010 too (recs, their threads; supabase/migrations/0010_recs.sql). ids: and the proposed 0011
    (ids on titles, editing a log; docs/proposed-0011-ids-edits.sql).
+   signup: signed in with no username until one is picked (the builder's sheet), the made-up account's from then on.
    Returns {unknown, asked}: requests nothing here could answer, and every search /identify was asked for. */
-async function mockNetwork(page, { signedIn = false, named = true, slow = 0, capped = false, realFonts = false, empty = false, logs = true, ownShelf = true, fresh = false, friends = false, social = false, recs = false, ids = false } = {}){
+async function mockNetwork(page, { signedIn = false, named = true, slow = 0, capped = false, realFonts = false, empty = false, logs = true, ownShelf = true, fresh = false, friends = false, social = false, recs = false, ids = false, signup = false } = {}){
   const unknown = [], asked = [];
+  const st = { named: signup ? false : named };   // signup: no username until one is picked, then the made-up account's
   if (signedIn){
     const exp = Math.floor(Date.now() / 1000) + 3600, b64 = o => Buffer.from(JSON.stringify(o)).toString('base64url');
     const token = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: ME.id, role: 'authenticated', aud: 'authenticated', exp })}.test`;
@@ -440,7 +454,8 @@ async function mockNetwork(page, { signedIn = false, named = true, slow = 0, cap
     if (method === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
     if (url.origin === SB_URL && url.pathname.startsWith('/rest/v1/')){
       let body = {}; try { body = JSON.parse(req.postData() || '{}'); } catch {}
-      let data = rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, friends, social, recs, ids);
+      if (signup && method === 'POST' && url.pathname === '/rest/v1/profiles') st.named = true;
+      let data = rest(url, method, body, signedIn, st.named, empty, logs, ownShelf, fresh, friends, social, recs, ids);
       if (data && data.__status) return route.fulfill({ status: data.__status, headers: CORS, contentType: 'application/json', body: JSON.stringify(data.body) });
       if (/vnd\.pgrst\.object/.test(req.headers().accept || '')) data = Array.isArray(data) ? data[0] || null : data;   // .single()
       return route.fulfill({ status: data === null ? 204 : 200, headers: CORS, contentType: 'application/json', body: data === null ? '' : JSON.stringify(data) });
@@ -481,11 +496,14 @@ async function mockNetwork(page, { signedIn = false, named = true, slow = 0, cap
   return { unknown, asked };
 }
 
-/* what a page says is wrong while it runs: console errors and uncaught exceptions */
+/* what a page says is wrong while it runs: console errors and warnings, and uncaught exceptions */
 function watchErrors(page){
   const errors = [];
   page.on('console', m => {
-    if (m.type() !== 'error') return;
+    if (m.type() !== 'error' && m.type() !== 'warning') return;
+    // Chrome's hint when a canvas is read back more than once: the tests' own pixel checks do that (the pages read each
+    // canvas once), so it isn't the page's
+    if (m.type() === 'warning' && /^Canvas2D: Multiple readback operations using getImageData/.test(m.text())) return;
     if (/\/rest\/v1\/likes\?select=log&limit=1$/.test((m.location() || {}).url || '')) return;   // post.js asking whether 0009 is there: 404 until it is
     if (/\/rest\/v1\/rpc\/rec_stats\?uid=0{8}-/.test((m.location() || {}).url || '')) return;   // recs.js asking whether 0010 is there: the same
     if (/\/rest\/v1\/logs\?select=tmdb_id,edited_at&limit=1$/.test((m.location() || {}).url || '')) return;   // nav.js asking whether 0011 is there: 400 until it is
@@ -509,4 +527,4 @@ async function open(page, pathname){
   await page.waitForLoadState('networkidle');
 }
 
-module.exports = { DIV, MATCHES, IDS_LOG, TITLE_INFO, NEW_LOG, STATS, REPLIES, NOTES, MUTUALS, RECS_FOR, RECS_SENT, REC_THREAD, FEED_REC, REC_NOTES, recId, ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, LOGS, FRIENDS, FRIEND_SHELVES, FRIEND_LOGS, ITEMS_BY_SHELF, WATCHLIST, FROM_FRIENDS, PICTURE, STORY, CAPTION, MADE_WITH, CORS, WORKER, SB_URL, feedRow, storyPicture, mockNetwork, watchErrors, open, putAside };
+module.exports = { VIRAAJ, VIRAAJ_SHELF, DIV, MATCHES, IDS_LOG, TITLE_INFO, NEW_LOG, STATS, REPLIES, NOTES, MUTUALS, RECS_FOR, RECS_SENT, REC_THREAD, FEED_REC, REC_NOTES, recId, ROOT, PAGES, OTHER_PAGES, ME, PEOPLE, SHELVES, LOGS, FRIENDS, FRIEND_SHELVES, FRIEND_LOGS, ITEMS_BY_SHELF, WATCHLIST, FROM_FRIENDS, PICTURE, STORY, CAPTION, MADE_WITH, CORS, WORKER, SB_URL, feedRow, storyPicture, mockNetwork, watchErrors, open, putAside };

@@ -183,7 +183,7 @@ for (const pg of [...PAGES, { name: 'privacy', path: '/privacy.html' }, { name: 
     const foot = page.locator('footer');
     expect((await foot.innerText()).replace(/\s+/g, ' ').trim()).toBe('About · Privacy · hello@shelfstackd.com');
     await expect(foot.locator('a')).toHaveText(['About', 'Privacy', 'hello@shelfstackd.com']);
-    expect(await foot.getByRole('link', { name: 'About' }).evaluate(a => { const u = new URL(a.href); return u.pathname + u.hash; })).toBe('/privacy.html#credits');
+    expect(await foot.getByRole('link', { name: 'About' }).evaluate(a => { const u = new URL(a.href); return u.pathname + u.hash; })).toBe('/about/');
     expect(await foot.getByRole('link', { name: 'Privacy' }).evaluate(a => { const u = new URL(a.href); return u.pathname + u.hash; })).toBe('/privacy.html');
     await expect(foot.getByRole('link', { name: 'hello@shelfstackd.com' })).toHaveAttribute('href', 'mailto:hello@shelfstackd.com');
     // small grey print on one line, with no credits in it any more (they made it three lines on a phone)
@@ -194,11 +194,12 @@ for (const pg of [...PAGES, { name: 'privacy', path: '/privacy.html' }, { name: 
     expect((await foot.boundingBox()).height).toBeLessThanOrEqual(64);
     await expect(foot).not.toContainText(/TMDB|Open Library|Brave|how it works/i);
     await expect(foot.locator('h2, h3, ol, .btn, img')).toHaveCount(0);
-    // About goes to the Credits (signed out, Settings opens its sign-in sheet over the page: that's shut first)
+    // About goes to the About page, with the Credits on it (signed out, Settings opens its sign-in sheet over the page:
+    // that's shut first)
     if (await page.locator('.sheet:not([hidden])').count()) await page.keyboard.press('Escape');
     await foot.getByRole('link', { name: 'About' }).click();
-    await expect(page).toHaveURL(/\/privacy\.html#credits$/);
-    await expect(page.getByRole('heading', { name: 'Credits' })).toBeInViewport();
+    await expect(page).toHaveURL(/\/about\/$/);
+    await expect(page.getByRole('heading', { name: 'Credits' })).toBeVisible();
   });
 }
 

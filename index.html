@@ -47,7 +47,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- Courier Prime for the page; Geist Mono (a plain cover's title) and the spines' faces for the shelves it draws, as build/ and u/ have them -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Geist+Mono:wght@400;500&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
-<link rel="stylesheet" href="site.css?v=20261019a">
+<link rel="stylesheet" href="site.css?v=20261020a">
 <style>
 /* home: a welcome, then rows and grids of shelf cards (site.css has the cards, the bar and everything shared) */
 .home section{margin-top:var(--s6)}
@@ -55,6 +55,9 @@
 /* signed out: the spine wall, then one line and the one black button, from the left like the rest of the site */
 .hero{display:grid;justify-items:start;gap:var(--s4)}
 .hero h1{margin:var(--s2) 0 0}
+.invited{margin:var(--s2) 0 0}
+.invited a{font-weight:700;text-decoration:none}
+.invited a:hover,.invited a:focus-visible{text-decoration:underline;text-underline-offset:3px}
 /* the spine wall: one strip of the newest spines from different public shelves, a few from each person, standing on a
    thin shelf line across the column. Each shelf's spines are one link to it (on a touch screen at least 44px wide).
    Never stretched: in the middle while they don't fill the strip, and on a phone the rest scroll sideways inside it.
@@ -79,8 +82,9 @@
 .none{margin:0}
 .none a:hover,.none a:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 
-/* New from people you follow: a card for each person, the newest thing from them. A log is its cover, worn (wear.js),
-   the whole picture, with a 1px outline; a shelf is its spines standing on a thin line (bare.js), no box round either.
+/* Lately, from people you follow: a card for each person, the newest thing from them, all standing on one long shelf
+   line. A log is its cover, worn (wear.js), the whole picture, with a 1px outline; a shelf is its spines (bare.js).
+   No box round either.
    Under the picture their photo and @username; under the card, small and grey, what it was on the left and the date on the right. Six
    across on a wide window; on a narrower one as many as the shelf cards (four, three on a phone), and the rest scroll
    sideways inside the row */
@@ -91,6 +95,10 @@
 .fcard .art{display:block;position:relative;aspect-ratio:2/3;line-height:0}
 .fcard .art canvas.worn{display:block;width:100%;height:100%}
 .fcard .art.sl{display:flex;height:auto;aspect-ratio:2/3}   /* a shelf: its spines on the line, as tall as a cover is */
+/* one shelf line under every card's picture, running on through the gap to the next, so they all stand on one shelf */
+.fcard .art{border-bottom:1px solid var(--ink)}
+.fcard{position:relative}
+.frow li:not(:last-child) .fcard::after{content:"";position:absolute;left:100%;top:0;width:var(--card-gap);height:0;padding-top:calc(150% - 1px);border-bottom:1px solid var(--ink);pointer-events:none}   /* as tall as the picture (2:3), its foot the line's */
 .fby{display:flex;align-items:center;gap:var(--s1);min-width:0;padding:var(--s2) 0 0;font-size:var(--fs-small);line-height:16px}
 .fby .fa{flex:none;width:16px;height:16px;border-radius:50%;border:1px solid var(--ink);background:var(--wash);overflow:hidden;display:grid;place-items:center;font-size:9px;line-height:1;text-transform:uppercase}
 .fby .fa img{width:100%;height:100%;object-fit:cover;display:block}
@@ -135,6 +143,7 @@
         </div>
         <figcaption id="wallCap" hidden>a shelf, for example</figcaption>
       </figure>
+      <p class="invited" id="invited" hidden></p>
       <h1>Shelve the films and books you love, with their real spines.</h1>
       <a class="btn primary" id="start" href="build/">Make a shelf</a>
     </section>
@@ -155,7 +164,7 @@
       <h1 id="hello">Welcome back.</h1>
     </section>
     <section>
-      <h2>New from people you follow <a class="more" href="feed/?friends" aria-label="See all from people you follow">See all</a></h2>
+      <h2>Lately, from people you follow <a class="more" href="feed/?friends" aria-label="See all from people you follow">See all</a></h2>
       <p class="grey" id="folState" role="status">Loading…</p>
       <ul class="frow" id="folRow"></ul>
       <p class="none" id="folNone" hidden>No one followed yet. <a href="people/">Find people</a></p>
@@ -181,7 +190,7 @@
 </div>
 
 <footer>
-  <p class="fnav"><a href="privacy.html#credits">About</a><span aria-hidden="true">·</span><a href="privacy.html">Privacy</a><span aria-hidden="true">·</span><a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a></p>
+  <p class="fnav"><a href="about/">About</a><span aria-hidden="true">·</span><a href="privacy.html">Privacy</a><span aria-hidden="true">·</span><a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a></p>
 </footer>
 <div class="toast" id="toast" hidden></div>
 
@@ -189,7 +198,7 @@
 <script src="worker-address.js?v=20261001a"></script>
 <script src="wear.js?v=20261016a"></script>
 <script src="bare.js?v=20261013a"></script>
-<script src="nav.js?v=20261019a"></script>
+<script src="nav.js?v=20261020a"></script>
 <script>
 (() => {
 /* Home. Signed out: a wall of the newest spines, one line about the site and Make a shelf, and nothing else before the
@@ -295,7 +304,7 @@ function person(x){
 }
 const everyone = n => rpc('feed', {scope: 'everyone', before: null, before_id: null, n});
 
-/* ---------- New from people you follow: a card each ---------- */
+/* ---------- Lately, from people you follow: a card each, on one shelf line ---------- */
 const MONTH = new Intl.DateTimeFormat(undefined, {day: 'numeric', month: 'short'}), YEAR = new Intl.DateTimeFormat(undefined, {day: 'numeric', month: 'short', year: 'numeric'});
 const dated = t => (new Date(t).getFullYear() === new Date().getFullYear() ? MONTH : YEAR).format(new Date(t));
 const CARD = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card')) || 150;   // a card's width on a wide window (site.css)
@@ -384,6 +393,9 @@ let outShown = false;
 async function showOut(){
   if (outShown) return; outShown = true;
   document.documentElement.classList.add('signedout');   // signed out (no + ADD outline any more: two button looks, solid black and plain text)
+  // came through someone's invite link (nav.js keeps it): who asked you, over the line
+  const by = Nav.invitedBy();
+  if (by){ $('#invited').innerHTML = `<a href="${esc(profileUrl(by))}">@${esc(by)}</a> invited you.`; $('#invited').hidden = false; }
   $('#state').hidden = true; $('#in').hidden = true; $('#out').hidden = false;
   let rows;
   try { rows = await everyone(GRID); }

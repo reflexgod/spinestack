@@ -59,7 +59,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Geist+Mono:wght@400;500&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
-<link rel="stylesheet" href="../site.css?v=20261019a">
+<link rel="stylesheet" href="../site.css?v=20261020a">
 <style>
 /* the builder, laid out like a new-list page: Add, the spines as a list, Style, and the live preview beside them.
    The bottom area stays in view: the shelf's name and who can view it, with Cancel and Save (beside them
@@ -382,7 +382,7 @@ footer{margin-top:0}
 </div>
 
 <footer>
-  <p class="fnav"><a href="../privacy.html#credits">About</a><span aria-hidden="true">·</span><a href="../privacy.html">Privacy</a><span aria-hidden="true">·</span><a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a></p>
+  <p class="fnav"><a href="../about/">About</a><span aria-hidden="true">·</span><a href="../privacy.html">Privacy</a><span aria-hidden="true">·</span><a href="mailto:hello@shelfstackd.com">hello@shelfstackd.com</a></p>
 </footer>
 
 <div class="toast" id="toast" hidden></div>
@@ -390,7 +390,7 @@ footer{margin-top:0}
 <script src="../shelf.js?v=20261002a"></script>
 <script src="../worker-address.js?v=20261001a"></script>
 <script src="../spinetip.js?v=20261004a"></script>
-<script src="../nav.js?v=20261019a"></script>
+<script src="../nav.js?v=20261020a"></script>
 <script src="../add.js?v=20261018a"></script>
 <script>
 (() => {
@@ -1217,7 +1217,7 @@ function prefillName(){
   if (!$('#uname').value && guess.length >= 3) $('#uname').value = guess;
   checkName();
 }
-function paintName(msg, ok){ const n = $('#unameNote'); n.textContent = msg; n.classList.toggle('warn', !ok && !!msg); $('#nameBtn').disabled = !(nameFree && $('#adult').checked); }
+function paintName(msg, ok){ const n = $('#unameNote'); n.textContent = msg; n.classList.toggle('warn', !ok && !!msg); $('#nameBtn').disabled = !(nameFree && $('#adult').checked); $('#nameBtn').removeAttribute('aria-busy'); }
 function checkName(){
   const el = $('#uname'), v = el.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20);
   if (el.value !== v) el.value = v;
@@ -1241,6 +1241,9 @@ $('#nameBtn').addEventListener('click', async () => {
   const {data, error} = await acct.sb.from('profiles').insert({id: acct.user.id, username: v}).select('id,username,is_private,display_name,avatar_key,pinned_shelf_id').single();
   if (error){ nameFree = false; paintName(friendly(error), false); return; }
   acct.profile = data; closeSheet(); paintAcct(); toast('Welcome, @' + data.username + '.');
+  // came through someone's invite link: you follow them now, and they hear of it
+  const inviter = await Nav.acceptInvite(acct.sb, data);
+  if (inviter) toast(`Welcome, @${data.username}. You follow @${inviter} now.`);
   // FOLLOW was pressed on a profile before there was a username: back to that profile, which finishes it
   try {
     const pf = JSON.parse(sessionStorage.getItem('shelfstackd-follow') || 'null');

@@ -173,7 +173,7 @@ test('signed out: Everyone shows; Friends asks you to sign in', async ({ page })
 test('a database without logs (0007 not run on it): shelves only, as before', async ({ page }) => {
   await mockNetwork(page, { signedIn: true, logs: false });
   const asked = [];
-  page.on('request', r => { if (r.url().includes('/rest/v1/rpc/') && !r.url().includes('/rpc/rec_stats?')) asked.push(new URL(r.url()).pathname.split('/').pop()); });   // not recs.js asking whether 0010 is there
+  page.on('request', r => { if (r.url().includes('/rest/v1/rpc/') && !r.url().includes('/rpc/rec_stats?') && !r.url().endsWith('/rpc/badges_of')) asked.push(new URL(r.url()).pathname.split('/').pop()); });   // not recs.js asking whether 0010 is there, nor the names' badges (0012)
   await open(page, '/feed/?everyone');
   await expect(lines(page)).toHaveCount(18);
   await expect(page.locator('#items .post:not(.shelfpost)')).toHaveCount(0);
@@ -250,14 +250,14 @@ test('every minute: "2 new posts" at the top when there are newer ones; it moves
   await expect(lines(page).first()).toContainText('watched New 2');
 });
 
-test('Friends with nothing from anyone you follow: People to follow as rows like posts with Follow, then the Everyone timeline', async ({ page }) => {
+test('Friends with nothing from anyone you follow: Follow these people as rows like posts with Follow, then the Everyone timeline', async ({ page }) => {
   const errors = watchErrors(page);
   await page.clock.setFixedTime(NOW);
   await mockNetwork(page, { signedIn: true, fresh: true });   // follows no one
   await open(page, '/feed/?friends');
-  await expect(page.locator('#none > p')).toHaveText('Nobody you follow has posted.');
+  await expect(page.locator('#none > p:first-child')).toHaveText('Nobody you follow has posted.');
   const box = page.locator('.tofollow');
-  await expect(box.getByRole('heading', { name: 'People to follow' })).toBeVisible();
+  await expect(box.getByRole('heading', { name: 'Follow these people' })).toBeVisible();
   const people = box.locator('.post.tf');
   await expect(people).toHaveCount(2);   // the people behind the newest shelves and posts, not you
   await expect(people.locator('.pwho span')).toHaveText(['@mira', '@longusername_twenty1']);

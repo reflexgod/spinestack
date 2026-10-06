@@ -32,5 +32,5 @@ test('the not-found page\'s other links: the logo, Shelves, People, and the foot
   await mockNetwork(page);
   await page.goto('/a/b/c');
   const hrefs = await page.locator('a').evaluateAll(as => as.map(a => a.getAttribute('href')));
-  expect(hrefs).toEqual(['/', '/shelves/', '/people/', '/', '/shelves/', '/privacy.html#credits', '/privacy.html', 'mailto:hello@shelfstackd.com']);
+  expect(hrefs).toEqual(['/', '/shelves/', '/people/', '/', '/shelves/', '/about/', '/privacy.html', 'mailto:hello@shelfstackd.com']);
 });

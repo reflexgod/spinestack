@@ -120,6 +120,21 @@ async function outbound(request) {
     return json({id: 106, title: 'Gummo', release_date: '1997-10-17', runtime: 89, genres: [{name: 'Drama'}], overview: 'Xenia, Ohio, after a tornado. '.repeat(30), poster_path: '/gummo.jpg',
       credits: {crew: [{job: 'Writer', name: 'Harmony Korine'}, {job: 'Director', name: 'Harmony Korine'}]}});
   }
+  // Supabase, for the share links (/s/...): @viraaj (public, a main shelf with two spines) and @hidden (private: only
+  // its card answers)
+  if (url.hostname === 'sb.example') {
+    calls.push('sb ' + url.pathname.replace('/rest/v1/', '') + (url.searchParams.get('username') || url.searchParams.get('owner') || url.searchParams.get('shelf_id') || ''));
+    assert.equal(request.headers.get('apikey'), 'sb_publishable_test');
+    assert.equal(request.headers.get('Authorization'), null);   // as anyone: no one's sign-in
+    const q = url.searchParams;
+    if (url.pathname === '/rest/v1/profiles') return json(q.get('username') === 'eq.viraaj' ? [{id: 'v1', username: 'viraaj', display_name: 'Viraaj', bio: 'Shelving what I watch.', avatar_key: 'v1/avatar/abc', pinned_shelf_id: 's2'}] : []);
+    if (url.pathname === '/rest/v1/rpc/profile_card') return json((await request.json()).p_username === 'hidden' ? [{id: 'h1', username: 'hidden', display_name: 'Hid', is_private: true}] : []);
+    if (url.pathname === '/rest/v1/shelves') return json(q.get('owner') === 'eq.v1' ? [
+      {id: '00000000-0000-4000-8000-000000000001', name: 'old one', caption: '', preview_key: 'v1/p/s1', updated_at: '2026-10-01', created_at: '2026-09-30', shelf_items: [{count: 1}]},
+      {id: 's2', name: 'films for the bathtub', caption: '', preview_key: 'v1/p/s2', updated_at: '2026-10-05', created_at: '2026-10-02', shelf_items: [{count: 2}]}] : []);
+    if (url.pathname === '/rest/v1/shelf_items') return json([{title: 'Gummo'}, {title: 'Kids'}]);
+    return json([]);
+  }
   calls.push('?? ' + url.href);
   return new Response('not a provider', {status: 404});
 }
@@ -392,6 +407,56 @@ try {
   r = await ask(mf, '/title?film=106');
   assert.deepEqual([r.from, calls], ['EDGE', []]);
   ok('/title is kept at the edge: asked again, TMDB isn’t');
+} finally { await mf.dispose(); }
+
+/* ---------- share links (/s/...): a preview's tags for a link preview fetcher, straight on for anyone else ---------- */
+mf = worker({TMDB_TOKEN: 'tmdb-test-token-0000', SUPABASE_URL: 'https://sb.example', SUPABASE_KEY: 'sb_publishable_test'});
+try {
+  const WHATSAPP = 'WhatsApp/2.24.20.80 A', PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+  const share = async (path, ua) => { const r = await mf.dispatchFetch('http://worker' + path, {headers: {'User-Agent': ua}, redirect: 'manual'}), text = await r.text(); said.push(text); return {status: r.status, to: r.headers.get('Location'), from: r.headers.get('X-Cache'), text}; };
+  const tag = (html, k) => ((new RegExp(`<meta (?:property|name)="${k}" content="([^"]*)"`)).exec(html) || [])[1];
+  fresh();
+  let r = await share('/s/u/viraaj', PHONE);
+  assert.deepEqual([r.status, r.to, calls], [302, 'https://shelfstackd.com/u/?viraaj', []]);
+  r = await share('/s/u/viraaj/00000000-0000-4000-8000-000000000001', PHONE);
+  assert.equal(r.to, 'https://shelfstackd.com/u/?viraaj&shelf=00000000-0000-4000-8000-000000000001');
+  r = await share('/s/t/film/106', PHONE);
+  assert.deepEqual([r.to, calls], ['https://shelfstackd.com/t/?film=106', []]);
+  ok('a share link opened by a person goes straight on (302) to the page on shelfstackd.com, nothing asked on the way');
+  r = await share('/s/u/viraaj', WHATSAPP);
+  assert.equal(r.status, 200);
+  assert.equal(tag(r.text, 'og:title'), 'Viraaj (@viraaj) on shelfstackd');
+  assert.equal(tag(r.text, 'og:description'), 'Shelving what I watch.');
+  assert.equal(tag(r.text, 'og:url'), 'https://shelfstackd.com/u/?viraaj');
+  assert.equal(tag(r.text, 'og:image'), 'http://worker/u/preview?k=v1%2Fp%2Fs2&amp;v=2026-10-05');   // the main (pinned) shelf's picture
+  assert.match(r.text, /<meta http-equiv="refresh" content="0;url=https:\/\/shelfstackd\.com\/u\/\?viraaj">/);
+  ok('a profile\'s share link, to WhatsApp: its name, its bio and its main shelf\'s picture as the preview, and the page it\'s for');
+  r = await share('/s/u/viraaj/s2', WHATSAPP);
+  assert.equal(tag(r.text, 'og:title'), 'Viraaj (@viraaj) on shelfstackd');   // not a shelf's id: the profile
+  r = await share('/s/u/viraaj/shelf', 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)');
+  assert.equal(tag(r.text, 'og:title'), 'films for the bathtub: a shelf by @viraaj');
+  assert.equal(tag(r.text, 'og:description'), '2 spines: Gummo, Kids. On shelfstackd.');
+  assert.equal(tag(r.text, 'og:url'), 'https://shelfstackd.com/u/?viraaj&amp;shelf');
+  ok('a shelf\'s share link, to Instagram\'s fetcher: the shelf\'s name and whose, its count and first titles, its picture');
+  fresh();
+  r = await share('/s/t/film/106', 'Twitterbot/1.0');
+  assert.equal(tag(r.text, 'og:title'), 'Gummo (1997) on shelfstackd');
+  assert.equal(tag(r.text, 'og:image'), 'https://image.tmdb.org/t/p/w500/gummo.jpg');
+  assert.equal(tag(r.text, 'og:url'), 'https://shelfstackd.com/t/?film=106&amp;title=Gummo&amp;year=1997');
+  assert.match(tag(r.text, 'og:description'), /^dir\. Harmony Korine · Xenia/);
+  fresh();
+  r = await share('/s/t/film/106', 'Twitterbot/1.0');
+  assert.deepEqual([r.from, calls], ['EDGE', []]);
+  ok('a title\'s share link: its title and year, who made it, its cover; asked again, it\'s kept at the edge');
+  r = await share('/s/u/hidden', 'Slackbot-LinkExpanding 1.0');
+  assert.equal(tag(r.text, 'og:title'), 'Hid (@hidden) on shelfstackd');
+  assert.equal(tag(r.text, 'og:image'), 'https://shelfstackd.com/og.jpg');
+  r = await share('/s/u/nobody_here', 'Discordbot/2.0');
+  assert.equal(tag(r.text, 'og:title'), 'shelfstackd');
+  r = await share('/s/x/../admin', WHATSAPP);
+  assert.deepEqual([r.status, r.to], [302, 'https://shelfstackd.com/']);
+  assert.ok(!said.join('\n').includes('sb_publishable_test'));
+  ok('a private profile previews with its name only, no one with the site\'s own picture, and a bad link goes home');
 } finally { await mf.dispose(); }
 
 /* ---------- no key ever comes back ---------- */

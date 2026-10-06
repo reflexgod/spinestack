@@ -5,7 +5,7 @@ const { PAGES, SHELVES, PEOPLE, FRIEND_SHELVES, FRIEND_LOGS, LOGS, ITEMS_BY_SHEL
 
 const pathOf = link => link.evaluate(a => new URL(a.href).pathname);
 const isPhone = () => test.info().project.name.startsWith('phone');
-const MENU = ['Home', 'Profile', 'Shelf', 'Activity', 'Network', 'Settings', 'Sign out'];
+const MENU = ['Home', 'Profile', 'Shelf', 'Posts', 'People', 'Invite friends', 'Settings', 'Sign out'];
 
 for (const signedIn of [false, true]) {
   test.describe(signedIn ? 'signed in' : 'signed out', () => {
@@ -73,11 +73,11 @@ test.describe('account menu', () => {
       const items = menu.getByRole('menuitem');
       await expect(items).toHaveText(MENU);
       await expect(items.last()).toHaveText('Sign out');
-      // the divider sits between Network and Settings
+      // the divider sits between People and Invite friends
       expect(await menu.evaluate(m => [...m.children].map(c => c.tagName === 'HR' ? '--' : c.textContent))).toEqual([...MENU.slice(0, 5), '--', ...MENU.slice(5)]);
       expect(await pathOf(items.nth(1))).toBe('/u/');
       expect(await items.nth(2).getAttribute('href')).toMatch(/\/u\/\?tester&shelf$/);   // your shelf, on its own page
-      expect(await pathOf(items.nth(5))).toBe('/settings/');
+      expect(await pathOf(items.nth(6))).toBe('/settings/');
       // all of it inside the window
       const box = await menu.boundingBox(), size = page.viewportSize();
       expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(size.width);
@@ -253,7 +253,7 @@ test('signed-out home: a wall of the newest spines from different shelves on a s
   expect(Math.abs(line.x - main.x)).toBeLessThanOrEqual(1);
   expect(await h1.evaluate(el => getComputedStyle(el).textAlign)).toMatch(/^(start|left)$/);
   expect(line.y).toBeGreaterThan(st.y + st.h);
-  await expect(hero.locator('p')).toHaveCount(0);
+  await expect(hero.locator('p:visible')).toHaveCount(0);   // ("@viraaj invited you." is there only after an invite link)
   // Make a shelf: solid black, at the left, on the first screen
   const make = hero.getByRole('link', { name: 'Make a shelf' });
   await expect(make).toBeVisible();
@@ -352,7 +352,7 @@ test('signed-in home: a welcome by name, the row from people you follow with See
   const size = parseFloat(await page.locator('#hello').evaluate(el => getComputedStyle(el).fontSize));
   expect(size).toBeLessThanOrEqual(isPhone() ? 20 : 24);
   await expect(page.locator('main').getByRole('link', { name: /new shelf/i })).toHaveCount(0);   // + ADD in the bar is the way to a new shelf
-  await expect(page.locator('#in h2')).toHaveText([/^New from people you follow/, /^Just shelved/]);
+  await expect(page.locator('#in h2')).toHaveText([/^Lately, from people you follow/, /^Just shelved/]);
   const all = page.locator('#in').getByRole('link', { name: 'See all from people you follow' });
   await expect(all).toHaveAttribute('href', 'feed/?friends');
   await expect(all.locator('svg')).toHaveCount(0);   // no ⚡: it's Letterboxd's
@@ -362,10 +362,10 @@ test('signed-in home: a welcome by name, the row from people you follow with See
   await expect(page.locator('#inGrid li')).toHaveCount(12);
 });
 
-/* New from people you follow: a card for each person, the newest thing from them (Letterboxd's row). With friends:
+/* Lately, from people you follow: a card for each person, the newest thing from them , all standing on one shelf line. With friends:
    true the made-up account follows five more people, so there are six */
 const cardsOf = page => page.locator('#folRow > li');
-test('signed-in home: New from people you follow is a row of cards, one for each person, the newest thing from them', async ({ page }) => {
+test('signed-in home: Lately, from people you follow is a row of cards, one for each person, the newest thing from them', async ({ page }) => {
   const errors = watchErrors(page);
   await page.clock.setFixedTime(new Date('2026-09-30T14:00:00Z'));
   await mockNetwork(page, { signedIn: true, friends: true });
@@ -397,7 +397,7 @@ test('signed-in home: New from people you follow is a row of cards, one for each
   await expect(cover).toHaveCount(1);
   expect(+(await cover.getAttribute('data-wear'))).toBeGreaterThan(0);
   const art0 = await cards.nth(0).locator('.art').boundingBox(), c0 = await cover.boundingBox();
-  expect([Math.round(c0.x), Math.round(c0.y), Math.round(c0.width), Math.round(c0.height)]).toEqual([Math.round(art0.x), Math.round(art0.y), Math.round(art0.width), Math.round(art0.height)]);
+  expect([Math.round(c0.x), Math.round(c0.y), Math.round(c0.width), Math.round(c0.height)]).toEqual([Math.round(art0.x), Math.round(art0.y), Math.round(art0.width), Math.round(art0.height - 1)]);   // standing on the shelf line under it
   // a shelf: its spines standing on a thin black line, from the left; no grey panel, no box, not its story
   const line = cards.nth(2).locator('.art');
   expect(await line.evaluate(el => { const s = getComputedStyle(el); return [s.backgroundColor, s.borderBottomWidth, s.borderBottomStyle, s.borderBottomColor, s.borderTopWidth].join(' '); }))

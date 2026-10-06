@@ -141,8 +141,83 @@
   }
   function fillAccount(p){
     const mine = ROOT + 'u/?' + p.username;
-    acctMenu.menu.replaceChildren(item('Home', ROOT), item('Profile', mine), item('Shelf', mine + '&shelf'), item('Activity', mine + '#activity'), item('Network', mine + '#network'),
-      document.createElement('hr'), item('Settings', ROOT + 'settings/'), acctMenu.out);
+    const invite = document.createElement('button');
+    invite.type = 'button'; invite.setAttribute('role', 'menuitem'); invite.textContent = 'Invite friends';
+    invite.addEventListener('click', () => { acctMenu.hide(false); inviteSheet(p); });
+    acctMenu.menu.replaceChildren(item('Home', ROOT), item('Profile', mine), item('Shelf', mine + '&shelf'), item('Posts', mine + '#posts'), item('People', mine + '#people'),
+      document.createElement('hr'), invite, item('Settings', ROOT + 'settings/'), acctMenu.out);
+  }
+
+  /* ---------- a press, answered ----------
+     Every button answers a press at once (site.css's :active). A button that is put out of use while what it does is
+     saved (every save here does that, so it can't be sent twice) shows a small turning line in place of its words if
+     the save takes longer than 150ms, until it's back in use. */
+  document.addEventListener('click', e => {
+    const b = e.target && e.target.closest ? e.target.closest('button.btn, button.dash') : null; if (!b) return;
+    setTimeout(() => {
+      if (!b.disabled || !b.isConnected || b.getAttribute('aria-busy') === 'true') return;
+      b.setAttribute('aria-busy', 'true');
+      const done = () => { b.removeAttribute('aria-busy'); mo.disconnect(); clearTimeout(cap); };
+      const mo = new MutationObserver(() => { if (!b.disabled) done(); });
+      const cap = setTimeout(done, 15000);   // one that stays out of use (a name that's taken) stops turning
+      mo.observe(b, {attributes: true, attributeFilter: ['disabled']});
+    }, 150);
+  });
+
+  /* ---------- invites ----------
+     shelfstackd.com/?invite=<username>: the name is kept in this browser (30 days) when the link is opened, on any
+     page. Once the person who opened it picks a username (the builder's sheet calls Nav.acceptInvite()), they follow
+     the one who invited them, and that person hears of it in their notifications (a new follower, 0009's own). Your
+     own link is in the account menu: Invite friends, with Copy link and Share to WhatsApp. */
+  const INVITE = 'shelfstackd-invite', NAME_OK = /^[a-z0-9_]{3,20}$/;
+  (() => {
+    const q = new URLSearchParams(location.search), name = (q.get('invite') || '').toLowerCase();
+    if (!q.has('invite')) return;
+    if (NAME_OK.test(name)) try { localStorage.setItem(INVITE, JSON.stringify({name, at: Date.now()})); } catch {}
+    q.delete('invite');   // the address without it, so it isn't shared on by accident
+    history.replaceState(history.state, '', location.pathname + (String(q) ? '?' + q : '') + location.hash);
+  })();
+  function invitedBy(){
+    try { const v = JSON.parse(localStorage.getItem(INVITE) || 'null'); return v && NAME_OK.test(v.name) && Date.now() - v.at < 30 * 864e5 ? v.name : ''; } catch { return ''; }
+  }
+  // a new account, just named: follow whoever invited it (not yourself), once. Gives their username, or ''
+  async function acceptInvite(sb, profile){
+    const name = invitedBy();
+    try { localStorage.removeItem(INVITE); } catch {}
+    if (!name || !sb || !profile || name === profile.username) return '';
+    try {
+      const {data} = await sb.rpc('profile_card', {p_username: name}), card = (data || [])[0];
+      if (!card || !card.id) return '';
+      const {error} = await sb.rpc('follow', {target: card.id});
+      return error ? '' : name;
+    } catch { return ''; }
+  }
+  const inviteUrl = name => ROOT + '?invite=' + encodeURIComponent(name);
+  let invBox = null;
+  function inviteSheet(p){
+    const url = inviteUrl(p.username);
+    if (!invBox){
+      invBox = document.createElement('div');
+      invBox.className = 'sheet'; invBox.id = 'inviteSheet'; invBox.hidden = true;
+      invBox.setAttribute('role', 'dialog'); invBox.setAttribute('aria-modal', 'true'); invBox.setAttribute('aria-labelledby', 'inviteTitle');
+      invBox.innerHTML = `<div class="sheetbox"><button class="x" data-close type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+        <div><h2 id="inviteTitle">Invite friends</h2><p class="grey">Whoever joins through your link follows you.</p>
+        <label class="field"><span class="lbl">Your link</span><input type="text" id="inviteLink" readonly></label>
+        <div class="row"><button class="btn primary" type="button" data-copy>Copy link</button><a class="dash sm" data-wa target="_blank" rel="noopener">Share to WhatsApp</a></div></div></div>`;
+      document.body.append(invBox);
+      const shut = () => { invBox.hidden = true; acctBtn.focus(); };
+      invBox.addEventListener('click', async e => {
+        if (e.target === invBox || e.target.closest('[data-close]')){ shut(); return; }
+        const copy = e.target.closest('[data-copy]'); if (!copy) return;
+        const field = invBox.querySelector('#inviteLink');
+        try { await navigator.clipboard.writeText(field.value); say('Link copied.'); }
+        catch { field.focus(); field.select(); say('Copy it from the box.'); }
+      });
+      invBox.addEventListener('keydown', e => { if (e.key === 'Escape'){ e.stopPropagation(); shut(); } });
+    }
+    invBox.querySelector('#inviteLink').value = url;
+    invBox.querySelector('[data-wa]').href = whatsapp('Come and shelve your films and books with me on shelfstackd:', url);
+    invBox.hidden = false; invBox.querySelector('[data-copy]').focus();
   }
 
   /* ---------- who is signed in ---------- */
@@ -284,6 +359,16 @@
     });
   }
   function openAdd(opt){ return loadAdd().then(ok => { if (ok) window.Add.open(opt); return ok; }); }
+  // story.js, loaded the first time a story is asked for: Share to story on a shelf, a post or a profile
+  let storyP = null;
+  function story(spec){
+    if (!storyP) storyP = window.Story ? Promise.resolve(true) : new Promise(res => {
+      const s = document.createElement('script'); s.src = ROOT + 'story.js?v=20261020a';
+      s.onload = () => res(!!window.Story); s.onerror = () => { storyP = null; s.remove(); res(false); };
+      document.head.appendChild(s);
+    });
+    return storyP.then(ok => ok ? window.Story.share(spec) : (say('That didn’t work. Try again in a moment.'), null));
+  }
   // recs.js, loaded once: true when it's there and migration 0010 is in the database (Recommend, the Recs tab, recs in
   // the feed); false until then
   let recsP = null;
@@ -327,6 +412,25 @@
   // a title's id, when it has one: TMDB's for a film, Open Library's work for a book
   const idOf = m => !m ? '' : m.kind === 'movie' ? (/^\d{1,9}$/.test(String(m.tmdb || m.tmdb_id || '')) ? String(m.tmdb || m.tmdb_id) : '')
     : (/^OL\d{1,10}W$/.test(String(m.ol || m.ol_id || '')) ? String(m.ol || m.ol_id) : '');
+  /* A row of tabs that scrolls sideways (a phone): the open tab is brought into the row's view, the row alone scrolled,
+     never the page. The first tab keeps the row at its start; any other is put in the middle where the row allows */
+  function tabInView(btn){
+    const row = btn && btn.closest('.tabs'); if (!row || row.scrollWidth <= row.clientWidth + 1) return;
+    const left = btn.getBoundingClientRect().left - row.getBoundingClientRect().left + row.scrollLeft, want = btn === row.querySelector('button:not([hidden])') ? 0 : left - (row.clientWidth - btn.offsetWidth) / 2;
+    const to = Math.max(0, Math.min(row.scrollWidth - row.clientWidth, want));
+    if (Math.abs(row.scrollLeft - to) > 1) row.scrollTo({left: to, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
+  }
+  /* The address to share for a profile, a shelf or a title: the Worker's share link (/s/...), which a link preview
+     (WhatsApp, Instagram, iMessage) reads as that person's, shelf's or title's own title and picture, and which takes
+     anyone who opens it straight on to the page here. {username, shelf} or {kind, tmdb | ol}. Without the Worker, or
+     for a title with no id, the page's own address */
+  function shareLink(m){
+    const W = String(window.SPINESTACK_WORKER || '').trim().replace(/\/+$/, '');
+    if (m && m.username && /^[a-z0-9_]{3,20}$/.test(m.username)) return W ? `${W}/s/u/${m.username}${m.shelf ? '/' + m.shelf : ''}` : `${ROOT}u/?${m.username}${m.shelf ? '&shelf=' + m.shelf : ''}`;
+    const id = idOf(m || {});
+    if (W && id) return `${W}/s/t/${m.kind === 'movie' ? 'film' : 'book'}/${id}`;
+    return new URL(titleUrl(m || {}), location.href).href;
+  }
   // Share to WhatsApp: a wa.me link that opens WhatsApp with the text and the address
   const whatsapp = (text, url) => `https://wa.me/?text=${encodeURIComponent([text, url].filter(Boolean).join(' '))}`;
   // Recommend: signed in, the sheet; signed out, sign in first
@@ -350,7 +454,7 @@
   function loadSearch(){
     if (window.Search) return Promise.resolve(true);
     return searching = searching || new Promise(res => {
-      const s = document.createElement('script'); s.src = ROOT + 'search.js?v=20261019a';
+      const s = document.createElement('script'); s.src = ROOT + 'search.js?v=20261020a';
       s.onload = () => res(!!window.Search); s.onerror = () => { searching = null; s.remove(); res(false); };
       document.head.appendChild(s);
     });
@@ -486,5 +590,5 @@
     else if (on.finish) on.finish(); else location.href = ROOT + 'build/';
   }
 
-  window.Nav = {paint, add: openAdd, loadAdd, loadRecs, recommend, whatsapp, titleUrl, titleWhere, titleQuery, sameTitle, idOf, idCols, ids, fillIds, watchable, account, signIn, needAccount, visitor, onSignIn: fn => { on.signIn = fn; }, onFinish: fn => { on.finish = fn; }, onSignOut: fn => { on.signOut = fn; }, onUpload: fn => { on.upload = fn; }};
+  window.Nav = {paint, add: openAdd, loadAdd, loadRecs, recommend, whatsapp, shareLink, tabInView, story, invitedBy, acceptInvite, inviteUrl, inviteSheet, titleUrl, titleWhere, titleQuery, sameTitle, idOf, idCols, ids, fillIds, watchable, account, signIn, needAccount, visitor, onSignIn: fn => { on.signIn = fn; }, onFinish: fn => { on.finish = fn; }, onSignOut: fn => { on.signOut = fn; }, onUpload: fn => { on.upload = fn; }};
 })();

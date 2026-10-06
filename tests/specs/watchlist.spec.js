@@ -1,4 +1,4 @@
-// The watchlist, as Letterboxd's: a tab of its own on a profile (/u/?name#watchlist) with what they want to see and
+// Up next (the watchlist): a tab of its own on a profile (/u/?name#watchlist) with what they want to see and
 // read, the covers (clean and still sealed: wear is for a log), and on your own a box that adds a title straight in (the + ADD dialog's search, no dialog
 // and no spine search), a dotted + first, Remove and Mark watched / Mark read. It holds 6. Anywhere else a cover or a spine shows
 // (the feed, someone's shelf, From friends), a bookmark on hover, or ••• on a phone, puts it on your watchlist; signed
@@ -25,11 +25,11 @@ const privacyIs = (page, value) => page.route(u => u.origin === SB_URL && u.path
   return route.fallback();
 });
 
-test('your Watchlist tab: what you want to see and read, a dotted + first, then the covers, clean and sealed, never worn', async ({ page }) => {
+test('your Watchlist tab: how many films and books are waiting, a dotted + first, then the covers, clean and sealed, never worn', async ({ page }) => {
   const errors = watchErrors(page);
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?tester#watchlist');
-  await expect(page.locator('#wLine')).toHaveText('You want to see 1 film and read 1 book.');
+  await expect(page.locator('#wLine')).toHaveText('1 film and 1 book waiting.');
   const first = page.locator('#wGrid li').first();
   await expect(first.locator('.wplus')).toHaveAccessibleName('Add a film or book to Up next');
   expect(await first.locator('.wplus').evaluate(b => [getComputedStyle(b).borderTopStyle, (b.getBoundingClientRect().height / b.getBoundingClientRect().width).toFixed(1)])).toEqual(['dashed', '1.5']);
@@ -44,14 +44,12 @@ test('your Watchlist tab: what you want to see and read, a dotted + first, then 
   const c = await tiles(page).first().locator('.wc').boundingBox();
   expect(c.height / c.width).toBeCloseTo(1.5, 1);                                   // 2:3
   await expect(tiles(page).first().locator('.wcap')).toHaveText('Paris, Texas 1984');
-  // the title: under the cover on a phone, over it when a mouse is on it (on a wide window)
+  // the title under the cover, always (no caption laid over the picture); the covers stand on a shelf line, which runs
+  // on through the gap to the next
   const cap = tiles(page).first().locator('.wcap');
-  if (isPhone()) { expect((await cap.boundingBox()).y).toBeGreaterThanOrEqual(c.y + c.height - 1); await expect(cap).toBeVisible(); }
-  else {
-    expect(+(await cap.evaluate(el => getComputedStyle(el).opacity))).toBe(0);
-    await tiles(page).first().locator('.wc').hover();
-    await expect.poll(() => cap.evaluate(el => +getComputedStyle(el).opacity)).toBe(1);
-  }
+  expect((await cap.boundingBox()).y).toBeGreaterThanOrEqual(c.y + c.height - 1); await expect(cap).toBeVisible();
+  expect(+(await cap.evaluate(el => getComputedStyle(el).opacity))).toBe(1);
+  expect(await tiles(page).first().locator('.wc').evaluate(el => getComputedStyle(el).borderBottom)).toBe('1px solid rgb(0, 0, 0)');
   // the + is the box
   await first.locator('.wplus').click();
   await expect(page.getByRole('combobox', { name: 'Add to Up next' })).toBeFocused();
@@ -110,7 +108,7 @@ test('an empty watchlist: only the + and "Nothing up next."', async ({ page }) =
 test('someone else\'s Watchlist tab: their covers and what they want, nothing to remove; each cover onto yours', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?mira#watchlist');
-  await expect(page.locator('#wLine')).toHaveText('@mira wants to see 1 film.');
+  await expect(page.locator('#wLine')).toHaveText('1 film waiting for @mira.');
   await expect(page.locator('#wSearch')).toBeHidden();
   await expect(page.locator('#wGrid .wplus')).toHaveCount(0);
   await expect(page.locator('#wGrid').getByRole('button', { name: /^(Remove|Mark watched|Mark read)$/ })).toHaveCount(0);
