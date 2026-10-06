@@ -20,7 +20,7 @@
 (() => {
   if (window.Badges) return;
   const ROOT = new URL('.', document.currentScript.src).href;   // the site's root: this file sits there
-  const FROM_DB = false;   // set to true once docs/proposed-0012-badges.sql is run (badges_of())
+  const FROM_DB = true;   // 0012 is in the live database (supabase/migrations/0012_badges.sql): badges_of() says who has which
   // in order of importance: the first a person has is the one beside their name on a post
   const BADGES = [
     {id: 'founder', name: 'Founder', line: 'built shelfstackd'},

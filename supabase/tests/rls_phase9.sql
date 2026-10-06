@@ -1,9 +1,10 @@
--- shelfstackd, phase 9: checks the badges after the proposed migration 0012 (docs/proposed-0012-badges.sql): who is
+-- shelfstackd, phase 9: checks the badges after migration 0012
+-- (supabase/migrations/0012_badges.sql): who is
 -- in the first 100 by signup order (the 100th is, the 101st isn't), a badge given by hand and the order they come in
 -- (founder first), what anyone may ask (badges_of(), signed in or not) and what nobody can do from a page (read or
 -- write the badges table, give themselves one), a profile hidden by moderation having none, and a private profile's
 -- badges showing as its card does. Run it in the Supabase dashboard (SQL Editor -> New query -> paste -> Run), after
--- 0012. It makes throwaway users inside a transaction and rolls everything back at the end: nothing is kept.
+-- 0012. It passed on the live database. It makes throwaway users inside a transaction and rolls everything back at the end: nothing is kept.
 -- The last result says "ALL 0012 CHECKS PASSED". Any failed check stops with an error that starts "FAIL:".
 -- Real accounts can be in the database: the test's 101 people signed up in the year 2000, before anyone real, so
 -- they are the first 101 whatever else is there.

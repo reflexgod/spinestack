@@ -1,9 +1,8 @@
--- shelfstackd, 0012 (PROPOSED, NOT RUN): profile badges.
+-- shelfstackd, 0012: profile badges.
 --
 -- Run once, after 0011, in the Supabase dashboard (SQL Editor -> New query -> paste all of this -> Run), then run its
--- test, docs/proposed-rls_phase9.sql: the last line says "ALL 0012 CHECKS PASSED". It all runs in one transaction: if
--- anything fails, nothing is changed. Once both pass, they move to supabase/migrations/0012_badges.sql and
--- supabase/tests/rls_phase9.sql with only their headers changed, and badges.js's FROM_DB is set to true.
+-- test, supabase/tests/rls_phase9.sql: the last line says "ALL 0012 CHECKS PASSED". It all runs in one transaction: if
+-- anything fails, nothing is changed. It was run on the live database by the owner and its test passed.
 --
 -- The pages work without it: badges.js knows the Founder (@viraaj) and, for Early 100, the usernames of the people on
 -- the live site when it was written (EARLY in badges.js). Deciding the first 100 by signup order needs the database,

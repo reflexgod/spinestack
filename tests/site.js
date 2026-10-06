@@ -342,6 +342,8 @@ function rest(url, method, body, signedIn, named, empty, logs, ownShelf, fresh, 
     return w ? [...PEOPLE, DIV].filter(p => p.username.startsWith(w) || p.display_name.toLowerCase().startsWith(w)).map(p => card(p, me)).slice(0, 10) : [];
   }
   if (what === 'rpc/follow_list') return fresh && body.uid === ME.id ? [] : PEOPLE.filter(p => p.id !== body.uid).map(p => card(p, me));
+  // 0012's badges_of(): @viraaj the founder, and the live site's first people in the first 100
+  if (what === 'rpc/badges_of') return (body.names || []).filter(n => ['viraaj', 'prathmesh', 'rudra', 'hardik', 'div'].includes(n)).map(n => ({ username: n, badges: n === 'viraaj' ? ['founder', 'early-100'] : ['early-100'] }));
   if (what === 'rpc/follow') return 'following';
   if (what === 'rpc/unfollow') return 'none';
   if (what === 'rpc/username_available') return true;
