@@ -66,7 +66,7 @@ export default {
     try {
       if (!post && path === '/img') {
         if (!(await allowed(env.IMG_LIMITER, ip))) return json({error: 'Too many images at once. Wait a minute and try again.'}, 429, cors);
-        return await image(p.get('url') || '', cors, ctx);
+        return await image(p.get('url') || '', env, cors, ctx);
       }
       if (!post && path === '/archive/img') return await archiveImage(p.get('id'), req, env, cors);
       if (!post && (path === '/u/blob' || path === '/u/preview')) return await userImage(path, p, env, cors, ctx);
@@ -104,7 +104,7 @@ export default {
       if (post && path === '/found') return await foundPost(req, env, cors);
       if (post && path === '/archive') return await upload(req, p, ip, env, cors);
       if (post && path === '/report') return await report(p.get('id'), ip, env, cors);
-      if (!post && (path === '/' || path === '/health')) return json({ok: true, tmdb: !!env.TMDB_TOKEN, brave: !!env.BRAVE_API_KEY, braveDailyCap: braveCap(env), scans: Object.fromEntries(PROVIDERS.map(pv => [pv.name, !!pv.key(env)])), archive: !!(env.ADMIN_TOKEN && env.ARCHIVE), accounts: !!(env.SUPABASE_URL && env.SUPABASE_KEY), userStore: env.USER_R2 ? 'r2' : 'kv'}, 200, cors);
+      if (!post && (path === '/' || path === '/health')) return json({ok: true, tmdb: !!env.TMDB_TOKEN, brave: !!env.BRAVE_API_KEY, braveDailyCap: braveCap(env), scans: Object.fromEntries(PROVIDERS.map(pv => [pv.name, !!pv.key(env)])), archive: !!(env.ADMIN_TOKEN && env.ARCHIVE), accounts: !!(env.SUPABASE_URL && env.SUPABASE_KEY), userStore: env.USER_R2 ? 'r2' : env.MEDIA ? 'r2, older in kv' : 'kv'}, 200, cors);
       return json({error: 'Not found.'}, 404, cors);
     } catch (e) {
       return json({error: 'Something went wrong. Try again in a moment.', detail: String(e && e.message || e).slice(0, 200)}, 502, cors);
@@ -830,38 +830,58 @@ async function readCapped(body, max) {
   const buf = new Uint8Array(size); let o = 0; for (const part of parts) { buf.set(part, o); o += part.byteLength; }
   return buf;
 }
-async function image(raw, cors, ctx) {
+/* /img. A cover from TMDB or Open Library (what saved shelves point at, and what a generated spine is drawn from) is
+   also kept in R2 (MEDIA, under c/<sha-256 of its address>) the first time it passes through here, and served from
+   there whenever its host fails, is slow (IMG_WAIT) or answers with an error: a saved shelf doesn't lose a spine
+   because image.tmdb.org or archive.org had a bad minute. Any other picture (a scan, for cutting a spine from) whose
+   size is given is passed on as it comes, never held whole: a page asks for a dozen at once, and holding each (up to
+   8 MB, twice with the cache's copy) in one Worker copy's 128 MB is what makes Cloudflare answer 503 (its error 1102,
+   out of memory). Those are kept at the edge by fetch itself (cf.cacheTtl). */
+const COVER_HOST = /^(image\.tmdb\.org|covers\.openlibrary\.org)$/, IMG_WAIT = 8000, MAX_COVER = 3 * 1024 * 1024;
+async function image(raw, env, cors, ctx) {
   let u;
   try { u = new URL(raw); } catch { return json({error: 'That is not a valid image address.'}, 400, cors); }
   if (!publicHost(u)) return json({error: 'That image address is not allowed.'}, 400, cors);
-
+  const cover = COVER_HOST.test(u.hostname) && !!env.MEDIA;
+  const saved = cover ? 'c/' + hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(u.href))) : '';
+  const withCors = res => { const out = new Response(res.body, res); for (const [k, v] of Object.entries(cors)) out.headers.set(k, v); return out; };
   const cache = caches.default, ckey = new Request('https://img.cache/' + encodeURIComponent(u.href));
-  let res = await cache.match(ckey);
-  if (!res) {
-    let r, hops = 0;
+  const held = await cache.match(ckey);
+  if (held) return withCors(held);
+  // the host failed: our own copy when there is one, otherwise what went wrong (the page then draws the spine without it)
+  const orSaved = async failed => {
+    const o = saved ? await env.MEDIA.get(saved).catch(() => null) : null;
+    if (!o) return failed;
+    return new Response(o.body, {headers: {'Content-Type': (o.httpMetadata || {}).contentType || 'image/jpeg', 'Cache-Control': 'public, max-age=86400', 'X-Content-Type-Options': 'nosniff', 'X-Cache': 'SAVED', ...cors}});
+  };
+  let r, hops = 0;
+  try {
     for (;;) {
-      r = await fetch(u.href, {redirect: 'manual', headers: {'User-Agent': UA, 'Accept': 'image/*'}, cf: {cacheTtl: MONTH, cacheEverything: true}});
+      r = await fetch(u.href, {redirect: 'manual', headers: {'User-Agent': UA, 'Accept': 'image/*'}, cf: {cacheTtl: MONTH, cacheEverything: true}, signal: AbortSignal.timeout(IMG_WAIT)});
       if (r.status >= 300 && r.status < 400 && r.headers.get('Location')) {
-        if (++hops > 3) return json({error: 'That image redirects too many times.'}, 502, cors);
+        if (++hops > 3) return orSaved(json({error: 'That image redirects too many times.'}, 502, cors));
         u = new URL(r.headers.get('Location'), u);
         if (!publicHost(u)) return json({error: 'That image address is not allowed.'}, 400, cors);
         continue;
       }
       break;
     }
-    if (!r.ok) return json({error: `The image host answered ${r.status}.`}, 502, cors);
-    const type = (r.headers.get('Content-Type') || '').split(';')[0].trim().toLowerCase();
-    if (!type.startsWith('image/') || type === 'image/svg+xml') return json({error: 'That address is not an image.'}, 415, cors);
-    if (+(r.headers.get('Content-Length') || 0) > MAX_IMG) return json({error: 'That image is larger than 8 MB.'}, 413, cors);
-    const buf = await readCapped(r.body, MAX_IMG);   // Content-Length can be missing
-    if (!buf) return json({error: 'That image is larger than 8 MB.'}, 413, cors);
-    if (!buf.byteLength) return json({error: 'The image host sent an empty file.'}, 502, cors);
-    res = new Response(buf, {headers: {'Content-Type': type, 'Cache-Control': `public, max-age=${MONTH}, immutable`, 'X-Content-Type-Options': 'nosniff'}});
-    ctx.waitUntil(cache.put(ckey, res.clone()));
-  }
-  const out = new Response(res.body, res);
-  for (const [k, v] of Object.entries(cors)) out.headers.set(k, v);
-  return out;
+  } catch { return orSaved(json({error: 'The image host didn’t answer.'}, 504, cors)); }
+  if (!r.ok) return orSaved(json({error: `The image host answered ${r.status}.`}, 502, cors));
+  const type = (r.headers.get('Content-Type') || '').split(';')[0].trim().toLowerCase();
+  if (!type.startsWith('image/') || type === 'image/svg+xml') return orSaved(json({error: 'That address is not an image.'}, 415, cors));
+  const size = +(r.headers.get('Content-Length') || 0);
+  if (size > MAX_IMG) return json({error: 'That image is larger than 8 MB.'}, 413, cors);
+  const headers = {'Content-Type': type, 'Cache-Control': `public, max-age=${MONTH}, immutable`, 'X-Content-Type-Options': 'nosniff'};
+  if (size && !cover) return withCors(new Response(r.body, {headers}));   // streamed
+  let buf;
+  try { buf = await readCapped(r.body, cover ? MAX_COVER : MAX_IMG); } catch { return orSaved(json({error: 'The image host stopped sending it.'}, 502, cors)); }   // Content-Length can be missing
+  if (!buf) return json({error: 'That image is too large.'}, 413, cors);
+  if (!buf.byteLength) return orSaved(json({error: 'The image host sent an empty file.'}, 502, cors));
+  const res = new Response(buf, {headers});
+  ctx.waitUntil(cache.put(ckey, res.clone()));
+  if (saved) ctx.waitUntil((async () => { if (!(await env.MEDIA.head(saved))) await env.MEDIA.put(saved, buf, {httpMetadata: {contentType: type}}); })().catch(() => {}));
+  return withCors(res);
 }
 
 /* ---------- archive: spines people cut from their own scans, shown only after approval ----------
@@ -1092,7 +1112,8 @@ async function remove(id, env, cors) {
 /* ---------- accounts: images saved shelves need ----------
    Who: the Supabase access token, checked by asking Supabase who it belongs to (with the public key only;
    no secret key anywhere). Where: KV for now; bind an R2 bucket as USER_R2 and the same keys move there. */
-const USER_WRITES_PER_DAY = 150, USER_WRITES_PER_DAY_ALL = 600, MAX_BLOB = 200 * 1024, MAX_PREVIEW = 120 * 1024;
+// in all: KV's 1,000 writes a day held this to 600; R2 (MEDIA) takes a million a month, about 33,000 a day
+const USER_WRITES_PER_DAY = 150, USER_WRITES_PER_DAY_ALL = 20000, MAX_BLOB = 200 * 1024, MAX_PREVIEW = 120 * 1024;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const WHO = new Map();   // token -> user id, for a minute, so one save (up to ~14 requests) asks Supabase once
 async function userOf(req, env) {
@@ -1107,6 +1128,18 @@ async function userOf(req, env) {
   return id;
 }
 function userStore(env) {
+  /* New pictures go to R2 (MEDIA, under ub/<key>): its free plan takes a million writes a month, where KV's takes
+     1,000 a day for everything. Pictures saved before 6 October 2026 are in KV and are still read from there. */
+  if (env.MEDIA && !env.USER_R2) {
+    const kv = env.SPINE_CACHE, r2 = env.MEDIA;
+    return {
+      head: async k => !!(await r2.head('ub/' + k)) || !!(await kv.getWithMetadata('ub:' + k, 'stream').then(r => { if (r.value) r.value.cancel(); return r.value; })),
+      get: async k => { const o = await r2.get('ub/' + k); if (o) return {body: await o.arrayBuffer(), type: (o.httpMetadata || {}).contentType || 'application/octet-stream'};
+        const r = await kv.getWithMetadata('ub:' + k, 'arrayBuffer'); return r.value && {body: r.value, type: (r.metadata || {}).t || 'application/octet-stream'}; },
+      put: (k, body, type) => r2.put('ub/' + k, body, {httpMetadata: {contentType: type}}),
+      del: async k => { await r2.delete('ub/' + k); await kv.delete('ub:' + k); },
+    };
+  }
   if (env.USER_R2) return {
     head: async k => !!(await env.USER_R2.head(k)),
     get: async k => { const o = await env.USER_R2.get(k); return o && {body: await o.arrayBuffer(), type: (o.httpMetadata || {}).contentType || 'application/octet-stream'}; },

@@ -76,6 +76,14 @@ async function outbound(request) {
     if (url.pathname.startsWith('/metadata/')) return json({result: [{name: 'full wrap.jpg', source: 'original', size: '300000'}, {name: '__ia_thumb.jpg', source: 'original', size: '30000'}, {name: 'full wrap_thumb.jpg', source: 'derivative', size: '9000'}]});
     if (url.pathname.startsWith('/download/')) { assert.equal(request.headers.get('Range'), 'bytes=0-65535'); return new Response(jpegHead(1500, 1000), {status: 206, headers: {'Content-Type': 'image/jpeg'}}); }
   }
+  // a cover on TMDB's image host (plan.cover: 'ok', a status, or 'hang'), and a large scan elsewhere
+  if (url.hostname === 'image.tmdb.org') {
+    calls.push('cover ' + url.pathname);
+    if (plan.cover === 'hang') await pause(9000);
+    if (typeof plan.cover === 'number') return new Response('no', {status: plan.cover});
+    return new Response(jpegHead(300, 450), {headers: {'Content-Type': 'image/jpeg'}});
+  }
+  if (url.hostname === 'scans.example') return new Response(new Uint8Array(5 * 1024 * 1024), {headers: {'Content-Type': 'image/jpeg', 'Content-Length': String(5 * 1024 * 1024)}});
   // /title's book: The Waves, by its work id or by its title
   if (url.hostname === 'openlibrary.org' && url.pathname === '/works/OL99W.json') return json({title: 'The Waves', description: {value: 'Six friends, from childhood on, in soliloquies. ([source][1])'}, covers: [7], subjects: ['Fiction']});
   if (url.hostname === 'openlibrary.org' && url.pathname === '/search.json' && (url.searchParams.get('title') || /^key:/.test(url.searchParams.get('q') || ''))) {
@@ -527,6 +535,34 @@ try {
   assert.equal((await post({kind: 'movie', title: 'x'})).status, 400);
   assert.equal((await ask(mf, '/found', {method: 'POST', body: 'not json'})).status, 400);
   ok('a title nobody searched keeps nothing, and a POST that isn’t a list of cuts is refused');
+} finally { await mf.dispose(); }
+
+/* ---------- /img: covers kept on our side, scans streamed ---------- */
+mf = worker();
+try {
+  const img = async u => { const r = await mf.dispatchFetch('http://worker/img?url=' + encodeURIComponent(u)); const b = new Uint8Array(await r.arrayBuffer()); return {status: r.status, from: r.headers.get('X-Cache'), size: b.byteLength, b}; };
+  plan = {cover: 'ok'};
+  let r = await img('https://image.tmdb.org/t/p/w500/manic.jpg');
+  assert.deepEqual([r.status, r.size], [200, 64]);
+  await pause(100);
+  const kept = await (await mf.getR2Bucket('MEDIA')).list({prefix: 'c/'});
+  assert.equal(kept.objects.length, 1);
+  ok('/img keeps a copy of a TMDB or Open Library cover in R2 the first time it passes through');
+  plan = {cover: 503};
+  r = await img('https://image.tmdb.org/t/p/w500/manic.jpg?again');   // not at the edge: the host is asked, and fails
+  assert.equal(r.status, 502);
+  await (await mf.getR2Bucket('MEDIA')).put('c/' + [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('https://image.tmdb.org/t/p/w500/manic.jpg?again')))].map(x => x.toString(16).padStart(2, '0')).join(''), jpegHead(300, 450));
+  r = await img('https://image.tmdb.org/t/p/w500/manic.jpg?again');
+  assert.deepEqual([r.status, r.from, r.b[0], r.b[1]], [200, 'SAVED', 0xFF, 0xD8]);
+  ok('the cover’s host answers 503: our saved copy is served instead');
+  plan = {cover: 'hang'};
+  const t = Date.now();
+  r = await img('https://image.tmdb.org/t/p/w500/never.jpg');
+  assert.ok(r.status === 504 && Date.now() - t < 9000);
+  ok('a host that never answers is given up on after 8 s (504), not held open');
+  r = await img('https://scans.example/big.jpg');
+  assert.deepEqual([r.status, r.size], [200, 5 * 1024 * 1024]);
+  ok('a 5 MB scan with its size given is streamed through');
 } finally { await mf.dispose(); }
 
 /* ---------- no key ever comes back ---------- */
