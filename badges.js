@@ -4,12 +4,12 @@
 
    A badge is data: an id, its name, its line, and its picture, the file assets/badges/<id>.svg (the owner swaps in
    final art: whatever file is there is shown). Who has which is data too, a list of badges per person:
-     founder    the usernames in FOUNDERS
      early-100  the first 100 profiles by signup order. Deciding that needs the database (private profiles can't be
                 read from the page): docs/proposed-0012-badges.sql adds badges_of(), and once it's run, FROM_DB = true
                 below makes the pages ask it. Until then: the usernames in EARLY, everyone on the live site when this
                 was written (5 public profiles, so all of them are in the first 100).
-   More badges later: a line in BADGES, and their people (with 0012, a row in the badges table).
+   (There was a Founder badge; it was taken out. badges_of() still says 'founder' for @viraaj until the database
+   drops it, and it's ignored here, as any id not in BADGES is.) More badges later: a line in BADGES, and their people (with 0012, a row in the badges table).
 
    Badges.list(username)      the badges known now, most important first (no asking)
    Badges.of(profile)         a Promise of the same, asking the database first with 0012
@@ -23,10 +23,8 @@
   const FROM_DB = true;   // 0012 is in the live database (supabase/migrations/0012_badges.sql): badges_of() says who has which
   // in order of importance: the first a person has is the one beside their name on a post
   const BADGES = [
-    {id: 'founder', name: 'Founder', line: 'built shelfstackd'},
     {id: 'early-100', name: 'Early 100', line: 'one of the first 100 on shelfstackd'},
   ];
-  const FOUNDERS = ['viraaj'];
   const EARLY = ['viraaj', 'prathmesh', 'rudra', 'hardik', 'div'];   // the live site's people on 6 October 2026, by signup
   const SB_URL = String(window.SPINESTACK_SUPABASE_URL || '').trim().replace(/\/+$/, ''), SB_KEY = String(window.SPINESTACK_SUPABASE_KEY || '').trim();
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -51,7 +49,7 @@
   function list(username){
     const u = String(username || '').toLowerCase();
     if (FROM_DB && fromDb.has(u)) return sorted(fromDb.get(u));
-    return sorted([...(FOUNDERS.includes(u) ? ['founder'] : []), ...(EARLY.includes(u) ? ['early-100'] : [])]);
+    return sorted([...(EARLY.includes(u) ? ['early-100'] : [])]);
   }
   async function load(usernames){
     const want = [...new Set((usernames || []).map(u => String(u || '').toLowerCase()).filter(u => /^[a-z0-9_]{3,20}$/.test(u) && !fromDb.has(u)))];

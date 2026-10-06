@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44" width="44" height="44">
-  <!-- Founder: placeholder art in the logo's colours (the owner replaces this file). Four spines standing on a line -->
-  <rect width="44" height="44" rx="6" fill="#14181C"/>
-  <rect x="9" y="14" width="5" height="20" rx="1.5" fill="#FFD000"/>
-  <rect x="16" y="9" width="5" height="25" rx="1.5" fill="#FF2E93"/>
-  <rect x="23" y="12" width="5" height="22" rx="1.5" fill="#6A4BFF"/>
-  <rect x="30" y="17" width="5" height="17" rx="1.5" fill="#00D5E6"/>
-  <rect x="7" y="34" width="30" height="2" fill="#FFFFFF"/>
-</svg>

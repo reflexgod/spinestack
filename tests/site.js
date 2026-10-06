@@ -41,7 +41,7 @@ const PEOPLE = [
 ];
 // someone the search finds (find_people() only): @div, with a photo
 const DIV = { id: '55555555-5555-4555-8555-555555555555', username: 'div', display_name: 'Divya', bio: '', avatar_key: 'avatars/div', pinned_shelf_id: null, is_private: false, created_at: day(10) };
-// @viraaj, whose profile wears the Gummo theme (themes.js) and has the Founder and Early 100 badges (badges.js): only a
+// @viraaj, an Early 100 badge (badges.js; badges_of() still says founder too, as the live database does, and it's ignored): only a
 // profile read by its username or id knows them, and their one shelf, so nothing else counts them
 const VIRAAJ = { id: '66666666-6666-4666-8666-666666666666', username: 'viraaj', display_name: 'Viraaj', bio: 'Shelving what I watch. Xenia, Ohio, in spirit.', avatar_key: 'avatars/viraaj', pinned_shelf_id: null, is_private: false, created_at: day(100) };
 const VIRAAJ_SHELF = { id: 'aaaaaaaa-aaaa-4aaa-8aaa-0000000000ff', owner: VIRAAJ.id, caption: 'films for the bathtub', name: null, filter: 'clean', intensity: 70, background: 'paper', wood: false, layout: 'row', varied: true, is_public: true, hidden: false,

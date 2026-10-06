@@ -6,6 +6,16 @@ session"), again after the launch pass (see "Done in the second cloud session"),
 the design review was applied (see "Done in the third session"). Read this first, then `README.md`, which says what
 every file is and how the Worker, the accounts and the tests are set up.
 
+## Later on 6 October 2026: no theme, no Founder, no hedgehog in the bar
+
+- **No theme on anyone:** `themes.js` keeps Gummo (its CSS, its data, `assets/themes/gummo/banner.jpg`) for Pro, but
+  `BY_USER = {}`, so @viraaj's profile is like everyone else's.
+- **No Founder badge:** gone from `badges.js` and `assets/badges/founder.svg`; only Early 100 is left. The live
+  database still has @viraaj's `founder` row (0012), and `badges_of()` still returns it; badges.js ignores ids it
+  doesn't know, so nothing shows. Removing the row needs a new migration: the owner's call, not written.
+- **No hedgehog in the bar:** the bar's mark is the word SHELFSTACKD alone, still a link home, on every page. The
+  favicon, `og.jpg`, the story cards and About's picture keep the hedgehog.
+
 ## Done on 6 October 2026 (our own, Gummo, marketing, phone first)
 
 Nothing merged into `main`, nothing deployed, shelf.js's drawing untouched (story.js and the title page only use what

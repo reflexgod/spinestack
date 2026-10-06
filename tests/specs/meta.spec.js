@@ -60,18 +60,14 @@ test('every page has its own title and description, the icons and the share pict
   expect(fs.statSync(path.join(ROOT, 'og.jpg')).size).toBeLessThan(300 * 1024);
 });
 
-test('the bar has the hedgehog, 28px, left of SHELFSTACKD, on every page', async ({ page }) => {
+test('the bar has SHELFSTACKD alone (no hedgehog), a link home, on every page', async ({ page }) => {
   await mockNetwork(page);
   for (const p of ['/', '/feed/', '/u/?mira', '/build/', '/people/', '/shelves/', '/settings/', '/nope/']) {
     await page.goto(p);
     const mark = page.locator('.top .mark');
     await expect(mark, p).toHaveText('SHELFSTACKD');
-    const img = mark.locator('img');
-    await expect(img, p).toHaveAttribute('src', /assets\/logo-hedgehog\.svg$/);
-    expect(await img.evaluate(i => i.complete && i.naturalWidth > 0), p).toBe(true);
-    const [ib, mb] = [await img.boundingBox(), await mark.boundingBox()];
-    expect(Math.round(ib.width), p).toBe(28);
-    expect(ib.x, p).toBeLessThanOrEqual(mb.x + 1);   // first, at the left
+    await expect(mark.locator('img, svg'), p).toHaveCount(0);
+    expect(new URL(await mark.evaluate(a => a.href)).pathname, p).toBe('/');
   }
 });
 

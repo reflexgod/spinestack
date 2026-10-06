@@ -120,7 +120,6 @@ textarea{resize:vertical;line-height:1.5}
 .top a{text-decoration:none;font-size:var(--fs-nav);font-weight:500;letter-spacing:var(--track);text-transform:uppercase;white-space:nowrap}
 .top svg{width:16px;height:16px;display:block;flex:none}
 .top .mark{display:flex;align-items:center;gap:var(--s2);font-weight:800;font-size:var(--fs-logo);letter-spacing:var(--logo-track);line-height:1;margin-right:auto;flex:none}
-.top .mark img{width:28px;height:28px;display:block;flex:none}   /* the hedgehog (assets/logo-hedgehog.svg): the only colour on the page */
 .acct{display:flex;align-items:center;gap:var(--s2);min-width:0;font:400 var(--fs-nav) var(--mono);background:none;border:0;padding:0;color:var(--ink);cursor:pointer}
 .acct .ava{width:24px;height:24px;border-radius:50%;border:1px solid var(--ink);background:var(--wash);overflow:hidden;display:grid;place-items:center;font-size:var(--fs-small);text-transform:uppercase;flex:none}
 .acct .ava img{width:100%;height:100%;object-fit:cover;display:block}

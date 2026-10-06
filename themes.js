@@ -2,7 +2,7 @@
    normal profile card, the way Discord dresses a profile: it changes the card (the photo, the name, the bio, the line
    of numbers, the buttons) and nothing else on the page or the site. Everyone who opens that profile sees it.
 
-   For now the data is here: BY_USER says whose profile wears which theme (only @viraaj, Gummo). A later Pro version
+   For now the data is here: BY_USER says whose profile wears which theme (nobody, for now). A later Pro version
    reads the same thing from the database (a theme id on the profile), and this file keeps the themes themselves.
 
    A theme:
@@ -37,7 +37,7 @@
       pins: 4,
     },
   };
-  const BY_USER = {viraaj: 'gummo'};
+  const BY_USER = {};   // nobody wears a theme for now: Gummo waits for Pro
 
   // the grain: SVG noise, drawn here (no file to load), laid over the banner and, for the effect, over the card
   const noise = alpha => `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 ${alpha} 0"/></filter><rect width="160" height="160" filter="url(#n)"/></svg>`)}")`;
