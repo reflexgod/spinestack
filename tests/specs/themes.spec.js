@@ -1,6 +1,7 @@
 // Profile themes (themes.js): @viraaj's profile wears Gummo, layered on the normal card, and nothing else does. The
-// banner, the card's gradient, the polaroid photo with its tape, the VHS label, the handwritten bio; the effect (2s of
-// grain and a blinking REC, then nothing, and none with reduced motion); its text readable (WCAG AA); 390px wide.
+// banner, the card's flat photocopied yellow, the polaroid photo with its tape and glare, the masking-tape name, the
+// marker bio, the pink accent, the pinned titles; the effect (2s of grain and a blinking REC, then nothing, and none
+// with reduced motion); its text readable (WCAG AA); 390px wide.
 const { test, expect } = require('@playwright/test');
 const AxeBuilder = require('@axe-core/playwright').default;
 const fs = require('fs'), path = require('path');
@@ -8,7 +9,7 @@ const { ROOT, mockNetwork, watchErrors, open } = require('../site');
 
 const isPhone = () => test.info().project.name.startsWith('phone');
 
-test('@viraaj: the Gummo card: banner, two-colour gradient, polaroid photo with tape, VHS name label, the bio in a hand', async ({ page }) => {
+test('@viraaj: the Gummo card: banner, flat photocopied yellow, polaroid photo with tape and glare, masking-tape name, the bio in marker, pink links, pinned titles', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   const errors = watchErrors(page);
   await open(page, '/u/?viraaj');
@@ -18,20 +19,44 @@ test('@viraaj: the Gummo card: banner, two-colour gradient, polaroid photo with 
   const banner = page.locator('#pbanner');
   await expect(banner).toBeVisible();
   expect(Math.round((await banner.boundingBox()).height)).toBe(isPhone() ? 88 : 112);
-  // the banner: lime-green siding drawn in CSS (no picture file), with a grain over it
-  expect(await banner.evaluate(e => getComputedStyle(e).backgroundImage)).toMatch(/repeating-linear-gradient\((180deg, )?rgb\(207, 226, 154\)/);
-  expect(await card.evaluate(e => getComputedStyle(e).backgroundImage)).toBe('linear-gradient(160deg, rgb(231, 166, 180) 0%, rgb(217, 178, 60) 100%)');
-  // the photo: a polaroid, a little crooked, over the banner's foot, with a strip of tape
+  // the banner: the owner's banner.jpg when it's there, otherwise a dark strip; the copier's specks over either
+  const file = fs.existsSync(path.join(ROOT, 'assets/themes/gummo/banner.jpg'));
+  if (file) expect(await banner.evaluate(e => getComputedStyle(e).backgroundImage)).toContain('assets/themes/gummo/banner.jpg');
+  else expect(await banner.evaluate(e => getComputedStyle(e).backgroundColor)).toBe('rgb(23, 21, 13)');
+  expect(await banner.evaluate(e => getComputedStyle(e, '::after').backgroundImage)).toContain('data:image/svg+xml');
+  // the card: flat acid yellow under photocopy dirt (drawn noise), and no gradient anywhere on it
+  expect(await card.evaluate(e => getComputedStyle(e).backgroundColor)).toBe('rgb(233, 214, 58)');
+  expect(await card.evaluate(e => getComputedStyle(e).backgroundImage)).toContain('data:image/svg+xml');
+  expect(await card.evaluate(e => [e, ...e.querySelectorAll('*')].flatMap(el => [null, '::before', '::after'].map(p => getComputedStyle(el, p).backgroundImage)).filter(b => /gradient\(/.test(b)))).toEqual([]);
+  // the text in black
+  for (const sel of ['#name', '#handle', '#bio']) expect(await page.locator(sel).evaluate(e => getComputedStyle(e).color), sel).toMatch(/^rgb\((0, 0, 0|30, 28, 18)\)$/);
+  // the photo: a polaroid gone yellow, a little crooked, over the banner's foot, with a strip of tape and a flash's glare
   const ava = page.locator('#ava');
   expect(await ava.evaluate(e => getComputedStyle(e).transform)).not.toBe('none');
+  expect(await ava.evaluate(e => getComputedStyle(e).backgroundColor)).toBe('rgb(243, 236, 210)');
   expect(await ava.evaluate(e => getComputedStyle(e, '::after').content)).toBe('""');
+  expect(await ava.evaluate(e => getComputedStyle(e, '::before').filter)).toMatch(/blur/);
   expect((await ava.boundingBox()).y).toBeLessThan((await banner.boundingBox()).y + (await banner.boundingBox()).height);
-  // the name on a label: tile white, a green edge
+  // the name in marker on a torn strip of masking tape
   const name = page.locator('#name');
-  expect(await name.evaluate(e => getComputedStyle(e).borderLeftColor)).toBe('rgb(110, 154, 58)');
-  // one handwritten face, for the bio only; Courier Prime for the rest
-  expect(await page.locator('#bio').evaluate(e => getComputedStyle(e).fontFamily)).toMatch(/^"Gochi Hand"/);
-  for (const sel of ['#name', '#handle', '#counts', '#since', '#followBtn']) expect(await page.locator(sel).evaluate(e => getComputedStyle(e).fontFamily), sel).toMatch(/^"Courier Prime"/);
+  expect(await name.evaluate(e => getComputedStyle(e).backgroundColor)).toBe('rgb(227, 211, 164)');
+  expect(await name.evaluate(e => getComputedStyle(e).clipPath)).toMatch(/^polygon/);
+  // the one handwritten face (marker), for the name and the bio, the bio a little crooked; Courier Prime for the rest
+  for (const sel of ['#name', '#bio']) expect(await page.locator(sel).evaluate(e => getComputedStyle(e).fontFamily), sel).toMatch(/^"Permanent Marker"/);
+  expect(await page.locator('#bio').evaluate(e => getComputedStyle(e).transform)).not.toBe('none');
+  for (const sel of ['#handle', '#counts', '#since', '#followBtn']) expect(await page.locator(sel).evaluate(e => getComputedStyle(e).fontFamily), sel).toMatch(/^"Courier Prime"/);
+  // bunny pink, the one accent: the open tab's line and the links' underline (the links' text stays black)
+  expect(await page.locator('#tabP').evaluate(e => getComputedStyle(e).borderBottomColor)).toBe('rgb(231, 166, 180)');
+  expect(await page.locator('#cFollowers').evaluate(e => [getComputedStyle(e).textDecorationColor, getComputedStyle(e).color])).toEqual(['rgb(231, 166, 180)', 'rgb(0, 0, 0)']);
+  // the pinned shelf's first titles, copied small on crooked cards at the card's right on a wide window; none on a phone
+  const pins = page.locator('#ppins');
+  if (isPhone()) await expect(pins).toBeHidden();
+  else {
+    await expect(pins.locator('li a canvas')).toHaveCount(2);
+    expect(await pins.locator('a').evaluateAll(as => as.map(a => getComputedStyle(a).transform !== 'none'))).toEqual([true, true]);
+    expect(await pins.locator('a').first().getAttribute('href')).toContain('/t/');
+    expect((await pins.boundingBox()).x).toBeGreaterThan((await page.locator('#bio').boundingBox()).x + 400);
+  }
   // nothing from the film: no picture in the card but the photo and the badges
   expect(await card.locator('img').evaluateAll(els => els.map(e => e.closest('#ava') ? 'photo' : e.closest('.badge') ? 'badge' : e.src))).toEqual(['photo', 'badge', 'badge']);
   // the rest of the page is the site's own
@@ -72,13 +97,13 @@ test('every other profile, and every other page, is unchanged', async ({ page })
   expect(await page.locator('.themed, .pbanner').count()).toBe(0);
 });
 
-test('Gummo\'s text is readable: WCAG AA (4.5:1) for the ink and the soft ink on both ends of the gradient; axe finds nothing serious', async ({ page }) => {
+test('Gummo\'s text is readable: WCAG AA (4.5:1) for the ink and the soft ink on the paper, the tape and the polaroid; axe finds nothing serious', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   await open(page, '/u/?viraaj');
   const ratio = await page.evaluate(() => {
     const t = Themes.THEMES.gummo.vars, lum = h => { const c = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(v => v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4); return .2126 * c[0] + .7152 * c[1] + .0722 * c[2]; };
     const r = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + .05) / (y + .05); };
-    return Math.min(...[t['--th-ink'], t['--th-soft']].flatMap(f => [t['--th-a'], t['--th-b'], t['--th-tile']].map(b => r(f, b))));
+    return Math.min(...[t['--th-ink'], t['--th-soft']].flatMap(f => [t['--th-paper'], t['--th-tape'], t['--th-white']].map(b => r(f, b))));
   });
   expect(ratio).toBeGreaterThanOrEqual(4.5);
   await page.waitForTimeout(2200);   // after the effect

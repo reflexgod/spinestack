@@ -28,7 +28,7 @@
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Geist+Mono:wght@400;500&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Geist+Mono:wght@400;500&family=Oswald:wght@400;600&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Archivo+Black&family=Gochi+Hand&family=Permanent+Marker&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&display=swap">
 <link rel="stylesheet" href="../site.css?v=20261020a">
 <style>
 /* the profile (site.css has the cards, the tabs, the sheets and everything shared) */
@@ -332,6 +332,8 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
             <div class="menu" id="menu" role="menu" hidden><button type="button" role="menuitem" id="shareStory">Share to story</button><button type="button" role="menuitem" id="copyLink">Copy link</button><button type="button" role="menuitem" id="reportProfile" hidden>Report</button></div>
           </div>
         </div>
+        <!-- a theme's pinned titles (themes.js: pins), on a wide window; empty and hidden otherwise -->
+        <ol class="ppins" id="ppins" aria-label="Pinned" hidden></ol>
       </div>
     </section>
     <p class="note" id="privNote" hidden>Your profile is private.</p>
@@ -512,7 +514,7 @@ input.renamer{font:inherit;line-height:inherit;height:1.55em;padding:0 var(--s1)
 <script src="../wear.js?v=20261016a"></script>
 <script src="../nav.js?v=20261020a"></script>
 <script src="../badges.js?v=20261020a"></script>
-<script src="../themes.js?v=20261020a"></script>
+<script src="../themes.js?v=20261021a"></script>
 <script>
 (() => {
 /* A profile: /u/?username, and its shelf on its own page: /u/?username&shelf (one shelf each), or a shelf by its id,
@@ -983,15 +985,16 @@ let heroRun = 0;
 async function paintHero(){
   const s = theShelf(), run = ++heroRun, mine = view.mine;
   $('#featWrap').hidden = $('#featMetaRow').hidden = !s; $('#none').hidden = !!s;
-  if (!s){ $('#noneText').textContent = mine ? 'Your shelf is empty.' : 'No shelf yet.'; $('#noneMake').hidden = !mine; $('#featLink').replaceChildren(); return; }
+  if (!s){ $('#noneText').textContent = mine ? 'Your shelf is empty.' : 'No shelf yet.'; $('#noneMake').hidden = !mine; $('#featLink').replaceChildren(); paintPins([]); return; }
   $('#featLink').href = pageUrl(view.profile.username, s.id);
   if (mine) $('#featCap').replaceChildren(nameButton(s)); else $('#featCap').textContent = shelfName(s);
   $('#featPriv').hidden = s.is_public;
   $('#featMeta').textContent = `${spines(countOf(s))} · ${fmtDate(s.updated_at)}`;
   $('#featEdit').hidden = !mine; $('#featEdit').href = '../build/?open=' + s.id;
-  let list, wall = null;
-  try { [list, wall] = await Promise.all([books(await api(`shelf_items?select=${ITEM_COLS}&shelf_id=eq.${s.id}&order=position`)), wallOf(s)]); } catch { list = []; }
+  let list, wall = null, rows = [];
+  try { [list, wall] = await Promise.all([api(`shelf_items?select=${ITEM_COLS}&shelf_id=eq.${s.id}&order=position`).then(r => books(rows = r || [])), wallOf(s)]); } catch { list = []; }
   if (run !== heroRun) return;   // drawn again meanwhile
+  paintPins(rows);
   const draw = () => {
     const c = list.length && bareShelf(list, s, wall), a = $('#featLink');
     if (c){
@@ -1004,6 +1007,15 @@ async function paintHero(){
     a.replaceChildren(...(c ? [c] : []));
   };
   draw(); view.drawn.push(draw);
+}
+
+// a theme's pinned titles (themes.js: pins): the first few on the shown shelf, as small covers on the card's right, each
+// to its title's page. Only a themed card that asks for them; the theme's CSS hides them on a phone
+function paintPins(rows){
+  const th = window.Themes && view.profile && Themes.of(view.profile.username), ol = $('#ppins');
+  const pick = th && th.pins ? rows.filter(r => r.title).slice(0, th.pins) : [];
+  ol.replaceChildren(...pick.map(r => { const li = document.createElement('li'), a = document.createElement('a'); a.href = Nav.titleUrl(asItem(r)); a.append(cleanCover(r, 64)); li.append(a); return li; }));
+  ol.hidden = !pick.length;
 }
 
 /* ---------- the watchlist and From friends. Both read the tables supabase/migrations/0007_logs_watchlist.sql makes; on a
