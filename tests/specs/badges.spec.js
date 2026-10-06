@@ -7,15 +7,16 @@ const { ROOT, VIRAAJ, mockNetwork, watchErrors, open } = require('../site');
 
 const isPhone = () => test.info().project.name.startsWith('phone');
 
-test('the badge pictures are files the owner can swap: assets/badges/founder.svg and early-100.svg', async () => {
-  for (const f of ['founder.svg', 'early-100.svg']) {
+test('the badge picture is a file the owner can swap: assets/badges/early-100.svg (no Founder any more)', async () => {
+  expect(fs.existsSync(path.join(ROOT, 'assets/badges/founder.svg'))).toBe(false);
+  for (const f of ['early-100.svg']) {
     const svg = fs.readFileSync(path.join(ROOT, 'assets/badges', f), 'utf8');
     expect(svg).toMatch(/^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
     for (const c of svg.match(/#[0-9A-F]{6}/gi)) expect(['#14181C', '#FFD000', '#FF2E93', '#6A4BFF', '#00D5E6', '#FFFFFF'], `${f}: ${c}`).toContain(c.toUpperCase());   // the logo's colours
   }
 });
 
-test('@viraaj: Founder then Early 100, 22px squares 6px apart, right under the name and over @username', async ({ page }) => {
+test('@viraaj: only Early 100 (the database\'s founder is ignored), a 22px square right under the name and over @username', async ({ page }) => {
   await mockNetwork(page, { signedIn: true });
   const errors = watchErrors(page), got = [];
   page.on('response', r => { if (/\/assets\/badges\//.test(r.url())) got.push(r.status()); });
@@ -23,15 +24,15 @@ test('@viraaj: Founder then Early 100, 22px squares 6px apart, right under the n
   const row = page.locator('#badges');
   await expect(row).toBeVisible();
   const items = row.locator('.badge');
-  await expect(items).toHaveCount(2);
-  expect(await items.evaluateAll(els => els.map(e => e.getAttribute('aria-label')))).toEqual(['Founder: built shelfstackd', 'Early 100: one of the first 100 on shelfstackd']);
-  const [a, b] = [await items.nth(0).boundingBox(), await items.nth(1).boundingBox()];
+  await expect(items).toHaveCount(1);
+  expect(await items.evaluateAll(els => els.map(e => e.getAttribute('aria-label')))).toEqual(['Early 100: one of the first 100 on shelfstackd']);
+  expect(await page.evaluate(() => Badges.list('viraaj').map(b => b.id))).toEqual(['early-100']);
+  const a = await items.nth(0).boundingBox();
   expect([Math.round(a.width), Math.round(a.height)]).toEqual([22, 22]);
-  expect(Math.round(b.x - a.x - a.width)).toBe(6);
   const name = await page.locator('#name').boundingBox(), handle = await page.locator('#handle').boundingBox();
   expect(a.y).toBeGreaterThanOrEqual(name.y + name.height - 1);
   expect(a.y + a.height).toBeLessThanOrEqual(handle.y + 1);
-  expect(got).toEqual([200, 200]);   // whatever file is there
+  expect(got).toEqual([200]);   // whatever file is there
   expect(errors).toEqual([]);
 });
 
@@ -48,24 +49,21 @@ test('badges on an unthemed profile too; none for someone without one', async ({
 test('a badge says what it is: on hover with a mouse, on a tap on a phone; a tap elsewhere or Esc shuts it', async ({ page }) => {
   await mockNetwork(page, {});
   await open(page, '/u/?viraaj');
-  const founder = page.locator('#badges .badge').first(), tip = page.locator('#badgeTip');
+  const early = page.locator('#badges .badge').first(), tip = page.locator('#badgeTip');
   if (isPhone()) {
-    await founder.tap();
+    await early.tap();
     await expect(tip).toBeVisible();
-    await expect(tip).toHaveText('Founderbuilt shelfstackd');
-    await page.locator('#since').tap();
+    await expect(tip).toHaveText('Early 100one of the first 100 on shelfstackd');
+    await page.locator('#name').tap();   // not a link: elsewhere
     await expect(tip).toBeHidden();
-    await page.locator('#badges .badge').nth(1).tap();
-    await expect(tip).toContainText('Early 100');
-    await expect(tip).toContainText('one of the first 100 on shelfstackd');
   } else {
-    await founder.hover();
+    await early.hover();
     await expect(tip).toBeVisible();
-    await expect(tip.locator('b')).toHaveText('Founder');
-    await expect(tip).toContainText('built shelfstackd');
+    await expect(tip.locator('b')).toHaveText('Early 100');
+    await expect(tip).toContainText('one of the first 100 on shelfstackd');
     await page.mouse.move(5, 500);
     await expect(tip).toBeHidden();
-    await founder.focus(); await page.keyboard.press('Tab'); await page.keyboard.press('Shift+Tab');
+    await early.focus(); await page.keyboard.press('Tab'); await page.keyboard.press('Shift+Tab');
     await expect(tip).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(tip).toBeHidden();
@@ -84,7 +82,7 @@ test('the feed: one small badge, the most important, beside the name on a post; 
   await open(page, '/feed/?everyone');
   const post = page.locator('#items .post').first();
   await expect(post.locator('.badge')).toHaveCount(1);
-  await expect(post.locator('.badge')).toHaveAttribute('aria-label', /^Founder/);
+  await expect(post.locator('.badge')).toHaveAttribute('aria-label', /^Early 100/);
   const b = await post.locator('.badge').boundingBox();
   expect([Math.round(b.width), Math.round(b.height)]).toEqual([14, 14]);
   await post.locator('.badge').click();
